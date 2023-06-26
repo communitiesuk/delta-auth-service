@@ -44,6 +44,21 @@ module "fargate_auth" {
   healthcheck_path                   = "/"
   ecs_cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
   alarms_sns_topic_arn               = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
-  environment_variables              = []
-  secrets                            = []
+  target_group = {
+    tg_arn        = module.alb.target_group_arn
+    tg_arn_suffix = module.alb.target_group_arn_suffix
+    //noinspection HILUnresolvedReference
+    lb_arn_suffix = data.terraform_remote_state.common_infra.outputs.public_albs.keycloak.arn_suffix
+  }
+  environment_variables = []
+  secrets               = []
+}
+
+module "alb" {
+  source            = "../modules/alb"
+  listener_arn      = data.terraform_remote_state.common_infra.outputs.auth_listener_arn
+  vpc_id            = data.terraform_remote_state.common_infra.outputs.vpc_id
+  environment       = local.environment
+  healthcheck_path  = "/"
+  target_group_port = 80
 }
