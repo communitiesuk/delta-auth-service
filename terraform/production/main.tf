@@ -48,7 +48,7 @@ module "fargate_auth" {
     tg_arn        = module.alb.target_group_arn
     tg_arn_suffix = module.alb.target_group_arn_suffix
     //noinspection HILUnresolvedReference
-    lb_arn_suffix = data.terraform_remote_state.common_infra.outputs.public_albs.keycloak.arn_suffix
+    lb_arn_suffix = data.terraform_remote_state.common_infra.outputs.public_albs.auth.arn_suffix
   }
   environment_variables = []
   secrets               = []
