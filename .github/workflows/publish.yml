@@ -18,7 +18,7 @@ jobs:
       REPOSITORY: "delta-auth-service"
       ECR_PATH: "468442790030.dkr.ecr.eu-west-1.amazonaws.com"
     outputs:
-      internal_image_tag: ${{ steps.determine_tag.outputs.tag }}
+      image_tag: ${{ steps.determine_tag.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
