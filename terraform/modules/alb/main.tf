@@ -45,16 +45,20 @@ resource "aws_lb_listener_rule" "vpc_traffic" {
 }
 
 resource "aws_lb_target_group" "auth" {
-  name        = "auth-tg-${var.environment}"
+  name_prefix = "auth-${substr(var.environment, 0, 1)}"
   port        = var.target_group_port
-  protocol    = "HTTP"
+  protocol    = "HTTPS"
   vpc_id      = var.vpc_id
   target_type = "ip"
 
   health_check {
     path              = var.healthcheck_path
-    protocol          = "HTTP"
+    protocol          = "HTTPS"
     healthy_threshold = 2
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 

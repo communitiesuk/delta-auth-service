@@ -38,7 +38,7 @@ module "fargate_auth" {
   subnets                            = data.terraform_remote_state.common_infra.outputs.auth_service_private_subnet_ids
   environment                        = local.environment
   app_name                           = "delta-auth-service"
-  container_port                     = 80
+  container_port                     = 8443
   container_image                    = "468442790030.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service:${var.image_tag}"
   vpc_id                             = data.terraform_remote_state.common_infra.outputs.vpc_id
   healthcheck_path                   = "/"
@@ -60,5 +60,5 @@ module "alb" {
   vpc_id            = data.terraform_remote_state.common_infra.outputs.vpc_id
   environment       = local.environment
   healthcheck_path  = "/"
-  target_group_port = 80
+  target_group_port = 8443
 }
