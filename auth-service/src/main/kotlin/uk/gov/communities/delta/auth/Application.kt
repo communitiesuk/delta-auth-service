@@ -5,7 +5,7 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
 import uk.gov.communities.delta.auth.plugins.configureRouting
-import uk.gov.communities.delta.auth.plugins.configureSecurity
+import uk.gov.communities.delta.auth.security.configureSecurity
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 
 fun main() {
