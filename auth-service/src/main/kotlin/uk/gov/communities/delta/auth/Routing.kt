@@ -15,10 +15,7 @@ fun Application.configureRouting() {
         }
 
         healthcheckRoute()
-
-        authenticate(DeltaADLdapAuthentication.NAME) {
-            internalRoutes()
-        }
+        internalRoutes()
     }
 }
 
@@ -32,13 +29,15 @@ fun Route.healthcheckRoute() {
 fun Route.internalRoutes() {
     val generateSAMLTokenController = Injection.generateSAMLTokenController()
 
-    route("/auth-internal") {
-        get("/auth-diag") {
-            val principal = call.principal<DeltaLdapPrincipal>(DeltaADLdapAuthentication.NAME)!!
-            call.respond(principal)
-        }
-        post("/generate-saml-token") {
-            generateSAMLTokenController.generateSAMLToken(call)
+    authenticate(DeltaADLdapAuthentication.NAME) {
+        route("/auth-internal") {
+            get("/auth-diag") {
+                val principal = call.principal<DeltaLdapPrincipal>(DeltaADLdapAuthentication.NAME)!!
+                call.respond(principal)
+            }
+            post("/generate-saml-token") {
+                generateSAMLTokenController.generateSAMLToken(call)
+            }
         }
     }
 }
