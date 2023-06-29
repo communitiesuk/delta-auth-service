@@ -33,32 +33,14 @@ locals {
   cloudwatch_log_expiration_days = 30
 }
 
-module "fargate_auth" {
-  source                             = "../modules/fargate"
-  subnets                            = data.terraform_remote_state.common_infra.outputs.auth_service_private_subnet_ids
-  environment                        = local.environment
-  app_name                           = "delta-auth-service"
-  container_port                     = 80
-  container_image                    = "468442790030.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service:${var.image_tag}"
-  vpc_id                             = data.terraform_remote_state.common_infra.outputs.vpc_id
-  healthcheck_path                   = "/health"
-  ecs_cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
-  alarms_sns_topic_arn               = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
-  target_group = {
-    tg_arn        = module.alb.target_group_arn
-    tg_arn_suffix = module.alb.target_group_arn_suffix
-    //noinspection HILUnresolvedReference
-    lb_arn_suffix = data.terraform_remote_state.common_infra.outputs.public_albs.auth.arn_suffix
-  }
-  environment_variables = []
-  secrets               = []
-}
-
-module "alb" {
-  source            = "../modules/alb"
-  listener_arn      = data.terraform_remote_state.common_infra.outputs.auth_listener_arn
-  vpc_id            = data.terraform_remote_state.common_infra.outputs.vpc_id
-  environment       = local.environment
-  healthcheck_path  = "/health"
-  target_group_port = 80
+module "auth_service" {
+  source                         = "../modules/auth_service"
+  subnet_ids                     = data.terraform_remote_state.common_infra.outputs.auth_service_private_subnet_ids
+  environment                    = local.environment
+  container_image                = "468442790030.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service:${var.image_tag}"
+  vpc_id                         = data.terraform_remote_state.common_infra.outputs.vpc_id
+  cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
+  alarms_sns_topic_arn           = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
+  alb_listener_arn               = data.terraform_remote_state.common_infra.outputs.auth_listener_arn
+  alb_arn_suffix                 = data.terraform_remote_state.common_infra.outputs.public_albs.auth.arn_suffix
 }
