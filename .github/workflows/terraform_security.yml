@@ -15,4 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: tfsec
-        uses: aquasecurity/tfsec-action@v1.0.0
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
