@@ -1,0 +1,20 @@
+name: "Terraform security validation workflow"
+
+on: workflow_call
+
+jobs:
+  validate:
+    name: Terraform validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      AWS_REGION: "eu-west-1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

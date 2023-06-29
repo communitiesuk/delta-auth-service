@@ -1,0 +1,30 @@
+name: "Reusable terraform validate workflow"
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: true
+        type: string
+        description: directory to run Terraform commands from
+
+jobs:
+  validate:
+    name: Terraform validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.workdir }}
+    env:
+      AWS_REGION: "eu-west-1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.1
+      - name: Terraform init
+        run: terraform init -input=false -backend=false
+      - name: Terraform validate
+        run: terraform validate
