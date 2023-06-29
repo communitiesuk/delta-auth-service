@@ -41,7 +41,7 @@ module "fargate_auth" {
   container_port                     = 80
   container_image                    = "468442790030.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service:${var.image_tag}"
   vpc_id                             = data.terraform_remote_state.common_infra.outputs.vpc_id
-  healthcheck_path                   = "/"
+  healthcheck_path                   = "/health"
   ecs_cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
   alarms_sns_topic_arn               = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
   target_group = {
@@ -59,6 +59,6 @@ module "alb" {
   listener_arn      = data.terraform_remote_state.common_infra.outputs.auth_listener_arn
   vpc_id            = data.terraform_remote_state.common_infra.outputs.vpc_id
   environment       = local.environment
-  healthcheck_path  = "/"
+  healthcheck_path  = "/health"
   target_group_port = 80
 }

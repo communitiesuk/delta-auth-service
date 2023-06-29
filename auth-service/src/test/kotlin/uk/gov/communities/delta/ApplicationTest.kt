@@ -5,7 +5,9 @@ import io.ktor.client.statement.*
 import io.ktor.server.testing.*
 import kotlin.test.*
 import io.ktor.http.*
+import io.ktor.server.routing.*
 import uk.gov.communities.delta.auth.configureRouting
+import uk.gov.communities.delta.auth.healthcheckRoute
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.configureSecurity
 
@@ -20,6 +22,19 @@ class ApplicationTest {
         client.get("/").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals("Hello World!", bodyAsText())
+        }
+    }
+
+    @Test
+    fun testHealthcheck() = testApplication {
+        application {
+            routing {
+                healthcheckRoute()
+            }
+        }
+        client.get("/health").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertEquals("OK", bodyAsText())
         }
     }
 }
