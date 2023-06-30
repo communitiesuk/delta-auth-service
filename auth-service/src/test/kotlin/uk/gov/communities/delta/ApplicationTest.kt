@@ -13,7 +13,8 @@ import uk.gov.communities.delta.auth.healthcheckRoute
 import uk.gov.communities.delta.auth.internalRoutes
 import uk.gov.communities.delta.auth.module
 import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.security.DeltaADLdapAuthentication
+import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
+import uk.gov.communities.delta.auth.security.LdapAuthenticationService
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,7 +68,7 @@ class ApplicationTest {
 
     private fun Application.fakeSecurityConfig() {
         authentication {
-            basic(name = DeltaADLdapAuthentication.NAME) {
+            basic(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME) {
                 realm = "Delta"
                 validate { credential ->
                     if (credential.password == "pass") {

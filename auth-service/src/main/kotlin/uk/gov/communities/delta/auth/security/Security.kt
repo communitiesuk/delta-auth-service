@@ -3,17 +3,25 @@ package uk.gov.communities.delta.auth.security
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import uk.gov.communities.delta.auth.Injection
+import uk.gov.communities.delta.auth.config.ClientConfig
 
+const val CLIENT_AUTH_NAME = "delta-client-header-auth"
+const val DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME = "delta-ldap-service-users-basic"
 
 fun Application.configureSecurity() {
-    val deltaADLdapAuthentication = Injection.deltaADLdapAuthentication()
+    val ldapAuthenticationService = Injection.ldapAuthenticationService()
 
     authentication {
-        basic(name = DeltaADLdapAuthentication.NAME) {
+        basic(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME) {
             realm = "Delta"
             validate { credentials ->
-                deltaADLdapAuthentication.authenticate(credentials)
+                ldapAuthenticationService.authenticate(credentials)
             }
+        }
+
+        clientHeaderAuth(CLIENT_AUTH_NAME) {
+            headerName = "Delta-Client"
+            clients = listOf(ClientHeaderAuthProvider.Client("marklogic", ClientConfig.CLIENT_SECRET_MARKLOGIC))
         }
     }
 }
