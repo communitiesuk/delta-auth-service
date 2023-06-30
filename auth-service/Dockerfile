@@ -3,7 +3,7 @@ WORKDIR /app
 
 COPY gradlew build.gradle.kts gradle.properties settings.gradle.kts ./
 COPY gradle gradle
-# Build will fail, but will download dependencies
+# Build will fail, but will download gradle + dependencies
 RUN chmod +x gradlew && ./gradlew build || return 0
 
 COPY src src

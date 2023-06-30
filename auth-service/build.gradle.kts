@@ -17,6 +17,13 @@ application {
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
+tasks {
+    shadowJar {
+        // Required for OpenSAML initialisation, it relies on aliasing config files in META-INF being merged
+        mergeServiceFiles()
+    }
+}
+
 repositories {
     mavenCentral()
 }
@@ -32,8 +39,10 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
     implementation("io.ktor:ktor-server-auth-ldap:$ktor_version")
+
     implementation("org.opensaml:opensaml-core:4.0.1")
     implementation("org.opensaml:opensaml-saml-impl:4.0.1")
+
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }

@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.auth.saml
 
 import org.opensaml.core.config.InitializationService
+import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport
 import org.opensaml.core.xml.schema.XSString
 import org.opensaml.core.xml.schema.impl.XSStringBuilder
 import org.opensaml.saml.common.SAMLVersion
@@ -146,16 +147,6 @@ class SAMLTokenService(basicCredentials: BasicX509Credential) {
         return issuer
     }
 
-    private fun initialiseOpenSaml() {
-        synchronized(SAMLTokenService::class.java) {
-            if (!initialised.get()) {
-                logger.info("Initialising OpenSAML library")
-                InitializationService.initialize()
-                initialised.set(true)
-            }
-        }
-    }
-
     private fun marshalToString(response: Response): String {
         // Marshal Response to a Document Element
         val rMarsh = ResponseMarshaller()
@@ -168,6 +159,17 @@ class SAMLTokenService(basicCredentials: BasicX509Credential) {
         transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
         transformer.transform(DOMSource(plain), StreamResult(buffer))
         return buffer.toString()
+    }
+
+    private fun initialiseOpenSaml() {
+        synchronized(SAMLTokenService::class.java) {
+            if (!initialised.get()) {
+                logger.info("Initialising OpenSAML library")
+                InitializationService.initialize()
+                logger.debug("OpenSAML has " + XMLObjectProviderRegistrySupport.getMarshallerFactory().marshallers.size + " marshallers loaded")
+                initialised.set(true)
+            }
+        }
     }
 
     companion object {
