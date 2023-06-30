@@ -11,7 +11,7 @@ fun main() {
     val keyStore = SelfSignedSSLCertKeystore.getKeystore()
     val environment = applicationEngineEnvironment {
         connector {
-            port = 8080
+            port = 8088
         }
         sslConnector(keyStore = keyStore,
             keyAlias = "auth-service",
