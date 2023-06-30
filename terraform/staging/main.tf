@@ -43,4 +43,10 @@ module "auth_service" {
   alarms_sns_topic_arn           = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
   alb_listener_arn               = data.terraform_remote_state.common_infra.outputs.auth_listener_arn
   alb_arn_suffix                 = data.terraform_remote_state.common_infra.outputs.public_albs.auth.arn_suffix
+  ldap_config = {
+    CA_S3_URL                   = "https://data-collection-service-ldaps-crl-staging.s3.amazonaws.com/CASRVSTAGING/CASRVstaging.dluhcdata.local_CASRVstaging.crt"
+    DELTA_LDAP_URL              = "ldaps://dluhcdata.local:636"
+    LDAP_SERVICE_USER_DN_FORMAT = "CN=%s,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
+    LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhcdata,DC=dluhcdata,DC=local"
+  }
 }
