@@ -1,0 +1,30 @@
+name: "Test auth service"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "auth-service/**"
+      - ".github/workflows/publish.yml"
+  pull_request:
+    paths:
+      - "auth-service/**"
+      - ".github/workflows/publish.yml"
+
+jobs:
+  docker_push:
+    name: Run auth service tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+          cache: 'gradle'
+      - name: Run tests
+        run: chmod +x gradlew && ./gradlew test
+        working-directory: auth-service/
