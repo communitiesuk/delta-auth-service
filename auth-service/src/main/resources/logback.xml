@@ -13,6 +13,7 @@
                 <mdc/>
                 <!-- repeats key-value log arguments as root json fields -->
                 <arguments/>
+                <keyValuePairs/>
             </providers>
         </encoder>
     </appender>
