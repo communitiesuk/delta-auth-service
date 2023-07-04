@@ -10,12 +10,22 @@ variable "vpc_id" {
   type = string
 }
 
-variable "alb_listener_arn" {
-  type = string
+variable "external_alb" {
+  type = object({
+    arn               = string
+    arn_suffix        = string
+    security_group_id = string
+    cloudfront_key    = string
+    listener_arn      = string
+  })
 }
 
-variable "alb_arn_suffix" {
-  type = string
+variable "internal_alb" {
+  type = object({
+    arn_suffix        = string
+    listener_arn      = string
+    security_group_id = string
+  })
 }
 
 variable "alarms_sns_topic_arn" {

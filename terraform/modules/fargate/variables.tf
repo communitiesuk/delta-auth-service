@@ -80,14 +80,13 @@ variable "task_role_arn" {
   default = null
 }
 
-variable "target_group" {
-  description = "Existing target group for external load balancers"
-  type = object({
+variable "target_groups" {
+  type = list(object({
     tg_arn        = string
     tg_arn_suffix = string
     lb_arn_suffix = string
-  })
-  default = null
+  }))
+  default = []
 }
 
 variable "additional_task_sg_id" {

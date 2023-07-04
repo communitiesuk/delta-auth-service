@@ -121,10 +121,6 @@ resource "aws_security_group_rule" "s3_egress" {
   prefix_list_ids = [data.aws_prefix_list.s3.id]
 }
 
-locals {
-  target_group_arns = var.target_group == null ? [] : [var.target_group.tg_arn]
-}
-
 resource "aws_ecs_service" "main" {
   name                = "ecs-service-${var.environment}"
   cluster             = aws_ecs_cluster.main.id
@@ -140,9 +136,9 @@ resource "aws_ecs_service" "main" {
   }
 
   dynamic "load_balancer" {
-    for_each = local.target_group_arns
+    for_each = var.target_groups
     content {
-      target_group_arn = load_balancer.value
+      target_group_arn = load_balancer.value.tg_arn
       container_name   = "${var.app_name}-container-${var.environment}"
       container_port   = var.container_port
     }

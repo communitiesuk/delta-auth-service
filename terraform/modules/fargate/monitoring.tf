@@ -44,9 +44,9 @@ resource "aws_cloudwatch_metric_alarm" "memory_utilisation_high" {
   }
 }
 
-# If we're passed an ALB target group make alarms on that, otherwise make alarms on the private NLB
+# If we're passed an ALB target group make alarms on that
 resource "aws_cloudwatch_metric_alarm" "unhealthy_host_high_alb" {
-  count = var.target_group != null ? 1 : 0
+  count = length(var.target_groups) > 0 ? 1 : 0
 
   alarm_name          = "${aws_ecs_cluster.main.name}-unhealthy-host-count-high"
   comparison_operator = "GreaterThanThreshold"
@@ -63,13 +63,13 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_host_high_alb" {
   insufficient_data_actions = [var.alarms_sns_topic_arn]
 
   dimensions = {
-    "TargetGroup" : var.target_group.tg_arn_suffix
-    "LoadBalancer" : var.target_group.lb_arn_suffix
+    "TargetGroup" : var.target_groups[0].tg_arn_suffix
+    "LoadBalancer" : var.target_groups[0].lb_arn_suffix
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "healthy_host_low_alb" {
-  count = var.target_group != null ? 1 : 0
+  count = length(var.target_groups) > 0 ? 1 : 0
 
   alarm_name          = "${aws_ecs_cluster.main.name}-healthy-host-count-low"
   comparison_operator = "LessThanThreshold"
@@ -86,8 +86,8 @@ resource "aws_cloudwatch_metric_alarm" "healthy_host_low_alb" {
   treat_missing_data = "breaching"
 
   dimensions = {
-    "TargetGroup" : var.target_group.tg_arn_suffix
-    "LoadBalancer" : var.target_group.lb_arn_suffix
+    "TargetGroup" : var.target_groups[0].tg_arn_suffix
+    "LoadBalancer" : var.target_groups[0].lb_arn_suffix
   }
 }
 

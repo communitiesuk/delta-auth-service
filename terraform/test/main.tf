@@ -41,8 +41,8 @@ module "auth_service" {
   vpc_id                         = data.terraform_remote_state.common_infra.outputs.vpc_id
   cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
   alarms_sns_topic_arn           = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
-  alb_listener_arn               = data.terraform_remote_state.common_infra.outputs.auth_listener_arn
-  alb_arn_suffix                 = data.terraform_remote_state.common_infra.outputs.public_albs.auth.arn_suffix
+  internal_alb                   = data.terraform_remote_state.common_infra.outputs.auth_internal_alb
+  external_alb                   = data.terraform_remote_state.common_infra.outputs.public_albs.auth
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-test.s3.amazonaws.com/CASRVTEST/CASRVtest.dluhctest.local_CASRVtest.crt"
     DELTA_LDAP_URL              = "ldaps://dluhctest.local:636"
