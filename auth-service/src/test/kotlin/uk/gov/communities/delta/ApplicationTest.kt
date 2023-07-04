@@ -9,13 +9,12 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.healthcheckRoute
 import uk.gov.communities.delta.auth.internalRoutes
 import uk.gov.communities.delta.auth.module
 import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
-import uk.gov.communities.delta.auth.security.LdapAuthenticationService
-import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
+import uk.gov.communities.delta.auth.security.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -57,6 +56,7 @@ class ApplicationTest {
         client.post("/auth-internal/generate-saml-token") {
             headers {
                 append(HttpHeaders.Accept, "application/json")
+                append("Delta-Client", "test-client:test-secret")
                 basicAuth("test-user", "pass")
             }
         }.apply {
@@ -77,6 +77,10 @@ class ApplicationTest {
                         null
                     }
                 }
+            }
+            clientHeaderAuth(CLIENT_AUTH_NAME) {
+                headerName = "Delta-Client"
+                clients = listOf(ClientHeaderAuthProvider.Client("test-client", "test-secret"))
             }
         }
     }

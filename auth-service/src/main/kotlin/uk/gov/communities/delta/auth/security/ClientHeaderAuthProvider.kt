@@ -53,7 +53,7 @@ class ClientHeaderAuthProvider(private val config: Config) : AuthenticationProvi
             return context.reject(AuthenticationFailedCause.InvalidCredentials, "Invalid client id or secret")
         }
 
-        context.principal(ClientPrincipal(clientId))
+        context.principal(name, ClientPrincipal(clientId))
     }
 
     private fun AuthenticationContext.reject(cause: AuthenticationFailedCause, message: String) {
