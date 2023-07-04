@@ -4,15 +4,14 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
-import uk.gov.communities.delta.auth.plugins.configureRouting
-import uk.gov.communities.delta.auth.plugins.configureSecurity
 import uk.gov.communities.delta.auth.plugins.configureSerialization
+import uk.gov.communities.delta.auth.security.configureSecurity
 
 fun main() {
     val keyStore = SelfSignedSSLCertKeystore.getKeystore()
     val environment = applicationEngineEnvironment {
         connector {
-            port = 8080
+            port = 8088
         }
         sslConnector(keyStore = keyStore,
             keyAlias = "auth-service",

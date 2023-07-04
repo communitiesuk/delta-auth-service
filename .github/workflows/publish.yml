@@ -32,6 +32,9 @@ jobs:
           aws ecr describe-images --repository-name $REPOSITORY --image-ids imageTag=release-$VERSION \
             && echo "tag=snapshot-$VERSION-${{ github.sha }}" >> $GITHUB_OUTPUT \
             || echo "tag=release-$VERSION" >> $GITHUB_OUTPUT
+      - run: docker pull amazoncorretto:17
+      - uses: jpribyl/action-docker-layer-caching@c632825d12ec837065f49726ea27ddd40bcc7894
+        continue-on-error: true
       - name: Build image
         run: docker build -t $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }} .
         working-directory: auth-service/
