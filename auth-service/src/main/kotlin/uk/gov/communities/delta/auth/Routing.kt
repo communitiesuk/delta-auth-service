@@ -31,14 +31,16 @@ fun Route.internalRoutes() {
     val generateSAMLTokenController = Injection.generateSAMLTokenController()
 
     authenticate(CLIENT_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-        authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-            route("/auth-internal") {
-                get("/auth-diag") {
-                    val principal = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!
-                    call.respond(principal)
-                }
-                post("/generate-saml-token") {
-                    generateSAMLTokenController.generateSAMLToken(call)
+        route("/auth-internal") {
+            authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+                route("/service-user") {
+                    get("/auth-diag") {
+                        val principal = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!
+                        call.respond(principal)
+                    }
+                    post("/generate-saml-token") {
+                        generateSAMLTokenController.generateSAMLToken(call)
+                    }
                 }
             }
         }

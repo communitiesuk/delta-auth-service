@@ -53,7 +53,7 @@ class ApplicationTest {
                 internalRoutes()
             }
         }
-        client.post("/auth-internal/generate-saml-token") {
+        client.post("/auth-internal/service-user/generate-saml-token") {
             headers {
                 append(HttpHeaders.Accept, "application/json")
                 append("Delta-Client", "test-client:test-secret")
