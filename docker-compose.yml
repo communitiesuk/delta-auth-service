@@ -1,0 +1,9 @@
+services:
+  auth:
+    build:
+      context: auth-service/
+    ports:
+      - 8088:8088
+    environment:
+      # Requires a tunnel open to the test environment Active Directory
+      DELTA_LDAP_URL: "ldap://host.docker.internal:2389"
