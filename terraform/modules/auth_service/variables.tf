@@ -61,3 +61,7 @@ variable "ecs" {
     desired_count = 1
   }
 }
+
+variable "ml_secret_kms_key_arn" {
+  type = string
+}

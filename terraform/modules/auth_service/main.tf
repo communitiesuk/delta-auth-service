@@ -2,15 +2,6 @@ data "aws_vpc" "main" {
   id = var.vpc_id
 }
 
-# See api/README.md and terraform/test/main.tf in the Delta repository for setup instructions
-data "aws_secretsmanager_secret" "saml_private_key" {
-  name = "api-saml-private-key-${var.environment}"
-}
-
-data "aws_secretsmanager_secret" "saml_certificate" {
-  name = "api-saml-certificate-${var.environment}"
-}
-
 module "fargate" {
   source                             = "../fargate"
   subnets                            = var.subnet_ids
@@ -57,5 +48,10 @@ module "fargate" {
       name      = "DELTA_SAML_CERTIFICATE"
       valueFrom = data.aws_secretsmanager_secret.saml_certificate.arn
     },
+    {
+      name      = "CLIENT_SECRET_MARKLOGIC"
+      valueFrom = aws_secretsmanager_secret.ml_client_secret.arn
+    },
   ]
+  secret_kms_key_arns = compact([var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])
 }

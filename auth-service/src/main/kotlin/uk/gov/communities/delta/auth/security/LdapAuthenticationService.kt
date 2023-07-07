@@ -14,19 +14,18 @@ data class DeltaLdapPrincipal(
     val memberOfGroupDNs: List<String>,
 ) : Principal {
     val memberOfGroupCNs = memberOfGroupDNs.mapNotNull {
-        val match = DeltaADLdapAuthentication.groupCnRegex.matchEntire(it)
+        val match = LdapAuthenticationService.groupCnRegex.matchEntire(it)
         match?.groups?.get(1)?.value
     }
 }
 
-class DeltaADLdapAuthentication {
+class LdapAuthenticationService {
     companion object {
-        const val NAME = "delta-ldap-service-users-basic"
         val usernameRegex = Regex("^[\\w-.!]+$")
         val groupCnRegex = Regex(LDAPConfig.LDAP_GROUP_DN_FORMAT.replace("%s", "([\\w-]+)"))
     }
 
-    private val logger = LoggerFactory.getLogger(DeltaADLdapAuthentication::class.java)
+    private val logger = LoggerFactory.getLogger(LdapAuthenticationService::class.java)
 
     fun authenticate(credential: UserPasswordCredential): DeltaLdapPrincipal? {
         if (!credential.name.matches(usernameRegex)) {

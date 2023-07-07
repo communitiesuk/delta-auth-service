@@ -3,7 +3,7 @@ package uk.gov.communities.delta.auth
 import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.controllers.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
-import uk.gov.communities.delta.auth.security.DeltaADLdapAuthentication
+import uk.gov.communities.delta.auth.security.LdapAuthenticationService
 
 class Injection {
     companion object {
@@ -12,8 +12,8 @@ class Injection {
             return SAMLTokenService(signingCredentials)
         }
 
-        fun deltaADLdapAuthentication(): DeltaADLdapAuthentication {
-            return DeltaADLdapAuthentication()
+        fun ldapAuthenticationService(): LdapAuthenticationService {
+            return LdapAuthenticationService()
         }
 
         fun generateSAMLTokenController(): GenerateSAMLTokenController {
