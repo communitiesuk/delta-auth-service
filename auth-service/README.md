@@ -17,3 +17,13 @@ with `uk.gov.communities.delta.auth.ApplicationKt` as the main class.
 ## Tests
 
 * `./gradlew test`
+
+## Example requests
+
+Replace `<delta-app-password>` with the value of delta-website-ldap-password-test from AWS Secrets Manager.
+
+```shell
+curl -X POST 'http://localhost:8088/auth-internal/service-user/generate-saml-token' \
+  -u 'delta.app:<delta-app-password>' \
+  --header 'Delta-Client: marklogic:dev-marklogic-client-secret'
+```
