@@ -1,7 +1,20 @@
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %X{call-id} %-5level %logger{36} - %msg%n</pattern>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <message/>
+                <loggerName/>
+                <threadName/>
+                <logLevel/>
+                <stackTrace/>
+                <throwableClassName/>
+                <throwableMessage/>
+                <mdc/>
+                <!-- repeats key-value log arguments as root json fields -->
+                <arguments/>
+                <keyValuePairs/>
+            </providers>
         </encoder>
     </appender>
     <root level="INFO">
