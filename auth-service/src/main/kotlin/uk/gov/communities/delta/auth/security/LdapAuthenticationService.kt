@@ -36,7 +36,7 @@ class LdapAuthenticationService {
         logger.debug("Authenticating LDAP service user '{}'", credential.name)
         val principal = ldapAuthenticate(
             credential,
-            LDAPConfig.LDAP_URL,
+            LDAPConfig.DELTA_LDAP_URL,
             { env ->
                 env[Context.SECURITY_AUTHENTICATION] = "simple"
                 env[Context.SECURITY_PRINCIPAL] = LDAPConfig.LDAP_SERVICE_USER_DN_FORMAT.format(credential.name)

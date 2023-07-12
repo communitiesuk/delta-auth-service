@@ -50,4 +50,9 @@ module "auth_service" {
     LDAP_SERVICE_USER_DN_FORMAT = "CN=%s,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhcdata,DC=dluhcdata,DC=local"
   }
+  ecs = {
+    cpu           = 256
+    memory        = 512
+    desired_count = 2
+  }
 }

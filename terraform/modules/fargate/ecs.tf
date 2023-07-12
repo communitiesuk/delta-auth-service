@@ -7,7 +7,7 @@ data "aws_prefix_list" "s3" {
 }
 
 locals {
-  log_group_name = "${var.app_name}-ecs-logs-${var.environment}"
+  log_group_name = "${var.environment}/${var.app_name}-ecs-logs"
 }
 
 resource "aws_kms_key" "log_encryption_key" {

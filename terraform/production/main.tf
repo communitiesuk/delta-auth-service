@@ -23,14 +23,14 @@ data "terraform_remote_state" "common_infra" {
   backend = "s3"
   config = {
     bucket = "data-collection-service-tfstate-production"
-    key    = "common-infra-production"
+    key    = "common-infra-prod"
     region = "eu-west-1"
   }
 }
 
 locals {
   environment                    = "production"
-  cloudwatch_log_expiration_days = 700
+  cloudwatch_log_expiration_days = 731
 }
 
 module "auth_service" {
