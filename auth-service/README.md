@@ -27,3 +27,13 @@ curl -X POST 'http://localhost:8088/auth-internal/service-user/generate-saml-tok
   -u 'delta.app:<delta-app-password>' \
   --header 'Delta-Client: marklogic:dev-marklogic-client-secret'
 ```
+
+## GOV.UK Frontend
+
+For simplicity's sake we use the GOV.UK Frontend design system by copying the precompiled files rather than using npm.
+
+To update them:
+
+* See <https://frontend.design-system.service.gov.uk/install-using-precompiled-files/> for general instructions and download links
+* Find and replace in the CSS file to change links to "/assets/" to "/auth-external/static/assets/"
+* Update the version numbers linked from the HTML header

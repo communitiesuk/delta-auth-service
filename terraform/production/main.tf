@@ -44,6 +44,7 @@ module "auth_service" {
   internal_alb                   = data.terraform_remote_state.common_infra.outputs.auth_internal_alb
   external_alb                   = data.terraform_remote_state.common_infra.outputs.public_albs.auth
   ml_secret_kms_key_arn          = data.terraform_remote_state.common_infra.outputs.deploy_user_kms_key_arn
+  delta_hostname                 = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-production.s3.amazonaws.com/CASRVPRODUCTION/CASRVproduction.dluhcdata.local_CASRVproduction.crt"
     DELTA_LDAP_URL              = "ldaps://dluhcdata.local:636"

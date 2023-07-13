@@ -37,6 +37,10 @@ module "fargate" {
     {
       name  = "CA_S3_URL"
       value = var.ldap_config.CA_S3_URL
+    },
+    {
+      name  = "DELTA_WEBSITE_URL"
+      value = "https://${var.delta_hostname}"
     }
   ]
   secrets = [
