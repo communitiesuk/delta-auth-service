@@ -55,10 +55,29 @@
 </header>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="errorMessage" type="java.lang.String" */-->
+<!--/*@thymesVar id="errorLink" type="java.lang.String" */-->
+<!--/*@thymesVar id="username" type="java.lang.String" */-->
+<!--/*@thymesVar id="password" type="java.lang.String" */-->
 
 <div class="govuk-width-container ">
     <main class="govuk-main-wrapper " id="main-content" role="main">
         <h1 class="govuk-heading-xl">Sign in to DELTA</h1>
+        <div th:if="${not #strings.isEmpty(errorMessage)}" class="govuk-error-summary"
+             data-module="govuk-error-summary">
+            <div role="alert">
+                <h2 class="govuk-error-summary__title">
+                    There is a problem
+                </h2>
+                <div class="govuk-error-summary__body">
+                    <ul class="govuk-list govuk-error-summary__list">
+                        <li>
+                            <a th:text="${errorMessage}" th:href="${errorLink}" href="#">Error message</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
         <div class="govuk-grid-row">
             <div class="govuk-grid-column-two-thirds">
                 <form action="/auth-external/delta/login" method="POST">
@@ -66,14 +85,15 @@
                         <label class="govuk-label" for="username">
                             Username
                         </label>
-                        <input class="govuk-input govuk-!-width-two-thirds" id="username" name="username" type="text">
+                        <input th:value="${username}" class="govuk-input govuk-!-width-two-thirds" id="username"
+                               name="username" type="text">
                     </div>
                     <div class="govuk-form-group">
                         <label class="govuk-label" for="password">
                             Password
                         </label>
-                        <input class="govuk-input govuk-!-width-two-thirds" id="password" name="event-name"
-                               type="password">
+                        <input th:value="${password}" class="govuk-input govuk-!-width-two-thirds" id="password"
+                               name="password" type="password">
                     </div>
                     <p>
                         You can <a th:href="${deltaUrl} + '/forgot-password'">reset your password here</a>

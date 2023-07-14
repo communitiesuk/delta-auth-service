@@ -1,9 +1,11 @@
 package uk.gov.communities.delta.auth
 
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.controllers.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.PublicDeltaLoginController
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
+import uk.gov.communities.delta.auth.security.ADLdapLoginServiceImpl
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
 
 class Injection {
@@ -13,8 +15,15 @@ class Injection {
             return SAMLTokenService(signingCredentials)
         }
 
-        fun ldapAuthenticationService(): LdapAuthenticationService {
-            return LdapAuthenticationService()
+        fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
+            val ldapService = ADLdapLoginServiceImpl(
+                ADLdapLoginServiceImpl.Configuration(
+                    LDAPConfig.DELTA_LDAP_URL,
+                    LDAPConfig.LDAP_SERVICE_USER_DN_FORMAT,
+                    LDAPConfig.LDAP_GROUP_DN_FORMAT
+                )
+            )
+            return LdapAuthenticationService(ldapService, LDAPConfig.SERVICE_USER_GROUP_CN)
         }
 
         fun generateSAMLTokenController(): GenerateSAMLTokenController {
@@ -22,7 +31,14 @@ class Injection {
         }
 
         fun publicDeltaLoginController(): PublicDeltaLoginController {
-            return PublicDeltaLoginController()
+            val ldapService = ADLdapLoginServiceImpl(
+                ADLdapLoginServiceImpl.Configuration(
+                    LDAPConfig.DELTA_LDAP_URL,
+                    LDAPConfig.LDAP_DELTA_USER_DN_FORMAT,
+                    LDAPConfig.LDAP_GROUP_DN_FORMAT
+                )
+            )
+            return PublicDeltaLoginController(ldapService)
         }
     }
 }

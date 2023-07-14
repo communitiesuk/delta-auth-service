@@ -5,7 +5,6 @@ import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import uk.gov.communities.delta.auth.controllers.PublicDeltaLoginController
 import uk.gov.communities.delta.auth.plugins.addUsernameToMdc
 import uk.gov.communities.delta.auth.security.CLIENT_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
@@ -38,7 +37,10 @@ fun Route.externalRoutes() {
         route("/delta") {
             route("/login") {
                 get {
-                    publicDeltaLoginController.getLoginPage(call)
+                    publicDeltaLoginController.loginGet(call)
+                }
+                post {
+                    publicDeltaLoginController.loginPost(call)
                 }
             }
         }

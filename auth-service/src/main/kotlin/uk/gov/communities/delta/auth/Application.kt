@@ -34,6 +34,6 @@ fun Application.module() {
     configureSecurity()
     configureMonitoring()
     configureSerialization()
-    configureTemplating()
+    configureTemplating(developmentMode)
     configureRouting()
 }

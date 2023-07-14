@@ -9,7 +9,7 @@ const val CLIENT_AUTH_NAME = "delta-client-header-auth"
 const val DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME = "delta-ldap-service-users-basic"
 
 fun Application.configureSecurity() {
-    val ldapAuthenticationService = Injection.ldapAuthenticationService()
+    val ldapAuthenticationService = Injection.ldapServiceUserAuthenticationService()
 
     authentication {
         basic(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME) {

@@ -37,7 +37,6 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
     implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
-    implementation("io.ktor:ktor-server-auth-ldap:$ktor_version")
     implementation("io.ktor:ktor-server-thymeleaf:$ktor_version")
     implementation("io.ktor:ktor-server-thymeleaf-jvm:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
