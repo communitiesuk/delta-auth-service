@@ -3,14 +3,13 @@ package uk.gov.communities.delta.auth
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.configureSecurity
 
 fun main() {
+    Injection.startupInitFromEnvironment()
     val keyStore = SelfSignedSSLCertKeystore.getKeystore()
     val environment = applicationEngineEnvironment {
         connector {
@@ -28,8 +27,14 @@ fun main() {
 }
 
 fun Application.module() {
-    LDAPConfig.log(log.atInfo())
-    DeltaConfig.log(log.atInfo())
+    Injection.instance.logConfig(log)
+
+    if (developmentMode) {
+        // Skip database connection and migrations in development mode and in tests
+        log.info("Skipping database initialisation, will happen on first connection")
+    } else {
+        Injection.instance.dbPool.eagerInit()
+    }
 
     configureSecurity()
     configureMonitoring()

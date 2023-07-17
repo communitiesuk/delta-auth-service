@@ -37,15 +37,28 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
     implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
+
+    // HTML templating
     implementation("io.ktor:ktor-server-thymeleaf:$ktor_version")
     implementation("io.ktor:ktor-server-thymeleaf-jvm:$ktor_version")
+
+    // Logging
     implementation("ch.qos.logback:logback-classic:$logback_version")
-    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.2")
 
     implementation("org.opensaml:opensaml-core:4.0.1")
     implementation("org.opensaml:opensaml-saml-impl:4.0.1")
 
+    implementation("org.postgresql:postgresql:42.6.0")
+    implementation("com.zaxxer:HikariCP:5.0.1") // Database connection pool
+    implementation("org.flywaydb:flyway-core:9.20.1") // Database migrations
+
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+}
+
+task("migrate", JavaExec::class) {
+    mainClass.set("uk.gov.communities.delta.auth.services.DbPoolKt")
+    classpath = sourceSets["main"].runtimeClasspath
 }

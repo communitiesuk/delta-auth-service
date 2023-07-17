@@ -4,6 +4,17 @@ services:
       context: auth-service/
     ports:
       - 8088:8088
+    env_file:
+      - auth-service/.env
     environment:
       # Requires a tunnel open to the test environment Active Directory
       DELTA_LDAP_URL: "ldap://host.docker.internal:2389"
+      DATABASE_URL: "jdbc:postgresql://db:5432/postgres"
+    profiles:
+      - app
+  db:
+    image: postgres:14.8
+    ports:
+      - 5438:5432
+    environment:
+      POSTGRES_PASSWORD: postgres
