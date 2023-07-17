@@ -51,8 +51,8 @@ fun Route.externalRoutes() {
 fun Route.internalRoutes() {
     val generateSAMLTokenController = Injection.generateSAMLTokenController()
 
-    authenticate(CLIENT_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-        route("/auth-internal") {
+    route("/auth-internal") {
+        authenticate(CLIENT_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
             authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
                 install(addUsernameToMdc)
                 route("/service-user") {
@@ -65,6 +65,16 @@ fun Route.internalRoutes() {
                     }
                 }
             }
+        }
+        post("/token") {
+            // TODO
+            // Should no-cache
+            call.respond(mapOf(
+                "access_token" to "my_access_token",
+                "token_type" to "bearer",
+                "expires_in" to "43200",
+                "delta_user" to "delta.admin",
+            ))
         }
     }
 }

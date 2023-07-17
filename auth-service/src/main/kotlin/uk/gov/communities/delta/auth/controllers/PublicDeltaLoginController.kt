@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.controllers
 
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -14,7 +15,25 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
     suspend fun loginGet(call: ApplicationCall) {
+        if (!areOAuthParametersValid(call)) {
+            call.respondText("Invalid params") // TODO: Log and redirect back to delta/login?error
+        }
         call.respondLoginPage()
+    }
+
+    private fun areOAuthParametersValid(call: ApplicationCall): Boolean {
+        val checks = mapOf<String, (String?) -> Boolean>(
+            "response_type" to { it.equals("code") },
+            "client_id" to { it.equals("delta-website") },
+            "state" to { !it.isNullOrEmpty() },
+        )
+        for (check in checks) {
+            if (!check.value(call.request.queryParameters[check.key])) {
+                logger.warn("Invalid ${check.key} query param for request to delta login {}", call.request.uri)
+                return false
+            }
+        }
+        return true
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
@@ -33,6 +52,10 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
     )
 
     suspend fun loginPost(call: ApplicationCall) {
+        if (!areOAuthParametersValid(call)) {
+            call.respondText("Invalid params") // TODO: Log and redirect back to delta/login?error
+        }
+
         val formParameters = call.receiveParameters()
         val formUsername = formParameters["username"]
         val password = formParameters["password"]
@@ -61,7 +84,10 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
                 }
 
                 logger.atInfo().addKeyValue("username", cn).log("Successful login")
-                call.respondText("Successful login $cn")
+
+                val state = call.request.queryParameters["state"]!!
+                val authCode = "an_auth_code"
+                call.respondRedirect(DeltaConfig.DELTA_WEBSITE_URL + "/login/oauth2/redirect?code=${authCode.encodeURLQueryComponent()}&state=${state.encodeURLQueryComponent()}")
             }
 
             is ADLdapLoginService.LdapLoginFailure -> {
@@ -87,7 +113,6 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
             is ADLdapLoginService.DisabledAccount -> LoginError(
                 "Your account has been disabled. Please contact the Service Desk",
                 DeltaConfig.DELTA_WEBSITE_URL + "/contact-us"
-
             )
 
             is ADLdapLoginService.ExpiredPassword -> LoginError(
