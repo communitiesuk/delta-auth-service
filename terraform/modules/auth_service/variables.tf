@@ -44,6 +44,7 @@ variable "ldap_config" {
   type = object({
     DELTA_LDAP_URL              = string
     LDAP_SERVICE_USER_DN_FORMAT = string
+    LDAP_DELTA_USER_DN_FORMAT   = string
     LDAP_GROUP_DN_FORMAT        = string
     CA_S3_URL                   = string
   })

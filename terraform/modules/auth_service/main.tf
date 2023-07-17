@@ -35,6 +35,10 @@ module "fargate" {
       value = var.ldap_config.LDAP_SERVICE_USER_DN_FORMAT
     },
     {
+      name  = "LDAP_DELTA_USER_DN_FORMAT"
+      value = var.ldap_config.LDAP_DELTA_USER_DN_FORMAT
+    },
+    {
       name  = "CA_S3_URL"
       value = var.ldap_config.CA_S3_URL
     },
