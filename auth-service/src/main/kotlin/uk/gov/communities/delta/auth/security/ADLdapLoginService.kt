@@ -11,17 +11,41 @@ import javax.naming.directory.InitialDirContext
 
 data class LdapUser(val cn: String, val memberOfCNs: List<String>)
 
-class ADLdapLoginService(private val config: Configuration) {
+interface ADLdapLoginService {
+    fun ldapLogin(username: String, password: String): LdapLoginResult
+
+
+    sealed interface LdapLoginResult
+    class LdapLoginSuccess(val user: LdapUser) : LdapLoginResult
+    sealed class LdapLoginFailure() : LdapLoginResult
+
+    object BadConnection : LdapLoginFailure()
+    object UnknownNamingException : LdapLoginFailure()
+
+    object UnknownAuthenticationFailure : LdapLoginFailure()
+    object InvalidUsername : LdapLoginFailure()
+
+    sealed class ActiveDirectoryBindError(val code: String) : LdapLoginFailure()
+
+    object DisabledAccount : ActiveDirectoryBindError("533")
+    object AccountLocked : ActiveDirectoryBindError("775")
+    object ExpiredPassword : ActiveDirectoryBindError("532")
+    object PasswordNeedsReset : ActiveDirectoryBindError("773")
+    object InvalidUsernameOrPassword : ActiveDirectoryBindError("52e")
+    object UnknownAdSubErrorCode : ActiveDirectoryBindError("UNKNOWN")
+}
+
+class ADLdapLoginServiceImpl(private val config: Configuration) : ADLdapLoginService {
 
     data class Configuration(val ldapUrl: String, val userDnFormat: String, val groupDnFormat: String)
 
     private val logger = LoggerFactory.getLogger(this.javaClass)
     private val groupCnRegex = Regex(config.groupDnFormat.replace("%s", "([\\w-]+)"))
 
-    fun ldapLogin(username: String, password: String): LdapLoginResult {
+    override fun ldapLogin(username: String, password: String): ADLdapLoginService.LdapLoginResult {
         if (!username.matches(VALID_USERNAME_REGEX)) {
             logger.warn("Invalid username '{}'", username)
-            return InvalidUsername
+            return ADLdapLoginService.InvalidUsername
         }
 
         val userDn = config.userDnFormat.format(username)
@@ -29,7 +53,7 @@ class ADLdapLoginService(private val config: Configuration) {
         return ldapBind(userDn, password)
     }
 
-    private fun ldapBind(userDn: String, password: String): LdapLoginResult {
+    private fun ldapBind(userDn: String, password: String): ADLdapLoginService.LdapLoginResult {
         val env = Hashtable<String, Any?>()
         env[Context.INITIAL_CONTEXT_FACTORY] = "com.sun.jndi.ldap.LdapCtxFactory"
         env[Context.PROVIDER_URL] = config.ldapUrl
@@ -42,7 +66,7 @@ class ADLdapLoginService(private val config: Configuration) {
             logger.debug("Successful bind for DN {}", userDn)
             val user = mapContextToUser(context)
             context.close()
-            LdapLoginSuccess(user)
+            ADLdapLoginService.LdapLoginSuccess(user)
         } catch (e: NamingException) {
             logger.debug("LDAP login failed for user $userDn", e)
             handleLdapException(e)
@@ -68,7 +92,7 @@ class ADLdapLoginService(private val config: Configuration) {
         return get("memberOf").all.asSequence().toList() as List<String>
     }
 
-    private fun handleLdapException(e: NamingException): LdapLoginFailure {
+    private fun handleLdapException(e: NamingException): ADLdapLoginService.LdapLoginFailure {
         when (e) {
             is AuthenticationException -> {
                 val subErrorCodeMatch = ACTIVE_DIRECTORY_SUB_ERROR_CODE_ERROR_MESSAGE_REGEX.find(e.message!!)
@@ -76,50 +100,31 @@ class ADLdapLoginService(private val config: Configuration) {
                     val subErrorCode = subErrorCodeMatch.groupValues[1]
                     return activeDirectoryErrorCodes.getOrElse(subErrorCode) {
                         logger.warn("Unknown AD sub error code $subErrorCode", e)
-                        UnknownAdSubErrorCode
+                        ADLdapLoginService.UnknownAdSubErrorCode
                     }
                 }
                 logger.warn("Authentication failure, no AD sub error code found", e)
-                return UnknownAuthenticationFailure
+                return ADLdapLoginService.UnknownAuthenticationFailure
             }
 
             is CommunicationException -> {
                 logger.error("Failed to connect to LDAP server", e)
-                return BadConnection
+                return ADLdapLoginService.BadConnection
             }
 
             else -> {
                 logger.warn("Unknown authentication failure", e)
-                return UnknownNamingException
+                return ADLdapLoginService.UnknownNamingException
             }
         }
     }
 
-    sealed interface LdapLoginResult
-    class LdapLoginSuccess(val user: LdapUser) : LdapLoginResult
-    sealed class LdapLoginFailure() : LdapLoginResult
-
-    object BadConnection : LdapLoginFailure()
-    object UnknownNamingException : LdapLoginFailure()
-
-    object UnknownAuthenticationFailure : LdapLoginFailure()
-    object InvalidUsername : LdapLoginFailure()
-
-    open class ActiveDirectoryBindError(val code: String) : LdapLoginFailure()
-
-    object DisabledAccount : ActiveDirectoryBindError("533")
-    object AccountLocked : ActiveDirectoryBindError("775")
-    object ExpiredPassword : ActiveDirectoryBindError("532")
-    object PasswordNeedsReset : ActiveDirectoryBindError("773")
-    object InvalidUsernameOrPassword : ActiveDirectoryBindError("52e")
-    object UnknownAdSubErrorCode : ActiveDirectoryBindError("UNKNOWN")
-
     private val activeDirectoryErrorCodes = listOf(
-        DisabledAccount,
-        AccountLocked,
-        ExpiredPassword,
-        PasswordNeedsReset,
-        InvalidUsernameOrPassword,
+        ADLdapLoginService.DisabledAccount,
+        ADLdapLoginService.AccountLocked,
+        ADLdapLoginService.ExpiredPassword,
+        ADLdapLoginService.PasswordNeedsReset,
+        ADLdapLoginService.InvalidUsernameOrPassword,
     ).associateBy { it.code }
 
     companion object {

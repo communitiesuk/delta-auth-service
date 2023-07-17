@@ -1,7 +1,5 @@
 package uk.gov.communities.delta.security
 
-import io.ktor.client.*
-import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -14,7 +12,6 @@ import io.ktor.test.dispatcher.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.ClientHeaderAuthProvider
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import kotlin.test.assertContains

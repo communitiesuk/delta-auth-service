@@ -105,14 +105,12 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
                 DeltaConfig.DELTA_WEBSITE_URL + "/contact-us"
             )
 
-            else -> LoginError(INVALID_LOGIN_MESSAGE, null)
+            else -> LoginError(
+                "Your username or password are incorrect. Please try again or reset your password. Five incorrect login attempts will lock your account for 30 minutes, you may have to try later.",
+                null
+            )
         }
     }
 
     private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(DeltaConfig.REQUIRED_GROUP_CN)
-
-    companion object {
-        const val INVALID_LOGIN_MESSAGE =
-            "Your username or password are incorrect. Please try again or reset your password. Five incorrect login attempts will lock your account for 30 minutes, you may have to try later."
-    }
 }
