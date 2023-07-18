@@ -12,15 +12,17 @@ import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.controllers.PublicDeltaLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapUser
+import uk.gov.communities.delta.auth.services.AuthCode
+import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 
-class PublicDeltaLoginControllerTest {
+class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPage() = testSuspend {
@@ -71,8 +73,8 @@ class PublicDeltaLoginControllerTest {
             }
         ).apply {
             // TODO DT-525 Clearly not the final behaviour!
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals(bodyAsText(), "Successful login user")
+            assertEquals(HttpStatusCode.TemporaryRedirect, status)
+//            assertEquals(bodyAsText(), "Successful login user")
         }
     }
 
@@ -83,12 +85,22 @@ class PublicDeltaLoginControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            val controller = PublicDeltaLoginController(object : ADLdapLoginService {
-                override fun ldapLogin(username: String, password: String): ADLdapLoginService.LdapLoginResult {
-                    return loginResult
-                }
+            val controller = DeltaLoginController(
+                object : ADLdapLoginService {
+                    override fun ldapLogin(username: String, password: String): ADLdapLoginService.LdapLoginResult {
+                        return loginResult
+                    }
+                },
+                object : IAuthorizationCodeService {
+                    override fun generateAndStore(userCn: String): String {
+                        return "test-auth-code"
+                    }
 
-            })
+                    override fun lookupAndInvalidate(code: String): AuthCode? {
+                        throw NotImplementedError("Not required for test")
+                    }
+                }
+            )
             testApp = TestApplication {
                 application {
                     configureTemplating(false)

@@ -1,4 +1,4 @@
-package uk.gov.communities.delta.auth.controllers
+package uk.gov.communities.delta.auth.controllers.external
 
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -9,9 +9,13 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapUser
+import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 
 
-class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
+class DeltaLoginController(
+    private val ldapService: ADLdapLoginService,
+    private val authenticationCodeService: IAuthorizationCodeService,
+) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
     suspend fun loginGet(call: ApplicationCall) {
@@ -53,7 +57,7 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
 
     suspend fun loginPost(call: ApplicationCall) {
         if (!areOAuthParametersValid(call)) {
-            call.respondText("Invalid params") // TODO: Log and redirect back to delta/login?error
+            return call.respondText("Invalid params") // TODO: Log and redirect back to delta/login?error
         }
 
         val formParameters = call.receiveParameters()
@@ -71,6 +75,20 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
 
         val cn = formUsername.replace('@', '!')
         when (val loginResult = ldapService.ldapLogin(cn, password)) {
+            is ADLdapLoginService.LdapLoginFailure -> {
+                // There's a risk of logging passwords accidentally typed into the username box,
+                // but we're accepting that here for the convenience of being able to see failed logins
+                logger.atInfo().addKeyValue("username", cn)
+                    .addKeyValue("loginFailureType", loginResult.javaClass.simpleName).log("Login failed")
+                val userVisibleError = userVisibleError(loginResult)
+                call.respondLoginPage(
+                    errorMessage = userVisibleError.errorMessage,
+                    errorLink = userVisibleError.link ?: "#",
+                    username = formUsername,
+                    password = password
+                )
+            }
+
             is ADLdapLoginService.LdapLoginSuccess -> {
                 if (!loginResult.user.isMemberOfDeltaGroup()) {
                     logger.atInfo().addKeyValue("username", cn).addKeyValue("loginFailureType", "NotDeltaUser")
@@ -86,22 +104,8 @@ class PublicDeltaLoginController(private val ldapService: ADLdapLoginService) {
                 logger.atInfo().addKeyValue("username", cn).log("Successful login")
 
                 val state = call.request.queryParameters["state"]!!
-                val authCode = "an_auth_code"
-                call.respondRedirect(DeltaConfig.DELTA_WEBSITE_URL + "/login/oauth2/redirect?code=${authCode.encodeURLQueryComponent()}&state=${state.encodeURLQueryComponent()}")
-            }
-
-            is ADLdapLoginService.LdapLoginFailure -> {
-                // There's a risk of logging passwords accidentally typed into the username box,
-                // but we're accepting that here for the convenience of being able to see failed logins
-                logger.atInfo().addKeyValue("username", cn)
-                    .addKeyValue("loginFailureType", loginResult.javaClass.simpleName).log("Login failed")
-                val userVisibleError = userVisibleError(loginResult)
-                call.respondLoginPage(
-                    errorMessage = userVisibleError.errorMessage,
-                    errorLink = userVisibleError.link ?: "#",
-                    username = formUsername,
-                    password = password
-                )
+                val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn)
+                call.respondRedirect(DeltaConfig.DELTA_WEBSITE_URL + "/login/oauth2/redirect?code=${authCode}&state=${state.encodeURLQueryComponent()}")
             }
         }
     }

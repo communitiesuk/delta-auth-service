@@ -30,7 +30,7 @@ fun Route.healthcheckRoute() {
 }
 
 fun Route.externalRoutes() {
-    val publicDeltaLoginController = Injection.publicDeltaLoginController()
+    val publicDeltaLoginController = Injection.externalDeltaLoginController()
 
     route("/auth-external") {
         staticResources("/static", "static")
@@ -50,6 +50,7 @@ fun Route.externalRoutes() {
 // "Internal" to the VPC, this is enforced by load balancer rules
 fun Route.internalRoutes() {
     val generateSAMLTokenController = Injection.generateSAMLTokenController()
+    val oAuthTokenController = Injection.internalOAuthTokenController()
 
     route("/auth-internal") {
         authenticate(CLIENT_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
@@ -69,12 +70,7 @@ fun Route.internalRoutes() {
         post("/token") {
             // TODO
             // Should no-cache
-            call.respond(mapOf(
-                "access_token" to "my_access_token",
-                "token_type" to "bearer",
-                "expires_in" to "43200",
-                "delta_user" to "delta.admin",
-            ))
+            oAuthTokenController.getToken(call)
         }
     }
 }

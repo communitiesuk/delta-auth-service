@@ -1,4 +1,4 @@
-package uk.gov.communities.delta.auth.controllers
+package uk.gov.communities.delta.auth.controllers.internal
 
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
