@@ -3,14 +3,16 @@ package uk.gov.communities.delta.auth.security
 import io.ktor.server.auth.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.services.LdapUser
 
 @Serializable
 data class DeltaLdapPrincipal(
-    val cn: String,
-    val memberOfGroupCNs: List<String>,
-) : Principal
+    val ldapUser: LdapUser
+) : Principal {
+    val username = ldapUser.cn
+}
 
-class LdapAuthenticationService(private val ldapService: ADLdapLoginService, private val requiredGroupCN: String) {
+class LdapAuthenticationService(private val ldapService: IADLdapLoginService, private val requiredGroupCN: String) {
 
     private val logger = LoggerFactory.getLogger(LdapAuthenticationService::class.java)
 
@@ -18,7 +20,7 @@ class LdapAuthenticationService(private val ldapService: ADLdapLoginService, pri
         logger.debug("Authenticating LDAP service user '{}'", credential.name)
 
         when (val loginResult = ldapService.ldapLogin(credential.name, credential.password)) {
-            is ADLdapLoginService.LdapLoginSuccess -> {
+            is IADLdapLoginService.LdapLoginSuccess -> {
                 val user = loginResult.user
                 if (!user.memberOfCNs.contains(requiredGroupCN)) {
                     logger.atWarn().addKeyValue("username", credential.name)
@@ -27,10 +29,10 @@ class LdapAuthenticationService(private val ldapService: ADLdapLoginService, pri
                 }
 
                 logger.atInfo().addKeyValue("username", credential.name).log("LDAP authentication success")
-                return DeltaLdapPrincipal(user.cn, user.memberOfCNs)
+                return DeltaLdapPrincipal(user)
             }
 
-            is ADLdapLoginService.LdapLoginFailure -> {
+            is IADLdapLoginService.LdapLoginFailure -> {
                 logger.atInfo()
                     .addKeyValue("username", credential.name)
                     .addKeyValue("loginFailureType", loginResult.javaClass.simpleName)

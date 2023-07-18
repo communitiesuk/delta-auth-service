@@ -7,13 +7,13 @@ import io.ktor.server.response.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.security.ADLdapLoginService
-import uk.gov.communities.delta.auth.security.LdapUser
+import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.LdapUser
 
 
 class DeltaLoginController(
-    private val ldapService: ADLdapLoginService,
+    private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
@@ -75,7 +75,7 @@ class DeltaLoginController(
 
         val cn = formUsername.replace('@', '!')
         when (val loginResult = ldapService.ldapLogin(cn, password)) {
-            is ADLdapLoginService.LdapLoginFailure -> {
+            is IADLdapLoginService.LdapLoginFailure -> {
                 // There's a risk of logging passwords accidentally typed into the username box,
                 // but we're accepting that here for the convenience of being able to see failed logins
                 logger.atInfo().addKeyValue("username", cn)
@@ -89,7 +89,7 @@ class DeltaLoginController(
                 )
             }
 
-            is ADLdapLoginService.LdapLoginSuccess -> {
+            is IADLdapLoginService.LdapLoginSuccess -> {
                 if (!loginResult.user.isMemberOfDeltaGroup()) {
                     logger.atInfo().addKeyValue("username", cn).addKeyValue("loginFailureType", "NotDeltaUser")
                         .log("Login failed")
@@ -112,24 +112,24 @@ class DeltaLoginController(
 
     private data class LoginError(val errorMessage: String, val link: String?)
 
-    private fun userVisibleError(ldapError: ADLdapLoginService.LdapLoginFailure): LoginError {
+    private fun userVisibleError(ldapError: IADLdapLoginService.LdapLoginFailure): LoginError {
         return when (ldapError) {
-            is ADLdapLoginService.DisabledAccount -> LoginError(
+            is IADLdapLoginService.DisabledAccount -> LoginError(
                 "Your account has been disabled. Please contact the Service Desk",
                 DeltaConfig.DELTA_WEBSITE_URL + "/contact-us"
             )
 
-            is ADLdapLoginService.ExpiredPassword -> LoginError(
+            is IADLdapLoginService.ExpiredPassword -> LoginError(
                 "Your password has expired. Please reset your password.",
                 DeltaConfig.DELTA_WEBSITE_URL + "/forgot-password"
             )
 
-            is ADLdapLoginService.PasswordNeedsReset -> LoginError(
+            is IADLdapLoginService.PasswordNeedsReset -> LoginError(
                 "Your password has expired. Please reset your password.",
                 DeltaConfig.DELTA_WEBSITE_URL + "/forgot-password"
             )
 
-            is ADLdapLoginService.BadConnection -> LoginError(
+            is IADLdapLoginService.BadConnection -> LoginError(
                 "Error connecting to LDAP server. If this persists please contact the Service Desk",
                 DeltaConfig.DELTA_WEBSITE_URL + "/contact-us"
             )

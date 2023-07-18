@@ -1,0 +1,61 @@
+package uk.gov.communities.delta.auth.services
+
+import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
+import java.util.*
+import javax.naming.Context
+import javax.naming.NamingException
+import javax.naming.directory.Attributes
+import javax.naming.directory.InitialDirContext
+
+class LdapService(private val config: Configuration) {
+
+    data class Configuration(val ldapUrl: String, val groupDnFormat: String)
+
+    private val logger = LoggerFactory.getLogger(javaClass)
+    private val groupDnToCnRegex = Regex(config.groupDnFormat.replace("%s", "([\\w-]+)"))
+
+    fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialDirContext {
+        val env = Hashtable<String, String>()
+        env[Context.INITIAL_CONTEXT_FACTORY] = "com.sun.jndi.ldap.LdapCtxFactory"
+        env[Context.PROVIDER_URL] = config.ldapUrl
+        env[Context.SECURITY_AUTHENTICATION] = "simple"
+        env[Context.SECURITY_PRINCIPAL] = userDn
+        env[Context.SECURITY_CREDENTIALS] = password
+        env["com.sun.jndi.ldap.connect.pool"] = if (poolConnection) "true" else "false"
+        env["com.sun.jndi.ldap.connect.pool.protocol"] = "plain ssl"
+        env["com.sun.jndi.ldap.connect.pool.timeout"] = "60000" // Milliseconds. Relevant timeouts are 900s for AD and 350s for NLB.
+
+        return try {
+            val context = InitialDirContext(env)
+            logger.debug("Successful bind for DN {}", userDn)
+            context
+        } catch (e: NamingException) {
+            logger.debug("LDAP bind failed for user $userDn", e)
+            throw e
+        }
+    }
+
+    fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
+        val attributes = ctx.getAttributes(userDn, arrayOf("cn", "memberOf"))
+
+        val cn = attributes.get("cn").get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
+        val memberOfGroupDNs = attributes.getMemberOfList()
+
+        val memberOfGroupCNs = memberOfGroupDNs.mapNotNull {
+            val match = groupDnToCnRegex.matchEntire(it)
+            match?.groups?.get(1)?.value
+        }
+        return LdapUser(cn, memberOfGroupCNs)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Attributes.getMemberOfList(): List<String> {
+        return get("memberOf").all.asSequence().toList() as List<String>
+    }
+}
+
+@Serializable
+data class LdapUser(val cn: String, val memberOfCNs: List<String>)
+
+class InvalidLdapUserException(message: String) : Exception(message)

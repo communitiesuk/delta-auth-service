@@ -14,10 +14,10 @@ import org.junit.Test
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.security.ADLdapLoginService
-import uk.gov.communities.delta.auth.security.LdapUser
+import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.LdapUser
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
@@ -34,7 +34,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostAccountDisabled() = testSuspend {
-        loginResult = ADLdapLoginService.DisabledAccount
+        loginResult = IADLdapLoginService.DisabledAccount
         testApp.client.submitForm(
             url = "/login",
             formParameters = parameters {
@@ -49,7 +49,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostNotInGroup() = testSuspend {
-        loginResult = ADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf()))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf()))
         testApp.client.submitForm(
             url = "/login",
             formParameters = parameters {
@@ -64,7 +64,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSuccess() = testSuspend {
-        loginResult = ADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(DeltaConfig.REQUIRED_GROUP_CN)))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(DeltaConfig.REQUIRED_GROUP_CN)))
         testApp.client.submitForm(
             url = "/login",
             formParameters = parameters {
@@ -80,14 +80,14 @@ class DeltaLoginControllerTest {
 
     companion object {
         private lateinit var testApp: TestApplication
-        private lateinit var loginResult: ADLdapLoginService.LdapLoginResult
+        private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             val controller = DeltaLoginController(
-                object : ADLdapLoginService {
-                    override fun ldapLogin(username: String, password: String): ADLdapLoginService.LdapLoginResult {
+                object : IADLdapLoginService {
+                    override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
                         return loginResult
                     }
                 },

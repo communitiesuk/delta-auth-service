@@ -23,12 +23,12 @@ class GenerateSAMLTokenController(private val samlTokenService: SAMLTokenService
         val validTo = validFrom.plus(SAMLConfig.SAML_TOKEN_EXPIRY_HOURS.toLong(), ChronoUnit.HOURS)
             .truncatedTo(ChronoUnit.SECONDS)
 
-        val token = samlTokenService.generate(user, validFrom, validTo)
+        val token = samlTokenService.generate(user.ldapUser, validFrom, validTo)
         val encodedToken = base64Encode(token)
 
         call.respond(
             GenerateSAMLTokenResponse(
-                username = user.cn,
+                username = user.ldapUser.cn,
                 token = encodedToken,
                 expiry = DateTimeFormatter.ISO_INSTANT.format(validTo),
             )

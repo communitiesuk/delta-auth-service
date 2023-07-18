@@ -15,7 +15,7 @@ fun Application.configureMonitoring() {
     install(CallLogging) {
         level = Level.INFO
         callIdMdc("requestId")
-        mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.cn }
+        mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.username }
         disableDefaultColors()
     }
     install(CallId) {
@@ -41,7 +41,7 @@ internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) 
 // The call logging plugin doesn't update the MDC after the authentication phase by default, so add as an extra step
 val addUsernameToMdc = createRouteScopedPlugin("AddUsernameToMdc") {
     on(BeforeCall) { call, proceed ->
-        val username = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!.cn
+        val username = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!.username
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
         mdcContextMap["username"] = username
         withContext(MDCContext(mdcContextMap)) {
