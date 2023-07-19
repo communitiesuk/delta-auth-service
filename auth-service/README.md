@@ -6,6 +6,7 @@
 * Forward localhost:2389 to port 389 of the test environment Active Directory,
   see the delta-common-infrastructure repository for details of the bastion host,
   and delta for port forwarding commands
+* Copy `.env.template` to `.env` and fill it in as instructed in that file
 
 ## Run
 
@@ -35,5 +36,6 @@ For simplicity's sake we use the GOV.UK Frontend design system by copying the pr
 To update them:
 
 * See <https://frontend.design-system.service.gov.uk/install-using-precompiled-files/> for general instructions and download links
+* Download the updated bundle and replace the existing files, following the folder structure in this repo
 * Find and replace in the CSS file to change links to "/assets/" to "/auth-external/static/assets/"
 * Update the version numbers linked from the HTML header

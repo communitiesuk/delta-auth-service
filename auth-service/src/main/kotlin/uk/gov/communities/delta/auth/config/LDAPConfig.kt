@@ -13,7 +13,7 @@ class LDAPConfig {
         val LDAP_GROUP_DN_FORMAT =
             System.getenv("LDAP_GROUP_DN_FORMAT") ?: "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
         const val SERVICE_USER_GROUP_CN = "dluhc-service-users"
-        private val LDAP_AUTH_SERVICE_USER = System.getenv("LDAP_AUTH_SERVICE_USER") ?: "delta.app"
+        private val LDAP_AUTH_SERVICE_USER = System.getenv("LDAP_AUTH_SERVICE_USER") ?: "auth-service.app"
         val ldapAuthServiceUserDn = LDAP_SERVICE_USER_DN_FORMAT.format(LDAP_AUTH_SERVICE_USER)
         val LDAP_AUTH_SERVICE_USER_PASSWORD = System.getenv("LDAP_AUTH_SERVICE_USER_PASSWORD") ?: throw Exception("Environment variable LDAP_AUTH_SERVICE_USER_PASSWORD is required")
 
