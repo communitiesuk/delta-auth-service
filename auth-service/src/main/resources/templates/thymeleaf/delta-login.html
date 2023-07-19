@@ -86,14 +86,14 @@
                             Username
                         </label>
                         <input th:value="${username}" class="govuk-input govuk-!-width-two-thirds" id="username"
-                               name="username" type="text">
+                               name="username" type="text" autocomplete="username">
                     </div>
                     <div class="govuk-form-group">
                         <label class="govuk-label" for="password">
                             Password
                         </label>
                         <input th:value="${password}" class="govuk-input govuk-!-width-two-thirds" id="password"
-                               name="password" type="password">
+                               name="password" type="password" autocomplete="current-password">
                     </div>
                     <p>
                         You can <a th:href="${deltaUrl} + '/forgot-password'">reset your password here</a>

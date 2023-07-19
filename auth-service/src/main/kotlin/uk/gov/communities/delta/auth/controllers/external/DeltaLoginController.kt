@@ -63,6 +63,7 @@ class DeltaLoginController(
         val formParameters = call.receiveParameters()
         val formUsername = formParameters["username"]
         val password = formParameters["password"]
+        val state = call.request.queryParameters["state"]!!
 
         if (formUsername.isNullOrEmpty()) return call.respondLoginPage(
             errorMessage = "Username is required", errorLink = "#username"
@@ -101,10 +102,9 @@ class DeltaLoginController(
                     )
                 }
 
-                logger.atInfo().addKeyValue("username", cn).log("Successful login")
-
-                val state = call.request.queryParameters["state"]!!
                 val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn)
+
+                logger.atInfo().addKeyValue("username", cn).log("Successful login")
                 call.respondRedirect(DeltaConfig.DELTA_WEBSITE_URL + "/login/oauth2/redirect?code=${authCode}&state=${state.encodeURLQueryComponent()}")
             }
         }

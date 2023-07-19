@@ -60,6 +60,10 @@ module "fargate" {
       name      = "CLIENT_SECRET_MARKLOGIC"
       valueFrom = aws_secretsmanager_secret.ml_client_secret.arn
     },
+    {
+      name      = "CLIENT_SECRET_DELTA_WEBSITE"
+      valueFrom = aws_secretsmanager_secret.delta_website_client_secret.arn
+    },
   ]
   secret_kms_key_arns = compact([var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])
 }

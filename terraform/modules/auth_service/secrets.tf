@@ -27,3 +27,25 @@ resource "aws_secretsmanager_secret_version" "ml_client_secret" {
   secret_id     = aws_secretsmanager_secret.ml_client_secret.id
   secret_string = random_password.ml_client_secret.result
 }
+
+resource "random_password" "delta_website_client_secret" {
+  length  = 32
+  special = false
+}
+
+# No CMK, secret is shared between multiple services
+# tfsec:ignore:aws-ssm-secret-use-customer-key
+resource "aws_secretsmanager_secret" "delta_website_client_secret" {
+  name                    = "tf-${var.environment}-auth-delta-website-client-secret"
+  description             = "Shared secret for Delta Website -> auth service for internal API calls"
+  recovery_window_in_days = 0
+
+  tags = {
+    "delta-marklogic-deploy-read" : var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "delta_website_client_secret" {
+  secret_id     = aws_secretsmanager_secret.delta_website_client_secret.id
+  secret_string = random_password.delta_website_client_secret.result
+}
