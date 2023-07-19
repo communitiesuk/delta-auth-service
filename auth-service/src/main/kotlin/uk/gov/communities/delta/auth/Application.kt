@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import uk.gov.communities.delta.auth.config.DatabaseConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
@@ -30,6 +31,12 @@ fun main() {
 fun Application.module() {
     LDAPConfig.log(log.atInfo())
     DeltaConfig.log(log.atInfo())
+    DatabaseConfig.Config.log(log.atInfo())
+    if (developmentMode) {
+        log.info("Skipping database initialisation, will happen on first connection")
+    } else {
+        Injection.databaseConnectionService.eagerInit()
+    }
 
     configureSecurity()
     configureMonitoring()

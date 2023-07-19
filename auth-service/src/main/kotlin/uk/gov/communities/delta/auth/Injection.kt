@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth
 
+import uk.gov.communities.delta.auth.config.DatabaseConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
@@ -9,6 +10,7 @@ import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
+import uk.gov.communities.delta.auth.services.DatabaseConnectionService
 import uk.gov.communities.delta.auth.services.LdapService
 import uk.gov.communities.delta.auth.services.UserLookupService
 
@@ -30,6 +32,8 @@ class Injection {
             ),
             ldapService
         )
+
+        val databaseConnectionService = DatabaseConnectionService(DatabaseConfig.Config)
 
         fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
             val adLoginService = ADLdapLoginService(
@@ -54,5 +58,7 @@ class Injection {
             userLookupService,
             samlTokenService,
         )
+
+
     }
 }

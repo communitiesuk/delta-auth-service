@@ -7,6 +7,7 @@
   see the delta-common-infrastructure repository for details of the bastion host,
   and delta for port forwarding commands
 * Copy `.env.template` to `.env` and fill it in as instructed in that file
+* Postgres, by default on port 5438, use `docker compose up -d`
 
 ## Run
 
