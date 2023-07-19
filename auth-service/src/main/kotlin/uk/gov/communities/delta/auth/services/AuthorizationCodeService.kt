@@ -21,7 +21,7 @@ data class AuthCode(val code: String, val userCn: String, val createdAt: Instant
 class AuthorizationCodeService : IAuthorizationCodeService {
     // TODO Should be stored in a database, and expired ones automatically deleted
     private val authCodes = ConcurrentHashMap<String, AuthCode>()
-    private val sr = SecureRandom()
+    private val sr: SecureRandom by lazy { SecureRandom() }
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
