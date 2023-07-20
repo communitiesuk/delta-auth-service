@@ -6,6 +6,9 @@ import org.flywaydb.core.Flyway
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DatabaseConfig
 import java.sql.Connection
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 class DbPool(private val config: DatabaseConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -15,6 +18,14 @@ class DbPool(private val config: DatabaseConfig) {
 
     fun connection(): Connection {
         return connectionPool.connection
+    }
+
+    @OptIn(ExperimentalContracts::class)
+    inline fun <R> useConnection(block: (Connection) -> R): R {
+        contract {
+            callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+        }
+        return connection().use(block)
     }
 
     fun eagerInit() {

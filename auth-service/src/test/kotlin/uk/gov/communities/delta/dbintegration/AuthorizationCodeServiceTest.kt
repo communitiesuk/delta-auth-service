@@ -21,7 +21,7 @@ class AuthorizationCodeServiceTest {
         val result = service.lookupAndInvalidate(code)
         assertNotNull(result)
         assertEquals(result.userCn, "some.user")
-        assertNull(service.lookupAndInvalidate("some.user"), "Each code should only be usable once")
+        assertNull(service.lookupAndInvalidate(code), "Each code should only be usable once")
     }
 
     companion object {
