@@ -11,6 +11,7 @@ import io.ktor.test.dispatcher.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
+import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
@@ -26,7 +27,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPage() = testSuspend {
-        testApp.client.get("/login").apply {
+        testApp.client.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Sign in to DELTA")
         }
@@ -36,7 +37,7 @@ class DeltaLoginControllerTest {
     fun testLoginPostAccountDisabled() = testSuspend {
         loginResult = IADLdapLoginService.DisabledAccount
         testApp.client.submitForm(
-            url = "/login",
+            url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
                 append("username", "user")
                 append("password", "pass")
@@ -51,7 +52,7 @@ class DeltaLoginControllerTest {
     fun testLoginPostNotInGroup() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf()))
         testApp.client.submitForm(
-            url = "/login",
+            url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
                 append("username", "user")
                 append("password", "pass")
@@ -64,16 +65,16 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSuccess() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(DeltaConfig.REQUIRED_GROUP_CN)))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(DeltaConfig.fromEnv().requiredGroupCn)))
         testApp.client.submitForm(
-            url = "/login",
+            url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
                 append("username", "user")
                 append("password", "pass")
             }
         ).apply {
             // TODO DT-525 Clearly not the final behaviour!
-            assertEquals(HttpStatusCode.TemporaryRedirect, status)
+            assertEquals(HttpStatusCode.Found, status)
 //            assertEquals(bodyAsText(), "Successful login user")
         }
     }
@@ -86,6 +87,8 @@ class DeltaLoginControllerTest {
         @JvmStatic
         fun setup() {
             val controller = DeltaLoginController(
+                Client("delta-website", "client-secret"),
+                DeltaConfig.fromEnv(),
                 object : IADLdapLoginService {
                     override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
                         return loginResult

@@ -12,6 +12,7 @@ import io.ktor.test.dispatcher.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
+import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.security.ClientHeaderAuthProvider
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import kotlin.test.assertContains
@@ -62,7 +63,7 @@ class ClientHeaderAuthProviderTest {
                     authentication {
                         clientHeaderAuth("test-client-auth-provider") {
                             headerName = "Test-Client-Auth"
-                            clients = listOf(ClientHeaderAuthProvider.Client("test-client", "test-secret"))
+                            clients = listOf(Client("test-client", "test-secret"))
                         }
                     }
                     routing {

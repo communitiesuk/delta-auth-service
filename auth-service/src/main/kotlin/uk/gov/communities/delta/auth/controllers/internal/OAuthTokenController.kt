@@ -17,6 +17,7 @@ import java.security.MessageDigest
 import java.time.Instant
 
 class OAuthTokenController(
+    private val clientConfig: ClientConfig,
     private val authorizationCodeService: IAuthorizationCodeService,
     private val userLookupService: UserLookupService,
     private val samlTokenService: SAMLTokenService,
@@ -32,11 +33,11 @@ class OAuthTokenController(
         val clientId = params.getOrFail("client_id")
         val clientSecret = params.getOrFail("client_secret")
 
-        if (clientId != "delta-website") {
+        if (clientId != clientConfig.deltaWebsite.clientId) {
             logger.error("Client id mismatch {}", clientId)
             throw BadRequestException("Invalid client id")
         }
-        if (!compareClientSecret(clientSecret, ClientConfig.CLIENT_SECRET_DELTA_WEBSITE)) {
+        if (!compareClientSecret(clientSecret, clientConfig.deltaWebsite.clientSecret)) {
             logger.error("Invalid client secret for {}", clientId)
             throw BadRequestException("Invalid client secret")
         }

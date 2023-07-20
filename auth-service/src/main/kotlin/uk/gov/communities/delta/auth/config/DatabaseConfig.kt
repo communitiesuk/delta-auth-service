@@ -2,13 +2,13 @@ package uk.gov.communities.delta.auth.config
 
 import org.slf4j.spi.LoggingEventBuilder
 
-class DatabaseConfig(
+data class DatabaseConfig(
     val url: String,
     val user: String,
     val password: String,
 ) {
     companion object {
-        val Config = DatabaseConfig(
+        fun fromEnv() =  DatabaseConfig(
             url = System.getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5438/postgres",
             user = System.getenv("DATABASE_USER") ?: "postgres",
             password = System.getenv("DATABASE_PASSWORD") ?: "postgres",

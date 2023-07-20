@@ -6,6 +6,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
@@ -13,6 +14,8 @@ import uk.gov.communities.delta.auth.services.LdapUser
 
 
 class DeltaLoginController(
+    private val deltaWebsiteClient: Client,
+    private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
 ) {
@@ -28,7 +31,7 @@ class DeltaLoginController(
     private fun areOAuthParametersValid(call: ApplicationCall): Boolean {
         val checks = mapOf<String, (String?) -> Boolean>(
             "response_type" to { it.equals("code") },
-            "client_id" to { it.equals("delta-website") },
+            "client_id" to { it.equals(deltaWebsiteClient.clientId) },
             "state" to { !it.isNullOrEmpty() },
         )
         for (check in checks) {
@@ -46,7 +49,7 @@ class DeltaLoginController(
         ThymeleafContent(
             "delta-login",
             mapOf(
-                "deltaUrl" to DeltaConfig.DELTA_WEBSITE_URL,
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,
@@ -96,7 +99,7 @@ class DeltaLoginController(
                         .log("Login failed")
                     call.respondLoginPage(
                         errorMessage = "Your account exists but is not set up to access Delta. Please contact the Service Desk.",
-                        errorLink = DeltaConfig.DELTA_WEBSITE_URL + "/contact-us",
+                        errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
                         username = formUsername,
                         password = password,
                     )
@@ -105,7 +108,7 @@ class DeltaLoginController(
                 val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn)
 
                 logger.atInfo().addKeyValue("username", cn).log("Successful login")
-                call.respondRedirect(DeltaConfig.DELTA_WEBSITE_URL + "/login/oauth2/redirect?code=${authCode}&state=${state.encodeURLQueryComponent()}")
+                call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode}&state=${state.encodeURLQueryComponent()}")
             }
         }
     }
@@ -116,22 +119,22 @@ class DeltaLoginController(
         return when (ldapError) {
             is IADLdapLoginService.DisabledAccount -> LoginError(
                 "Your account has been disabled. Please contact the Service Desk",
-                DeltaConfig.DELTA_WEBSITE_URL + "/contact-us"
+                deltaConfig.deltaWebsiteUrl + "/contact-us"
             )
 
             is IADLdapLoginService.ExpiredPassword -> LoginError(
                 "Your password has expired. Please reset your password.",
-                DeltaConfig.DELTA_WEBSITE_URL + "/forgot-password"
+                deltaConfig.deltaWebsiteUrl + "/forgot-password"
             )
 
             is IADLdapLoginService.PasswordNeedsReset -> LoginError(
                 "Your password has expired. Please reset your password.",
-                DeltaConfig.DELTA_WEBSITE_URL + "/forgot-password"
+                deltaConfig.deltaWebsiteUrl + "/forgot-password"
             )
 
             is IADLdapLoginService.BadConnection -> LoginError(
                 "Error connecting to LDAP server. If this persists please contact the Service Desk",
-                DeltaConfig.DELTA_WEBSITE_URL + "/contact-us"
+                deltaConfig.deltaWebsiteUrl + "/contact-us"
             )
 
             else -> LoginError(
@@ -141,5 +144,5 @@ class DeltaLoginController(
         }
     }
 
-    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(DeltaConfig.REQUIRED_GROUP_CN)
+    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.requiredGroupCn)
 }

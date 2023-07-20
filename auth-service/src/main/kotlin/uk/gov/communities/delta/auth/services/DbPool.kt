@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DatabaseConfig
 import java.sql.Connection
 
-class DatabaseConnectionService(private val config: DatabaseConfig) {
+class DbPool(private val config: DatabaseConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     private val connectionPoolDelegate = lazy(::createPoolAndMigrate)
