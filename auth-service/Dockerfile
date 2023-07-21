@@ -14,6 +14,10 @@ WORKDIR /app
 
 RUN yum install wget openssl -y
 
+RUN wget https://truststore.pki.rds.amazonaws.com/eu-west-1/eu-west-1-bundle.pem -O /tmp/rds.pem && \
+    keytool -import -cacerts -alias eu-west-1-rds -file /tmp/rds.pem -noprompt -storepass changeit && \
+    rm /tmp/rds.pem
+
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 COPY --from=builder /app/build/libs/auth-all.jar .

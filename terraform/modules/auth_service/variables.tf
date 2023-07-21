@@ -70,3 +70,24 @@ variable "ml_secret_kms_key_arn" {
 variable "delta_hostname" {
   type = string
 }
+
+variable "bastion_security_group_id" {
+  type = string
+}
+
+variable "db_instance_type" {
+  type = string
+  default = "db.t4g.micro"
+}
+
+variable "db_backup_retention_days" {
+  type = number
+  default = 3
+}
+
+variable "private_dns" {
+  type = object({
+    zone_id     = string
+    base_domain = string
+  })
+}

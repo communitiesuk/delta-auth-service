@@ -50,6 +50,14 @@ module "fargate" {
       name  = "LDAP_AUTH_SERVICE_USER"
       value = "auth-service.app"
     },
+    {
+      name  = "DATABASE_URL"
+      value = "jdbc:postgresql://${aws_db_instance.auth_service.endpoint}/keycloak?ssl=true&sslmode=verify-full"
+    },
+    {
+      name  = "DATABASE_USER"
+      value = local.database_username
+    },
   ]
   secrets = [
     {
@@ -71,6 +79,10 @@ module "fargate" {
     {
       name      = "LDAP_AUTH_SERVICE_USER_PASSWORD"
       valueFrom = data.aws_secretsmanager_secret.active_directory_service_user.arn
+    },
+    {
+      name      = "DATABASE_PASSWORD"
+      valueFrom = aws_secretsmanager_secret.database_password.arn
     },
   ]
   secret_kms_key_arns = compact([aws_kms_key.auth_service.arn, var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])

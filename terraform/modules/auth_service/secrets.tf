@@ -71,3 +71,18 @@ resource "aws_secretsmanager_secret_version" "delta_website_client_secret" {
   secret_string = random_password.delta_website_client_secret.result
 }
 
+resource "random_password" "database_password" {
+  length  = 32
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "database_password" {
+  name                    = "tf-${var.environment}-auth-service-database-password"
+  description             = "Password for auth service database user"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "database_password" {
+  secret_id     = aws_secretsmanager_secret.database_password.id
+  secret_string = random_password.database_password.result
+}
