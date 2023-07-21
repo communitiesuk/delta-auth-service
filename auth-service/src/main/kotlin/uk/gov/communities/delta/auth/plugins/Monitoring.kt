@@ -8,8 +8,8 @@ import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.MDC
 import org.slf4j.event.Level
-import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
-import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
+import uk.gov.communities.delta.auth.security.*
+import uk.gov.communities.delta.auth.services.OAuthSession
 
 fun Application.configureMonitoring() {
     install(CallLogging) {
@@ -39,11 +39,35 @@ internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) 
 }
 
 // The call logging plugin doesn't update the MDC after the authentication phase by default, so add as an extra step
-val addUsernameToMdc = createRouteScopedPlugin("AddUsernameToMdc") {
+val addServiceUserUsernameToMDC = createRouteScopedPlugin("AddUsernameToMdc") {
     on(BeforeCall) { call, proceed ->
         val username = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!.username
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
         mdcContextMap["username"] = username
+        withContext(MDCContext(mdcContextMap)) {
+            proceed()
+        }
+    }
+}
+
+val addClientIdToMDC = createRouteScopedPlugin("AddClientIdToMDC") {
+    on(BeforeCall) { call, proceed ->
+        val clientId = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME)!!.clientId
+        val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
+        mdcContextMap["clientId"] = clientId
+        withContext(MDCContext(mdcContextMap)) {
+            proceed()
+        }
+    }
+}
+
+val addBearerSessionInfoToMDC = createRouteScopedPlugin("AddBearerSessionInfoToMDC") {
+    on(BeforeCall) { call, proceed ->
+        val session = call.principal<OAuthSession>()!!
+        val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
+        mdcContextMap["username"] = session.userCn
+        mdcContextMap["oauthSession"] = session.id.toString()
+        mdcContextMap["trace"] = session.traceId
         withContext(MDCContext(mdcContextMap)) {
             proceed()
         }

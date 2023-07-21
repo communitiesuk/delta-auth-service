@@ -12,6 +12,7 @@ import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.services.LdapUser
 import java.io.StringWriter
+import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -58,10 +59,16 @@ class SAMLTokenService(basicCredentials: BasicX509Credential) {
             val signedAssertion = samlAssertionSigner.signAssertion(assertion)
             response.assertions.add(signedAssertion)
             // End build SAML response
-            marshalToString(response)
+            val token = marshalToString(response)
+            base64Encode(token)
         } catch (ex: Exception) {
             throw RuntimeException("Failed to generate SAML token", ex)
         }
+    }
+
+    private fun base64Encode(s: String): String {
+        val bytes = s.toByteArray(StandardCharsets.UTF_8)
+        return String(Base64.getEncoder().encode(bytes), StandardCharsets.UTF_8)
     }
 
     /*

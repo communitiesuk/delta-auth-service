@@ -13,7 +13,7 @@ import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.Client
-import uk.gov.communities.delta.auth.security.ClientHeaderAuthProvider
+import uk.gov.communities.delta.auth.security.ClientPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -70,7 +70,7 @@ class ClientHeaderAuthProviderTest {
                         authenticate("test-client-auth-provider", strategy = AuthenticationStrategy.Required) {
                             get("/authenticated") {
                                 call.respondText(
-                                    call.principal<ClientHeaderAuthProvider.ClientPrincipal>(
+                                    call.principal<ClientPrincipal>(
                                         "test-client-auth-provider"
                                     )!!.clientId
                                 )

@@ -37,16 +37,23 @@ class LdapService(private val config: Configuration) {
     }
 
     fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
-        val attributes = ctx.getAttributes(userDn, arrayOf("cn", "memberOf"))
+        val attributes =
+            ctx.getAttributes(userDn, arrayOf("cn", "memberOf", "mail", "unixHomeDirectory", "givenName", "sn"))
 
         val cn = attributes.get("cn").get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
+        val email =
+            attributes.get("mail").get() as String? ?: throw InvalidLdapUserException("No value for attribute mail")
+        val totpSecret = attributes.get("unixHomeDirectory")?.get() as String?
+        val firstName = attributes.get("givenName")?.get() as String?
+        val surname = attributes.get("sn")?.get() as String?
+        val name = (firstName ?: "") + " " + (surname ?: "")
         val memberOfGroupDNs = attributes.getMemberOfList()
 
         val memberOfGroupCNs = memberOfGroupDNs.mapNotNull {
             val match = groupDnToCnRegex.matchEntire(it)
             match?.groups?.get(1)?.value
         }
-        return LdapUser(cn, memberOfGroupCNs)
+        return LdapUser(cn, memberOfGroupCNs, email, totpSecret, name)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -56,6 +63,12 @@ class LdapService(private val config: Configuration) {
 }
 
 @Serializable
-data class LdapUser(val cn: String, val memberOfCNs: List<String>)
+data class LdapUser(
+    val cn: String,
+    val memberOfCNs: List<String>,
+    val email: String,
+    val deltaTOTPSecret: String?,
+    val name: String
+)
 
 class InvalidLdapUserException(message: String) : Exception(message)

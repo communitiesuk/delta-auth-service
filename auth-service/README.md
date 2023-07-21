@@ -11,10 +11,11 @@
 
 ## Run
 
+* Load environment variables `export $(grep -v '^#' .env | xargs)`
 * Start with `./gradlew run`
 
 Alternatively open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
-with `uk.gov.communities.delta.auth.ApplicationKt` as the main class.
+with `uk.gov.communities.delta.auth.ApplicationKt` as the main class and environment variables set from `.env`.
 
 ## Tests
 

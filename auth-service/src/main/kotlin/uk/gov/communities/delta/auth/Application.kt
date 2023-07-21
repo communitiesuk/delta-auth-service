@@ -37,10 +37,10 @@ fun Application.module() {
         Injection.instance.dbPool.eagerInit()
     }
 
-    configureSecurity()
+    configureSecurity(Injection.instance)
     configureMonitoring()
     configureSerialization()
     configureTemplating(developmentMode)
-    configureRouting()
-    configureStatusPages()
+    configureRouting(Injection.instance)
+    configureStatusPages(Injection.instance.deltaConfig.deltaWebsiteUrl)
 }

@@ -7,18 +7,17 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.thymeleaf.*
-import uk.gov.communities.delta.auth.Injection
 
 private const val apiRoutePrefix = "/auth-internal/"
 
-fun Application.configureStatusPages() {
+fun Application.configureStatusPages(deltaWebsiteUrl: String) {
     install(StatusPages) {
         for (s in statusErrorPageDefinitions) {
             status(s.key) { call, status ->
                 if (call.request.path().startsWith(apiRoutePrefix)) {
                     call.apiErrorResponse(status, s.value)
                 } else {
-                    call.userFacingErrorResponse(status, s.value)
+                    call.userFacingErrorResponse(status, s.value, deltaWebsiteUrl)
                 }
             }
         }
@@ -47,13 +46,14 @@ private suspend fun ApplicationCall.apiErrorResponse(status: HttpStatusCode, sta
 
 private suspend fun ApplicationCall.userFacingErrorResponse(
     status: HttpStatusCode,
-    statusError: StatusErrorPageDefinition
+    statusError: StatusErrorPageDefinition,
+    deltaWebsiteUrl: String,
 ) {
     respond(
         status,
         ThymeleafContent(
             "error.html", mapOf(
-                "deltaUrl" to Injection.instance.deltaConfig.deltaWebsiteUrl,
+                "deltaUrl" to deltaWebsiteUrl,
                 "title" to statusError.userErrorPageTitle,
                 "heading" to statusError.userErrorPageHeading,
                 "message" to statusError.userErrorPageMessage,

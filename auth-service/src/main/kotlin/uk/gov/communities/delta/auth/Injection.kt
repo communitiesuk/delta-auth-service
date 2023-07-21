@@ -5,13 +5,11 @@ import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
+import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
-import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.DbPool
-import uk.gov.communities.delta.auth.services.LdapService
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 
 class Injection (
     val ldapConfig: LDAPConfig,
@@ -58,6 +56,7 @@ class Injection (
 
     val dbPool = DbPool(databaseConfig)
     private val authorizationCodeService = AuthorizationCodeService(dbPool)
+    val oAuthSessionService = OAuthSessionService(dbPool)
 
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
@@ -82,5 +81,8 @@ class Injection (
         authorizationCodeService,
         userLookupService,
         samlTokenService,
+        oAuthSessionService,
     )
+
+    fun refreshUserInfoController() = RefreshUserInfoController(userLookupService, samlTokenService)
 }

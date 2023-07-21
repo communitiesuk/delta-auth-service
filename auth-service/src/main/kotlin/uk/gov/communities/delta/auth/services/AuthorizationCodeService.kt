@@ -1,12 +1,11 @@
 package uk.gov.communities.delta.auth.services
 
-import net.logstash.logback.argument.StructuredArguments
 import org.slf4j.LoggerFactory
 import java.sql.Timestamp
 import java.time.Instant
 
 interface IAuthorizationCodeService {
-    fun generateAndStore(userCn: String, traceId: String): String
+    fun generateAndStore(userCn: String, traceId: String): AuthCode
     fun lookupAndInvalidate(code: String): AuthCode?
 }
 
@@ -28,14 +27,15 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
         const val AUTH_CODE_LENGTH_BYTES = 24
     }
 
-    override fun generateAndStore(userCn: String, traceId: String): String {
+    override fun generateAndStore(userCn: String, traceId: String): AuthCode {
         val code = randomBase64(AUTH_CODE_LENGTH_BYTES)
         val now = Instant.now()
         val authCode = AuthCode(code, userCn, now, traceId)
         insert(authCode)
 
-        logger.info("Generated auth code for user {} at {}", StructuredArguments.keyValue("username", userCn), now)
-        return code
+        logger.atInfo().addKeyValue("trace", traceId).addKeyValue("username", userCn)
+            .log("Generated auth code at {}", now)
+        return authCode
     }
 
     override fun lookupAndInvalidate(code: String): AuthCode? {
