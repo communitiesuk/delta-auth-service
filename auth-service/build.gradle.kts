@@ -37,6 +37,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
     implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
+    implementation("io.ktor:ktor-server-status-pages:$ktor_version")
 
     // HTML templating
     implementation("io.ktor:ktor-server-thymeleaf:$ktor_version")
@@ -52,7 +53,9 @@ dependencies {
 
     implementation("org.postgresql:postgresql:42.6.0")
     implementation("com.zaxxer:HikariCP:5.0.1") // Database connection pool
-    implementation("org.flywaydb:flyway-core:9.20.1") // Database migrations
+    implementation("org.flywaydb:flyway-core:9.20.1")
+    implementation("io.ktor:ktor-server-host-common-jvm:2.3.2")
+    implementation("io.ktor:ktor-server-status-pages-jvm:2.3.2") // Database migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
