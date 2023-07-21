@@ -16,10 +16,6 @@ import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 fun Application.configureRouting() {
 
     routing {
-        get("/") {
-            call.respondText("Hello World!")
-        }
-
         healthcheckRoute()
         internalRoutes(
             Injection.instance.generateSAMLTokenController(),
