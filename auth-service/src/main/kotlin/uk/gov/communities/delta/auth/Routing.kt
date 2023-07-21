@@ -37,16 +37,14 @@ fun Route.healthcheckRoute() {
 
 fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
 
-    route("/auth-external") {
-        staticResources("/static", "static")
-        route("/delta") {
-            route("/login") {
-                get {
-                    deltaLoginController.loginGet(call)
-                }
-                post {
-                    deltaLoginController.loginPost(call)
-                }
+    staticResources("/static", "static")
+    route("/delta") {
+        route("/login") {
+            get {
+                deltaLoginController.loginGet(call)
+            }
+            post {
+                deltaLoginController.loginPost(call)
             }
         }
     }

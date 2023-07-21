@@ -38,5 +38,5 @@ To update them:
 
 * See <https://frontend.design-system.service.gov.uk/install-using-precompiled-files/> for general instructions and download links
 * Download the updated bundle and replace the existing files, following the folder structure in this repo
-* Find and replace in the CSS file to change links to "/assets/" to "/auth-external/static/assets/"
+* Find and replace in the CSS file to change links to "/assets/" to "/static/assets/"
 * Update the version numbers linked from the HTML header
