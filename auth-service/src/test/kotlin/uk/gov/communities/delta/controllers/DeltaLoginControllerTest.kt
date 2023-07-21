@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.controllers
 
+import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
@@ -29,16 +30,24 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPage() = testSuspend {
-        testApp.client.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Sign in to DELTA")
         }
     }
 
     @Test
+    fun testLoginInvalidParamsRedirectsToDelta() = testSuspend {
+        testClient.get("/login").apply {
+            assertEquals(HttpStatusCode.Found, status)
+            headers["Location"]!!.startsWith(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
+        }
+    }
+
+    @Test
     fun testLoginPostAccountDisabled() = testSuspend {
         loginResult = IADLdapLoginService.DisabledAccount
-        testApp.client.submitForm(
+        testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
                 append("username", "user")
@@ -53,7 +62,7 @@ class DeltaLoginControllerTest {
     @Test
     fun testLoginPostNotInGroup() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf("some-other-group")))
-        testApp.client.submitForm(
+        testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
                 append("username", "user")
@@ -68,7 +77,7 @@ class DeltaLoginControllerTest {
     @Test
     fun testLoginPostSuccess() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(deltaConfig.requiredGroupCn)))
-        testApp.client.submitForm(
+        testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
                 append("username", "user")
@@ -84,6 +93,7 @@ class DeltaLoginControllerTest {
 
     companion object {
         private lateinit var testApp: TestApplication
+        private lateinit var testClient: HttpClient
         private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
         private val deltaConfig = DeltaConfig.fromEnv()
 
@@ -120,6 +130,7 @@ class DeltaLoginControllerTest {
                     }
                 }
             }
+            testClient = testApp.createClient { followRedirects = false }
         }
 
         @AfterClass

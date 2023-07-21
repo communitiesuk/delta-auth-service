@@ -16,10 +16,6 @@ import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 fun Application.configureRouting() {
 
     routing {
-        get("/") {
-            call.respondText("Hello World!")
-        }
-
         healthcheckRoute()
         internalRoutes(
             Injection.instance.generateSAMLTokenController(),
@@ -37,16 +33,14 @@ fun Route.healthcheckRoute() {
 
 fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
 
-    route("/auth-external") {
-        staticResources("/static", "static")
-        route("/delta") {
-            route("/login") {
-                get {
-                    deltaLoginController.loginGet(call)
-                }
-                post {
-                    deltaLoginController.loginPost(call)
-                }
+    staticResources("/static", "static")
+    route("/delta") {
+        route("/login") {
+            get {
+                deltaLoginController.loginGet(call)
+            }
+            post {
+                deltaLoginController.loginPost(call)
             }
         }
     }

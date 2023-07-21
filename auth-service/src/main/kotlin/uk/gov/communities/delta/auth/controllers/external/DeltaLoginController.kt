@@ -24,7 +24,8 @@ class DeltaLoginController(
 
     suspend fun loginGet(call: ApplicationCall) {
         if (!areOAuthParametersValid(call)) {
-            call.respondText("Invalid params") // TODO: Log and redirect back to delta/login?error
+            logger.warn("Invalid parameters for login request, redirecting back to Delta")
+            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
         }
         call.respondLoginPage()
     }
@@ -61,7 +62,7 @@ class DeltaLoginController(
 
     suspend fun loginPost(call: ApplicationCall) {
         if (!areOAuthParametersValid(call)) {
-            return call.respondText("Invalid params") // TODO: Log and redirect back to delta/login?error
+            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
         }
 
         val formParameters = call.receiveParameters()
