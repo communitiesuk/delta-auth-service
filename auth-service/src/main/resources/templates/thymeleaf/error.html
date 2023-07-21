@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" class="govuk-template " xmlns:th="http://www.thymeleaf.org">
 
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="title" type="java.lang.String" */-->
+<!--/*@thymesVar id="heading" type="java.lang.String" */-->
+<!--/*@thymesVar id="message" type="java.lang.String" */-->
+<!--/*@thymesVar id="requestId" type="java.lang.String" */-->
+
 <head>
     <meta charset="utf-8">
-    <title>DELTA - Sign in</title>
+    <title th:text="${title}">DELTA - Error</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0b0c0c">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -55,70 +61,24 @@
     </div>
 </header>
 
-<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
-<!--/*@thymesVar id="errorMessage" type="java.lang.String" */-->
-<!--/*@thymesVar id="errorLink" type="java.lang.String" */-->
-<!--/*@thymesVar id="username" type="java.lang.String" */-->
-<!--/*@thymesVar id="password" type="java.lang.String" */-->
-
 <div class="govuk-width-container ">
     <main class="govuk-main-wrapper " id="main-content" role="main">
-        <h1 class="govuk-heading-xl">Sign in to DELTA</h1>
-        <div th:if="${not #strings.isEmpty(errorMessage)}" class="govuk-error-summary"
-             data-module="govuk-error-summary">
-            <div role="alert">
-                <h2 class="govuk-error-summary__title">
-                    There is a problem
-                </h2>
-                <div class="govuk-error-summary__body">
-                    <ul class="govuk-list govuk-error-summary__list">
-                        <li>
-                            <a th:text="${errorMessage}" th:href="${errorLink}" href="#">Error message</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="govuk-grid-row">
-            <div class="govuk-grid-column-two-thirds">
-                <form method="POST">
-                    <div class="govuk-form-group">
-                        <label class="govuk-label" for="username">
-                            Username
-                        </label>
-                        <input th:value="${username}" class="govuk-input govuk-!-width-two-thirds" id="username"
-                               name="username" type="text" autocomplete="username">
-                    </div>
-                    <div class="govuk-form-group">
-                        <label class="govuk-label" for="password">
-                            Password
-                        </label>
-                        <input th:value="${password}" class="govuk-input govuk-!-width-two-thirds" id="password"
-                               name="password" type="password" autocomplete="current-password">
-                    </div>
-                    <p>
-                        You can <a th:href="${deltaUrl} + '/forgot-password'">reset your password here</a>
-                    </p>
-                    <button class="govuk-button" data-module="govuk-button" type="submit">
-                        Sign in to DELTA
-                    </button>
-                </form>
-            </div>
-
-            <div class="govuk-grid-column-one-third">
-                <h2 class="govuk-heading-m">Not a user?</h2>
-                <a th:href="${deltaUrl} + '/register'" role="button" draggable="false"
-                   class="govuk-button govuk-button--secondary"
-                   data-module="govuk-button">
-                    Create DELTA account
-                </a>
-            </div>
-        </div>
-        <div>
-            <p>By logging on, you are confirming that you have read, understood and will comply with the requirements of
-                the <a th:href="${deltaUrl} + '/usage-policy'">DELTA usage policy</a></p>
-            <p>If you need help or support please <a th:href="${deltaUrl} + '/contact-us'">contact us</a></p>
-        </div>
+        <h1 class="govuk-heading-xl" th:text="${heading}">Error</h1>
+        <p>
+            <span th:text="${message}">Something went wrong</span>.
+            <span th:if="${requestId != ''}">
+                If you need to report a fault, please contact the
+                <a data-th-href="${deltaUrl + '/contact-us'}">Service desk</a>
+                and quote this request id
+                "<span style="font-family: monospace" data-th-text="${'auth:' + requestId}">REQUEST_ID</span>".
+            </span>
+        </p>
+        <br/>
+        <a th:href="${deltaUrl} + '/login'" role="button" draggable="false"
+           class="govuk-button"
+           data-module="govuk-button">
+            Sign in to DELTA
+        </a>
     </main>
 </div>
 <footer class="govuk-footer " role="contentinfo">
