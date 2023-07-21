@@ -46,7 +46,7 @@ module "auth_service" {
   ml_secret_kms_key_arn          = data.terraform_remote_state.common_infra.outputs.deploy_user_kms_key_arn
   delta_hostname                 = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
   bastion_security_group_id      = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
-  private_dns                                       = data.terraform_remote_state.common_infra.outputs.private_dns
+  private_dns                    = data.terraform_remote_state.common_infra.outputs.private_dns
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-test.s3.amazonaws.com/CASRVTEST/CASRVtest.dluhctest.local_CASRVtest.crt"

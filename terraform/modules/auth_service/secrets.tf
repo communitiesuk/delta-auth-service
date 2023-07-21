@@ -78,7 +78,7 @@ resource "random_password" "database_password" {
 
 resource "aws_secretsmanager_secret" "database_password" {
   name                    = "tf-${var.environment}-auth-service-database-password"
-  description             = "Password for auth service database user"
+  description             = "Password for auth service database user (${local.database_username})"
   recovery_window_in_days = 0
 }
 

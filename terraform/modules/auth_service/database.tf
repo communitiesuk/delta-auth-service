@@ -14,7 +14,7 @@ resource "aws_security_group_rule" "database_from_task" {
   description              = "auth-service tasks to database"
 }
 
-resource "aws_security_group_rule" "database_from_task" {
+resource "aws_security_group_rule" "database_from_bastion" {
   security_group_id        = aws_security_group.db.id
   type                     = "ingress"
   protocol                 = "tcp"
@@ -30,7 +30,7 @@ resource "aws_db_subnet_group" "auth-service" {
 }
 
 locals {
-  database_username = "auth-service"
+  database_username = "auth"
 }
 
 # We can enable RDS Performance Insights if we need to.

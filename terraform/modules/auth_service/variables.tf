@@ -76,12 +76,12 @@ variable "bastion_security_group_id" {
 }
 
 variable "db_instance_type" {
-  type = string
+  type    = string
   default = "db.t4g.micro"
 }
 
 variable "db_backup_retention_days" {
-  type = number
+  type    = number
   default = 3
 }
 

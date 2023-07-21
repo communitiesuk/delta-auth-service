@@ -52,7 +52,7 @@ module "fargate" {
     },
     {
       name  = "DATABASE_URL"
-      value = "jdbc:postgresql://${aws_db_instance.auth_service.endpoint}/keycloak?ssl=true&sslmode=verify-full"
+      value = "jdbc:postgresql://${aws_db_instance.auth_service.endpoint}/auth_service?ssl=true&sslmode=verify-full"
     },
     {
       name  = "DATABASE_USER"
