@@ -11,6 +11,7 @@ data class DeltaSession(
     val userCn: String,
     val authToken: String,
     val createdAt: Instant,
+    val traceId: String,
 ) {
     fun expired() = createdAt.plusSeconds(DeltaSessionService.TOKEN_VALID_DURATION_SECONDS) < Instant.now()
 }
@@ -31,7 +32,7 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
     override fun create(authCode: AuthCode): DeltaSession {
         val token = randomBase64(TOKEN_LENGTH_BYTES)
         val now = Instant.now()
-        val deltaSession = insert(authCode.userCn, token, now)
+        val deltaSession = insert(authCode, token, now)
 
         logger.info(
             "Generated auth code for user {} with id {} at {}",
@@ -56,27 +57,34 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
         return session
     }
 
-    private fun insert(username: String, token: String, now: Instant): DeltaSession {
+    private fun insert(authCode: AuthCode, token: String, now: Instant): DeltaSession {
         return dbPool.useConnection {
             val stmt = it.prepareStatement(
-                "INSERT INTO delta_session (username, auth_token_hash, created_at) " +
-                        "VALUES (?, ?, ?) RETURNING id"
+                "INSERT INTO delta_session (username, auth_token_hash, created_at, trace_id) " +
+                        "VALUES (?, ?, ?, ?) RETURNING id"
             )
-            stmt.setString(1, username)
+            stmt.setString(1, authCode.userCn)
             stmt.setBytes(2, hashBase64String(token))
             stmt.setTimestamp(3, Timestamp.from(now))
+            stmt.setString(4, authCode.traceId)
             val result = stmt.executeQuery()
             if (!result.next()) throw Exception("Expected one result")
             val id = result.getInt(1)
             it.commit()
-            DeltaSession(id = id, userCn = username, authToken = token, createdAt = now)
+            DeltaSession(
+                id = id,
+                userCn = authCode.userCn,
+                authToken = token,
+                createdAt = now,
+                traceId = authCode.traceId
+            )
         }
     }
 
     private fun select(authToken: String): DeltaSession? {
         return dbPool.useConnection {
             val stmt =
-                it.prepareStatement("SELECT id, username, created_at FROM delta_session WHERE auth_token_hash = ?")
+                it.prepareStatement("SELECT id, username, created_at, trace_id FROM delta_session WHERE auth_token_hash = ?")
             stmt.setBytes(1, hashBase64String(authToken))
             val result = stmt.executeQuery()
             if (!result.next()) {
@@ -88,6 +96,7 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
                     userCn = result.getString("username"),
                     authToken = authToken,
                     createdAt = result.getTimestamp("created_at").toInstant(),
+                    traceId = result.getString("trace_id"),
                 )
             }
         }

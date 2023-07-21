@@ -6,7 +6,7 @@ import java.sql.Timestamp
 import java.time.Instant
 
 interface IAuthorizationCodeService {
-    fun generateAndStore(userCn: String): String
+    fun generateAndStore(userCn: String, traceId: String): String
     fun lookupAndInvalidate(code: String): AuthCode?
 }
 
@@ -16,7 +16,7 @@ interface IAuthorizationCodeService {
 // We didn't strictly need to use OAuth since we implement back-channel communication with Delta easily,
 // but it's well understood and means we can use standard libraries on the Delta side
 // Assume we only have one client (delta-website) so we don't store it
-data class AuthCode(val code: String, val userCn: String, val createdAt: Instant) {
+data class AuthCode(val code: String, val userCn: String, val createdAt: Instant, val traceId: String) {
     fun expired() = createdAt.plusSeconds(AuthorizationCodeService.AUTH_CODE_VALID_DURATION_SECONDS) < Instant.now()
 }
 
@@ -28,10 +28,10 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
         const val AUTH_CODE_LENGTH_BYTES = 24
     }
 
-    override fun generateAndStore(userCn: String): String {
+    override fun generateAndStore(userCn: String, traceId: String): String {
         val code = randomBase64(AUTH_CODE_LENGTH_BYTES)
         val now = Instant.now()
-        val authCode = AuthCode(code, userCn, now)
+        val authCode = AuthCode(code, userCn, now, traceId)
         insert(authCode)
 
         logger.info("Generated auth code for user {} at {}", StructuredArguments.keyValue("username", userCn), now)
@@ -50,12 +50,13 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
     private fun insert(authCode: AuthCode) {
         dbPool.connection().use {
             val stmt = it.prepareStatement(
-                "INSERT INTO authorization_code (username, code_hash, created_at) " +
-                        "VALUES (?, ?, ?)"
+                "INSERT INTO authorization_code (username, code_hash, created_at, trace_id) " +
+                        "VALUES (?, ?, ?, ?)"
             )
             stmt.setString(1, authCode.userCn)
             stmt.setBytes(2, hashBase64String(authCode.code))
             stmt.setTimestamp(3, Timestamp.from(authCode.createdAt))
+            stmt.setString(4, authCode.traceId)
             stmt.executeUpdate()
             it.commit()
         }
@@ -71,7 +72,7 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
         return dbPool.useConnection {
             val stmt = it.prepareStatement(
                 "DELETE FROM authorization_code " +
-                        "WHERE code_hash = ? RETURNING username, created_at"
+                        "WHERE code_hash = ? RETURNING username, created_at, trace_id"
             )
             stmt.setBytes(1, codeHash)
             val resultSet = stmt.executeQuery()
@@ -80,9 +81,10 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
                 return@useConnection null
             }
             val authCode = AuthCode(
-                code,
-                resultSet.getString("username"),
-                resultSet.getTimestamp("created_at").toInstant()
+                code = code,
+                userCn = resultSet.getString("username"),
+                createdAt = resultSet.getTimestamp("created_at").toInstant(),
+                traceId = resultSet.getString("trace_id")
             )
             it.commit()
             return@useConnection authCode

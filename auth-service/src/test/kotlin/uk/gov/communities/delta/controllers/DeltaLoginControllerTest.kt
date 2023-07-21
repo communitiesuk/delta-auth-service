@@ -5,6 +5,7 @@ import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.plugins.callid.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
@@ -21,6 +22,7 @@ import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 
 class DeltaLoginControllerTest {
@@ -50,7 +52,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostNotInGroup() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf()))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf("some-other-group")))
         testApp.client.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
@@ -65,7 +67,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSuccess() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(DeltaConfig.fromEnv().requiredGroupCn)))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(deltaConfig.requiredGroupCn)))
         testApp.client.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
@@ -73,29 +75,31 @@ class DeltaLoginControllerTest {
                 append("password", "pass")
             }
         ).apply {
-            // TODO DT-525 Clearly not the final behaviour!
             assertEquals(HttpStatusCode.Found, status)
-//            assertEquals(bodyAsText(), "Successful login user")
+            assertTrue("Should redirect to Delta website") {
+                headers["Location"]!!.startsWith(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect")
+            }
         }
     }
 
     companion object {
         private lateinit var testApp: TestApplication
         private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
+        private val deltaConfig = DeltaConfig.fromEnv()
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             val controller = DeltaLoginController(
                 Client("delta-website", "client-secret"),
-                DeltaConfig.fromEnv(),
+                deltaConfig,
                 object : IADLdapLoginService {
                     override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
                         return loginResult
                     }
                 },
                 object : IAuthorizationCodeService {
-                    override fun generateAndStore(userCn: String): String {
+                    override fun generateAndStore(userCn: String, traceId: String): String {
                         return "test-auth-code"
                     }
 
@@ -105,6 +109,7 @@ class DeltaLoginControllerTest {
                 }
             )
             testApp = TestApplication {
+                install(CallId) { generate(4) }
                 application {
                     configureTemplating(false)
                     routing {

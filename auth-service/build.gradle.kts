@@ -57,3 +57,8 @@ dependencies {
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }
+
+task("migrate", JavaExec::class) {
+    mainClass.set("uk.gov.communities.delta.auth.services.DbPoolKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}

@@ -54,3 +54,7 @@ class DbPool(private val config: DatabaseConfig) {
         validate()
     })
 }
+
+fun main() {
+    DbPool(DatabaseConfig.fromEnv()).eagerInit()
+}

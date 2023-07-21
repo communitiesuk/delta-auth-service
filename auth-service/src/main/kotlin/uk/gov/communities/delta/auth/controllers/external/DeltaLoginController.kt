@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.controllers.external
 
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.plugins.callid.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.thymeleaf.*
@@ -105,7 +106,7 @@ class DeltaLoginController(
                     )
                 }
 
-                val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn)
+                val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn, call.callId!!)
 
                 logger.atInfo().addKeyValue("username", cn).log("Successful login")
                 call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode}&state=${state.encodeURLQueryComponent()}")
