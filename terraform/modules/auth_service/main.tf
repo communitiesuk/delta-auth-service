@@ -16,11 +16,18 @@ module "fargate" {
   memory                             = var.ecs.memory
   ecs_cloudwatch_log_expiration_days = var.cloudwatch_log_expiration_days
   alarms_sns_topic_arn               = var.alarms_sns_topic_arn
-  target_groups = [{
-    tg_arn        = aws_lb_target_group.internal.arn
-    tg_arn_suffix = aws_lb_target_group.internal.arn_suffix
-    lb_arn_suffix = var.internal_alb.arn_suffix
-  }]
+  target_groups                      = [
+    {
+      tg_arn        = aws_lb_target_group.internal.arn
+      tg_arn_suffix = aws_lb_target_group.internal.arn_suffix
+      lb_arn_suffix = var.internal_alb.arn_suffix
+    },
+    {
+      tg_arn        = aws_lb_target_group.external.arn
+      tg_arn_suffix = aws_lb_target_group.external.arn_suffix
+      lb_arn_suffix = var.external_alb.arn_suffix
+    }
+  ]
   environment_variables = [
     {
       name  = "DELTA_LDAP_URL"
