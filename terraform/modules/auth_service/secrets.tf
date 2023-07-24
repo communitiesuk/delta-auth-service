@@ -80,6 +80,7 @@ resource "aws_secretsmanager_secret" "database_password" {
   name                    = "tf-${var.environment}-auth-service-database-password"
   description             = "Password for auth service database user (${local.database_username})"
   recovery_window_in_days = 0
+  kms_key_id              = aws_kms_key.auth_service.arn
 }
 
 resource "aws_secretsmanager_secret_version" "database_password" {
