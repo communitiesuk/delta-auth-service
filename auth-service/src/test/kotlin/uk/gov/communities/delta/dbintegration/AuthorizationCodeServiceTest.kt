@@ -18,11 +18,11 @@ class AuthorizationCodeServiceTest {
     @Test
     fun testRetrieveValidCode() {
         val code = service.generateAndStore("some.user", "traceId")
-        val result = service.lookupAndInvalidate(code)
+        val result = service.lookupAndInvalidate(code.code)
         assertNotNull(result)
         assertEquals(result.userCn, "some.user")
         assertEquals(result.traceId, "traceId")
-        assertNull(service.lookupAndInvalidate(code), "Each code should only be usable once")
+        assertNull(service.lookupAndInvalidate(code.code), "Each code should only be usable once")
     }
 
     companion object {

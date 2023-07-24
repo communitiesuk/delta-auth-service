@@ -1,27 +1,27 @@
 package uk.gov.communities.delta.auth.services
 
-import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
+import org.slf4j.spi.LoggingEventBuilder
 import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
 
-data class DeltaSession(
+data class OAuthSession(
     val id: Int, // Our internal database id, no relation to the value of the SESSIONID cookie in Delta, or sessionId from Delta's logs
     val userCn: String,
     val authToken: String,
     val createdAt: Instant,
     val traceId: String,
 ) {
-    fun expired() = createdAt.plusSeconds(DeltaSessionService.TOKEN_VALID_DURATION_SECONDS) < Instant.now()
+    fun expired() = createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < Instant.now()
 }
 
-interface IDeltaSessionService {
-    fun create(authCode: AuthCode): DeltaSession
-    fun retrieveFomAuthToken(authToken: String): DeltaSession?
+interface IOAuthSessionService {
+    fun create(authCode: AuthCode): OAuthSession
+    fun retrieveFomAuthToken(authToken: String): OAuthSession?
 }
 
-class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
+class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -29,35 +29,25 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
         const val TOKEN_LENGTH_BYTES = 24
     }
 
-    override fun create(authCode: AuthCode): DeltaSession {
+    override fun create(authCode: AuthCode): OAuthSession {
         val token = randomBase64(TOKEN_LENGTH_BYTES)
         val now = Instant.now()
         val deltaSession = insert(authCode, token, now)
 
-        logger.info(
-            "Generated auth code for user {} with id {} at {}",
-            keyValue("username", authCode.userCn),
-            keyValue("deltaSessionId", deltaSession.id),
-            now
-        )
+        logger.atInfo().withSession(deltaSession).log("Generated session at {}", now)
         return deltaSession
     }
 
-    override fun retrieveFomAuthToken(authToken: String): DeltaSession? {
+    override fun retrieveFomAuthToken(authToken: String): OAuthSession? {
         val session = select(authToken) ?: return null
         if (session.expired()) {
-            logger.info(
-                "Session with id {} for user {} is expired. Crated at {}",
-                keyValue("deltaSessionId", session.id),
-                keyValue("username", session.userCn),
-                session.createdAt
-            )
+            logger.atInfo().withSession(session).log("Session expired. Crated at {}", session.createdAt)
             return null
         }
         return session
     }
 
-    private fun insert(authCode: AuthCode, token: String, now: Instant): DeltaSession {
+    private fun insert(authCode: AuthCode, token: String, now: Instant): OAuthSession {
         return dbPool.useConnection {
             val stmt = it.prepareStatement(
                 "INSERT INTO delta_session (username, auth_token_hash, created_at, trace_id) " +
@@ -71,7 +61,7 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
             if (!result.next()) throw Exception("Expected one result")
             val id = result.getInt(1)
             it.commit()
-            DeltaSession(
+            OAuthSession(
                 id = id,
                 userCn = authCode.userCn,
                 authToken = token,
@@ -81,7 +71,7 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
         }
     }
 
-    private fun select(authToken: String): DeltaSession? {
+    private fun select(authToken: String): OAuthSession? {
         return dbPool.useConnection {
             val stmt =
                 it.prepareStatement("SELECT id, username, created_at, trace_id FROM delta_session WHERE auth_token_hash = ?")
@@ -91,7 +81,7 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
                 logger.debug("No session found for auth token '{}'", authToken)
                 null
             } else {
-                DeltaSession(
+                OAuthSession(
                     id = result.getInt("id"),
                     userCn = result.getString("username"),
                     authToken = authToken,
@@ -102,3 +92,8 @@ class DeltaSessionService(private val dbPool: DbPool) : IDeltaSessionService {
         }
     }
 }
+
+fun LoggingEventBuilder.withSession(session: OAuthSession): LoggingEventBuilder =
+    addKeyValue("username", session.userCn)
+        .addKeyValue("oauthSession", session.id)
+        .addKeyValue("trace", session.traceId)

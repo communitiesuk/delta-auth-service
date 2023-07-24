@@ -109,8 +109,8 @@ class DeltaLoginController(
 
                 val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn, call.callId!!)
 
-                logger.atInfo().addKeyValue("username", cn).log("Successful login")
-                call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode}&state=${state.encodeURLQueryComponent()}")
+                logger.atInfo().addKeyValue("username", cn).addKeyValue("trace", authCode.traceId).log("Successful login")
+                call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${state.encodeURLQueryComponent()}")
             }
         }
     }
