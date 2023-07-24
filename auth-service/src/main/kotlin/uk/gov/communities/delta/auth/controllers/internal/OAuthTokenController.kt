@@ -1,7 +1,7 @@
 package uk.gov.communities.delta.auth.controllers.internal
 
+import io.ktor.http.*
 import io.ktor.server.application.*
-import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.util.*
@@ -9,18 +9,16 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
-import uk.gov.communities.delta.auth.services.LdapUser
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-import java.time.Instant
 
 class OAuthTokenController(
     private val clientConfig: ClientConfig,
     private val authorizationCodeService: IAuthorizationCodeService,
     private val userLookupService: UserLookupService,
     private val samlTokenService: SAMLTokenService,
+    private val oAuthSessionService: OAuthSessionService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     companion object {
@@ -35,22 +33,33 @@ class OAuthTokenController(
 
         if (clientId != clientConfig.deltaWebsite.clientId) {
             logger.error("Client id mismatch {}", clientId)
-            throw BadRequestException("Invalid client id")
+            return call.respond(
+                HttpStatusCode.BadRequest,
+                JsonErrorResponse("invalid_client", "Invalid client id or secret")
+            )
         }
         if (!compareClientSecret(clientSecret, clientConfig.deltaWebsite.clientSecret)) {
-            logger.error("Invalid client secret for {}", clientId)
-            throw BadRequestException("Invalid client secret")
+            logger.error("Invalid client secret for client {}", clientId)
+            return call.respond(
+                HttpStatusCode.BadRequest,
+                JsonErrorResponse("invalid_client", "Invalid client id or secret")
+            )
         }
 
-        val authCode = authorizationCodeService.lookupAndInvalidate(code) ?: throw BadRequestException("Invalid code")
-        val user = userLookupService.lookupUserByCn(authCode.userCn)
-        val samlToken = samlToken(user)
+        val authCode = authorizationCodeService.lookupAndInvalidate(code)
+        if (authCode == null) {
+            logger.error("Invalid auth code {}", code)
+            return call.respond(HttpStatusCode.BadRequest, JsonErrorResponse("invalid_grant", "Invalid auth code"))
+        }
+        val session = oAuthSessionService.create(authCode)
+        val user = userLookupService.lookupUserByCn(session.userCn)
+        val samlToken = samlToken(session, user)
 
-        logger.atInfo().addKeyValue("username", user.cn).log("Successful token request")
+        logger.atInfo().withSession(session).log("Successful token request")
 
         call.respond(
             AccessTokenResponse(
-                access_token = "unused_for_now",
+                access_token = session.authToken,
                 delta_ldap_user = user,
                 saml_token = samlToken,
             )
@@ -75,9 +84,8 @@ class OAuthTokenController(
         return MessageDigest.isEqual(requestClientSecretBytes, correctSecretBytes)
     }
 
-    private fun samlToken(user: LdapUser): String {
-        val now = Instant.now()
-        val expiry = now.plusSeconds(TOKEN_EXPIRY_SECONDS)
-        return samlTokenService.generate(user, now, expiry)
+    private fun samlToken(session: OAuthSession, user: LdapUser): String {
+        val expiry = session.createdAt.plusSeconds(TOKEN_EXPIRY_SECONDS)
+        return samlTokenService.generate(user, session.createdAt, expiry)
     }
 }

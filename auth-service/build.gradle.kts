@@ -59,6 +59,7 @@ dependencies {
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
 }
 
 task("migrate", JavaExec::class) {
