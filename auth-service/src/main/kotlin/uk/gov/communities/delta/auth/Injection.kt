@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth
 
 import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.controllers.GenerateSAMLTokenController
+import uk.gov.communities.delta.auth.controllers.PublicDeltaLoginController
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
 
@@ -18,6 +19,10 @@ class Injection {
 
         fun generateSAMLTokenController(): GenerateSAMLTokenController {
             return GenerateSAMLTokenController(samlTokenService())
+        }
+
+        fun publicDeltaLoginController(): PublicDeltaLoginController {
+            return PublicDeltaLoginController()
         }
     }
 }

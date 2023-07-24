@@ -38,6 +38,8 @@ dependencies {
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
     implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
     implementation("io.ktor:ktor-server-auth-ldap:$ktor_version")
+    implementation("io.ktor:ktor-server-thymeleaf:$ktor_version")
+    implementation("io.ktor:ktor-server-thymeleaf-jvm:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.2")

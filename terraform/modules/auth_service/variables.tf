@@ -65,3 +65,7 @@ variable "ecs" {
 variable "ml_secret_kms_key_arn" {
   type = string
 }
+
+variable "delta_hostname" {
+  type = string
+}
