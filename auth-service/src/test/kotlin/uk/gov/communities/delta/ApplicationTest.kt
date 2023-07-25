@@ -11,7 +11,7 @@ import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DatabaseConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.module
+import uk.gov.communities.delta.auth.appModule
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -43,7 +43,7 @@ class ApplicationTest {
             )
             testApp = TestApplication {
                 application {
-                    module()
+                    appModule()
                 }
             }
         }

@@ -65,8 +65,6 @@ fun Route.internalRoutes(injection: Injection) {
             }
         }
         post("/token") {
-            // TODO
-            // Should no-cache
             oAuthTokenController.getToken(call)
         }
         authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {

@@ -12,6 +12,7 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.services.withAuthCode
 
 
 class DeltaLoginController(
@@ -109,7 +110,7 @@ class DeltaLoginController(
 
                 val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn, call.callId!!)
 
-                logger.atInfo().addKeyValue("username", cn).addKeyValue("trace", authCode.traceId).log("Successful login")
+                logger.atInfo().withAuthCode(authCode).log("Successful login")
                 call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${state.encodeURLQueryComponent()}")
             }
         }

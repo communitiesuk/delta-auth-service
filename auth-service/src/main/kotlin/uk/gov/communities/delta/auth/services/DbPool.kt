@@ -48,7 +48,7 @@ class DbPool(private val config: DatabaseConfig) {
         username = config.user
         password = config.password
         jdbcUrl = config.url
-        maximumPoolSize = 10
+        maximumPoolSize = 20
         isAutoCommit = false
         transactionIsolation = "TRANSACTION_REPEATABLE_READ"
         validate()

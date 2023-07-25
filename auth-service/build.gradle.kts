@@ -4,7 +4,7 @@ val logback_version: String by project
 
 plugins {
     kotlin("jvm") version "1.8.22"
-    id("io.ktor.plugin") version "2.3.1"
+    id("io.ktor.plugin") version "2.3.2"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.8.22"
 }
 
@@ -38,6 +38,7 @@ dependencies {
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
     implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
     implementation("io.ktor:ktor-server-status-pages:$ktor_version")
+    implementation("io.ktor:ktor-server-status-pages-jvm:$ktor_version")
 
     // HTML templating
     implementation("io.ktor:ktor-server-thymeleaf:$ktor_version")
@@ -48,20 +49,22 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.2")
 
+    // OpenSAML
     implementation("org.opensaml:opensaml-core:4.0.1")
     implementation("org.opensaml:opensaml-saml-impl:4.0.1")
 
+    // Database
     implementation("org.postgresql:postgresql:42.6.0")
-    implementation("com.zaxxer:HikariCP:5.0.1") // Database connection pool
-    implementation("org.flywaydb:flyway-core:9.20.1")
-    implementation("io.ktor:ktor-server-host-common-jvm:2.3.2")
-    implementation("io.ktor:ktor-server-status-pages-jvm:2.3.2") // Database migrations
+    implementation("com.zaxxer:HikariCP:5.0.1") // Connection pool
+    implementation("org.flywaydb:flyway-core:9.20.1") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
 }
 
+// Migrations are run on startup outside of Development mode.
+// Extra task to run Flyway migrations without starting the
 task("migrate", JavaExec::class) {
     mainClass.set("uk.gov.communities.delta.auth.services.DbPoolKt")
     classpath = sourceSets["main"].runtimeClasspath

@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.auth.services
 
 import org.slf4j.LoggerFactory
+import org.slf4j.spi.LoggingEventBuilder
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -9,12 +10,9 @@ interface IAuthorizationCodeService {
     fun lookupAndInvalidate(code: String): AuthCode?
 }
 
-// The authorization code is the base64 value we include in the URL when we redirect back to the Delta website
+// The authorization code is the value we include in the URL when we redirect back to the Delta website
 // It's a short-lived code that can be exchanged using the token endpoint for user details and a longer lived access token
-// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1
-// We didn't strictly need to use OAuth since we implement back-channel communication with Delta easily,
-// but it's well understood and means we can use standard libraries on the Delta side
-// Assume we only have one client (delta-website) so we don't store it
+// Assume we only have one client (delta-website) so don't store it
 data class AuthCode(val code: String, val userCn: String, val createdAt: Instant, val traceId: String) {
     fun expired() = createdAt.plusSeconds(AuthorizationCodeService.AUTH_CODE_VALID_DURATION_SECONDS) < Instant.now()
 }
@@ -33,15 +31,14 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
         val authCode = AuthCode(code, userCn, now, traceId)
         insert(authCode)
 
-        logger.atInfo().addKeyValue("trace", traceId).addKeyValue("username", userCn)
-            .log("Generated auth code at {}", now)
+        logger.atInfo().withAuthCode(authCode).log("Generated auth code at {}", now)
         return authCode
     }
 
     override fun lookupAndInvalidate(code: String): AuthCode? {
         val entry = deleteReturning(code) ?: return null
         if (entry.expired()) {
-            logger.warn("Expired auth code {} for user {}", code, entry.userCn)
+            logger.atWarn().withAuthCode(entry).log("Expired auth code '{}'", code)
             return null
         }
         return entry
@@ -77,7 +74,7 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
             stmt.setBytes(1, codeHash)
             val resultSet = stmt.executeQuery()
             if (!resultSet.next()) {
-                logger.debug("Code not found {}", code)
+                logger.debug("Code not found '{}'", code)
                 return@useConnection null
             }
             val authCode = AuthCode(
@@ -91,3 +88,6 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
         }
     }
 }
+
+fun LoggingEventBuilder.withAuthCode(authCode: AuthCode) =
+    addKeyValue("username", authCode.code).addKeyValue("trace", authCode.traceId)
