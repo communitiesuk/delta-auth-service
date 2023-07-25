@@ -25,8 +25,6 @@ class SAMLConfig {
     companion object {
         private val logger = LoggerFactory.getLogger(SAMLConfig::class.java)
 
-        const val SAML_TOKEN_EXPIRY_HOURS = 1
-
         fun getSAMLSigningCredentials(): BasicX509Credential {
             return BasicX509Credential(certificate(), signingKey())
         }

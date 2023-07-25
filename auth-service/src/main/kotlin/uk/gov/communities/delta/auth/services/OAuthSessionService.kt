@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.services
 
+import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
 import java.sql.Timestamp
@@ -12,7 +13,7 @@ data class OAuthSession(
     val authToken: String,
     val createdAt: Instant,
     val traceId: String,
-) {
+): Principal {
     fun expired() = createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < Instant.now()
 }
 
@@ -44,6 +45,7 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
             logger.atInfo().withSession(session).log("Session expired. Crated at {}", session.createdAt)
             return null
         }
+        logger.atDebug().withSession(session).log("Retrieved session from auth token")
         return session
     }
 

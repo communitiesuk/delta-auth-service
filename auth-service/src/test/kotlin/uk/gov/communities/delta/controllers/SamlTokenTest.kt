@@ -15,7 +15,7 @@ import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
-import uk.gov.communities.delta.auth.security.CLIENT_AUTH_NAME
+import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
@@ -31,7 +31,7 @@ class SamlTokenTest {
             fakeSecurityConfig()
             val controller = GenerateSAMLTokenController(SAMLTokenService(SAMLConfig.getSAMLSigningCredentials()))
             routing {
-                authenticate(CLIENT_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+                authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
                     authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
                         post("/generate-saml-token") {
                             controller.generateSAMLToken(call)
@@ -65,7 +65,7 @@ class SamlTokenTest {
                     }
                 }
             }
-            clientHeaderAuth(CLIENT_AUTH_NAME) {
+            clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                 headerName = "Delta-Client"
                 clients = listOf(Client("test-client", "test-secret"))
             }

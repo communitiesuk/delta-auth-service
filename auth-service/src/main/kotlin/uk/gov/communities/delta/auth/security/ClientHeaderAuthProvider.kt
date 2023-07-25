@@ -64,13 +64,13 @@ class ClientHeaderAuthProvider(private val config: Config) : AuthenticationProvi
         }
     }
 
-    data class ClientPrincipal(val clientId: String) : Principal
-
     class Config(name: String) : AuthenticationProvider.Config(name) {
         lateinit var clients: List<Client>
         lateinit var headerName: String
     }
 }
+
+data class ClientPrincipal(val clientId: String) : Principal
 
 fun AuthenticationConfig.clientHeaderAuth(
     name: String,

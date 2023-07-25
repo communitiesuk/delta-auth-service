@@ -6,22 +6,19 @@ import io.ktor.server.http.content.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
-import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
-import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
-import uk.gov.communities.delta.auth.plugins.addUsernameToMdc
-import uk.gov.communities.delta.auth.security.CLIENT_AUTH_NAME
+import uk.gov.communities.delta.auth.plugins.addBearerSessionInfoToMDC
+import uk.gov.communities.delta.auth.plugins.addClientIdToMDC
+import uk.gov.communities.delta.auth.plugins.addServiceUserUsernameToMDC
+import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
+import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 
-fun Application.configureRouting() {
-
+fun Application.configureRouting(injection: Injection) {
     routing {
         healthcheckRoute()
-        internalRoutes(
-            Injection.instance.generateSAMLTokenController(),
-            Injection.instance.internalOAuthTokenController()
-        )
-        externalRoutes(Injection.instance.externalDeltaLoginController())
+        internalRoutes(injection)
+        externalRoutes(injection.externalDeltaLoginController())
     }
 }
 
@@ -47,14 +44,15 @@ fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
 }
 
 // "Internal" to the VPC, this is enforced by load balancer rules
-fun Route.internalRoutes(
-    generateSAMLTokenController: GenerateSAMLTokenController,
-    oAuthTokenController: OAuthTokenController
-) {
+fun Route.internalRoutes(injection: Injection) {
+    val generateSAMLTokenController = injection.generateSAMLTokenController()
+    val oAuthTokenController = injection.internalOAuthTokenController()
+    val refreshUserInfoController = injection.refreshUserInfoController()
+
     route("/auth-internal") {
-        authenticate(CLIENT_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+        authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
             authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-                install(addUsernameToMdc)
+                install(addServiceUserUsernameToMDC)
                 route("/service-user") {
                     get("/auth-diag") {
                         val principal = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!
@@ -70,6 +68,17 @@ fun Route.internalRoutes(
             // TODO
             // Should no-cache
             oAuthTokenController.getToken(call)
+        }
+        authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+            authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+                install(addClientIdToMDC)
+                install(addBearerSessionInfoToMDC)
+                route("/bearer") {
+                    get("/delta-user") {
+                        refreshUserInfoController.getUserInfo(call)
+                    }
+                }
+            }
         }
     }
 }

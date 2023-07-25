@@ -4,7 +4,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import kotlinx.serialization.Serializable
-import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
@@ -20,7 +19,7 @@ class GenerateSAMLTokenController(private val samlTokenService: SAMLTokenService
         val user = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!
 
         val validFrom = Instant.now().minus(10, ChronoUnit.MILLIS)
-        val validTo = validFrom.plus(SAMLConfig.SAML_TOKEN_EXPIRY_HOURS.toLong(), ChronoUnit.HOURS)
+        val validTo = validFrom.plus(SAML_TOKEN_EXPIRY_HOURS, ChronoUnit.HOURS)
             .truncatedTo(ChronoUnit.SECONDS)
 
         val token = samlTokenService.generate(user.ldapUser, validFrom, validTo)
@@ -46,4 +45,8 @@ class GenerateSAMLTokenController(private val samlTokenService: SAMLTokenService
         val token: String,
         val expiry: String,
     )
+
+    companion object {
+        const val SAML_TOKEN_EXPIRY_HOURS = 1L
+    }
 }

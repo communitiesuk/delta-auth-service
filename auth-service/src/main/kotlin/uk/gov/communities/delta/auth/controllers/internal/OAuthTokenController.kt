@@ -12,6 +12,7 @@ import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Instant
 
 class OAuthTokenController(
     private val clientConfig: ClientConfig,
@@ -22,7 +23,7 @@ class OAuthTokenController(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     companion object {
-        private const val TOKEN_EXPIRY_SECONDS = 43200L
+        const val TOKEN_EXPIRY_SECONDS = 43200L
     }
 
     suspend fun getToken(call: ApplicationCall) {
@@ -53,7 +54,7 @@ class OAuthTokenController(
         }
         val session = oAuthSessionService.create(authCode)
         val user = userLookupService.lookupUserByCn(session.userCn)
-        val samlToken = samlToken(session, user)
+        val samlToken = samlTokenService.samlTokenForSession(session, user)
 
         logger.atInfo().withSession(session).log("Successful token request")
 
@@ -61,7 +62,8 @@ class OAuthTokenController(
             AccessTokenResponse(
                 access_token = session.authToken,
                 delta_ldap_user = user,
-                saml_token = samlToken,
+                saml_token = samlToken.token,
+                expires_at_epoch_second = samlToken.expiry.epochSecond
             )
         )
     }
@@ -72,6 +74,7 @@ class OAuthTokenController(
         val access_token: String,
         val delta_ldap_user: LdapUser,
         val saml_token: String,
+        val expires_at_epoch_second: Long,
         // TODO remove
         val delta_user: String = delta_ldap_user.cn,
         val token_type: String = "bearer",
@@ -83,9 +86,11 @@ class OAuthTokenController(
         val correctSecretBytes = correct.toByteArray(StandardCharsets.UTF_8)
         return MessageDigest.isEqual(requestClientSecretBytes, correctSecretBytes)
     }
+}
 
-    private fun samlToken(session: OAuthSession, user: LdapUser): String {
-        val expiry = session.createdAt.plusSeconds(TOKEN_EXPIRY_SECONDS)
-        return samlTokenService.generate(user, session.createdAt, expiry)
-    }
+data class SamlTokenWithExpiry(val token: String, val expiry: Instant)
+
+fun SAMLTokenService.samlTokenForSession(session: OAuthSession, user: LdapUser): SamlTokenWithExpiry {
+    val expiry = session.createdAt.plusSeconds(OAuthTokenController.TOKEN_EXPIRY_SECONDS)
+    return SamlTokenWithExpiry(generate(user, session.createdAt, expiry), expiry)
 }
