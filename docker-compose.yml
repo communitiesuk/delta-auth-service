@@ -6,6 +6,8 @@ services:
       - 8088:8088
     env_file:
       - auth-service/.env
+    depends_on:
+      - db
     environment:
       # Requires a tunnel open to the test environment Active Directory
       DELTA_LDAP_URL: "ldap://host.docker.internal:2389"
@@ -16,5 +18,11 @@ services:
     image: postgres:14.8
     ports:
       - 5438:5432
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 2s
+      timeout: 5s
+      retries: 1
+      start_period: 10s
     environment:
       POSTGRES_PASSWORD: postgres
