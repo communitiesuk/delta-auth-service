@@ -37,7 +37,7 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testUserInfoEndpoint() = testSuspend {
-        testClient.get("/bearer/delta-user") {
+        testClient.get("/bearer/user-info") {
             headers {
                 append("Authorization", "Bearer ${session.authToken}")
                 append("Delta-Client", "test-client:test-secret")
@@ -52,7 +52,7 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testInvalidBearerToken() = testSuspend {
-        testClient.get("/bearer/delta-user") {
+        testClient.get("/bearer/user-info") {
             headers {
                 append("Authorization", "Bearer invalid_token")
                 append("Delta-Client", "test-client:test-secret")

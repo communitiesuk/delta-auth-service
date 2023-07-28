@@ -65,7 +65,7 @@ fun Route.bearerTokenRoutes(refreshUserInfoController: RefreshUserInfoController
         authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
             install(addClientIdToMDC)
             install(addBearerSessionInfoToMDC)
-            route("/bearer/delta-user") {
+            route("/bearer/user-info") {
                 refreshUserInfoController.route(this)
             }
         }

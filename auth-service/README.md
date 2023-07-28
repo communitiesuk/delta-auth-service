@@ -88,10 +88,10 @@ The auth service will respond with an access token and information about the use
 #### 4. Refresh user info
 
 If required Delta can get updated user info without repeating the login flow using
-the `/auth-internal/bearer/delta-user` endpoint.
+the `/auth-internal/bearer/user-info` endpoint.
 
 ```sh
-curl 'http://localhost:8088/auth-internal/bearer/delta-user' \
+curl 'http://localhost:8088/auth-internal/bearer/user-info' \
   --header 'Authorization: Bearer ABC123' \
   --header 'Delta-Client: delta-website:dev-delta-website-client-secret'
 ```

@@ -27,13 +27,13 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String) {
 private val statusErrorPageDefinitions = mapOf(
     HttpStatusCode.NotFound to StatusErrorPageDefinition(
         "not_found",
-        "DELTA - Not Found",
+        "DELTA | Not Found",
         "Page not found",
         "This page does not exist"
     ),
     HttpStatusCode.InternalServerError to StatusErrorPageDefinition(
         "internal_server_error",
-        "DELTA - Error",
+        "DELTA | Error",
         "Error",
         "Something went wrong",
         true
