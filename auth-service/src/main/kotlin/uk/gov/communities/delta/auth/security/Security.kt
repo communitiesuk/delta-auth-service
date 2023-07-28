@@ -33,7 +33,8 @@ fun Application.configureSecurity(injection: Injection) {
         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
             realm = "auth-service"
             authenticate {
-                oAuthSessionService.retrieveFomAuthToken(it.token)
+                val clientPrincipal = principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME) ?: return@authenticate null
+                oAuthSessionService.retrieveFomAuthToken(it.token, clientPrincipal.client)
             }
         }
     }

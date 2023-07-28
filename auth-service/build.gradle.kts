@@ -77,7 +77,7 @@ tasks {
         if (envFile.exists()) {
             println("Reading from .env file")
             envFile.readLines().forEach {
-                if (!it.isEmpty() && !it.startsWith("#")) {
+                if (it.isNotEmpty() && !it.startsWith("#")) {
                     val (key, value) = it.split("=")
                     environment(key, value)
                 }

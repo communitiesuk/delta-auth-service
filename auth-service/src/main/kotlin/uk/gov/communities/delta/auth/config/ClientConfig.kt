@@ -1,20 +1,45 @@
 package uk.gov.communities.delta.auth.config
 
-data class Client(val clientId: String, val clientSecret: String)
+import org.slf4j.LoggerFactory
+
+open class Client(val clientId: String, val clientSecret: String)
+
+class OAuthClient(clientId: String, clientSecret: String, val redirectUrl: String) : Client(clientId, clientSecret)
 
 class ClientConfig(
     private val clientSecretMarklogic: String,
-    private val clientSecretDeltaWebsite: String,
+    private val clientSecretDeltaWebsite: String?,
+    private val deltaWebsiteRedirectUrl: String,
+    private val clientSecretDeltaWebsiteDev: String?,
+    private val deltaWebsiteDevRedirectUrl: String,
 ) {
     companion object {
-        fun fromEnv() = ClientConfig(
-            clientSecretMarklogic = System.getenv("CLIENT_SECRET_MARKLOGIC") ?: "dev-marklogic-client-secret",
-            clientSecretDeltaWebsite = System.getenv("CLIENT_SECRET_DELTA_WEBSITE")
-                ?: "dev-delta-website-client-secret",
-        )
+        private val logger = LoggerFactory.getLogger(Companion::class.java)
+
+        fun fromEnv(deltaConfig: DeltaConfig): ClientConfig {
+            val deltaWebsiteSecret = System.getenv("CLIENT_SECRET_DELTA_WEBSITE")
+            var deltaWebsiteLocalDevSecret = System.getenv("CLIENT_SECRET_DELTA_WEBSITE_DEV")
+            if (deltaWebsiteSecret == null && deltaWebsiteLocalDevSecret == null) {
+                logger.info("No Delta client secrets specified, creating local development client")
+                deltaWebsiteLocalDevSecret = "dev-delta-website-client-secret"
+            }
+            return ClientConfig(
+                clientSecretMarklogic = System.getenv("CLIENT_SECRET_MARKLOGIC") ?: "dev-marklogic-client-secret",
+                clientSecretDeltaWebsite = deltaWebsiteSecret,
+                deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect",
+                clientSecretDeltaWebsiteDev = deltaWebsiteLocalDevSecret,
+                "http://localhost:8080/login/oauth2/redirect"
+            )
+        }
     }
 
-    val deltaWebsite = Client("delta-website", clientSecretDeltaWebsite)
-    val marklogic = Client("marklogic", clientSecretMarklogic)
-    val clients = listOf(deltaWebsite, marklogic)
+    private val marklogic = Client("marklogic", clientSecretMarklogic)
+    private val deltaWebsite = clientSecretDeltaWebsite?.let {
+        OAuthClient("delta-website", clientSecretDeltaWebsite, deltaWebsiteRedirectUrl)
+    }
+    private val deltaWebsiteLocal = clientSecretDeltaWebsiteDev?.let {
+        OAuthClient("delta-website-dev", clientSecretDeltaWebsiteDev, deltaWebsiteDevRedirectUrl)
+    }
+    val clients = listOfNotNull(deltaWebsite, marklogic, deltaWebsiteLocal)
+    val oauthClients = clients.filterIsInstance<OAuthClient>()
 }

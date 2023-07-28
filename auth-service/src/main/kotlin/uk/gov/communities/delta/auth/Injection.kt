@@ -23,11 +23,12 @@ class Injection (
             if (::instance.isInitialized) {
                 throw Exception("Already initialised")
             }
+            val deltaConfig = DeltaConfig.fromEnv()
             instance = Injection(
                 LDAPConfig.fromEnv(),
                 DatabaseConfig.fromEnv(),
-                ClientConfig.fromEnv(),
-                DeltaConfig.fromEnv(),
+                ClientConfig.fromEnv(deltaConfig),
+                deltaConfig,
             )
         }
     }
@@ -73,11 +74,11 @@ class Injection (
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
             ldapService
         )
-        return DeltaLoginController(clientConfig.deltaWebsite, deltaConfig, adLoginService, authorizationCodeService)
+        return DeltaLoginController(clientConfig.oauthClients, deltaConfig, adLoginService, authorizationCodeService)
     }
 
     fun internalOAuthTokenController() = OAuthTokenController(
-        clientConfig,
+        clientConfig.oauthClients,
         authorizationCodeService,
         userLookupService,
         samlTokenService,

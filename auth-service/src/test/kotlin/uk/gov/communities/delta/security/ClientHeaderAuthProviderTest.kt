@@ -72,7 +72,7 @@ class ClientHeaderAuthProviderTest {
                                 call.respondText(
                                     call.principal<ClientPrincipal>(
                                         "test-client-auth-provider"
-                                    )!!.clientId
+                                    )!!.client.clientId
                                 )
                             }
                         }

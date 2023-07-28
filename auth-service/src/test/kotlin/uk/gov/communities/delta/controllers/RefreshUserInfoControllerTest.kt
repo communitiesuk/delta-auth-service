@@ -19,6 +19,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.Client
+import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
@@ -67,7 +68,8 @@ class RefreshUserInfoControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var controller: RefreshUserInfoController
 
-        private val session = OAuthSession(1, "user", "accessToken", Instant.now(), "trace")
+        private val client = OAuthClient("delta-website", "client-secret", "https://delta/redirect")
+        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
         private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
 
         private val userLookupService = mock<UserLookupService>()
@@ -79,7 +81,7 @@ class RefreshUserInfoControllerTest {
         fun setup() {
             whenever(userLookupService.lookupUserByCn(session.userCn)).thenReturn(user)
             whenever(samlTokenService.generate(eq(user), eq(session.createdAt), any())).thenReturn("SAML Token")
-            whenever(oAuthSessionService.retrieveFomAuthToken(session.authToken)).thenReturn(session)
+            whenever(oAuthSessionService.retrieveFomAuthToken(session.authToken, client)).thenReturn(session)
             controller = RefreshUserInfoController(userLookupService, samlTokenService)
 
             testApp = TestApplication {
@@ -89,7 +91,7 @@ class RefreshUserInfoControllerTest {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
                             authenticate {
-                                oAuthSessionService.retrieveFomAuthToken(it.token)
+                                oAuthSessionService.retrieveFomAuthToken(it.token, client)
                             }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {

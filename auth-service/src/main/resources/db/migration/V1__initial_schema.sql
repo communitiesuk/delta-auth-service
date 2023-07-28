@@ -1,6 +1,7 @@
 CREATE TABLE authorization_code
 (
     username   text      NOT NULL,
+    client_id  text      NOT NULL,
     code_hash  bytea     NOT NULL,
     created_at timestamp NOT NULL,
     trace_id   text      NOT NULL
@@ -13,6 +14,7 @@ CREATE TABLE delta_session
 (
     id              SERIAL PRIMARY KEY,
     username        text      NOT NULL,
+    client_id       text      NOT NULL,
     auth_token_hash bytea     NOT NULL,
     created_at      timestamp NOT NULL,
     trace_id        text      NOT NULL

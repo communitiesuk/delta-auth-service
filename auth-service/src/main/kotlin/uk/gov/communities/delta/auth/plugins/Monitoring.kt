@@ -57,7 +57,7 @@ val addClientIdToMDC = createRouteScopedPlugin("AddClientIdToMDC") {
     on(BeforeCall) { call, proceed ->
         val principal = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME) ?: return@on proceed()
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
-        mdcContextMap["clientId"] = principal.clientId
+        mdcContextMap["clientId"] = principal.client.clientId
         withContext(MDCContext(mdcContextMap)) {
             proceed()
         }
