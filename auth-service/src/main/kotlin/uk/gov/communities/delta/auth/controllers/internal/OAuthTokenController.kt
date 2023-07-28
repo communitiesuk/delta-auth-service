@@ -4,6 +4,7 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.util.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -22,11 +23,16 @@ class OAuthTokenController(
     private val oAuthSessionService: OAuthSessionService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+
     companion object {
         const val TOKEN_EXPIRY_SECONDS = 43200L
     }
 
-    suspend fun getToken(call: ApplicationCall) {
+    fun route(route: Route) {
+        route.post { getToken(call) }
+    }
+
+    private suspend fun getToken(call: ApplicationCall) {
         val params = call.receiveParameters()
         val code = params.getOrFail("code")
         val clientId = params.getOrFail("client_id")

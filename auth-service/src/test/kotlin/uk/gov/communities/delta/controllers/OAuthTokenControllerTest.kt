@@ -4,7 +4,6 @@ import io.ktor.client.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
@@ -108,7 +107,7 @@ class OAuthTokenControllerTest {
                     configureSerialization()
                     routing {
                         route("/token") {
-                            post { controller.getToken(call) }
+                            controller.route(this)
                         }
                     }
                 }

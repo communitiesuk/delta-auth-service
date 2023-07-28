@@ -4,7 +4,6 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
@@ -18,10 +17,14 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
+import uk.gov.communities.delta.auth.bearerTokenRoutes
+import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
+import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
+import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.OAuthSessionService
@@ -34,9 +37,10 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testUserInfoEndpoint() = testSuspend {
-        testClient.get("/user-info") {
+        testClient.get("/bearer/delta-user") {
             headers {
                 append("Authorization", "Bearer ${session.authToken}")
+                append("Delta-Client", "test-client:test-secret")
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -48,9 +52,10 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testInvalidBearerToken() = testSuspend {
-        testClient.get("/user-info") {
+        testClient.get("/bearer/delta-user") {
             headers {
                 append("Authorization", "Bearer invalid_token")
+                append("Delta-Client", "test-client:test-secret")
             }
         }.apply {
             assertEquals(HttpStatusCode.Unauthorized, status)
@@ -87,13 +92,13 @@ class RefreshUserInfoControllerTest {
                                 oAuthSessionService.retrieveFomAuthToken(it.token)
                             }
                         }
+                        clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
+                            headerName = "Delta-Client"
+                            clients = listOf(Client("test-client", "test-secret"))
+                        }
                     }
                     routing {
-                        authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
-                            get("/user-info") {
-                                controller.getUserInfo(call)
-                            }
-                        }
+                        bearerTokenRoutes(controller)
                     }
                 }
             }

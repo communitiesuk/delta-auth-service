@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.Client
@@ -23,7 +24,16 @@ class DeltaLoginController(
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
-    suspend fun loginGet(call: ApplicationCall) {
+    fun loginRoutes(route: Route) {
+        route.post {
+            loginPost(call)
+        }
+        route.get {
+            loginGet(call)
+        }
+    }
+
+    private suspend fun loginGet(call: ApplicationCall) {
         if (!areOAuthParametersValid(call)) {
             logger.warn("Invalid parameters for login request, redirecting back to Delta")
             return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
@@ -61,7 +71,7 @@ class DeltaLoginController(
         )
     )
 
-    suspend fun loginPost(call: ApplicationCall) {
+    private suspend fun loginPost(call: ApplicationCall) {
         if (!areOAuthParametersValid(call)) {
             return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
         }

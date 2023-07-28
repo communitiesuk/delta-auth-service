@@ -8,7 +8,10 @@ import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.MDC
 import org.slf4j.event.Level
-import uk.gov.communities.delta.auth.security.*
+import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
+import uk.gov.communities.delta.auth.security.ClientPrincipal
+import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
+import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.OAuthSession
 
 fun Application.configureMonitoring() {
@@ -41,9 +44,9 @@ internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) 
 // The call logging plugin doesn't update the MDC after the authentication phase by default, so add as an extra step
 val addServiceUserUsernameToMDC = createRouteScopedPlugin("AddUsernameToMdc") {
     on(BeforeCall) { call, proceed ->
-        val username = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!.username
+        val principal = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME) ?: return@on proceed()
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
-        mdcContextMap["username"] = username
+        mdcContextMap["username"] = principal.username
         withContext(MDCContext(mdcContextMap)) {
             proceed()
         }
@@ -52,9 +55,9 @@ val addServiceUserUsernameToMDC = createRouteScopedPlugin("AddUsernameToMdc") {
 
 val addClientIdToMDC = createRouteScopedPlugin("AddClientIdToMDC") {
     on(BeforeCall) { call, proceed ->
-        val clientId = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME)!!.clientId
+        val principal = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME) ?: return@on proceed()
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
-        mdcContextMap["clientId"] = clientId
+        mdcContextMap["clientId"] = principal.clientId
         withContext(MDCContext(mdcContextMap)) {
             proceed()
         }
@@ -63,7 +66,7 @@ val addClientIdToMDC = createRouteScopedPlugin("AddClientIdToMDC") {
 
 val addBearerSessionInfoToMDC = createRouteScopedPlugin("AddBearerSessionInfoToMDC") {
     on(BeforeCall) { call, proceed ->
-        val session = call.principal<OAuthSession>()!!
+        val session = call.principal<OAuthSession>() ?: return@on proceed()
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
         mdcContextMap["username"] = session.userCn
         mdcContextMap["oauthSession"] = session.id.toString()

@@ -5,7 +5,6 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.server.application.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
@@ -125,8 +124,7 @@ class DeltaLoginControllerTest {
                     configureTemplating(false)
                     routing {
                         route("/login") {
-                            get { controller.loginGet(call) }
-                            post { controller.loginPost(call) }
+                            controller.loginRoutes(this)
                         }
                     }
                 }

@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.controllers.internal
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
@@ -16,7 +17,11 @@ class RefreshUserInfoController(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun getUserInfo(call: ApplicationCall) {
+    fun route(route: Route) {
+        route.get { getUserInfo(call) }
+    }
+
+    private suspend fun getUserInfo(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
 
         val user = userLookupService.lookupUserByCn(session.userCn)
