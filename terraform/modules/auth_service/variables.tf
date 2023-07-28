@@ -44,6 +44,7 @@ variable "ldap_config" {
   type = object({
     DELTA_LDAP_URL              = string
     LDAP_SERVICE_USER_DN_FORMAT = string
+    LDAP_DELTA_USER_DN_FORMAT   = string
     LDAP_GROUP_DN_FORMAT        = string
     CA_S3_URL                   = string
   })
@@ -68,4 +69,25 @@ variable "ml_secret_kms_key_arn" {
 
 variable "delta_hostname" {
   type = string
+}
+
+variable "bastion_security_group_id" {
+  type = string
+}
+
+variable "db_instance_type" {
+  type    = string
+  default = "db.t4g.micro"
+}
+
+variable "db_backup_retention_days" {
+  type    = number
+  default = 3
+}
+
+variable "private_dns" {
+  type = object({
+    zone_id     = string
+    base_domain = string
+  })
 }

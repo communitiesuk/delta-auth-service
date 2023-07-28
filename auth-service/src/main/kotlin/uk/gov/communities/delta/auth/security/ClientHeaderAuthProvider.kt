@@ -5,6 +5,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.Client
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -63,15 +64,13 @@ class ClientHeaderAuthProvider(private val config: Config) : AuthenticationProvi
         }
     }
 
-    data class Client(val clientId: String, val clientSecret: String)
-
-    data class ClientPrincipal(val clientId: String) : Principal
-
     class Config(name: String) : AuthenticationProvider.Config(name) {
         lateinit var clients: List<Client>
         lateinit var headerName: String
     }
 }
+
+data class ClientPrincipal(val clientId: String) : Principal
 
 fun AuthenticationConfig.clientHeaderAuth(
     name: String,

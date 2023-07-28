@@ -8,14 +8,17 @@ import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.MDC
 import org.slf4j.event.Level
+import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
+import uk.gov.communities.delta.auth.security.ClientPrincipal
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
+import uk.gov.communities.delta.auth.services.OAuthSession
 
 fun Application.configureMonitoring() {
     install(CallLogging) {
         level = Level.INFO
         callIdMdc("requestId")
-        mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.cn }
+        mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.username }
         disableDefaultColors()
     }
     install(CallId) {
@@ -39,11 +42,35 @@ internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) 
 }
 
 // The call logging plugin doesn't update the MDC after the authentication phase by default, so add as an extra step
-val addUsernameToMdc = createRouteScopedPlugin("AddUsernameToMdc") {
+val addServiceUserUsernameToMDC = createRouteScopedPlugin("AddUsernameToMdc") {
     on(BeforeCall) { call, proceed ->
-        val username = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!.cn
+        val principal = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME) ?: return@on proceed()
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
-        mdcContextMap["username"] = username
+        mdcContextMap["username"] = principal.username
+        withContext(MDCContext(mdcContextMap)) {
+            proceed()
+        }
+    }
+}
+
+val addClientIdToMDC = createRouteScopedPlugin("AddClientIdToMDC") {
+    on(BeforeCall) { call, proceed ->
+        val principal = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME) ?: return@on proceed()
+        val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
+        mdcContextMap["clientId"] = principal.clientId
+        withContext(MDCContext(mdcContextMap)) {
+            proceed()
+        }
+    }
+}
+
+val addBearerSessionInfoToMDC = createRouteScopedPlugin("AddBearerSessionInfoToMDC") {
+    on(BeforeCall) { call, proceed ->
+        val session = call.principal<OAuthSession>() ?: return@on proceed()
+        val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
+        mdcContextMap["username"] = session.userCn
+        mdcContextMap["oauthSession"] = session.id.toString()
+        mdcContextMap["trace"] = session.traceId
         withContext(MDCContext(mdcContextMap)) {
             proceed()
         }

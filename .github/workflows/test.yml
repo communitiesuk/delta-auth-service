@@ -25,6 +25,7 @@ jobs:
           java-version: '17'
           distribution: 'corretto'
           cache: 'gradle'
+      - run: docker compose up -d
       - name: Run tests
         run: chmod +x gradlew && ./gradlew test
         working-directory: auth-service/

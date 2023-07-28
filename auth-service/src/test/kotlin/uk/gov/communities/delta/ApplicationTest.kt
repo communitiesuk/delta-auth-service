@@ -3,84 +3,48 @@ package uk.gov.communities.delta
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
-import io.ktor.server.routing.*
 import io.ktor.server.testing.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
+import io.ktor.test.dispatcher.*
+import org.junit.BeforeClass
+import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.config.ClientConfig
-import uk.gov.communities.delta.auth.healthcheckRoute
-import uk.gov.communities.delta.auth.internalRoutes
-import uk.gov.communities.delta.auth.module
-import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.security.*
+import uk.gov.communities.delta.auth.config.DatabaseConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.appModule
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
+/*
+ * Primarily a test of whether the application will start.
+ * Should be the only test that references Injection.
+ */
 class ApplicationTest {
-    @Test
-    fun testRoot() = testApplication {
-        application {
-            module()
-        }
-        client.get("/").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals("Hello World!", bodyAsText())
-        }
-    }
 
     @Test
-    fun testHealthcheck() = testApplication {
-        application {
-            routing {
-                healthcheckRoute()
-            }
-        }
-        client.get("/health").apply {
+    fun testHealthcheck() = testSuspend {
+        testApp.client.get("/health").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals("OK", bodyAsText())
         }
     }
 
-    @Test
-    fun testGenerateSamlToken() = testApplication {
-        application {
-            configureSerialization()
-            fakeSecurityConfig()
-            routing {
-                internalRoutes()
-            }
-        }
-        client.post("/auth-internal/service-user/generate-saml-token") {
-            headers {
-                append(HttpHeaders.Accept, "application/json")
-                append("Delta-Client", "test-client:test-secret")
-                basicAuth("test-user", "pass")
-            }
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = Json.parseToJsonElement(bodyAsText())
-            assertNotNull(json.jsonObject["token"])
-        }
-    }
+    companion object {
+        private lateinit var testApp: TestApplication
 
-    private fun Application.fakeSecurityConfig() {
-        authentication {
-            basic(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME) {
-                realm = "Delta"
-                validate { credential ->
-                    if (credential.password == "pass") {
-                        DeltaLdapPrincipal(credential.name, listOf("test-role"))
-                    } else {
-                        null
-                    }
+        @BeforeClass
+        @JvmStatic
+        fun setup() {
+            Injection.instance = Injection(
+                LDAPConfig("testInvalidUrl", "", "", "", "", "", ""),
+                DatabaseConfig("testInvalidUrl", "", ""),
+                ClientConfig.fromEnv(),
+                DeltaConfig.fromEnv(),
+            )
+            testApp = TestApplication {
+                application {
+                    appModule()
                 }
-            }
-            clientHeaderAuth(CLIENT_AUTH_NAME) {
-                headerName = "Delta-Client"
-                clients = listOf(ClientHeaderAuthProvider.Client("test-client", "test-secret"))
             }
         }
     }

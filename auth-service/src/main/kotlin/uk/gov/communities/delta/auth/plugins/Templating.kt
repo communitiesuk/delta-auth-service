@@ -5,9 +5,9 @@ import io.ktor.server.thymeleaf.*
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import org.thymeleaf.templateresolver.FileTemplateResolver
 
-fun Application.configureTemplating() {
+fun Application.configureTemplating(devMode: Boolean) {
     install(Thymeleaf) {
-        setTemplateResolver((if (developmentMode) {
+        setTemplateResolver((if (devMode) {
             log.info("Development mode, using templates from src/ folder")
             FileTemplateResolver().apply {
                 cacheManager = null

@@ -3,10 +3,9 @@ package uk.gov.communities.delta.auth
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
 import uk.gov.communities.delta.auth.plugins.configureSerialization
+import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.configureSecurity
 
@@ -22,18 +21,28 @@ fun main() {
             privateKeyPassword = { SelfSignedSSLCertKeystore.keyStorePassword.toCharArray() }) {
             port = 8443
         }
-        module(Application::module)
+        module {
+            Injection.startupInitFromEnvironment()
+            appModule()
+        }
     }
     embeddedServer(Netty, environment).start(wait = true)
 }
 
-fun Application.module() {
-    LDAPConfig.log(log.atInfo())
-    DeltaConfig.log(log.atInfo())
+fun Application.appModule() {
+    Injection.instance.logConfig(log)
 
-    configureSecurity()
+    if (developmentMode) {
+        // Skip database connection and migrations in development mode and in tests
+        log.info("Skipping database initialisation, will happen on first connection")
+    } else {
+        Injection.instance.dbPool.eagerInit()
+    }
+
+    configureSecurity(Injection.instance)
     configureMonitoring()
     configureSerialization()
-    configureTemplating()
-    configureRouting()
+    configureTemplating(developmentMode)
+    configureRouting(Injection.instance)
+    configureStatusPages(Injection.instance.deltaConfig.deltaWebsiteUrl)
 }

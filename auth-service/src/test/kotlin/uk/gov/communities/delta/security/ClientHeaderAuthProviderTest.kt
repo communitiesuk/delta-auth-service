@@ -1,7 +1,5 @@
 package uk.gov.communities.delta.security
 
-import io.ktor.client.*
-import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -14,8 +12,8 @@ import io.ktor.test.dispatcher.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.security.ClientHeaderAuthProvider
+import uk.gov.communities.delta.auth.config.Client
+import uk.gov.communities.delta.auth.security.ClientPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -65,14 +63,14 @@ class ClientHeaderAuthProviderTest {
                     authentication {
                         clientHeaderAuth("test-client-auth-provider") {
                             headerName = "Test-Client-Auth"
-                            clients = listOf(ClientHeaderAuthProvider.Client("test-client", "test-secret"))
+                            clients = listOf(Client("test-client", "test-secret"))
                         }
                     }
                     routing {
                         authenticate("test-client-auth-provider", strategy = AuthenticationStrategy.Required) {
                             get("/authenticated") {
                                 call.respondText(
-                                    call.principal<ClientHeaderAuthProvider.ClientPrincipal>(
+                                    call.principal<ClientPrincipal>(
                                         "test-client-auth-provider"
                                     )!!.clientId
                                 )

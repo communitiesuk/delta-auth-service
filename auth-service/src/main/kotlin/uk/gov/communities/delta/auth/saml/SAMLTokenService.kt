@@ -10,8 +10,9 @@ import org.opensaml.saml.saml2.core.*
 import org.opensaml.saml.saml2.core.impl.*
 import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
+import uk.gov.communities.delta.auth.services.LdapUser
 import java.io.StringWriter
+import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -30,13 +31,13 @@ class SAMLTokenService(basicCredentials: BasicX509Credential) {
         samlAssertionSigner = SAMLAssertionSigner(basicCredentials)
     }
 
-    fun generate(user: DeltaLdapPrincipal, validFrom: Instant, validTo: Instant): String {
+    fun generate(user: LdapUser, validFrom: Instant, validTo: Instant): String {
         if (!initialised.get()) {
             // Lazily initialise the OpenSAML library as it takes a second or so to start
             initialiseOpenSaml()
         }
         return try {
-            val roles = user.memberOfGroupCNs.filter { it.startsWith("datamart-delta-") }
+            val roles = user.memberOfCNs.filter { it.startsWith("datamart-delta-") }
             logger.debug("Generating SAML token for user {} with {} roles", user.cn, roles.size)
             val assertion = makeAssertionElement(user.cn, roles, validFrom, validTo)
 
@@ -58,10 +59,16 @@ class SAMLTokenService(basicCredentials: BasicX509Credential) {
             val signedAssertion = samlAssertionSigner.signAssertion(assertion)
             response.assertions.add(signedAssertion)
             // End build SAML response
-            marshalToString(response)
+            val token = marshalToString(response)
+            base64Encode(token)
         } catch (ex: Exception) {
             throw RuntimeException("Failed to generate SAML token", ex)
         }
+    }
+
+    private fun base64Encode(s: String): String {
+        val bytes = s.toByteArray(StandardCharsets.UTF_8)
+        return String(Base64.getEncoder().encode(bytes), StandardCharsets.UTF_8)
     }
 
     /*
