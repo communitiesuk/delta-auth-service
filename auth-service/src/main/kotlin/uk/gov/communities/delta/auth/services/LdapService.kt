@@ -53,7 +53,7 @@ class LdapService(private val config: Configuration) {
             val match = groupDnToCnRegex.matchEntire(it)
             match?.groups?.get(1)?.value
         }
-        return LdapUser(cn, memberOfGroupCNs, email, totpSecret, name)
+        return LdapUser(userDn, cn, memberOfGroupCNs, email, totpSecret, name)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -64,6 +64,7 @@ class LdapService(private val config: Configuration) {
 
 @Serializable
 data class LdapUser(
+    val dn: String,
     val cn: String,
     val memberOfCNs: List<String>,
     val email: String,

@@ -59,7 +59,7 @@ class SamlTokenTest {
                 realm = "Delta"
                 validate { credential ->
                     if (credential.password == "pass") {
-                        DeltaLdapPrincipal(LdapUser(credential.name, listOf("test-role"), "", "", ""))
+                        DeltaLdapPrincipal(LdapUser("dn", credential.name, listOf("test-role"), "", "", ""))
                     } else {
                         null
                     }

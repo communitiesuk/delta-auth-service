@@ -62,7 +62,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostNotInGroup() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf("some-other-group"), "", "", ""))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("dn", "username", listOf("some-other-group"), "", "", ""))
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
@@ -77,7 +77,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSuccess() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("username", listOf(deltaConfig.requiredGroupCn), "", "", ""))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("dn", "username", listOf(deltaConfig.requiredGroupCn), "", "", ""))
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {

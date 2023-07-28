@@ -63,7 +63,7 @@ class RefreshUserInfoControllerTest {
         private lateinit var controller: RefreshUserInfoController
 
         private val session = OAuthSession(1, "user", "accessToken", Instant.now(), "trace")
-        private val user = LdapUser("user", listOf("example-role"), "", "", "")
+        private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
 
         private val userLookupService = mock<UserLookupService>()
         private val samlTokenService = mock<SAMLTokenService>()
