@@ -69,3 +69,18 @@ task("migrate", JavaExec::class) {
     mainClass.set("uk.gov.communities.delta.auth.services.DbPoolKt")
     classpath = sourceSets["main"].runtimeClasspath
 }
+
+tasks {
+    "run"(JavaExec::class) {
+        val envFile = file(".env")
+        if (envFile.exists()) {
+            println("Reading from .env file")
+            envFile.readLines().forEach {
+                if (!it.isEmpty() && !it.startsWith("#")) {
+                    val (key, value) = it.split("=")
+                    environment(key, value)
+                }
+            }
+        }
+    }
+}

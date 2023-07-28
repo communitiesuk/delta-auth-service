@@ -11,13 +11,12 @@
 
 ## Run
 
-* Load environment variables `export $(grep -v '^#' .env | xargs)`
 * Start with `./gradlew run`
 
 Alternatively open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
 with `uk.gov.communities.delta.auth.ApplicationKt` as the main class and environment variables set from `.env`.
 
-Set `io.ktor.development` to `true` to enable development mode (faster restarts, reloading of templates).
+Set the `io.ktor.development` property to `true` (`-Dio.ktor.development=true` JVM arg) to enable development mode (faster restarts, reloading of templates).
 
 ## Tests
 
