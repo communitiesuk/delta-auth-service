@@ -24,13 +24,11 @@ resource "aws_iam_role_policy_attachment" "ecs_image_runner_role_execution_polic
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_image_runner_role_secrets_policy_attachment" {
-  count      = length(var.secrets) > 0 ? 1 : 0
   role       = aws_iam_role.ecs_image_runner_role.name
-  policy_arn = aws_iam_policy.ecs_delta_secret_reader[0].arn
+  policy_arn = aws_iam_policy.ecs_delta_secret_reader.arn
 }
 
 resource "aws_iam_policy" "ecs_delta_secret_reader" {
-  count = length(var.secrets) > 0 ? 1 : 0
   name  = "${var.app_name}-delta-secret-reader-${var.environment}"
   policy = jsonencode(
     {
