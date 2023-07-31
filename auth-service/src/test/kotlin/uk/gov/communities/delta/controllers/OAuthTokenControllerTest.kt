@@ -80,7 +80,7 @@ class OAuthTokenControllerTest {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
         private lateinit var controller: OAuthTokenController
-        private val client= testServiceClient()
+        private val client = testServiceClient()
 
         private val authCode = AuthCode("code", "user", client, Instant.now(), "trace")
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
@@ -97,7 +97,14 @@ class OAuthTokenControllerTest {
             whenever(authorizationCodeService.lookupAndInvalidate(authCode.code, client)).thenReturn(authCode)
             whenever(oAuthSessionService.create(authCode, client)).thenReturn(session)
             whenever(userLookupService.lookupUserByCn(authCode.userCn)).thenReturn(user)
-            whenever(samlTokenService.generate(eq(client.samlCredential), eq(user), eq(session.createdAt), any())).thenReturn("SAML Token")
+            whenever(
+                samlTokenService.generate(
+                    eq(client.samlCredential),
+                    eq(user),
+                    eq(session.createdAt),
+                    any()
+                )
+            ).thenReturn("SAML Token")
             controller = OAuthTokenController(
                 listOf(client), authorizationCodeService, userLookupService, samlTokenService, oAuthSessionService
             )

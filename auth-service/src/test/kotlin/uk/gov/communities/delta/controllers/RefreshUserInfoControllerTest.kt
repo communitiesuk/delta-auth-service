@@ -79,7 +79,14 @@ class RefreshUserInfoControllerTest {
         @JvmStatic
         fun setup() {
             whenever(userLookupService.lookupUserByCn(session.userCn)).thenReturn(user)
-            whenever(samlTokenService.generate(eq(client.samlCredential), eq(user), eq(session.createdAt), any())).thenReturn("SAML Token")
+            whenever(
+                samlTokenService.generate(
+                    eq(client.samlCredential),
+                    eq(user),
+                    eq(session.createdAt),
+                    any()
+                )
+            ).thenReturn("SAML Token")
             whenever(oAuthSessionService.retrieveFomAuthToken(session.authToken, client)).thenReturn(session)
             controller = RefreshUserInfoController(userLookupService, samlTokenService)
 

@@ -13,17 +13,22 @@ data class LDAPConfig(
 ) {
     companion object {
         fun fromEnv(): LDAPConfig = LDAPConfig(
-            deltaLdapUrl = System.getenv("DELTA_LDAP_URL") ?: "ldap://localhost:2389",
-            serviceUserDnFormat = System.getenv("LDAP_SERVICE_USER_DN_FORMAT")
-                ?: "CN=%s,OU=Users,OU=dluhctest,DC=dluhctest,DC=local",
-            deltaUserDnFormat = System.getenv("LDAP_DELTA_USER_DN_FORMAT")
-                ?: "CN=%s,CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local",
-            groupDnFormat = System.getenv("LDAP_GROUP_DN_FORMAT")
-                ?: "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local",
+            deltaLdapUrl = Env.getEnvOrDevFallback("DELTA_LDAP_URL", "ldap://localhost:2389"),
+            serviceUserDnFormat = Env.getEnvOrDevFallback(
+                "LDAP_SERVICE_USER_DN_FORMAT",
+                "CN=%s,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
+            ),
+            deltaUserDnFormat = Env.getEnvOrDevFallback(
+                "LDAP_DELTA_USER_DN_FORMAT",
+                "CN=%s,CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
+            ),
+            groupDnFormat = Env.getEnvOrDevFallback(
+                "LDAP_GROUP_DN_FORMAT",
+                "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
+            ),
             serviceUserRequiredGroupCn = "dluhc-service-users",
-            authServiceUserCn = System.getenv("LDAP_AUTH_SERVICE_USER") ?: "auth-service.app",
-            authServiceUserPassword = System.getenv("LDAP_AUTH_SERVICE_USER_PASSWORD")
-                ?: throw Exception("Environment variable LDAP_AUTH_SERVICE_USER_PASSWORD is required"),
+            authServiceUserCn = Env.getEnv("LDAP_AUTH_SERVICE_USER") ?: "auth-service.app",
+            authServiceUserPassword = Env.getEnvRequired("LDAP_AUTH_SERVICE_USER_PASSWORD")
         )
 
         val VALID_USERNAME_REGEX = Regex("^[\\w-.!]+$")

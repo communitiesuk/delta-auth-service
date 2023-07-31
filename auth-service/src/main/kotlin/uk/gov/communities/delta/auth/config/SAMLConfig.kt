@@ -28,10 +28,10 @@ class SAMLConfig private constructor() {
         private val logger = LoggerFactory.getLogger(SAMLConfig::class.java)
 
         fun credentialsFromEnvironment(): BasicX509Credential {
-            val cert = System.getenv("DELTA_SAML_CERTIFICATE")
-                ?: throw Exception("Missing environment variable DELTA_SAML_CERTIFICATE")
-            val key = System.getenv("DELTA_SAML_PRIVATE_KEY")
-                ?: throw Exception("Missing environment variable DELTA_SAML_PRIVATE_KEY")
+            val cert =
+                Env.getEnvOrDevFallback("DELTA_SAML_CERTIFICATE") { resourceToString("/auth/dev-saml-certificate.pem") }
+            val key =
+                Env.getEnvOrDevFallback("DELTA_SAML_PRIVATE_KEY") { resourceToString("/auth/dev-saml-private-key.pem") }
 
             return BasicX509Credential(certificate(cert), signingKey(key))
         }
@@ -43,10 +43,6 @@ class SAMLConfig private constructor() {
 
             return BasicX509Credential(certificate(cert), signingKey(key))
         }
-
-        fun credentialsFromEnvironmentOrInsecureFallback() =
-            if (System.getenv("DELTA_SAML_CERTIFICATE") != null) credentialsFromEnvironment()
-            else insecureHardcodedCredentials()
 
         private fun certificate(pem: String): X509Certificate {
             val o = parsePEM(pem)

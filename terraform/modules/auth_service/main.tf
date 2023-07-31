@@ -65,6 +65,10 @@ module "fargate" {
       name  = "DATABASE_USER"
       value = local.database_username
     },
+    {
+      name  = "DISABLE_DEVELOPMENT_FALLBACK"
+      value = "true"
+    }
   ]
   secrets = [for s in [
     {

@@ -8,7 +8,7 @@ class DeltaConfig(
 ) {
     companion object {
         fun fromEnv() = DeltaConfig(
-            deltaWebsiteUrl = System.getenv("DELTA_WEBSITE_URL") ?: "http://localhost:8080",
+            deltaWebsiteUrl = Env.getEnvOrDevFallback("DELTA_WEBSITE_URL", "http://localhost:8080"),
             requiredGroupCn = "datamart-delta-user",
         )
     }

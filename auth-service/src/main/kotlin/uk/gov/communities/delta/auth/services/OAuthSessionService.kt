@@ -80,8 +80,10 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
     private fun select(authToken: String, client: OAuthClient): OAuthSession? {
         return dbPool.useConnection {
             val stmt =
-                it.prepareStatement("SELECT id, username, client_id, created_at, trace_id " +
-                        "FROM delta_session WHERE auth_token_hash = ? AND client_id = ?")
+                it.prepareStatement(
+                    "SELECT id, username, client_id, created_at, trace_id " +
+                            "FROM delta_session WHERE auth_token_hash = ? AND client_id = ?"
+                )
             stmt.setBytes(1, hashBase64String(authToken))
             stmt.setString(2, client.clientId)
             val result = stmt.executeQuery()

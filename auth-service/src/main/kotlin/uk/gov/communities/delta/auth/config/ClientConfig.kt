@@ -12,50 +12,43 @@ class OAuthClient(
     val redirectUrl: String
 ) : Client(clientId, clientSecret, samlCredential)
 
-class ClientConfig(
-    private val clientSecretMarklogic: String,
-    private val clientSecretDeltaWebsite: String?,
-    private val deltaWebsiteRedirectUrl: String,
-    private val clientSecretDeltaWebsiteDev: String?,
-    private val deltaWebsiteDevRedirectUrl: String,
-) {
+class ClientConfig(val clients: List<Client>) {
     companion object {
         private val logger = LoggerFactory.getLogger(Companion::class.java)
 
         fun fromEnv(deltaConfig: DeltaConfig): ClientConfig {
-            val deltaWebsiteSecret = System.getenv("CLIENT_SECRET_DELTA_WEBSITE")
-            var deltaWebsiteLocalDevSecret = System.getenv("CLIENT_SECRET_DELTA_WEBSITE_DEV")
-            if (deltaWebsiteSecret == null && deltaWebsiteLocalDevSecret == null) {
-                logger.info("No Delta client secrets specified, creating local development client")
-                deltaWebsiteLocalDevSecret = "dev-delta-website-client-secret"
+            val deltaWebsiteSecret = Env.getEnv("CLIENT_SECRET_DELTA_WEBSITE")
+            val marklogicSecret = Env.getEnvOrDevFallback("CLIENT_SECRET_MARKLOGIC", "dev-marklogic-client-secret")
+            var devDeltaWebsiteSecret = Env.getEnv("CLIENT_SECRET_DELTA_WEBSITE_DEV")
+
+            if (deltaWebsiteSecret == null && devDeltaWebsiteSecret == null && Env.devFallbackEnabled) {
+                logger.info("No website clients enabled from environment, development fallback client will be created")
+                devDeltaWebsiteSecret = "dev-delta-website-client-secret"
             }
-            return ClientConfig(
-                clientSecretMarklogic = System.getenv("CLIENT_SECRET_MARKLOGIC") ?: "dev-marklogic-client-secret",
-                clientSecretDeltaWebsite = deltaWebsiteSecret,
-                deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect",
-                clientSecretDeltaWebsiteDev = deltaWebsiteLocalDevSecret,
-                "http://localhost:8080/login/oauth2/redirect"
-            )
+
+            val samlCredentials = SAMLConfig.credentialsFromEnvironment()
+
+            val marklogic =
+                Client("marklogic", marklogicSecret, samlCredentials)
+            val deltaWebsite = deltaWebsiteSecret?.let {
+                OAuthClient(
+                    "delta-website",
+                    deltaWebsiteSecret,
+                    samlCredentials,
+                    deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect",
+                )
+            }
+            val devDeltaWebsite = devDeltaWebsiteSecret?.let {
+                OAuthClient(
+                    "delta-website-dev",
+                    devDeltaWebsiteSecret,
+                    SAMLConfig.insecureHardcodedCredentials(),
+                    "http://localhost:8080/login/oauth2/redirect",
+                )
+            }
+            return ClientConfig(listOfNotNull(marklogic, deltaWebsite, devDeltaWebsite))
         }
     }
 
-    private val marklogic = Client("marklogic", clientSecretMarklogic, SAMLConfig.credentialsFromEnvironmentOrInsecureFallback())
-    private val deltaWebsite = clientSecretDeltaWebsite?.let {
-        OAuthClient(
-            "delta-website",
-            clientSecretDeltaWebsite,
-            SAMLConfig.credentialsFromEnvironment(),
-            deltaWebsiteRedirectUrl,
-        )
-    }
-    private val deltaWebsiteLocal = clientSecretDeltaWebsiteDev?.let {
-        OAuthClient(
-            "delta-website-dev",
-            clientSecretDeltaWebsiteDev,
-            SAMLConfig.insecureHardcodedCredentials(),
-            deltaWebsiteDevRedirectUrl,
-        )
-    }
-    val clients = listOfNotNull(deltaWebsite, marklogic, deltaWebsiteLocal)
     val oauthClients = clients.filterIsInstance<OAuthClient>()
 }
