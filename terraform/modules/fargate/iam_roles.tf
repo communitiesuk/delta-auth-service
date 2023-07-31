@@ -29,7 +29,7 @@ resource "aws_iam_role_policy_attachment" "ecs_image_runner_role_secrets_policy_
 }
 
 resource "aws_iam_policy" "ecs_delta_secret_reader" {
-  name  = "${var.app_name}-delta-secret-reader-${var.environment}"
+  name = "${var.app_name}-delta-secret-reader-${var.environment}"
   policy = jsonencode(
     {
       Version = "2012-10-17"

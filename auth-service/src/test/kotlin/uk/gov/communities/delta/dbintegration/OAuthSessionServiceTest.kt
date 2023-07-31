@@ -2,9 +2,9 @@ package uk.gov.communities.delta.dbintegration
 
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.OAuthSessionService
+import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -22,7 +22,7 @@ class OAuthSessionServiceTest {
         val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace")
         val createResult = service.create(authCode, client)
 
-        val result = service.retrieveFomAuthToken(createResult.authToken, OAuthClient("wrong-client", "", ""))
+        val result = service.retrieveFomAuthToken(createResult.authToken, testServiceClient("wrong-client"))
         assertNull(result)
     }
 
@@ -46,7 +46,7 @@ class OAuthSessionServiceTest {
 
     companion object {
         lateinit var service: OAuthSessionService
-        val client = OAuthClient("delta-website", "client-secret", "https://delta/redirect")
+        val client = testServiceClient()
 
         @BeforeClass
         @JvmStatic

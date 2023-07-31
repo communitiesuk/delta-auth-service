@@ -21,6 +21,7 @@ import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.serviceUserRoutes
 import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -30,7 +31,7 @@ class SamlTokenTest {
         application {
             configureSerialization()
             fakeSecurityConfig()
-            val controller = GenerateSAMLTokenController(SAMLTokenService(SAMLConfig.getSAMLSigningCredentials()))
+            val controller = GenerateSAMLTokenController(SAMLTokenService())
             routing {
                 serviceUserRoutes(controller)
             }
@@ -38,7 +39,7 @@ class SamlTokenTest {
         client.post("/service-user/generate-saml-token") {
             headers {
                 append(HttpHeaders.Accept, "application/json")
-                append("Delta-Client", "test-client:test-secret")
+                append("Delta-Client", "${serviceClient.clientId}:${serviceClient.clientSecret}")
                 basicAuth("test-user", "pass")
             }
         }.apply {
@@ -48,6 +49,7 @@ class SamlTokenTest {
         }
     }
 
+    private val serviceClient = Client("test-client", "test-secret", SAMLConfig.insecureHardcodedCredentials())
     private fun Application.fakeSecurityConfig() {
         authentication {
             basic(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME) {
@@ -62,7 +64,7 @@ class SamlTokenTest {
             }
             clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                 headerName = "Delta-Client"
-                clients = listOf(Client("test-client", "test-secret"))
+                clients = listOf(serviceClient)
             }
         }
     }

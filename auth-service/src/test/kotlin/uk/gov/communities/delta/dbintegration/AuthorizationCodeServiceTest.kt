@@ -2,8 +2,8 @@ package uk.gov.communities.delta.dbintegration
 
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
+import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -19,7 +19,7 @@ class AuthorizationCodeServiceTest {
     @Test
     fun testLookupCodeWrongClientFails() {
         val code = service.generateAndStore("some.user", client, "traceId")
-        val result = service.lookupAndInvalidate(code.code, OAuthClient("wrong-client", "", ""))
+        val result = service.lookupAndInvalidate(code.code, testServiceClient("wrong-client"))
         assertNull(result)
     }
 
@@ -35,7 +35,7 @@ class AuthorizationCodeServiceTest {
 
     companion object {
         lateinit var service: AuthorizationCodeService
-        val client = OAuthClient("delta-website", "client-secret", "https://delta/redirect")
+        val client = testServiceClient()
 
         @BeforeClass
         @JvmStatic

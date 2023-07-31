@@ -22,10 +22,17 @@ variable "external_alb" {
 
 variable "internal_alb" {
   type = object({
+    arn               = string
     arn_suffix        = string
     listener_arn      = string
     security_group_id = string
   })
+}
+
+variable "enable_http_internal_alb_listener" {
+  type        = bool
+  default     = false
+  description = "Create a HTTP listener for the auth service. Used in the test environment to make local development against it easier."
 }
 
 variable "alarms_sns_topic_arn" {

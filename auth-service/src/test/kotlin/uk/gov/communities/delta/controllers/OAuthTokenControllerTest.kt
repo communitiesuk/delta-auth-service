@@ -16,11 +16,11 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
-import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -80,7 +80,7 @@ class OAuthTokenControllerTest {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
         private lateinit var controller: OAuthTokenController
-        private val client= OAuthClient("delta-website", "secret", "https://delta/redirect")
+        private val client= testServiceClient()
 
         private val authCode = AuthCode("code", "user", client, Instant.now(), "trace")
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
@@ -97,7 +97,7 @@ class OAuthTokenControllerTest {
             whenever(authorizationCodeService.lookupAndInvalidate(authCode.code, client)).thenReturn(authCode)
             whenever(oAuthSessionService.create(authCode, client)).thenReturn(session)
             whenever(userLookupService.lookupUserByCn(authCode.userCn)).thenReturn(user)
-            whenever(samlTokenService.generate(eq(user), eq(session.createdAt), any())).thenReturn("SAML Token")
+            whenever(samlTokenService.generate(eq(client.samlCredential), eq(user), eq(session.createdAt), any())).thenReturn("SAML Token")
             controller = OAuthTokenController(
                 listOf(client), authorizationCodeService, userLookupService, samlTokenService, oAuthSessionService
             )

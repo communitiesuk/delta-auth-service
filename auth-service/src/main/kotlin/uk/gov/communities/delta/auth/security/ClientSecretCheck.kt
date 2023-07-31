@@ -10,7 +10,7 @@ class ClientSecretCheck {
     companion object {
         val logger: Logger = LoggerFactory.getLogger(ClientSecretCheck::class.java)
 
-        fun getClient(clients: List<Client>, clientId: String, clientSecret: String): Client? {
+        fun <T : Client>getClient(clients: List<T>, clientId: String, clientSecret: String): T? {
             val client = clients.singleOrNull { it.clientId == clientId }
             if (client == null) {
                 logger.warn("No client with id {}", clientId)

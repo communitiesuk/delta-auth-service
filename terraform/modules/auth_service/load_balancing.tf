@@ -32,6 +32,31 @@ resource "aws_lb_target_group" "internal" {
   }
 }
 
+resource "aws_lb_listener" "internal_http" {
+  count = var.enable_http_internal_alb_listener ? 1 : 0
+
+  load_balancer_arn = var.internal_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.internal.arn
+  }
+}
+
+resource "aws_security_group_rule" "allow_http_ingress" {
+  count = var.enable_http_internal_alb_listener ? 1 : 0
+
+  security_group_id = var.internal_alb.security_group_id
+  type              = "ingress"
+  description       = "HTTP ingress from VPC"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = [data.aws_vpc.main.cidr_block]
+}
+
 resource "aws_lb_listener_rule" "block_internal_routes" {
   listener_arn = var.external_alb.listener_arn
   priority     = 1000

@@ -12,9 +12,9 @@ import io.ktor.test.dispatcher.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.security.ClientPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
+import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
@@ -32,7 +32,7 @@ class ClientHeaderAuthProviderTest {
     fun testUnauthorisedWithIncorrectSecret() = testSuspend {
         testApp.client.get("/authenticated") {
             headers {
-                append("Test-Client-Auth", "test-client:bad-secret")
+                append("Test-Client-Auth", "${serviceClient.clientId}:bad-secret")
             }
         }.apply {
             assertEquals(HttpStatusCode.Unauthorized, status)
@@ -44,16 +44,17 @@ class ClientHeaderAuthProviderTest {
     fun testAuthenticates() = testSuspend {
         testApp.client.get("/authenticated") {
             headers {
-                append("Test-Client-Auth", "test-client:test-secret")
+                append("Test-Client-Auth", "${serviceClient.clientId}:${serviceClient.clientSecret}")
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertEquals(bodyAsText(), "test-client")
+            assertEquals(bodyAsText(), serviceClient.clientId)
         }
     }
 
     companion object {
         private lateinit var testApp: TestApplication
+        private val serviceClient = testServiceClient()
 
         @BeforeClass
         @JvmStatic
@@ -63,7 +64,7 @@ class ClientHeaderAuthProviderTest {
                     authentication {
                         clientHeaderAuth("test-client-auth-provider") {
                             headerName = "Test-Client-Auth"
-                            clients = listOf(Client("test-client", "test-secret"))
+                            clients = listOf(serviceClient)
                         }
                     }
                     routing {

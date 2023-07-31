@@ -3,7 +3,7 @@ package uk.gov.communities.delta.auth.services
 import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
-import uk.gov.communities.delta.auth.config.Client
+import uk.gov.communities.delta.auth.config.OAuthClient
 import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
@@ -11,7 +11,7 @@ import kotlin.time.Duration.Companion.hours
 data class OAuthSession(
     val id: Int, // Our internal database id, no relation to the value of the SESSIONID cookie in Delta, or sessionId from Delta's logs
     val userCn: String,
-    val client: Client,
+    val client: OAuthClient,
     val authToken: String,
     val createdAt: Instant,
     val traceId: String,
@@ -20,8 +20,8 @@ data class OAuthSession(
 }
 
 interface IOAuthSessionService {
-    fun create(authCode: AuthCode, client: Client): OAuthSession
-    fun retrieveFomAuthToken(authToken: String, client: Client): OAuthSession?
+    fun create(authCode: AuthCode, client: OAuthClient): OAuthSession
+    fun retrieveFomAuthToken(authToken: String, client: OAuthClient): OAuthSession?
 }
 
 class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
@@ -32,7 +32,7 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
         const val TOKEN_LENGTH_BYTES = 24
     }
 
-    override fun create(authCode: AuthCode, client: Client): OAuthSession {
+    override fun create(authCode: AuthCode, client: OAuthClient): OAuthSession {
         val token = randomBase64(TOKEN_LENGTH_BYTES)
         val now = Instant.now()
         val deltaSession = insert(authCode, client, token, now)
@@ -41,7 +41,7 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
         return deltaSession
     }
 
-    override fun retrieveFomAuthToken(authToken: String, client: Client): OAuthSession? {
+    override fun retrieveFomAuthToken(authToken: String, client: OAuthClient): OAuthSession? {
         val session = select(authToken, client) ?: return null
         if (session.expired()) {
             logger.atInfo().withSession(session).log("Session expired. Crated at {}", session.createdAt)
@@ -51,7 +51,7 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
         return session
     }
 
-    private fun insert(authCode: AuthCode, client: Client, token: String, now: Instant): OAuthSession {
+    private fun insert(authCode: AuthCode, client: OAuthClient, token: String, now: Instant): OAuthSession {
         return dbPool.useConnection {
             val stmt = it.prepareStatement(
                 "INSERT INTO delta_session (username, client_id, auth_token_hash, created_at, trace_id) " +
@@ -77,7 +77,7 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
         }
     }
 
-    private fun select(authToken: String, client: Client): OAuthSession? {
+    private fun select(authToken: String, client: OAuthClient): OAuthSession? {
         return dbPool.useConnection {
             val stmt =
                 it.prepareStatement("SELECT id, username, client_id, created_at, trace_id " +

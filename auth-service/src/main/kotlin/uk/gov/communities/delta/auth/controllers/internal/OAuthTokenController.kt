@@ -82,5 +82,5 @@ data class SamlTokenWithExpiry(val token: String, val expiry: Instant)
 
 fun SAMLTokenService.samlTokenForSession(session: OAuthSession, user: LdapUser): SamlTokenWithExpiry {
     val expiry = session.createdAt.plusSeconds(OAuthTokenController.TOKEN_EXPIRY_SECONDS)
-    return SamlTokenWithExpiry(generate(user, session.createdAt, expiry), expiry)
+    return SamlTokenWithExpiry(generate(session.client.samlCredential, user, session.createdAt, expiry), expiry)
 }

@@ -77,5 +77,8 @@ module "auth_service" {
     LDAP_DELTA_USER_DN_FORMAT   = "CN=%s,CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
   }
+
+  # Test environment only settings
   delta_website_local_dev_client_secret_arn = aws_secretsmanager_secret.delta_website_local_dev_client_secret.arn
+  enable_http_internal_alb_listener         = true
 }

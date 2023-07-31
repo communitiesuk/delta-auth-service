@@ -4,12 +4,13 @@ import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openssl.PEMParser
-import org.bouncycastle.util.encoders.DecoderException
 import org.bouncycastle.util.io.pem.PemObject
 import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.ClassPathResource
-import java.io.*
+import java.io.ByteArrayInputStream
+import java.io.Reader
+import java.io.StringReader
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.KeyPair
@@ -21,22 +22,33 @@ import java.security.spec.RSAPublicKeySpec
 import java.util.*
 
 
-class SAMLConfig {
+class SAMLConfig private constructor() {
+
     companion object {
         private val logger = LoggerFactory.getLogger(SAMLConfig::class.java)
 
-        fun getSAMLSigningCredentials(): BasicX509Credential {
-            return BasicX509Credential(certificate(), signingKey())
+        fun credentialsFromEnvironment(): BasicX509Credential {
+            val cert = System.getenv("DELTA_SAML_CERTIFICATE")
+                ?: throw Exception("Missing environment variable DELTA_SAML_CERTIFICATE")
+            val key = System.getenv("DELTA_SAML_PRIVATE_KEY")
+                ?: throw Exception("Missing environment variable DELTA_SAML_PRIVATE_KEY")
+
+            return BasicX509Credential(certificate(cert), signingKey(key))
         }
 
-        private fun certificate(): X509Certificate {
-            var pem = System.getenv("DELTA_SAML_CERTIFICATE")
-            if (pem == null) {
-                logger.warn("Using hardcoded certificate for SAML tokens as DELTA_SAML_CERTIFICATE environment variable is not set")
-                pem = resourceToString("/auth/dev-saml-certificate.pem")
-            } else {
-                logger.info("Using DELTA_SAML_CERTIFICATE for token generation")
-            }
+        fun insecureHardcodedCredentials(): BasicX509Credential {
+            logger.info("Reading insecure SAML signing credentials from hardcoded pem files")
+            val cert = resourceToString("/auth/dev-saml-certificate.pem")
+            val key = resourceToString("/auth/dev-saml-private-key.pem")
+
+            return BasicX509Credential(certificate(cert), signingKey(key))
+        }
+
+        fun credentialsFromEnvironmentOrInsecureFallback() =
+            if (System.getenv("DELTA_SAML_CERTIFICATE") != null) credentialsFromEnvironment()
+            else insecureHardcodedCredentials()
+
+        private fun certificate(pem: String): X509Certificate {
             val o = parsePEM(pem)
             if (o.type.equals("CERTIFICATE", ignoreCase = true)) {
                 val cf = CertificateFactory.getInstance("X.509")
@@ -46,14 +58,7 @@ class SAMLConfig {
             }
         }
 
-        private fun keyPair(): KeyPair? {
-            var pem = System.getenv("DELTA_SAML_PRIVATE_KEY")
-            if (pem == null) {
-                logger.warn("Using hardcoded key for SAML tokens as DELTA_SAML_PRIVATE_KEY environment variable is not set")
-                pem = resourceToString("/auth/dev-saml-private-key.pem")
-            } else {
-                logger.info("Using DELTA_SAML_PRIVATE_KEY for token generation")
-            }
+        private fun signingKey(pem: String): PrivateKey {
             val o = parsePEM(pem)
             if (!o.type.equals("RSA PRIVATE KEY", ignoreCase = true)) {
                 throw Exception("Unexpected PemObject type " + o.type + " when parsing SAML certificate, expected RSA PRIVATE KEY")
@@ -78,20 +83,14 @@ class SAMLConfig {
                 crtCoef.value
             )
             val fact = KeyFactory.getInstance("RSA", BouncyCastleProvider())
-            return KeyPair(fact.generatePublic(pubSpec), fact.generatePrivate(privSpec))
+            return KeyPair(fact.generatePublic(pubSpec), fact.generatePrivate(privSpec)).private
         }
 
-        private fun signingKey(): PrivateKey {
-            return keyPair()!!.private
-        }
-
-        @Throws(IOException::class)
         private fun resourceToString(path: String): String {
             val inputStream = Objects.requireNonNull(ClassPathResource(path).inputStream)
             return inputStream.readAllBytes().toString(StandardCharsets.UTF_8)
         }
 
-        @Throws(IOException::class, DecoderException::class)
         private fun parsePEM(pem: String): PemObject {
             val r: Reader = StringReader(pem)
             val pp = PEMParser(r)

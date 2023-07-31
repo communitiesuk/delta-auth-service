@@ -1,7 +1,10 @@
 package uk.gov.communities.delta.auth
 
 import org.slf4j.Logger
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.ClientConfig
+import uk.gov.communities.delta.auth.config.DatabaseConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
@@ -39,7 +42,7 @@ class Injection (
         deltaConfig.log(logger.atInfo())
     }
 
-    private val samlTokenService = SAMLTokenService(SAMLConfig.getSAMLSigningCredentials())
+    private val samlTokenService = SAMLTokenService()
     private val ldapService = LdapService(
         LdapService.Configuration(
             ldapUrl = ldapConfig.deltaLdapUrl,

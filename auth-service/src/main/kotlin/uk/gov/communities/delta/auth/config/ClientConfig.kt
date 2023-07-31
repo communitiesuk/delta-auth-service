@@ -1,10 +1,16 @@
 package uk.gov.communities.delta.auth.config
 
+import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.LoggerFactory
 
-open class Client(val clientId: String, val clientSecret: String)
+open class Client(val clientId: String, val clientSecret: String, val samlCredential: BasicX509Credential)
 
-class OAuthClient(clientId: String, clientSecret: String, val redirectUrl: String) : Client(clientId, clientSecret)
+class OAuthClient(
+    clientId: String,
+    clientSecret: String,
+    samlCredential: BasicX509Credential,
+    val redirectUrl: String
+) : Client(clientId, clientSecret, samlCredential)
 
 class ClientConfig(
     private val clientSecretMarklogic: String,
@@ -33,12 +39,22 @@ class ClientConfig(
         }
     }
 
-    private val marklogic = Client("marklogic", clientSecretMarklogic)
+    private val marklogic = Client("marklogic", clientSecretMarklogic, SAMLConfig.credentialsFromEnvironmentOrInsecureFallback())
     private val deltaWebsite = clientSecretDeltaWebsite?.let {
-        OAuthClient("delta-website", clientSecretDeltaWebsite, deltaWebsiteRedirectUrl)
+        OAuthClient(
+            "delta-website",
+            clientSecretDeltaWebsite,
+            SAMLConfig.credentialsFromEnvironment(),
+            deltaWebsiteRedirectUrl,
+        )
     }
     private val deltaWebsiteLocal = clientSecretDeltaWebsiteDev?.let {
-        OAuthClient("delta-website-dev", clientSecretDeltaWebsiteDev, deltaWebsiteDevRedirectUrl)
+        OAuthClient(
+            "delta-website-dev",
+            clientSecretDeltaWebsiteDev,
+            SAMLConfig.insecureHardcodedCredentials(),
+            deltaWebsiteDevRedirectUrl,
+        )
     }
     val clients = listOfNotNull(deltaWebsite, marklogic, deltaWebsiteLocal)
     val oauthClients = clients.filterIsInstance<OAuthClient>()

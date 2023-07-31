@@ -14,13 +14,13 @@ import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -97,7 +97,7 @@ class DeltaLoginControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
         private val deltaConfig = DeltaConfig.fromEnv()
-        val client = OAuthClient("delta-website", "client-secret", "https://delta/redirect")
+        val client = testServiceClient()
 
         @BeforeClass
         @JvmStatic
