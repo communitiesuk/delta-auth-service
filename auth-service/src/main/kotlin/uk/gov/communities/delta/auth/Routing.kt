@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.plugins.addBearerSessionInfoToMDC
 import uk.gov.communities.delta.auth.plugins.addClientIdToMDC
 import uk.gov.communities.delta.auth.plugins.addServiceUserUsernameToMDC
 import uk.gov.communities.delta.auth.security.*
+import java.io.File
 
 fun Application.configureRouting(injection: Injection) {
     routing {
@@ -32,6 +33,11 @@ fun Route.healthcheckRoute() {
 fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
 
     staticResources("/static", "static")
+    // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
+    get("/favicon.ico") {
+        call.respondFile(File(javaClass.classLoader.getResource("static/assets/images/favicon.ico")!!.toURI()))
+    }
+
     rateLimit(RateLimitName(loginRateLimitName)) {
         route("/delta/login") {
             deltaLoginController.loginRoutes(this)
