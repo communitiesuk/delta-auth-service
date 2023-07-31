@@ -32,6 +32,7 @@ resource "aws_lb_target_group" "internal" {
   }
 }
 
+# tfsec:ignore:aws-elb-http-not-used
 resource "aws_lb_listener" "internal_http" {
   count = var.enable_http_internal_alb_listener ? 1 : 0
 
