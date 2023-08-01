@@ -13,6 +13,9 @@ application {
     mainClass.set("uk.gov.communities.delta.auth.ApplicationKt")
 
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=true")
+    // Run in the repository's root folder to match IntelliJ's behaviour
+    // so that template reloading works for both (see Templating.kt)
+    tasks.run.get().workingDir = rootProject.projectDir.parentFile
 }
 
 tasks {
