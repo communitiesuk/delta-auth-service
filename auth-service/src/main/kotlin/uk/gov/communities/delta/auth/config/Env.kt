@@ -10,7 +10,7 @@ class Env {
 
         fun getEnvOrDevFallback(name: String, fallback: () -> String): String {
             val env = getEnv(name)
-            if (env != null) return env
+            if (!env.isNullOrEmpty()) return env
             return if (devFallbackEnabled) fallback() else throw MissingRequiredEnvironmentException(name)
         }
 
