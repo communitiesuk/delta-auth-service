@@ -10,6 +10,7 @@ jobs:
   docker_push:
     name: Push auth service image to ECR
     runs-on: ubuntu-latest
+    environment: publish
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_ci }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key_ci }}
