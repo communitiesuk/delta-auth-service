@@ -40,6 +40,7 @@ class Injection (
         ldapConfig.log(logger.atInfo())
         databaseConfig.log(logger.atInfo())
         deltaConfig.log(logger.atInfo())
+        clientConfig.log(logger.atInfo())
     }
 
     private val samlTokenService = SAMLTokenService()

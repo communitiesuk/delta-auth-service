@@ -9,9 +9,9 @@ data class DatabaseConfig(
 ) {
     companion object {
         fun fromEnv() =  DatabaseConfig(
-            url = Env.getEnvOrDevFallback("DATABASE_URL", "jdbc:postgresql://localhost:5438/postgres"),
-            user = Env.getEnvOrDevFallback("DATABASE_USER", "postgres"),
-            password = Env.getEnvOrDevFallback("DATABASE_PASSWORD", "postgres"),
+            url = Env.getRequiredOrDevFallback("DATABASE_URL", "jdbc:postgresql://localhost:5438/postgres"),
+            user = Env.getRequiredOrDevFallback("DATABASE_USER", "postgres"),
+            password = Env.getRequiredOrDevFallback("DATABASE_PASSWORD", "postgres"),
         )
     }
 

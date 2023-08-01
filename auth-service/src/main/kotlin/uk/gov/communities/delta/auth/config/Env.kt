@@ -6,15 +6,23 @@ class Env {
 
         fun getEnv(name: String): String? = System.getenv(name)
 
-        fun getEnvOrDevFallback(name: String, devFallback: String) = getEnvOrDevFallback(name) { devFallback }
+        fun getRequiredOrDevFallback(name: String, fallback: String) = getRequiredOrDevFallback(name) { fallback }
 
-        fun getEnvOrDevFallback(name: String, fallback: () -> String): String {
+        fun getRequiredOrDevFallback(name: String, fallback: () -> String): String {
             val env = getEnv(name)
             if (!env.isNullOrEmpty()) return env
             return if (devFallbackEnabled) fallback() else throw MissingRequiredEnvironmentException(name)
         }
 
-        fun getEnvRequired(name: String) = System.getenv(name) ?: throw MissingRequiredEnvironmentException(name)
+        fun getOptionalOrDevFallback(name: String, fallback: String) = getOptionalOrDevFallback(name) { fallback }
+
+        fun getOptionalOrDevFallback(name: String, fallback: () -> String): String? {
+            val env = getEnv(name)
+            if (!env.isNullOrEmpty()) return env
+            return if (devFallbackEnabled) fallback() else env
+        }
+
+        fun getRequired(name: String) = System.getenv(name) ?: throw MissingRequiredEnvironmentException(name)
     }
 }
 

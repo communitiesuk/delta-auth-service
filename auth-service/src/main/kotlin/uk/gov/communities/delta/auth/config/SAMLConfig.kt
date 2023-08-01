@@ -29,9 +29,9 @@ class SAMLConfig private constructor() {
 
         fun credentialsFromEnvironment(): BasicX509Credential {
             val cert =
-                Env.getEnvOrDevFallback("DELTA_SAML_CERTIFICATE") { resourceToString("/auth/dev-saml-certificate.pem") }
+                Env.getRequiredOrDevFallback("DELTA_SAML_CERTIFICATE") { resourceToString("/auth/dev-saml-certificate.pem") }
             val key =
-                Env.getEnvOrDevFallback("DELTA_SAML_PRIVATE_KEY") { resourceToString("/auth/dev-saml-private-key.pem") }
+                Env.getRequiredOrDevFallback("DELTA_SAML_PRIVATE_KEY") { resourceToString("/auth/dev-saml-private-key.pem") }
 
             return BasicX509Credential(certificate(cert), signingKey(key))
         }
