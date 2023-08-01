@@ -33,6 +33,28 @@ locals {
   cloudwatch_log_expiration_days = 30
 }
 
+resource "random_password" "delta_website_local_dev_client_secret" {
+  length  = 32
+  special = false
+}
+
+# Test only
+# tfsec:ignore:aws-ssm-secret-use-customer-key
+resource "aws_secretsmanager_secret" "delta_website_local_dev_client_secret" {
+  name                    = "tf-${local.environment}-auth-service-website-local-dev-client-secret"
+  description             = "Client secret for developing Delta locally against the auth service test environment"
+  recovery_window_in_days = 0
+
+  tags = {
+    "delta-marklogic-deploy-read" : local.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "delta_website_local_dev_client_secret" {
+  secret_id     = aws_secretsmanager_secret.delta_website_local_dev_client_secret.id
+  secret_string = random_password.delta_website_local_dev_client_secret.result
+}
+
 module "auth_service" {
   source                         = "../modules/auth_service"
   subnet_ids                     = data.terraform_remote_state.common_infra.outputs.auth_service_private_subnet_ids
@@ -55,4 +77,8 @@ module "auth_service" {
     LDAP_DELTA_USER_DN_FORMAT   = "CN=%s,CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
   }
+
+  # Test environment only settings
+  delta_website_local_dev_client_secret_arn = aws_secretsmanager_secret.delta_website_local_dev_client_secret.arn
+  enable_http_internal_alb_listener         = true
 }

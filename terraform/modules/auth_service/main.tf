@@ -65,8 +65,12 @@ module "fargate" {
       name  = "DATABASE_USER"
       value = local.database_username
     },
+    {
+      name  = "DISABLE_DEVELOPMENT_FALLBACK"
+      value = "true"
+    }
   ]
-  secrets = [
+  secrets = [for s in [
     {
       name      = "DELTA_SAML_PRIVATE_KEY"
       valueFrom = data.aws_secretsmanager_secret.saml_private_key.arn
@@ -91,6 +95,10 @@ module "fargate" {
       name      = "DATABASE_PASSWORD"
       valueFrom = aws_secretsmanager_secret.database_password.arn
     },
-  ]
+    var.delta_website_local_dev_client_secret_arn == null ? null : {
+      name      = "CLIENT_SECRET_DELTA_WEBSITE_DEV"
+      valueFrom = var.delta_website_local_dev_client_secret_arn
+    }
+  ] : s if s != null]
   secret_kms_key_arns = compact([aws_kms_key.auth_service.arn, var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])
 }

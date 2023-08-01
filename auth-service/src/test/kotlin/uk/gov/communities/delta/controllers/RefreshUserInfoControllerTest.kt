@@ -18,7 +18,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import uk.gov.communities.delta.auth.bearerTokenRoutes
-import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
@@ -29,6 +28,7 @@ import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.OAuthSessionService
 import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
 
@@ -40,7 +40,7 @@ class RefreshUserInfoControllerTest {
         testClient.get("/bearer/user-info") {
             headers {
                 append("Authorization", "Bearer ${session.authToken}")
-                append("Delta-Client", "test-client:test-secret")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -55,7 +55,7 @@ class RefreshUserInfoControllerTest {
         testClient.get("/bearer/user-info") {
             headers {
                 append("Authorization", "Bearer invalid_token")
-                append("Delta-Client", "test-client:test-secret")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
         }.apply {
             assertEquals(HttpStatusCode.Unauthorized, status)
@@ -67,7 +67,8 @@ class RefreshUserInfoControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var controller: RefreshUserInfoController
 
-        private val session = OAuthSession(1, "user", "accessToken", Instant.now(), "trace")
+        private val client = testServiceClient()
+        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
         private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
 
         private val userLookupService = mock<UserLookupService>()
@@ -78,8 +79,15 @@ class RefreshUserInfoControllerTest {
         @JvmStatic
         fun setup() {
             whenever(userLookupService.lookupUserByCn(session.userCn)).thenReturn(user)
-            whenever(samlTokenService.generate(eq(user), eq(session.createdAt), any())).thenReturn("SAML Token")
-            whenever(oAuthSessionService.retrieveFomAuthToken(session.authToken)).thenReturn(session)
+            whenever(
+                samlTokenService.generate(
+                    eq(client.samlCredential),
+                    eq(user),
+                    eq(session.createdAt),
+                    any()
+                )
+            ).thenReturn("SAML Token")
+            whenever(oAuthSessionService.retrieveFomAuthToken(session.authToken, client)).thenReturn(session)
             controller = RefreshUserInfoController(userLookupService, samlTokenService)
 
             testApp = TestApplication {
@@ -89,12 +97,12 @@ class RefreshUserInfoControllerTest {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
                             authenticate {
-                                oAuthSessionService.retrieveFomAuthToken(it.token)
+                                oAuthSessionService.retrieveFomAuthToken(it.token, client)
                             }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"
-                            clients = listOf(Client("test-client", "test-secret"))
+                            clients = listOf(testServiceClient())
                         }
                     }
                     routing {

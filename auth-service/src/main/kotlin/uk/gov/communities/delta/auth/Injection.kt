@@ -1,7 +1,10 @@
 package uk.gov.communities.delta.auth
 
 import org.slf4j.Logger
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.ClientConfig
+import uk.gov.communities.delta.auth.config.DatabaseConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
@@ -23,11 +26,12 @@ class Injection (
             if (::instance.isInitialized) {
                 throw Exception("Already initialised")
             }
+            val deltaConfig = DeltaConfig.fromEnv()
             instance = Injection(
                 LDAPConfig.fromEnv(),
                 DatabaseConfig.fromEnv(),
-                ClientConfig.fromEnv(),
-                DeltaConfig.fromEnv(),
+                ClientConfig.fromEnv(deltaConfig),
+                deltaConfig,
             )
         }
     }
@@ -36,9 +40,10 @@ class Injection (
         ldapConfig.log(logger.atInfo())
         databaseConfig.log(logger.atInfo())
         deltaConfig.log(logger.atInfo())
+        clientConfig.log(logger.atInfo())
     }
 
-    private val samlTokenService = SAMLTokenService(SAMLConfig.getSAMLSigningCredentials())
+    private val samlTokenService = SAMLTokenService()
     private val ldapService = LdapService(
         LdapService.Configuration(
             ldapUrl = ldapConfig.deltaLdapUrl,
@@ -73,11 +78,11 @@ class Injection (
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
             ldapService
         )
-        return DeltaLoginController(clientConfig.deltaWebsite, deltaConfig, adLoginService, authorizationCodeService)
+        return DeltaLoginController(clientConfig.oauthClients, deltaConfig, adLoginService, authorizationCodeService)
     }
 
     fun internalOAuthTokenController() = OAuthTokenController(
-        clientConfig,
+        clientConfig.oauthClients,
         authorizationCodeService,
         userLookupService,
         samlTokenService,

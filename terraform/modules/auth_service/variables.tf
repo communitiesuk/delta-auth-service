@@ -22,10 +22,17 @@ variable "external_alb" {
 
 variable "internal_alb" {
   type = object({
+    arn               = string
     arn_suffix        = string
     listener_arn      = string
     security_group_id = string
   })
+}
+
+variable "enable_http_internal_alb_listener" {
+  type        = bool
+  default     = false
+  description = "Create a HTTP listener for the auth service. Used in the test environment to make local development against it easier."
 }
 
 variable "alarms_sns_topic_arn" {
@@ -90,4 +97,10 @@ variable "private_dns" {
     zone_id     = string
     base_domain = string
   })
+}
+
+variable "delta_website_local_dev_client_secret_arn" {
+  type        = string
+  default     = null
+  description = "Client secret for a client that redirects to localhost, for use only on the test environment"
 }

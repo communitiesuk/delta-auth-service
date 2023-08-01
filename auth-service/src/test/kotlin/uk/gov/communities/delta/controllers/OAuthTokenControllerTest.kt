@@ -16,11 +16,11 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
-import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -34,8 +34,8 @@ class OAuthTokenControllerTest {
             url = "/token",
             formParameters = parameters {
                 append("code", "code")
-                append("client_id", clientConfig.deltaWebsite.clientId)
-                append("client_secret", clientConfig.deltaWebsite.clientSecret)
+                append("client_id", client.clientId)
+                append("client_secret", client.clientSecret)
             }
         ).apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -52,7 +52,7 @@ class OAuthTokenControllerTest {
             url = "/token",
             formParameters = parameters {
                 append("code", "code")
-                append("client_id", clientConfig.deltaWebsite.clientId)
+                append("client_id", client.clientId)
                 append("client_secret", "invalid")
             }
         ).apply {
@@ -67,8 +67,8 @@ class OAuthTokenControllerTest {
             url = "/token",
             formParameters = parameters {
                 append("code", "invalid")
-                append("client_id", clientConfig.deltaWebsite.clientId)
-                append("client_secret", clientConfig.deltaWebsite.clientSecret)
+                append("client_id", client.clientId)
+                append("client_secret", client.clientSecret)
             }
         ).apply {
             assertEquals(HttpStatusCode.BadRequest, status)
@@ -80,10 +80,10 @@ class OAuthTokenControllerTest {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
         private lateinit var controller: OAuthTokenController
-        private val clientConfig = ClientConfig.fromEnv()
+        private val client = testServiceClient()
 
-        private val authCode = AuthCode("code", "user", Instant.now(), "trace")
-        private val session = OAuthSession(1, "user", "accessToken", Instant.now(), "trace")
+        private val authCode = AuthCode("code", "user", client, Instant.now(), "trace")
+        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
         private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
 
         private val authorizationCodeService = mock<AuthorizationCodeService>()
@@ -94,12 +94,19 @@ class OAuthTokenControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            whenever(authorizationCodeService.lookupAndInvalidate(authCode.code)).thenReturn(authCode)
-            whenever(oAuthSessionService.create(authCode)).thenReturn(session)
+            whenever(authorizationCodeService.lookupAndInvalidate(authCode.code, client)).thenReturn(authCode)
+            whenever(oAuthSessionService.create(authCode, client)).thenReturn(session)
             whenever(userLookupService.lookupUserByCn(authCode.userCn)).thenReturn(user)
-            whenever(samlTokenService.generate(eq(user), eq(session.createdAt), any())).thenReturn("SAML Token")
+            whenever(
+                samlTokenService.generate(
+                    eq(client.samlCredential),
+                    eq(user),
+                    eq(session.createdAt),
+                    any()
+                )
+            ).thenReturn("SAML Token")
             controller = OAuthTokenController(
-                clientConfig, authorizationCodeService, userLookupService, samlTokenService, oAuthSessionService
+                listOf(client), authorizationCodeService, userLookupService, samlTokenService, oAuthSessionService
             )
 
             testApp = TestApplication {

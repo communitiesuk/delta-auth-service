@@ -20,6 +20,7 @@ import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -86,7 +87,7 @@ class DeltaLoginControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
             assertTrue("Should redirect to Delta website") {
-                headers["Location"]!!.startsWith(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect")
+                headers["Location"]!!.startsWith(client.redirectUrl)
             }
         }
     }
@@ -96,12 +97,13 @@ class DeltaLoginControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
         private val deltaConfig = DeltaConfig.fromEnv()
+        val client = testServiceClient()
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             val controller = DeltaLoginController(
-                Client("delta-website", "client-secret"),
+                listOf(client),
                 deltaConfig,
                 object : IADLdapLoginService {
                     override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
@@ -109,11 +111,11 @@ class DeltaLoginControllerTest {
                     }
                 },
                 object : IAuthorizationCodeService {
-                    override fun generateAndStore(userCn: String, traceId: String): AuthCode {
-                        return AuthCode("test-auth-code", "user", Instant.now(), "trace")
+                    override fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
+                        return AuthCode("test-auth-code", "user", client, Instant.now(), "trace")
                     }
 
-                    override fun lookupAndInvalidate(code: String): AuthCode? {
+                    override fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
                         throw NotImplementedError("Not required for test")
                     }
                 }

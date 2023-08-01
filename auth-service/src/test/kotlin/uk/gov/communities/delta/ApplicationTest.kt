@@ -7,11 +7,11 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import org.junit.BeforeClass
 import uk.gov.communities.delta.auth.Injection
+import uk.gov.communities.delta.auth.appModule
 import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DatabaseConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.appModule
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -35,11 +35,12 @@ class ApplicationTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
+            val deltaConfig = DeltaConfig.fromEnv()
             Injection.instance = Injection(
                 LDAPConfig("testInvalidUrl", "", "", "", "", "", ""),
                 DatabaseConfig("testInvalidUrl", "", ""),
-                ClientConfig.fromEnv(),
-                DeltaConfig.fromEnv(),
+                ClientConfig.fromEnv(deltaConfig),
+                deltaConfig,
             )
             testApp = TestApplication {
                 application {

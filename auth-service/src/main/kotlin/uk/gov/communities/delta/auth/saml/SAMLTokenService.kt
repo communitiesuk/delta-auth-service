@@ -23,15 +23,10 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
 
-class SAMLTokenService(basicCredentials: BasicX509Credential) {
-    private val samlAssertionSigner: SAMLAssertionSigner
+class SAMLTokenService {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
-    init {
-        samlAssertionSigner = SAMLAssertionSigner(basicCredentials)
-    }
-
-    fun generate(user: LdapUser, validFrom: Instant, validTo: Instant): String {
+    fun generate(credential: BasicX509Credential, user: LdapUser, validFrom: Instant, validTo: Instant): String {
         if (!initialised.get()) {
             // Lazily initialise the OpenSAML library as it takes a second or so to start
             initialiseOpenSaml()
@@ -56,7 +51,7 @@ class SAMLTokenService(basicCredentials: BasicX509Credential) {
             // * ID (Any Random GUID but must be different from Assertion ID)
             response.id = assertion.id + "-1"
             // * Sign the assertion with our self-signed key and certificate
-            val signedAssertion = samlAssertionSigner.signAssertion(assertion)
+            val signedAssertion = SAMLAssertionSigner(credential).signAssertion(assertion)
             response.assertions.add(signedAssertion)
             // End build SAML response
             val token = marshalToString(response)

@@ -8,8 +8,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
@@ -17,7 +17,7 @@ import uk.gov.communities.delta.auth.services.withAuthCode
 
 
 class DeltaLoginController(
-    private val deltaWebsiteClient: Client,
+    private val clients: List<OAuthClient>,
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
@@ -34,26 +34,34 @@ class DeltaLoginController(
     }
 
     private suspend fun loginGet(call: ApplicationCall) {
-        if (!areOAuthParametersValid(call)) {
-            logger.warn("Invalid parameters for login request, redirecting back to Delta")
+        if (call.getLoginQueryParams() == null) {
+            logger.info("Invalid parameters for login request, redirecting back to Delta")
             return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
         }
         call.respondLoginPage()
     }
 
-    private fun areOAuthParametersValid(call: ApplicationCall): Boolean {
-        val checks = mapOf<String, (String?) -> Boolean>(
-            "response_type" to { it.equals("code") },
-            "client_id" to { it.equals(deltaWebsiteClient.clientId) },
-            "state" to { !it.isNullOrEmpty() },
-        )
-        for (check in checks) {
-            if (!check.value(call.request.queryParameters[check.key])) {
-                logger.warn("Invalid ${check.key} query param for request to delta login {}", call.request.uri)
-                return false
-            }
+    private class LoginQueryParams(val client: OAuthClient, val state: String)
+
+    private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
+        val responseType = request.queryParameters["response_type"]
+        val clientId = request.queryParameters["client_id"]
+        val state = request.queryParameters["state"]
+
+        if (responseType != "code") {
+            logger.warn("Invalid query param response_type, expected 'code'")
+            return null
         }
-        return true
+        if (state.isNullOrEmpty()) {
+            logger.warn("Query param state is required")
+            return null
+        }
+        val client = clients.singleOrNull { it.clientId == clientId }
+        if (client == null) {
+            logger.warn("No client found with client id {}", clientId)
+            return null
+        }
+        return LoginQueryParams(client, state)
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
@@ -72,14 +80,12 @@ class DeltaLoginController(
     )
 
     private suspend fun loginPost(call: ApplicationCall) {
-        if (!areOAuthParametersValid(call)) {
-            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
-        }
+        val queryParams = call.getLoginQueryParams()
+            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
 
         val formParameters = call.receiveParameters()
         val formUsername = formParameters["username"]
         val password = formParameters["password"]
-        val state = call.request.queryParameters["state"]!!
 
         if (formUsername.isNullOrEmpty()) return call.respondLoginPage(
             errorMessage = "Username is required", errorLink = "#username"
@@ -118,10 +124,12 @@ class DeltaLoginController(
                     )
                 }
 
-                val authCode = authenticationCodeService.generateAndStore(loginResult.user.cn, call.callId!!)
+                val authCode = authenticationCodeService.generateAndStore(
+                    userCn = loginResult.user.cn, client = queryParams.client, traceId = call.callId!!
+                )
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")
-                call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${state.encodeURLQueryComponent()}")
+                call.respondRedirect(queryParams.client.redirectUrl + "?code=${authCode.code}&state=${queryParams.state.encodeURLQueryComponent()}")
             }
         }
     }

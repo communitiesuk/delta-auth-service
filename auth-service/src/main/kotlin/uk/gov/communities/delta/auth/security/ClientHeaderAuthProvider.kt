@@ -6,8 +6,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.Client
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 
 /**
  * Custom auth provider, expects header of the form
@@ -39,22 +37,10 @@ class ClientHeaderAuthProvider(private val config: Config) : AuthenticationProvi
 
         val clientId = match.groups[1]!!.value
         val clientSecret = match.groups[2]!!.value
-        val client = config.clients.singleOrNull { it.clientId == clientId }
-        if (client == null) {
-            logger.warn("No client with id {}", clientId)
-            return context.reject(AuthenticationFailedCause.InvalidCredentials, "Invalid client id or secret")
-        }
+        val client = ClientSecretCheck.getClient(config.clients, clientId, clientSecret)
+            ?: return context.reject(AuthenticationFailedCause.InvalidCredentials, "Invalid client id or secret")
 
-        val requestClientSecretBytes = clientSecret.toByteArray(StandardCharsets.UTF_8)
-        val correctSecretBytes = client.clientSecret.toByteArray(StandardCharsets.UTF_8)
-        val secretValid = MessageDigest.isEqual(requestClientSecretBytes, correctSecretBytes)
-
-        if (!secretValid) {
-            logger.warn("Invalid client secret provided for client {}", clientId)
-            return context.reject(AuthenticationFailedCause.InvalidCredentials, "Invalid client id or secret")
-        }
-
-        context.principal(name, ClientPrincipal(clientId))
+        context.principal(name, ClientPrincipal(client))
     }
 
     private fun AuthenticationContext.reject(cause: AuthenticationFailedCause, message: String) {
@@ -70,7 +56,7 @@ class ClientHeaderAuthProvider(private val config: Config) : AuthenticationProvi
     }
 }
 
-data class ClientPrincipal(val clientId: String) : Principal
+data class ClientPrincipal(val client: Client) : Principal
 
 fun AuthenticationConfig.clientHeaderAuth(
     name: String,
