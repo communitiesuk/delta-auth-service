@@ -64,8 +64,8 @@ dependencies {
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
 }
 
-// Migrations are run on startup outside of Development mode.
-// Extra task to run Flyway migrations without starting the
+// Migrations are run by the application on startup, or on first use of the database in Development mode.
+// Extra task to run Flyway migrations without (re)starting the app.
 task("migrate", JavaExec::class) {
     mainClass.set("uk.gov.communities.delta.auth.services.DbPoolKt")
     classpath = sourceSets["main"].runtimeClasspath
