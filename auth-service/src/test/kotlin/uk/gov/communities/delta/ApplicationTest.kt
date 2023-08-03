@@ -8,10 +8,7 @@ import io.ktor.test.dispatcher.*
 import org.junit.BeforeClass
 import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.appModule
-import uk.gov.communities.delta.auth.config.ClientConfig
-import uk.gov.communities.delta.auth.config.DatabaseConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.config.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -41,6 +38,8 @@ class ApplicationTest {
                 DatabaseConfig("testInvalidUrl", "", ""),
                 ClientConfig.fromEnv(deltaConfig),
                 deltaConfig,
+                AzureADSSOConfig(emptyList()),
+                ServiceConfig.fromEnv(),
             )
             testApp = TestApplication {
                 application {

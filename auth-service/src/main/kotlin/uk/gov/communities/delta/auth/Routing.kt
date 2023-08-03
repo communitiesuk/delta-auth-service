@@ -6,7 +6,12 @@ import io.ktor.server.http.content.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
+import io.ktor.util.*
+import kotlinx.serialization.Serializable
+import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaOAuthLoginController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -16,11 +21,20 @@ import uk.gov.communities.delta.auth.plugins.addServiceUserUsernameToMDC
 import uk.gov.communities.delta.auth.security.*
 import java.io.File
 
+@Serializable
+data class LoginSessionCookie(
+    val deltaState: String,
+    val clientId: String,
+    val ssoState: String? = null,
+    val ssoAt: Long? = null,
+    val ssoClient: String? = null,
+)
+
 fun Application.configureRouting(injection: Injection) {
     routing {
         healthcheckRoute()
         internalRoutes(injection)
-        externalRoutes(injection.externalDeltaLoginController())
+        externalRoutes(injection.externalDeltaLoginController(), injection.deltaOAuthLoginController())
     }
 }
 
@@ -30,7 +44,10 @@ fun Route.healthcheckRoute() {
     }
 }
 
-fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
+fun Route.externalRoutes(
+    deltaLoginController: DeltaLoginController,
+    deltaOAuthLoginController: DeltaOAuthLoginController,
+) {
 
     staticResources("/static", "static")
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
@@ -38,9 +55,26 @@ fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
         call.respondFile(File(javaClass.classLoader.getResource("static/assets/images/favicon.ico")!!.toURI()))
     }
 
-    rateLimit(RateLimitName(loginRateLimitName)) {
-        route("/delta/login") {
-            deltaLoginController.loginRoutes(this)
+    route("/delta") {
+        install(Sessions) {
+            // TODO Add Terraform configuration for this
+            val key = hex(Env.getRequiredOrDevFallback("COOKIE_SIGNING_KEY_HEX", "1234"))
+            cookie<LoginSessionCookie>("LOGIN_SESSION") {
+                cookie.extensions["SameSite"] = "strict"
+                transform(SessionTransportTransformerMessageAuthentication(key))
+            }
+        }
+
+        route("/login") {
+            rateLimit(RateLimitName(loginRateLimitName)) {
+                deltaLoginController.loginRoutes(this)
+            }
+        }
+
+        route("/oauth/{ssoClientId}/") {
+            authenticate(OAUTH_CLIENT_TO_AZURE_AD) {
+                deltaOAuthLoginController.route(this)
+            }
         }
     }
 }

@@ -7,11 +7,13 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
+import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
@@ -108,6 +110,7 @@ class DeltaLoginControllerTest {
         fun setup() {
             val controller = DeltaLoginController(
                 listOf(client),
+                listOf(),
                 deltaConfig,
                 object : IADLdapLoginService {
                     override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
@@ -126,6 +129,9 @@ class DeltaLoginControllerTest {
             )
             testApp = TestApplication {
                 install(CallId) { generate(4) }
+                install(Sessions) {
+                    cookie<LoginSessionCookie>("LOGIN_SESSION")
+                }
                 application {
                     configureTemplating(false)
                     routing {

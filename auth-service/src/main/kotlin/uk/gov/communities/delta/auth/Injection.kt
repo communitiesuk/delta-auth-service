@@ -1,17 +1,16 @@
 package uk.gov.communities.delta.auth
 
 import org.slf4j.Logger
-import uk.gov.communities.delta.auth.config.ClientConfig
-import uk.gov.communities.delta.auth.config.DatabaseConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaOAuthLoginController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
+import uk.gov.communities.delta.auth.security.SSOLoginStateService
 import uk.gov.communities.delta.auth.services.*
 
 class Injection (
@@ -19,6 +18,8 @@ class Injection (
     val databaseConfig: DatabaseConfig,
     val clientConfig: ClientConfig,
     val deltaConfig: DeltaConfig,
+    val azureADSSOConfig: AzureADSSOConfig,
+    val serviceConfig: ServiceConfig,
 ) {
     companion object {
         lateinit var instance: Injection
@@ -32,6 +33,8 @@ class Injection (
                 DatabaseConfig.fromEnv(),
                 ClientConfig.fromEnv(deltaConfig),
                 deltaConfig,
+                AzureADSSOConfig.fromEnv(),
+                ServiceConfig.fromEnv(),
             )
         }
     }
@@ -41,6 +44,8 @@ class Injection (
         databaseConfig.log(logger.atInfo())
         deltaConfig.log(logger.atInfo())
         clientConfig.log(logger.atInfo())
+        azureADSSOConfig.log(logger.atInfo())
+        serviceConfig.log(logger.atInfo())
     }
 
     private val samlTokenService = SAMLTokenService()
@@ -62,6 +67,7 @@ class Injection (
     val dbPool = DbPool(databaseConfig)
     private val authorizationCodeService = AuthorizationCodeService(dbPool)
     val oAuthSessionService = OAuthSessionService(dbPool)
+    val ssoLoginStateService = SSOLoginStateService()
 
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
@@ -78,7 +84,7 @@ class Injection (
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
             ldapService
         )
-        return DeltaLoginController(clientConfig.oauthClients, deltaConfig, adLoginService, authorizationCodeService)
+        return DeltaLoginController(clientConfig.oauthClients, azureADSSOConfig.ssoClients, deltaConfig, adLoginService, authorizationCodeService)
     }
 
     fun internalOAuthTokenController() = OAuthTokenController(
@@ -90,4 +96,7 @@ class Injection (
     )
 
     fun refreshUserInfoController() = RefreshUserInfoController(userLookupService, samlTokenService)
+
+    fun deltaOAuthLoginController() =
+        DeltaOAuthLoginController(deltaConfig, clientConfig, azureADSSOConfig, ssoLoginStateService, userLookupService, authorizationCodeService)
 }

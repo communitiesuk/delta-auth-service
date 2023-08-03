@@ -13,6 +13,7 @@ import io.ktor.test.dispatcher.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.configureRateLimiting
@@ -83,7 +84,7 @@ class RateLimitingTest {
                 application {
                     configureTemplating(false)
                     configureRateLimiting(rateLimitValue)
-                    configureStatusPages("test.url")
+                    configureStatusPages("test.url", AzureADSSOConfig(emptyList()))
                     routing {
                         rateLimit(RateLimitName(loginRateLimitName)) {
                             route("/delta/login") {

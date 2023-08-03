@@ -6,8 +6,11 @@ import io.ktor.server.plugins.callid.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.LoginSessionCookie
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
@@ -18,6 +21,7 @@ import uk.gov.communities.delta.auth.services.withAuthCode
 
 class DeltaLoginController(
     private val clients: List<OAuthClient>,
+    private val ssoClients: List<AzureADSSOClient>,
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
@@ -34,10 +38,13 @@ class DeltaLoginController(
     }
 
     private suspend fun loginGet(call: ApplicationCall) {
-        if (call.getLoginQueryParams() == null) {
+        val params = call.getLoginQueryParams()
+        if (params == null) {
             logger.info("Invalid parameters for login request, redirecting back to Delta")
-            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
+            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
         }
+        logger.info("Creating login session cookie for client {}", params.client.clientId)
+        call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = params.client.clientId))
         call.respondLoginPage()
     }
 
@@ -71,6 +78,7 @@ class DeltaLoginController(
             "delta-login",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "ssoClients" to ssoClients.filter { it.buttonText != null },
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,
@@ -81,7 +89,7 @@ class DeltaLoginController(
 
     private suspend fun loginPost(call: ApplicationCall) {
         val queryParams = call.getLoginQueryParams()
-            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
+            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
 
         val formParameters = call.receiveParameters()
         val formUsername = formParameters["username"]
@@ -95,6 +103,8 @@ class DeltaLoginController(
             errorLink = "#password",
             username = formUsername,
         )
+
+        // TODO: If email domain matches any SSO client then redirect there
 
         val cn = formUsername.replace('@', '!')
         when (val loginResult = ldapService.ldapLogin(cn, password)) {

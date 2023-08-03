@@ -1,7 +1,6 @@
 package uk.gov.communities.delta.auth.config
 
 import org.opensaml.security.x509.BasicX509Credential
-import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
 
 open class Client(val clientId: String, val clientSecret: String, val samlCredential: BasicX509Credential) {
