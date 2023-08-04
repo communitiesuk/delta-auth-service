@@ -49,18 +49,25 @@ private suspend fun ApplicationCall.userFacingErrorResponse(
     statusError: StatusErrorPageDefinition,
     deltaWebsiteUrl: String,
 ) {
-    respond(
-        status,
-        ThymeleafContent(
-            "error.html", mapOf(
-                "deltaUrl" to deltaWebsiteUrl,
-                "title" to statusError.userErrorPageTitle,
-                "heading" to statusError.userErrorPageHeading,
-                "message" to statusError.userErrorPageMessage,
-                "requestId" to if (statusError.showServiceDeskMessage) callId ?: "" else "",
+    try {
+        respond(
+            status,
+            ThymeleafContent(
+                "error.html", mapOf(
+                    "deltaUrl" to deltaWebsiteUrl,
+                    "title" to statusError.userErrorPageTitle,
+                    "heading" to statusError.userErrorPageHeading,
+                    "message" to statusError.userErrorPageMessage,
+                    "requestId" to if (statusError.showServiceDeskMessage) callId ?: "" else "",
+                )
             )
         )
-    )
+    } catch (e: Exception) {
+        application.log.error("Exception occurred processing status page for status {}", status, e)
+        if (!response.isCommitted) {
+            respondText("Failed to render error page. Request id $callId")
+        }
+    }
 }
 
 private data class StatusErrorPageDefinition(
