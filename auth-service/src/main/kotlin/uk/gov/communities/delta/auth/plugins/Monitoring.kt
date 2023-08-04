@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.plugins
 
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
 import kotlinx.coroutines.slf4j.MDCContext
@@ -19,6 +20,7 @@ fun Application.configureMonitoring() {
         level = Level.INFO
         callIdMdc("requestId")
         mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.username }
+        mdc("IPAddress") { it.request.origin.remoteHost }
         disableDefaultColors()
     }
     install(CallId) {

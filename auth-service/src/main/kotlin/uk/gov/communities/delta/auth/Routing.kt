@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
+import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
@@ -34,8 +35,10 @@ fun Route.healthcheckRoute() {
 fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
 
     staticResources("/static", "static")
-    route("/delta/login") {
-        deltaLoginController.loginRoutes(this)
+    rateLimit(RateLimitName("protectLogin")) {
+        route("/delta/login") {
+            deltaLoginController.loginRoutes(this)
+        }
     }
 }
 
