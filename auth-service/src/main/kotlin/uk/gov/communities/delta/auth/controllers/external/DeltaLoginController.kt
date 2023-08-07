@@ -10,7 +10,7 @@ import io.ktor.server.sessions.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
@@ -21,7 +21,7 @@ import uk.gov.communities.delta.auth.services.withAuthCode
 
 class DeltaLoginController(
     private val clients: List<OAuthClient>,
-    private val ssoClients: List<AzureADSSOClient>,
+    private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
@@ -78,7 +78,7 @@ class DeltaLoginController(
             "delta-login",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "ssoClients" to ssoClients.filter { it.buttonText != null },
+                "ssoClients" to ssoConfig.ssoClients.filter { it.buttonText != null },
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,

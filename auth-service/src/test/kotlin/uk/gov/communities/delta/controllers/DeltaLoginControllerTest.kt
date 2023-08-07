@@ -14,6 +14,7 @@ import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.LoginSessionCookie
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
@@ -110,7 +111,7 @@ class DeltaLoginControllerTest {
         fun setup() {
             val controller = DeltaLoginController(
                 listOf(client),
-                listOf(),
+                AzureADSSOConfig(listOf()),
                 deltaConfig,
                 object : IADLdapLoginService {
                     override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {

@@ -84,7 +84,7 @@ class Injection (
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
             ldapService
         )
-        return DeltaLoginController(clientConfig.oauthClients, azureADSSOConfig.ssoClients, deltaConfig, adLoginService, authorizationCodeService)
+        return DeltaLoginController(clientConfig.oauthClients, azureADSSOConfig, deltaConfig, adLoginService, authorizationCodeService)
     }
 
     fun internalOAuthTokenController() = OAuthTokenController(
