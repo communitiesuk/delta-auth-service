@@ -13,7 +13,7 @@ private const val apiRoutePrefix = "/auth-internal/"
 
 fun Application.configureStatusPages(deltaWebsiteUrl: String) {
     install(StatusPages) {
-        // Currently only the login page is rate limited so always redirects to the login page for status "TooManyRequests"
+        // Currently only the login page is rate limited so always renders the login page for status "TooManyRequests"
         status(HttpStatusCode.TooManyRequests) { call, _ ->
             call.respond(ThymeleafContent("delta-login",
                 mapOf(

@@ -16,6 +16,7 @@ import org.junit.Test
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.configureRateLimiting
+import uk.gov.communities.delta.auth.security.loginRateLimitName
 import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -51,7 +52,7 @@ class RateLimitingTest {
     @Test
     fun testLoginPageRateLimit() = testSuspend {
         val forwardedFor = "5.6.7.8, 1.2.3.4, 5.6.7.8"
-        for (i in 1..10) {
+        for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardedFor)
         }
         assertBlockedGetRequest(forwardedFor)
@@ -62,7 +63,7 @@ class RateLimitingTest {
         // Test that varying the penultimate address causes requests not to be blocked by other address' usage
         val forwardFor1 = "5.6.7.8, 2.3.4.5, 5.6.7.8"
         val forwardFor2 = "5.6.7.8, 5.4.3.2, 5.6.7.8"
-        for (i in 1..10) {
+        for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardFor1)
         }
         assertBlockedGetRequest(forwardFor1)
@@ -73,6 +74,7 @@ class RateLimitingTest {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
         val client = testServiceClient()
+        private const val rateLimitValue = 2
 
         @BeforeClass
         @JvmStatic
@@ -80,10 +82,10 @@ class RateLimitingTest {
             testApp = TestApplication {
                 application {
                     configureTemplating(false)
-                    configureRateLimiting()
+                    configureRateLimiting(rateLimitValue)
                     configureStatusPages("test.url")
                     routing {
-                        rateLimit(RateLimitName("protectLogin")) {
+                        rateLimit(RateLimitName(loginRateLimitName)) {
                             route("/delta/login") {
                                 this.get{
                                     call.respondText("Get request allowed through")

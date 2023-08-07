@@ -13,10 +13,7 @@ import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoControl
 import uk.gov.communities.delta.auth.plugins.addBearerSessionInfoToMDC
 import uk.gov.communities.delta.auth.plugins.addClientIdToMDC
 import uk.gov.communities.delta.auth.plugins.addServiceUserUsernameToMDC
-import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
-import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
-import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
-import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
+import uk.gov.communities.delta.auth.security.*
 
 fun Application.configureRouting(injection: Injection) {
     routing {
@@ -35,7 +32,7 @@ fun Route.healthcheckRoute() {
 fun Route.externalRoutes(deltaLoginController: DeltaLoginController) {
 
     staticResources("/static", "static")
-    rateLimit(RateLimitName("protectLogin")) {
+    rateLimit(RateLimitName(loginRateLimitName)) {
         route("/delta/login") {
             deltaLoginController.loginRoutes(this)
         }

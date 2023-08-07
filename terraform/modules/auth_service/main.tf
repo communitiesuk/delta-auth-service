@@ -103,7 +103,7 @@ module "fargate" {
       valueFrom = aws_secretsmanager_secret.database_password.arn
     },
     {
-      name = "AUTH_RATE_LIMIT"
+      name      = "AUTH_RATE_LIMIT"
       valueFrom = aws_ssm_parameter.auth_service_rate_limit.arn
     },
     var.delta_website_local_dev_client_secret_arn == null ? null : {
