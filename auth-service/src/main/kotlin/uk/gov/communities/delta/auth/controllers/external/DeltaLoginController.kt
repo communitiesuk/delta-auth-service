@@ -13,6 +13,7 @@ import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
@@ -104,7 +105,12 @@ class DeltaLoginController(
             username = formUsername,
         )
 
-        // TODO: If email domain matches any SSO client then redirect there
+        val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
+            it.emailDomain != null && formUsername.lowercase().endsWith(it.emailDomain)
+        }
+        if (ssoClientMatchingEmailDomain != null) {
+            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalClientId))
+        }
 
         val cn = formUsername.replace('@', '!')
         when (val loginResult = ldapService.ldapLogin(cn, password)) {

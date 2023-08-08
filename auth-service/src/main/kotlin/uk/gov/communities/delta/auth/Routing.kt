@@ -85,6 +85,9 @@ fun Route.deltaLoginRoutes(
     }
 }
 
+fun oauthClientLoginRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/login"
+fun oauthClientCallbackRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/callback"
+
 // "Internal" to the VPC, this is enforced by load balancer rules
 fun Route.internalRoutes(injection: Injection) {
     val generateSAMLTokenController = injection.generateSAMLTokenController()

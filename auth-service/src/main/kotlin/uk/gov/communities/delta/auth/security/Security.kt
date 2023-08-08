@@ -6,12 +6,11 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.Injection
-import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.config.ServiceConfig
+import uk.gov.communities.delta.auth.oauthClientCallbackRoute
 
 // "Delta-Client: client-id:secret" header auth for internal APIs
 const val CLIENT_HEADER_AUTH_NAME = "delta-client-header-auth"
@@ -73,7 +72,7 @@ fun AuthenticationConfig.deltaOAuth(
     oAuthClientProviderLookupService: OAuthClientProviderLookupService,
 ) {
     oauth(OAUTH_CLIENT_TO_AZURE_AD) {
-        urlProvider = { "${serviceConfig.serviceUrl}/delta/oauth/${parameters["ssoClientId"]!!}/callback" }
+        urlProvider = { "${serviceConfig.serviceUrl}${oauthClientCallbackRoute(parameters["ssoClientId"]!!)}" }
         providerLookup = lookup@{
             // This gets executed during the authentication phase of every request under OAuth authentication.
             // We use it to do some extra checks and skip OAuth if we don't want to carry on with the flow.
