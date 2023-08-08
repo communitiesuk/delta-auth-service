@@ -1,5 +1,10 @@
 package uk.gov.communities.delta.auth
 
+import io.ktor.client.*
+import io.ktor.client.engine.java.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.Json
 import org.slf4j.Logger
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
@@ -70,6 +75,11 @@ class Injection (
     val oAuthSessionService = OAuthSessionService(dbPool)
     val ssoLoginStateService = SSOLoginStateService()
     val oauthClientProviderLookupService = OAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
+    val microsoftGraphService = MicrosoftGraphService(HttpClient(Java) {
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
+    })
 
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
@@ -100,5 +110,5 @@ class Injection (
     fun refreshUserInfoController() = RefreshUserInfoController(userLookupService, samlTokenService)
 
     fun deltaOAuthLoginController() =
-        DeltaOAuthLoginController(deltaConfig, clientConfig, azureADSSOConfig, ssoLoginStateService, userLookupService, authorizationCodeService)
+        DeltaOAuthLoginController(deltaConfig, clientConfig, azureADSSOConfig, ssoLoginStateService, userLookupService, authorizationCodeService, microsoftGraphService)
 }

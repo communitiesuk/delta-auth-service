@@ -6,7 +6,7 @@ class ServiceConfig(val serviceUrl: String) {
     companion object {
         fun fromEnv() = ServiceConfig(
             // TODO: Add Terraform configuration for this
-            serviceUrl = Env.getRequiredOrDevFallback("SERVICE_URL", "http://localhost:8080"),
+            serviceUrl = Env.getRequiredOrDevFallback("SERVICE_URL", "http://localhost:8088"),
         )
     }
 

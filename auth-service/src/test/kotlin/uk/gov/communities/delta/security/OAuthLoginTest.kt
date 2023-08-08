@@ -19,7 +19,6 @@ import io.mockk.verify
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaOAuthLoginController
@@ -29,10 +28,7 @@ import uk.gov.communities.delta.auth.security.OAuthClientProviderLookupService
 import uk.gov.communities.delta.auth.security.SSOLoginStateService
 import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.security.deltaOAuth
-import uk.gov.communities.delta.auth.services.AuthCode
-import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.LdapUser
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
@@ -85,6 +81,7 @@ class OAuthLoginTest {
         private val ssoConfig = AzureADSSOConfig(listOf(ssoClient))
         private val ldapUserLookupServiceMock = mockk<UserLookupService>()
         private val authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
+        private val microsoftGraphServiceMock = mockk<MicrosoftGraphService>()
         private val ssoLoginStateService = SSOLoginStateService()
 
         @BeforeClass
@@ -110,6 +107,7 @@ class OAuthLoginTest {
                 ssoLoginStateService,
                 ldapUserLookupServiceMock,
                 authorizationCodeServiceMock,
+                microsoftGraphServiceMock,
             )
             val oauthClientProviderLookupService = OAuthClientProviderLookupService(
                 ssoConfig, ssoLoginStateService

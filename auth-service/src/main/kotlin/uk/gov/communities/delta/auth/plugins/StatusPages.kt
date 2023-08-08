@@ -25,25 +25,46 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             )
         }
         for (s in statusErrorPageDefinitions) {
-            status(s.key) { call, status ->
-                if (call.request.path().startsWith(apiRoutePrefix)) {
-                    call.apiErrorResponse(status, s.value)
-                } else {
-                    call.userFacingErrorResponse(status, s.value, deltaWebsiteUrl)
-                }
+            status(s.key) { call, _ ->
+                call.respondStatusPage(s.value, deltaWebsiteUrl)
             }
+        }
+        exception(UserVisibleServerError::class) { call, ex ->
+            val errorPage = StatusErrorPageDefinition(
+                HttpStatusCode.InternalServerError,
+                "user_visible_server_error",
+                "DELTA | ${ex.title}",
+                ex.title,
+                ex.userVisibleMessage,
+                showServiceDeskMessage = true,
+            )
+            call.respondStatusPage(errorPage, deltaWebsiteUrl)
+        }
+        exception(HttpNotFoundException::class) { call, _ ->
+            call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl)
         }
     }
 }
 
+open class UserVisibleServerError(
+    exceptionMessage: String,
+    val userVisibleMessage: String,
+    val title: String = "Error"
+) :
+    Exception(exceptionMessage)
+
+class HttpNotFoundException(message: String) : Exception(message)
+
 private val statusErrorPageDefinitions = mapOf(
     HttpStatusCode.NotFound to StatusErrorPageDefinition(
+        HttpStatusCode.NotFound,
         "not_found",
         "DELTA | Not Found",
         "Page not found",
         "This page does not exist"
     ),
     HttpStatusCode.InternalServerError to StatusErrorPageDefinition(
+        HttpStatusCode.InternalServerError,
         "internal_server_error",
         "DELTA | Error",
         "Error",
@@ -52,18 +73,25 @@ private val statusErrorPageDefinitions = mapOf(
     ),
 )
 
-private suspend fun ApplicationCall.apiErrorResponse(status: HttpStatusCode, statusError: StatusErrorPageDefinition) {
-    respond(status, mapOf("error" to statusError.jsonError))
+private suspend fun ApplicationCall.respondStatusPage(statusError: StatusErrorPageDefinition, deltaWebsiteUrl: String) {
+    if (request.path().startsWith(apiRoutePrefix)) {
+        apiErrorResponse(statusError)
+    } else {
+        userFacingErrorResponse(statusError, deltaWebsiteUrl)
+    }
+}
+
+private suspend fun ApplicationCall.apiErrorResponse(statusError: StatusErrorPageDefinition) {
+    respond(statusError.statusCode, mapOf("error" to statusError.jsonError))
 }
 
 private suspend fun ApplicationCall.userFacingErrorResponse(
-    status: HttpStatusCode,
     statusError: StatusErrorPageDefinition,
     deltaWebsiteUrl: String,
 ) {
     try {
         respond(
-            status,
+            statusError.statusCode,
             ThymeleafContent(
                 "error.html", mapOf(
                     "deltaUrl" to deltaWebsiteUrl,
@@ -75,7 +103,7 @@ private suspend fun ApplicationCall.userFacingErrorResponse(
             )
         )
     } catch (e: Exception) {
-        application.log.error("Exception occurred processing status page for status {}", status, e)
+        application.log.error("Exception occurred processing status page for status {}", statusError.statusCode, e)
         if (!response.isCommitted) {
             respondText("Failed to render error page. Request id $callId")
         }
@@ -83,6 +111,7 @@ private suspend fun ApplicationCall.userFacingErrorResponse(
 }
 
 private data class StatusErrorPageDefinition(
+    val statusCode: HttpStatusCode,
     val jsonError: String,
     val userErrorPageTitle: String,
     val userErrorPageHeading: String,
