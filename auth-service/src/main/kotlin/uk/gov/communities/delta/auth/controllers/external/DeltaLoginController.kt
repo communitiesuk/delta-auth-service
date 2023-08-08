@@ -129,7 +129,7 @@ class DeltaLoginController(
                 )
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")
-                call.respondRedirect(queryParams.client.redirectUrl + "?code=${authCode.code}&state=${queryParams.state.encodeURLQueryComponent()}")
+                call.respondRedirect(queryParams.client.redirectUrl + "?code=${authCode.code}&state=${queryParams.state.encodeURLParameter()}")
             }
         }
     }
