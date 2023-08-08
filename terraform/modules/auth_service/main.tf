@@ -2,6 +2,13 @@ data "aws_vpc" "main" {
   id = var.vpc_id
 }
 
+resource "aws_ssm_parameter" "auth_service_rate_limit" {
+  name  = "${var.environment}-auth-service-rate-limit"
+  type  = "String"
+  value = 1 # To be manually changed on AWS
+  lifecycle { ignore_changes = [value] }
+}
+
 module "fargate" {
   source                             = "../fargate"
   subnets                            = var.subnet_ids
@@ -94,6 +101,10 @@ module "fargate" {
     {
       name      = "DATABASE_PASSWORD"
       valueFrom = aws_secretsmanager_secret.database_password.arn
+    },
+    {
+      name      = "AUTH_RATE_LIMIT"
+      valueFrom = aws_ssm_parameter.auth_service_rate_limit.arn
     },
     var.delta_website_local_dev_client_secret_arn == null ? null : {
       name      = "CLIENT_SECRET_DELTA_WEBSITE_DEV"

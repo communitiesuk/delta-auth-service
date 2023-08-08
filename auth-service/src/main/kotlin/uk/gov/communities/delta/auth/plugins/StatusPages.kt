@@ -7,11 +7,20 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.thymeleaf.*
+import uk.gov.communities.delta.auth.config.DeltaConfig
 
 private const val apiRoutePrefix = "/auth-internal/"
 
 fun Application.configureStatusPages(deltaWebsiteUrl: String) {
     install(StatusPages) {
+        // Currently only the login page is rate limited so always renders the login page for status "TooManyRequests"
+        status(HttpStatusCode.TooManyRequests) { call, _ ->
+            call.respond(ThymeleafContent("delta-login",
+                mapOf(
+                    "deltaUrl" to DeltaConfig.fromEnv().deltaWebsiteUrl,
+                    "errorMessage" to "Too many requests from your location, please try again in a few minutes.",
+                )))
+        }
         for (s in statusErrorPageDefinitions) {
             status(s.key) { call, status ->
                 if (call.request.path().startsWith(apiRoutePrefix)) {

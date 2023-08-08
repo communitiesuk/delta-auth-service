@@ -45,6 +45,10 @@ dependencies {
     implementation("io.ktor:ktor-server-thymeleaf:$ktorVersion")
     implementation("io.ktor:ktor-server-thymeleaf-jvm:$ktorVersion")
 
+    // Rate limiting
+    implementation("io.ktor:ktor-server-rate-limit:$ktorVersion")
+    implementation("io.ktor:ktor-server-forwarded-header:$ktorVersion")
+
     // Logging
     implementation("ch.qos.logback:logback-classic:1.4.8")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder

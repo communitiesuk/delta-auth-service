@@ -7,6 +7,7 @@ import uk.gov.communities.delta.auth.plugins.configureMonitoring
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
+import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.security.configureSecurity
 
 fun main() {
@@ -39,6 +40,7 @@ fun Application.appModule() {
         Injection.instance.dbPool.eagerInit()
     }
 
+    configureRateLimiting(Injection.instance.deltaConfig.rateLimit)
     configureSecurity(Injection.instance)
     configureMonitoring()
     configureSerialization()
