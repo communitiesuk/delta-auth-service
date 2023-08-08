@@ -65,7 +65,7 @@ dependencies {
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
+    testImplementation("io.mockk:mockk:1.13.5")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.

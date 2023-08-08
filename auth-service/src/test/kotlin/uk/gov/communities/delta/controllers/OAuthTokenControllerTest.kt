@@ -7,15 +7,13 @@ import io.ktor.http.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import org.mockito.Mockito.mock
-import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.whenever
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
@@ -86,25 +84,26 @@ class OAuthTokenControllerTest {
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
         private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
 
-        private val authorizationCodeService = mock<AuthorizationCodeService>()
-        private val userLookupService = mock<UserLookupService>()
-        private val samlTokenService = mock<SAMLTokenService>()
-        private val oAuthSessionService = mock<OAuthSessionService>()
+        private val authorizationCodeService = mockk<AuthorizationCodeService>()
+        private val userLookupService = mockk<UserLookupService>()
+        private val samlTokenService = mockk<SAMLTokenService>()
+        private val oAuthSessionService = mockk<OAuthSessionService>()
 
         @BeforeClass
         @JvmStatic
         fun setup() {
-            whenever(authorizationCodeService.lookupAndInvalidate(authCode.code, client)).thenReturn(authCode)
-            whenever(oAuthSessionService.create(authCode, client)).thenReturn(session)
-            whenever(userLookupService.lookupUserByCn(authCode.userCn)).thenReturn(user)
-            whenever(
+            every { authorizationCodeService.lookupAndInvalidate(any(), client) } answers { null }
+            every { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
+            every { oAuthSessionService.create(authCode, client) } answers { session }
+            every { userLookupService.lookupUserByCn(authCode.userCn) } answers { user }
+            every {
                 samlTokenService.generate(
-                    eq(client.samlCredential),
-                    eq(user),
-                    eq(session.createdAt),
+                    client.samlCredential,
+                    user,
+                    session.createdAt,
                     any()
                 )
-            ).thenReturn("SAML Token")
+            } answers { "SAML Token" }
             controller = OAuthTokenController(
                 listOf(client), authorizationCodeService, userLookupService, samlTokenService, oAuthSessionService
             )
