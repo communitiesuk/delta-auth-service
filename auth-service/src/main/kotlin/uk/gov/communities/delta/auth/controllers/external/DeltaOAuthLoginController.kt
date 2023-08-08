@@ -8,6 +8,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.util.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.logstash.logback.argument.StructuredArguments.keyValue
@@ -21,6 +22,7 @@ import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.security.SSOLoginStateService
 import uk.gov.communities.delta.auth.services.*
+import javax.naming.NameNotFoundException
 
 /**
  * Authenticating users via Azure AD
@@ -67,6 +69,7 @@ class DeltaOAuthLoginController(
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
         val user = lookupUserInAd(email)
+            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/register?from_sso_client=${ssoClient.internalClientId}")
 
         checkUserEnabled(user)
         lookupAndCheckAzureGroups(user, principal, ssoClient)
@@ -121,13 +124,16 @@ class DeltaOAuthLoginController(
         return session
     }
 
-    private fun lookupUserInAd(email: String): LdapUser {
-        try {
-            return ldapLookupService.lookupUserByCn(email.replace('@', '!'))
+    private fun lookupUserInAd(email: String): LdapUser? {
+        val cn = email.replace('@', '!')
+        return try {
+            ldapLookupService.lookupUserByCn(cn)
+        } catch (e: NameNotFoundException) {
+            logger.info("User {} not found in Active Directory", keyValue("username", cn), e)
+            null
         } catch (e: Exception) {
-            logger.error("Failed to lookup user in AD after OAuth login, email '{}'", email, e)
-            // TODO: If the user doesn't exist should send them to the create account page with a message
-            throw OAuthLoginException("Failed to look up user")
+            logger.error("Failed to lookup user in AD after OAuth login {}", keyValue("username", cn), e)
+            throw e
         }
     }
 
@@ -187,8 +193,8 @@ class DeltaOAuthLoginController(
     }
 
     @Serializable
-    // TODO: Figure out if we reliably get this claim in the JWT, and if it's the best one to use
-    data class JwtBody(val email: String)
+    // TODO: Figure out if we reliably get the email claim in the JWT, and if it's the best one to use
+    data class JwtBody(@SerialName("unique_name") val email: String)
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }
 

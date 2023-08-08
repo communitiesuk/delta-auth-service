@@ -120,7 +120,7 @@ class OAuthLoginTest {
                 respond(
                     content = ByteReadChannel(
                         """{
-                                "access_token": "header.${"{\"email\": \"user@example.com\"}".encodeBase64()}.trailer",
+                                "access_token": "header.${"{\"unique_name\": \"user@example.com\"}".encodeBase64()}.trailer",
                                 "token_type": "Bearer",
                                 "expires_in": 3599,
                                 "scope": "Some.Scope"

@@ -7,12 +7,14 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.thymeleaf.*
+import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 
 private const val apiRoutePrefix = "/auth-internal/"
 
 fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureADSSOConfig) {
+    val logger = LoggerFactory.getLogger("Delta.StatusPages")
     install(StatusPages) {
         // Currently only the login page is rate limited so always renders the login page for status "TooManyRequests"
         status(HttpStatusCode.TooManyRequests) { call, _ ->
@@ -30,6 +32,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             }
         }
         exception(UserVisibleServerError::class) { call, ex ->
+            logger.error("StatusPages user visible error", ex)
             val errorPage = StatusErrorPageDefinition(
                 HttpStatusCode.InternalServerError,
                 "user_visible_server_error",
@@ -40,7 +43,8 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             )
             call.respondStatusPage(errorPage, deltaWebsiteUrl)
         }
-        exception(HttpNotFoundException::class) { call, _ ->
+        exception(HttpNotFoundException::class) { call, ex ->
+            logger.error("StatusPages NotFoundException", ex)
             call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl)
         }
     }

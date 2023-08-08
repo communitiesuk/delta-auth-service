@@ -71,8 +71,6 @@ class OAuthTokenController(
         val delta_ldap_user: LdapUser,
         val saml_token: String,
         val expires_at_epoch_second: Long,
-        // TODO remove delta_user property
-        val delta_user: String = delta_ldap_user.cn,
         val token_type: String = "bearer",
         val expires_in: String = TOKEN_EXPIRY_SECONDS.toString(),
     )
