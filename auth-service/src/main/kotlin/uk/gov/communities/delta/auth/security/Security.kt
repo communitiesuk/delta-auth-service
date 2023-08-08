@@ -3,16 +3,12 @@ package uk.gov.communities.delta.auth.security
 import io.ktor.client.*
 import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.request.*
-import io.ktor.server.sessions.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.Injection
-import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.config.ServiceConfig
@@ -34,9 +30,8 @@ fun Application.configureSecurity(injection: Injection) {
     val logger = LoggerFactory.getLogger("Application.Security")
     val ldapAuthenticationService = injection.ldapServiceUserAuthenticationService()
     val oAuthSessionService = injection.oAuthSessionService
-    val ssoLoginStateService = injection.ssoLoginStateService
     val serviceConfig = injection.serviceConfig
-    val ssoConfig = injection.azureADSSOConfig
+    val oauthClientProviderLookupService = injection.oauthClientProviderLookupService
     val oauthHttpClient = HttpClient(Java) {
         install(ContentNegotiation) {
             json()
@@ -68,59 +63,23 @@ fun Application.configureSecurity(injection: Injection) {
             }
         }
 
-        deltaOAuth(serviceConfig, ssoConfig, ssoLoginStateService, oauthHttpClient, logger)
+        deltaOAuth(serviceConfig, oauthHttpClient, oauthClientProviderLookupService)
     }
 }
 
 fun AuthenticationConfig.deltaOAuth(
     serviceConfig: ServiceConfig,
-    ssoConfig: AzureADSSOConfig,
-    ssoLoginStateService: SSOLoginStateService,
     oauthHttpClient: HttpClient,
-    logger: Logger
+    oAuthClientProviderLookupService: OAuthClientProviderLookupService,
 ) {
     oauth(OAUTH_CLIENT_TO_AZURE_AD) {
         urlProvider = { "${serviceConfig.serviceUrl}/delta/oauth/${parameters["ssoClientId"]!!}/callback" }
         providerLookup = lookup@{
             // This gets executed during the authentication phase of every request under OAuth authentication.
             // We use it to do some extra checks and skip OAuth if we don't want to carry on with the flow.
-            val ssoClientId = parameters["ssoClientId"]
-            val ssoClient = ssoConfig.ssoClients.firstOrNull { it.internalClientId == ssoClientId }
-            if (ssoClient == null) {
-                logger.warn("Invalid client id from URL path {}", ssoClientId)
-                return@lookup null // Skip authentication and carry straight on to the route handlers
-            }
-            if (sessions.get<LoginSessionCookie>() == null) {
-                logger.warn("OAuth request with no session cookie to {}", request.uri)
-                return@lookup null
-            }
-            if (request.path() == "/delta/oauth/${ssoClient.internalClientId}/callback") {
-                if (parameters.contains("error")) {
-                    logger.warn("OAuth Callback contains error query param")
-                    return@lookup null
-                }
-                val validateStateResult = ssoLoginStateService.validateCallSSOState(this)
-                if (validateStateResult != SSOLoginStateService.ValidateStateResult.VALID) {
-                    logger.warn("OAuth Callback validate state failed {}", validateStateResult.name)
-                    return@lookup null
-                }
-            }
-            OAuthServerSettings.OAuth2ServerSettings(
-                name = "azure",
-                authorizeUrl = "https://login.microsoftonline.com/${ssoClient.azTenantId}/oauth2/v2.0/authorize",
-                accessTokenUrl = "https://login.microsoftonline.com/${ssoClient.azTenantId}/oauth2/v2.0/token",
-                requestMethod = HttpMethod.Post,
-                clientId = ssoClient.azClientId,
-                clientSecret = ssoClient.azClientSecret,
-                defaultScopes = listOf(
-                    "https://graph.microsoft.com/User.Read",
-                    // TODO Do we need this? Email seems to be supplied anyway
-                    "https://graph.microsoft.com/email"
-                ),
-                onStateCreated = { call, state ->
-                    ssoLoginStateService.onSSOStateCreated(call, state, ssoClient)
-                }
-            )
+            val ssoClient = oAuthClientProviderLookupService.validateSSOClientForOAuthRequest(this)
+                ?: return@lookup null // Skip authentication and carry straight on to the route handlers
+            return@lookup oAuthClientProviderLookupService.providerConfig(ssoClient)
         }
         client = oauthHttpClient
     }

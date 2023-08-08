@@ -25,6 +25,7 @@ import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaOAuthLoginController
 import uk.gov.communities.delta.auth.deltaLoginRoutes
 import uk.gov.communities.delta.auth.plugins.configureTemplating
+import uk.gov.communities.delta.auth.security.OAuthClientProviderLookupService
 import uk.gov.communities.delta.auth.security.SSOLoginStateService
 import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.security.deltaOAuth
@@ -110,6 +111,9 @@ class OAuthLoginTest {
                 ldapUserLookupServiceMock,
                 authorizationCodeServiceMock,
             )
+            val oauthClientProviderLookupService = OAuthClientProviderLookupService(
+                ssoConfig, ssoLoginStateService
+            )
             val mockHttpEngine = MockEngine {
                 respond(
                     content = ByteReadChannel(
@@ -129,10 +133,8 @@ class OAuthLoginTest {
                 install(Authentication) {
                     deltaOAuth(
                         ServiceConfig("http://auth-service"),
-                        ssoConfig,
-                        ssoLoginStateService,
                         HttpClient(mockHttpEngine),
-                        LoggerFactory.getLogger("Test.OAuth"),
+                        oauthClientProviderLookupService,
                     )
                 }
                 application {

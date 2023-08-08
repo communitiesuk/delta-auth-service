@@ -10,6 +10,7 @@ import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoControl
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
+import uk.gov.communities.delta.auth.security.OAuthClientProviderLookupService
 import uk.gov.communities.delta.auth.security.SSOLoginStateService
 import uk.gov.communities.delta.auth.services.*
 
@@ -68,6 +69,7 @@ class Injection (
     private val authorizationCodeService = AuthorizationCodeService(dbPool)
     val oAuthSessionService = OAuthSessionService(dbPool)
     val ssoLoginStateService = SSOLoginStateService()
+    val oauthClientProviderLookupService = OAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
 
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
