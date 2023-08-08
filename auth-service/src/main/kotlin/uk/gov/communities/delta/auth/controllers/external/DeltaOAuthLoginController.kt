@@ -68,10 +68,9 @@ class DeltaOAuthLoginController(
 
         val user = lookupUserInAd(email)
 
+        checkUserEnabled(user)
         lookupAndCheckAzureGroups(user, principal, ssoClient)
         checkDeltaUsersGroup(user)
-
-        // TODO: Check user account control bits to ensure account is enabled
 
         val client = clientConfig.oauthClients.first { it.clientId == session.clientId }
         val authCode = authorizationCodeService.generateAndStore(
@@ -132,11 +131,20 @@ class DeltaOAuthLoginController(
         }
     }
 
+    private fun checkUserEnabled(user: LdapUser) {
+        if (!user.accountEnabled) {
+            throw OAuthLoginException(
+                "User ${user.cn} is disabled in Active Directory, login blocked",
+                "Your Delta user account is disabled. Please contact the service desk"
+            )
+        }
+    }
+
     private fun checkEmailDomain(email: String, ssoClient: AzureADSSOClient) {
         if (ssoClient.emailDomain != null && !email.endsWith(ssoClient.emailDomain)) {
             throw OAuthLoginException(
                 "Expected email for sso client ${ssoClient.internalClientId} to end with ${ssoClient.emailDomain}, but was $email",
-                "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk."
+                "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk"
             )
         }
     }
@@ -173,7 +181,7 @@ class DeltaOAuthLoginController(
             logger.error("User '{}' is not member of required Delta group {}", user.cn, deltaConfig.requiredGroupCn)
             throw OAuthLoginException(
                 "User is not member of required Delta group",
-                "Your Delta user is misconfigured (not in ${deltaConfig.requiredGroupCn}). Please contact the Service Desk.",
+                "Your Delta user is misconfigured (not in ${deltaConfig.requiredGroupCn}). Please contact the Service Desk",
             )
         }
     }

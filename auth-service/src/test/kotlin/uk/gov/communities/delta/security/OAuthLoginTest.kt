@@ -28,7 +28,11 @@ import uk.gov.communities.delta.auth.security.OAuthClientProviderLookupService
 import uk.gov.communities.delta.auth.security.SSOLoginStateService
 import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.security.deltaOAuth
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.AuthCode
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
+import uk.gov.communities.delta.auth.services.MicrosoftGraphService
+import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
@@ -88,7 +92,7 @@ class OAuthLoginTest {
         @JvmStatic
         fun setup() {
             every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-                LdapUser("dn", "cn", listOf(deltaConfig.requiredGroupCn), "email", null, "Name")
+                testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn))
             }
             every { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
                 AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")
