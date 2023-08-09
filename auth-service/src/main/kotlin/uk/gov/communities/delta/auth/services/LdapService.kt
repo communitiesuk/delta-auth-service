@@ -68,7 +68,7 @@ class LdapService(private val config: Configuration) {
 
     private fun Attributes.getAccountEnabled(): Boolean {
         val userAccountControlDecimal = get("userAccountControl")?.get() as String
-        val userAccountControl = parseInt(userAccountControlDecimal, 10)
+        val userAccountControl = parseInt(userAccountControlDecimal)
         // https://learn.microsoft.com/en-us/troubleshoot/windows-server/identity/useraccountcontrol-manipulate-account-properties
         return userAccountControl and (1 shl 1) == 0
     }
