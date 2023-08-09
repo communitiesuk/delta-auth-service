@@ -17,6 +17,7 @@ variable "external_alb" {
     security_group_id = string
     cloudfront_key    = string
     listener_arn      = string
+    primary_hostname  = string
   })
 }
 

@@ -5,7 +5,6 @@ import org.slf4j.spi.LoggingEventBuilder
 class AuthServiceConfig(val serviceUrl: String) {
     companion object {
         fun fromEnv() = AuthServiceConfig(
-            // TODO: Add Terraform configuration for this
             serviceUrl = Env.getRequiredOrDevFallback("SERVICE_URL", "http://localhost:8088"),
         )
     }

@@ -65,7 +65,6 @@ fun Route.deltaLoginRoutes(
     deltaSSOLoginController: DeltaSSOLoginController,
 ) {
     install(Sessions) {
-        // TODO Add Terraform configuration for this
         val key = hex(Env.getRequiredOrDevFallback("COOKIE_SIGNING_KEY_HEX", "1234"))
         cookie<LoginSessionCookie>("LOGIN_SESSION") {
             cookie.extensions["SameSite"] = "Lax"

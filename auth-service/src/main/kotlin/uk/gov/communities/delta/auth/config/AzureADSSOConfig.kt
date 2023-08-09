@@ -27,7 +27,6 @@ data class AzureADSSOClient(
 class AzureADSSOConfig(val ssoClients: List<AzureADSSOClient>) {
     companion object {
         fun fromEnv(): AzureADSSOConfig {
-            // TODO: Add Terraform configuration for this
             val json = Env.getEnv("AZ_SSO_CLIENTS_JSON") ?: return AzureADSSOConfig(emptyList())
             val parsed = Json.decodeFromString<List<AzureADSSOClient>>(json)
             return AzureADSSOConfig(parsed)

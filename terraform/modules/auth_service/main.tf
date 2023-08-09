@@ -75,7 +75,11 @@ module "fargate" {
     {
       name  = "DISABLE_DEVELOPMENT_FALLBACK"
       value = "true"
-    }
+    },
+    {
+      name  = "SERVICE_URL"
+      value = "https://${var.external_alb.primary_hostname}"
+    },
   ]
   secrets = [for s in [
     {
@@ -106,10 +110,18 @@ module "fargate" {
       name      = "AUTH_RATE_LIMIT"
       valueFrom = aws_ssm_parameter.auth_service_rate_limit.arn
     },
+    {
+      name      = "COOKIE_SIGNING_KEY_HEX"
+      valueFrom = aws_secretsmanager_secret.cookie_mac_key.arn
+    },
+    {
+      name      = "AZ_SSO_CLIENTS_JSON"
+      valueFrom = data.aws_secretsmanager_secret.sso_config.arn
+    },
     var.delta_website_local_dev_client_secret_arn == null ? null : {
       name      = "CLIENT_SECRET_DELTA_WEBSITE_DEV"
       valueFrom = var.delta_website_local_dev_client_secret_arn
-    }
+    },
   ] : s if s != null]
   secret_kms_key_arns = compact([aws_kms_key.auth_service.arn, var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])
 }
