@@ -18,6 +18,7 @@ import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
@@ -82,7 +83,7 @@ class OAuthTokenControllerTest {
 
         private val authCode = AuthCode("code", "user", client, Instant.now(), "trace")
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
-        private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
+        private val user = testLdapUser(cn = "user")
 
         private val authorizationCodeService = mockk<AuthorizationCodeService>()
         private val userLookupService = mockk<UserLookupService>()

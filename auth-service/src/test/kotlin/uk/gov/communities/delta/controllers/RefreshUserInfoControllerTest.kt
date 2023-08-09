@@ -22,10 +22,10 @@ import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.OAuthSessionService
 import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
@@ -67,7 +67,7 @@ class RefreshUserInfoControllerTest {
 
         private val client = testServiceClient()
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
-        private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
+        private val user = testLdapUser(cn = "user")
 
         private val userLookupService = mockk<UserLookupService>()
         private val samlTokenService = mockk<SAMLTokenService>()

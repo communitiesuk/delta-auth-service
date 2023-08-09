@@ -20,7 +20,7 @@ import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_N
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.serviceUserRoutes
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.helper.testLdapUser
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -55,7 +55,7 @@ class SamlTokenTest {
                 realm = "Delta"
                 validate { credential ->
                     if (credential.password == "pass") {
-                        DeltaLdapPrincipal(LdapUser("dn", credential.name, listOf("test-role"), "", "", ""))
+                        DeltaLdapPrincipal(testLdapUser(cn = credential.name, memberOfCNs = listOf("test-role")))
                     } else {
                         null
                     }

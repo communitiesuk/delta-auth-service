@@ -61,6 +61,7 @@ class ADLdapLoginService(
         return try {
             context = ldapService.bind(userDn, password)
             val user = ldapService.mapUserFromContext(context, userDn)
+            if (!user.accountEnabled) throw Exception("Logged in user '${user.cn}' is disabled, this should never happen")
             IADLdapLoginService.LdapLoginSuccess(user)
         } catch (e: NamingException) {
             logger.debug("LDAP login failed for user $userDn", e)
