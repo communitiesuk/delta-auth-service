@@ -17,6 +17,7 @@ import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginControlle
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
+import uk.gov.communities.delta.auth.plugins.CSP
 import uk.gov.communities.delta.auth.plugins.addBearerSessionInfoToMDC
 import uk.gov.communities.delta.auth.plugins.addClientIdToMDC
 import uk.gov.communities.delta.auth.plugins.addServiceUserUsernameToMDC
@@ -52,6 +53,7 @@ fun Route.externalRoutes(
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
 ) {
+    install(CSP)
     staticResources("/static", "static")
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
     get("/favicon.ico") {
