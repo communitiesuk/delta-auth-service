@@ -7,6 +7,7 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.thymeleaf.*
+import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
@@ -32,7 +33,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             }
         }
         exception(UserVisibleServerError::class) { call, ex ->
-            logger.error("StatusPages user visible error", ex)
+            logger.error("StatusPages user visible error {}", keyValue("errorCode", ex.errorCode), ex)
             val errorPage = StatusErrorPageDefinition(
                 HttpStatusCode.InternalServerError,
                 "user_visible_server_error",
@@ -51,11 +52,12 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
 }
 
 open class UserVisibleServerError(
+    val errorCode: String,
     exceptionMessage: String,
     val userVisibleMessage: String,
     val title: String = "Error"
 ) :
-    Exception(exceptionMessage)
+    Exception("${errorCode} $exceptionMessage")
 
 class HttpNotFoundException(message: String) : Exception(message)
 

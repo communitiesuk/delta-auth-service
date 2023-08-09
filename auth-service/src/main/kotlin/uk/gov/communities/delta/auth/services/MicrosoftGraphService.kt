@@ -12,12 +12,12 @@ class MicrosoftGraphService(
     private val httpClient: HttpClient
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    suspend fun checkCurrentUserGroups(authToken: String, groupIds: List<String>): List<String> {
+    suspend fun checkCurrentUserGroups(accessToken: String, groupIds: List<String>): List<String> {
         logger.info("Requesting user groups from Microsoft Graph")
         try {
             // TODO: Allow through Network Firewall
             val response = httpClient.post("https://graph.microsoft.com/v1.0/me/checkMemberGroups") {
-                bearerAuth(authToken)
+                bearerAuth(accessToken)
                 headers {
                     append(HttpHeaders.Accept, "application/json")
                 }

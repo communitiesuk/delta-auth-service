@@ -13,12 +13,11 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
-import org.junit.AfterClass
-import org.junit.BeforeClass
-import org.junit.Test
+import io.mockk.*
+import kotlinx.coroutines.runBlocking
+import org.hamcrest.CoreMatchers
+import org.hamcrest.MatcherAssert
+import org.junit.*
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaOAuthLoginController
@@ -35,6 +34,7 @@ import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
+import javax.naming.NameNotFoundException
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -45,10 +45,7 @@ class OAuthLoginTest {
 
     @Test
     fun testOAuthFlow() = testSuspend {
-        val testClient = testApp.createClient {
-            install(HttpCookies)
-            followRedirects = false
-        }
+        val testClient = testClient()
         testClient.get("/delta/login?response_type=code&client_id=delta-website&state=delta-state").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Test SSO</a>")
@@ -65,38 +62,195 @@ class OAuthLoginTest {
             externalServiceRedirect,
             "redirect_uri=${"http://auth-service/delta/oauth/test/callback".encodeURLParameter()}"
         )
-        val state = Regex("state=([^&]+)[&$]").find(externalServiceRedirect)!!.groups[1]!!.value
+        val state = externalServiceRedirect.stateFromRedirectUrl()
 
         testClient.get("/delta/oauth/test/callback?code=auth-code&state=${state}").apply {
             assertEquals(HttpStatusCode.Found, status)
             assertEquals(headers["Location"], "https://delta/redirect?code=code&state=delta-state")
             verify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+            assertEquals("", setCookie()[0].value) // Session should be cleared
         }
     }
+
+    @Test
+    fun `Login endpoint throws error with no session cookie`() {
+        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+            runBlocking { testClient().get("/delta/oauth/test/login") }
+        }.apply {
+            assertEquals("reached_login_page", errorCode)
+        }
+    }
+
+    // Shared cookie and state parameter as though the user had just been redirected to Azure
+    private class LoginState(val cookie: Cookie, val state: String)
+
+    private val loginState: LoginState by lazy {
+        runBlocking {
+            val client = testClient()
+            client.get("/delta/login?response_type=code&client_id=delta-website&state=delta-state")
+            val state = client.get("/delta/oauth/test/login").headers["Location"]!!.stateFromRedirectUrl()
+            val cookie = client.cookies("http://localhost/")[0]
+            LoginState(cookie, state)
+        }
+    }
+
+    @Test
+    fun `Callback endpoint redirects Azure errors to Delta`() = testSuspend {
+        val client = testClient(loginState.cookie)
+        client.get("/delta/oauth/test/callback?error=some_azure_error_code&error_description=Description&state=${loginState.state}")
+            .apply {
+                assertEquals(HttpStatusCode.Found, status)
+                MatcherAssert.assertThat(
+                    headers["Location"],
+                    CoreMatchers.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error")
+                )
+                verify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+            }
+    }
+
+    @Test
+    fun `Callback returns error on invalid state`() {
+        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+            runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=DIFFERENT-STATE") }
+        }.apply {
+            assertEquals("callback_invalid_state", errorCode)
+        }
+    }
+
+    @Test
+    fun `Callback redirects to Delta create user page if no ldap user`() = testSuspend {
+        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } throws (NameNotFoundException())
+        testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
+            .apply {
+                assertEquals(HttpStatusCode.Found, status)
+                MatcherAssert.assertThat(
+                    headers["Location"],
+                    CoreMatchers.startsWith("${deltaConfig.deltaWebsiteUrl}/register")
+                )
+            }
+    }
+
+    @Test
+    fun `Callback returns error if user is disabled`()  {
+        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), accountEnabled = false)
+        }
+        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+            runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
+        }.apply {
+            assertEquals("user_disabled", errorCode)
+        }
+    }
+
+    @Test
+    fun `Callback returns error if user is not in Delta users group`()  {
+        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+            testLdapUser(memberOfCNs = listOf("some-other-group"))
+        }
+        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+            runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
+        }.apply {
+            assertEquals("not_delta_user", errorCode)
+        }
+    }
+
+    @Test
+    fun `Callback returns error if user is not in required Azure group`()  {
+        coEvery {
+            microsoftGraphServiceMock.checkCurrentUserGroups(accessToken, any())
+        } answers { listOf() }
+        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+            runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
+        }.apply {
+            assertEquals("not_in_required_azure_group", errorCode)
+        }
+    }
+
+    private fun mockAdminUser() {
+        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn, "datamart-delta-admin"))
+        }
+    }
+
+    @Test
+    fun `Callback returns error if admin user is not in admin Azure group`() {
+        mockAdminUser()
+        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+            runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
+        }.apply {
+            assertEquals("not_in_required_admin_group", errorCode)
+        }
+    }
+
+    @Test
+    fun `Callback allows admin user`() = testSuspend {
+        mockAdminUser()
+        coEvery {
+            microsoftGraphServiceMock.checkCurrentUserGroups(
+                accessToken,
+                listOf(ssoClient.requiredGroupId!!, ssoClient.requiredAdminGroupId!!)
+            )
+        } answers { listOf(ssoClient.requiredGroupId!!, ssoClient.requiredAdminGroupId!!) }
+        testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}").apply {
+            assertEquals(HttpStatusCode.Found, status)
+            assertEquals(headers["Location"], "https://delta/redirect?code=code&state=delta-state")
+        }
+    }
+
+    private fun testClient(cookie: Cookie? = null) = testApp.createClient {
+        install(HttpCookies) {
+            if (cookie != null) {
+                default { storage.addCookie("/", cookie) }
+            }
+        }
+        followRedirects = false
+    }
+
+    @Before
+    fun setupMocks() {
+        clearAllMocks()
+        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn))
+        }
+        every { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
+            AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")
+        }
+        coEvery {
+            microsoftGraphServiceMock.checkCurrentUserGroups(
+                accessToken,
+                listOf(ssoClient.requiredGroupId!!, ssoClient.requiredAdminGroupId!!)
+            )
+        } answers {
+            listOf(ssoClient.requiredGroupId!!)
+        }
+    }
+
+    private fun String.stateFromRedirectUrl() =
+        Regex("state=([^&]+)[&$]").find(this)!!.groups[1]!!.value
 
     companion object {
         private lateinit var testApp: TestApplication
         private val deltaConfig = DeltaConfig.fromEnv()
         private val serviceClient = testServiceClient()
         private val ssoClient = AzureADSSOClient(
-            "test", "tenant-id", "sso-client-id", "sso-client-secret",
-            buttonText = "Test SSO"
+            "test",
+            "tenant-id",
+            "sso-client-id",
+            "sso-client-secret",
+            buttonText = "Test SSO",
+            requiredGroupId = "required-group-id",
+            requiredAdminGroupId = "required-admin-group-id",
         )
         private val ssoConfig = AzureADSSOConfig(listOf(ssoClient))
         private val ldapUserLookupServiceMock = mockk<UserLookupService>()
         private val authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
         private val microsoftGraphServiceMock = mockk<MicrosoftGraphService>()
         private val ssoLoginStateService = SSOLoginStateService()
+        private val accessToken = "header.${"{\"unique_name\": \"user@example.com\"}".encodeBase64()}.trailer"
 
         @BeforeClass
         @JvmStatic
         fun setup() {
-            every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-                testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn))
-            }
-            every { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
-                AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")
-            }
             val loginPageController = DeltaLoginController(
                 listOf(serviceClient),
                 ssoConfig,

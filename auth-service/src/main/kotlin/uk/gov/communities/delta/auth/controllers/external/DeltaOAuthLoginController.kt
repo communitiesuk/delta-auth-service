@@ -40,11 +40,12 @@ class DeltaOAuthLoginController(
 
     fun route(route: Route) {
         route.get("/login") {
-            logger.warn(
-                "Reached the OAuth login page for client {}, this isn't supposed to happen, it only exists to trigger the redirect",
-                call.parameters["ssoClientId"]
+            val ssoClient = ssoConfig.ssoClients.firstOrNull { it.internalClientId == call.parameters["ssoClientId"] }
+                ?: return@get call.response.status(HttpStatusCode.NotFound)
+            throw OAuthLoginException(
+                "reached_login_page",
+                "Reached the OAuth login page for client ${ssoClient.internalClientId}, this isn't supposed to happen, it only exists to trigger the redirect"
             )
-            call.response.status(HttpStatusCode.NotFound)
         }
         route.get("/callback") {
             callback(call)
@@ -91,12 +92,6 @@ class DeltaOAuthLoginController(
         )
     }
 
-    class OAuthLoginException(
-        exceptionMessage: String,
-        userVisibleMessage: String = "Something went wrong logging you in, please try again"
-    ) :
-        UserVisibleServerError(exceptionMessage, userVisibleMessage, "Login Error")
-
     private suspend fun handleOAuthCallbackError(call: ApplicationCall) {
         val error = call.parameters["error"]!!
         val errorDescription = call.parameters["error_description"]
@@ -116,10 +111,13 @@ class DeltaOAuthLoginController(
 
     private fun validateOAuthStateInSession(call: ApplicationCall): LoginSessionCookie {
         val session = call.sessions.get<LoginSessionCookie>()
-            ?: throw OAuthLoginException("Reached callback with no session")
+            ?: throw OAuthLoginException("callback_no_session", "Reached callback with no session")
         val stateValidationResult = ssoLoginStateService.validateCallSSOState(call)
         if (stateValidationResult != SSOLoginStateService.ValidateStateResult.VALID) {
-            throw OAuthLoginException("OAuth callback state failed to validate ${stateValidationResult.name}")
+            throw OAuthLoginException(
+                "callback_invalid_state",
+                "OAuth callback state failed to validate ${stateValidationResult.name}"
+            )
         }
         return session
     }
@@ -140,6 +138,7 @@ class DeltaOAuthLoginController(
     private fun checkUserEnabled(user: LdapUser) {
         if (!user.accountEnabled) {
             throw OAuthLoginException(
+                "user_disabled",
                 "User ${user.cn} is disabled in Active Directory, login blocked",
                 "Your Delta user account is disabled. Please contact the service desk"
             )
@@ -149,6 +148,7 @@ class DeltaOAuthLoginController(
     private fun checkEmailDomain(email: String, ssoClient: AzureADSSOClient) {
         if (ssoClient.emailDomain != null && !email.endsWith(ssoClient.emailDomain)) {
             throw OAuthLoginException(
+                "invalid_email_domain",
                 "Expected email for sso client ${ssoClient.internalClientId} to end with ${ssoClient.emailDomain}, but was $email",
                 "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk"
             )
@@ -166,6 +166,7 @@ class DeltaOAuthLoginController(
 
         if (ssoClient.requiredGroupId != null && !azGroups.contains(ssoClient.requiredGroupId)) {
             throw OAuthLoginException(
+                "not_in_required_azure_group",
                 "User ${user.cn} not in required Azure group ${ssoClient.requiredGroupId}",
                 // TODO: Process for adding users to group
                 "You must be added to the Delta Users group in ${ssoClient.internalClientId.uppercase()} before you can use this service. Please contact qq@levellingup.gov.uk"
@@ -175,6 +176,7 @@ class DeltaOAuthLoginController(
         val adminGroups = user.memberOfCNs.filter { AzureADSSOConfig.DELTA_ADMIN_ROLES.contains(it) }
         if (adminGroups.isNotEmpty() && ssoClient.requiredAdminGroupId != null && !azGroups.contains(ssoClient.requiredAdminGroupId)) {
             throw OAuthLoginException(
+                "not_in_required_admin_group",
                 "User ${user.cn} is admin in Delta (member of ${adminGroups.joinToString(", ")}, but not member of required admin group ${ssoClient.requiredAdminGroupId}",
                 // TODO: Process for adding users to group
                 "You are an admin user in Delta, but have not been added to the Delta Admin Users group in ${ssoClient.internalClientId.uppercase()}. Please contact qq@levellingup.gov.uk"
@@ -186,6 +188,7 @@ class DeltaOAuthLoginController(
         if (!user.memberOfCNs.contains(deltaConfig.requiredGroupCn)) {
             logger.error("User '{}' is not member of required Delta group {}", user.cn, deltaConfig.requiredGroupCn)
             throw OAuthLoginException(
+                "not_delta_user",
                 "User is not member of required Delta group",
                 "Your Delta user is misconfigured (not in ${deltaConfig.requiredGroupCn}). Please contact the Service Desk",
             )
@@ -210,5 +213,14 @@ class DeltaOAuthLoginController(
         }
     }
 
-    class InvalidJwtException(message: String, cause: Exception? = null) : Exception(message, cause)
+    companion object {
+        class InvalidJwtException(message: String, cause: Exception? = null) : Exception(message, cause)
+
+        class OAuthLoginException(
+            errorCode: String,
+            exceptionMessage: String,
+            userVisibleMessage: String = "Something went wrong logging you in, please try again",
+        ) :
+            UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Login Error")
+    }
 }
