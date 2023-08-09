@@ -6,7 +6,7 @@ import org.slf4j.spi.LoggingEventBuilder
 
 @Serializable
 data class AzureADSSOClient(
-    // Used in the login + callback urls, /delta/oauth/<internalClientId>/callback
+    // Used in the login + callback urls /delta/oauth/<internalClientId>/callback
     val internalId: String,
     val azTenantId: String,
     val azClientId: String,

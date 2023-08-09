@@ -171,7 +171,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_azure_group",
                 "User ${user.cn} not in required Azure group ${ssoClient.requiredGroupId}",
-                // TODO: Process for adding users to group
+                // TODO DT-528 Process for adding users to group
                 "To use Single Sign On you must be added to the Delta SSO Users group in ${ssoClient.internalId.uppercase()} before you can use this service. Please contact qq@levellingup.gov.uk"
             )
         }
@@ -181,7 +181,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_admin_group",
                 "User ${user.cn} is admin in Delta (member of ${adminGroups.joinToString(", ")}, but not member of required admin group ${ssoClient.requiredAdminGroupId}",
-                // TODO: Process for adding users to group
+                // TODO DT-528 Process for adding users to group
                 "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()}. Please contact qq@levellingup.gov.uk"
             )
         }
@@ -203,7 +203,9 @@ class DeltaSSOLoginController(
     }
 
     @Serializable
-    // TODO: Figure out if we reliably get the email claim in the JWT, and if it's the best one to use
+    // TODO DT-528 Figure out if we reliably get the email claim in the JWT, and if it's the best one to use
+    // Set to unique_name for testing with a test tenant
+    // Azure AD doesn't seem to validate emails at all
     data class JwtBody(@SerialName("unique_name") val email: String)
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }

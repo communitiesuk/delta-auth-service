@@ -23,14 +23,14 @@ import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
 import uk.gov.communities.delta.auth.deltaLoginRoutes
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
-import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
-import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.security.azureAdSingleSignOn
+import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
+import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
+import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -45,15 +45,20 @@ class OAuthLoginTest {
 
     @Test
     fun testOAuthFlow() = testSuspend {
+        // OAuth flow happy path
         val testClient = testClient()
+
+        // Get the login page (required as it sets a cookie with the Delta client id and state in)
         testClient.get("/delta/login?response_type=code&client_id=delta-website&state=delta-state").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Test SSO</a>")
         }
 
+        // Request to the OAuth login endpoint as though we'd pressed the SSO button
         val oauthLoginResponse = testClient.get("/delta/oauth/test/login").apply {
             assertEquals(HttpStatusCode.Found, status)
         }
+        // Expect a redirect to Microsoft's Authorize endpoint
         val externalServiceRedirect = oauthLoginResponse.headers["Location"]
         assertNotNull(externalServiceRedirect, "Location header expected")
         assertTrue(externalServiceRedirect.startsWith("https://login.microsoftonline.com/${ssoClient.azTenantId}/oauth2/v2.0/authorize"))
@@ -64,7 +69,9 @@ class OAuthLoginTest {
         )
         val state = externalServiceRedirect.stateFromRedirectUrl()
 
+        // Microsoft would then redirect the user back to the redirect ("callback") endpoint
         testClient.get("/delta/oauth/test/callback?code=auth-code&state=${state}").apply {
+            // Which should redirect us back to Delta with an Authorisation code
             assertEquals(HttpStatusCode.Found, status)
             assertEquals(headers["Location"], "https://delta/redirect?code=code&state=delta-state")
             verify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
@@ -81,9 +88,10 @@ class OAuthLoginTest {
         }
     }
 
-    // Shared cookie and state parameter as though the user had just been redirected to Azure
     private class LoginState(val cookie: Cookie, val state: String)
 
+    // Cookie and state parameter as though the user had just been redirected to Azure
+    // shared between tests to avoid repeating the requests
     private val loginState: LoginState by lazy {
         runBlocking {
             val client = testClient()
@@ -155,10 +163,9 @@ class OAuthLoginTest {
     }
 
     @Test
-    fun `Callback returns error if user is not in required Azure group`()  {
-        coEvery {
-            microsoftGraphServiceMock.checkCurrentUserGroups(accessToken, any())
-        } answers { listOf() }
+    fun `Callback returns error if user is not in required Azure group`() {
+        coEvery { microsoftGraphServiceMock.checkCurrentUserGroups(accessToken, any()) } answers { listOf() }
+
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
@@ -231,6 +238,7 @@ class OAuthLoginTest {
     companion object {
         private lateinit var testApp: TestApplication
         private val deltaConfig = DeltaConfig.fromEnv()
+        private val serviceConfig = AuthServiceConfig.fromEnv()
         private val serviceClient = testServiceClient()
         private val ssoClient = AzureADSSOClient(
             "test",
@@ -242,15 +250,19 @@ class OAuthLoginTest {
             requiredAdminGroupId = "required-admin-group-id",
         )
         private val ssoConfig = AzureADSSOConfig(listOf(ssoClient))
-        private val ldapUserLookupServiceMock = mockk<UserLookupService>()
-        private val authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
-        private val microsoftGraphServiceMock = mockk<MicrosoftGraphService>()
-        private val ssoLoginStateService = SSOLoginSessionStateService()
         private val accessToken = "header.${"{\"unique_name\": \"user@example.com\"}".encodeBase64()}.trailer"
+        private lateinit var ldapUserLookupServiceMock: UserLookupService
+        private lateinit var authorizationCodeServiceMock: AuthorizationCodeService
+        private lateinit var microsoftGraphServiceMock: MicrosoftGraphService
+        private lateinit var ssoLoginStateService: SSOLoginSessionStateService
 
         @BeforeClass
         @JvmStatic
         fun setup() {
+            ssoLoginStateService = SSOLoginSessionStateService()
+            microsoftGraphServiceMock = mockk<MicrosoftGraphService>()
+            authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
+            ldapUserLookupServiceMock = mockk<UserLookupService>()
             val loginPageController = DeltaLoginController(
                 listOf(serviceClient),
                 ssoConfig,
@@ -270,7 +282,7 @@ class OAuthLoginTest {
             val oauthClientProviderLookupService = SSOOAuthClientProviderLookupService(
                 ssoConfig, ssoLoginStateService
             )
-            val mockHttpEngine = MockEngine {
+            val mockOAuthTokenRequestHttpEngine = MockEngine {
                 respond(
                     content = ByteReadChannel(
                         """{
@@ -289,7 +301,7 @@ class OAuthLoginTest {
                 install(Authentication) {
                     azureAdSingleSignOn(
                         AuthServiceConfig("http://auth-service"),
-                        HttpClient(mockHttpEngine),
+                        HttpClient(mockOAuthTokenRequestHttpEngine),
                         oauthClientProviderLookupService,
                     )
                 }
@@ -298,7 +310,7 @@ class OAuthLoginTest {
                     configureRateLimiting(10)
                     routing {
                         route("/delta") {
-                            deltaLoginRoutes(loginPageController, oauthController)
+                            deltaLoginRoutes(serviceConfig, loginPageController, oauthController)
                         }
                     }
                 }

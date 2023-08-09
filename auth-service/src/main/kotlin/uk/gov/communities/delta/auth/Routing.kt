@@ -9,6 +9,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.util.*
 import kotlinx.serialization.Serializable
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
@@ -35,7 +36,7 @@ fun Application.configureRouting(injection: Injection) {
     routing {
         healthcheckRoute()
         internalRoutes(injection)
-        externalRoutes(injection.externalDeltaLoginController(), injection.deltaOAuthLoginController())
+        externalRoutes(injection.authServiceConfig, injection.externalDeltaLoginController(), injection.deltaOAuthLoginController())
     }
 }
 
@@ -46,6 +47,7 @@ fun Route.healthcheckRoute() {
 }
 
 fun Route.externalRoutes(
+    serviceConfig: AuthServiceConfig,
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
 ) {
@@ -56,18 +58,20 @@ fun Route.externalRoutes(
     }
 
     route("/delta") {
-        deltaLoginRoutes(deltaLoginController, deltaSSOLoginController)
+        deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
     }
 }
 
 fun Route.deltaLoginRoutes(
+    serviceConfig: AuthServiceConfig,
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
 ) {
     install(Sessions) {
         val key = hex(Env.getRequiredOrDevFallback("COOKIE_SIGNING_KEY_HEX", "1234"))
         cookie<LoginSessionCookie>("LOGIN_SESSION") {
-            cookie.extensions["SameSite"] = "Lax"
+            cookie.extensions["SameSite"] = "Lax" // We need the cookie to be present when being redirected back to the SSO callback endpoint
+            cookie.secure = serviceConfig.serviceUrl.startsWith("https")
             transform(SessionTransportTransformerMessageAuthentication(key))
         }
     }
