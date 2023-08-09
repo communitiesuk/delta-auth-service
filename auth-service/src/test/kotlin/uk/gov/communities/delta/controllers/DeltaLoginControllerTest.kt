@@ -19,7 +19,7 @@ import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
@@ -62,7 +62,9 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostNotInGroup() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("dn", "username", listOf("some-other-group"), "", "", ""))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(
+            testLdapUser(cn = "username", memberOfCNs = listOf("some-other-group"))
+        )
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
@@ -77,7 +79,9 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSuccess() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(LdapUser("dn", "username", listOf(deltaConfig.requiredGroupCn), "", "", ""))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(
+            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.requiredGroupCn))
+        )
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {

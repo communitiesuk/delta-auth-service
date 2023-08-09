@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.services
 
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import java.lang.Integer.parseInt
 import java.util.*
 import javax.naming.Context
 import javax.naming.NamingException
@@ -38,7 +39,10 @@ class LdapService(private val config: Configuration) {
 
     fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
         val attributes =
-            ctx.getAttributes(userDn, arrayOf("cn", "memberOf", "mail", "unixHomeDirectory", "givenName", "sn"))
+            ctx.getAttributes(
+                userDn,
+                arrayOf("cn", "memberOf", "mail", "unixHomeDirectory", "givenName", "sn", "userAccountControl")
+            )
 
         val cn = attributes.get("cn").get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
         val email =
@@ -48,17 +52,25 @@ class LdapService(private val config: Configuration) {
         val surname = attributes.get("sn")?.get() as String?
         val name = (firstName ?: "") + " " + (surname ?: "")
         val memberOfGroupDNs = attributes.getMemberOfList()
+        val accountEnabled = attributes.getAccountEnabled()
 
         val memberOfGroupCNs = memberOfGroupDNs.mapNotNull {
             val match = groupDnToCnRegex.matchEntire(it)
             match?.groups?.get(1)?.value
         }
-        return LdapUser(userDn, cn, memberOfGroupCNs, email, totpSecret, name)
+        return LdapUser(userDn, cn, memberOfGroupCNs, email, totpSecret, name, accountEnabled)
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun Attributes.getMemberOfList(): List<String> {
         return get("memberOf").all.asSequence().toList() as List<String>
+    }
+
+    private fun Attributes.getAccountEnabled(): Boolean {
+        val userAccountControlDecimal = get("userAccountControl")?.get() as String
+        val userAccountControl = parseInt(userAccountControlDecimal)
+        // https://learn.microsoft.com/en-us/troubleshoot/windows-server/identity/useraccountcontrol-manipulate-account-properties
+        return userAccountControl and (1 shl 1) == 0
     }
 }
 
@@ -69,7 +81,8 @@ data class LdapUser(
     val memberOfCNs: List<String>,
     val email: String,
     val deltaTOTPSecret: String?,
-    val name: String
+    val name: String,
+    val accountEnabled: Boolean,
 )
 
 class InvalidLdapUserException(message: String) : Exception(message)
