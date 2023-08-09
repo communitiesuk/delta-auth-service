@@ -8,15 +8,13 @@ import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import org.mockito.Mockito.mock
-import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.whenever
 import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
@@ -71,25 +69,26 @@ class RefreshUserInfoControllerTest {
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
         private val user = LdapUser("dn", "user", listOf("example-role"), "", "", "")
 
-        private val userLookupService = mock<UserLookupService>()
-        private val samlTokenService = mock<SAMLTokenService>()
-        private val oAuthSessionService = mock<OAuthSessionService>()
+        private val userLookupService = mockk<UserLookupService>()
+        private val samlTokenService = mockk<SAMLTokenService>()
+        private val oAuthSessionService = mockk<OAuthSessionService>()
 
         @BeforeClass
         @JvmStatic
         fun setup() {
-            whenever(userLookupService.lookupUserByCn(session.userCn)).thenReturn(user)
-            whenever(
+            every { userLookupService.lookupUserByCn(session.userCn) } answers { user }
+            every {
                 samlTokenService.generate(
-                    eq(client.samlCredential),
-                    eq(user),
-                    eq(session.createdAt),
+                    client.samlCredential,
+                    user,
+                    session.createdAt,
                     any()
                 )
-            ).thenReturn("SAML Token")
-            whenever(oAuthSessionService.retrieveFomAuthToken(session.authToken, client)).thenReturn(session)
-            controller = RefreshUserInfoController(userLookupService, samlTokenService)
+            } answers { "SAML Token" }
+            every { oAuthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
+            every { oAuthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
 
+            controller = RefreshUserInfoController(userLookupService, samlTokenService)
             testApp = TestApplication {
                 application {
                     configureSerialization()
