@@ -1,4 +1,4 @@
-package uk.gov.communities.delta.auth.security
+package uk.gov.communities.delta.auth.services.sso
 
 import io.ktor.server.application.*
 import io.ktor.server.sessions.*
@@ -8,10 +8,15 @@ import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import kotlin.time.Duration.Companion.minutes
 
-/**
+/*
  * Service for checking the state parameter when acting as an OAuth client.
+ *
+ * When redirecting to Microsoft login we send a "state" query parameter with a random value in and
+ * store the same value in a cookie.
+ * Microsoft sends the "state" parameter back in the callback, and we check it matches the cookie.
+ * See <https://www.rfc-editor.org/rfc/rfc6749#section-10.12>
  */
-class SSOLoginStateService {
+class SSOLoginSessionStateService {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val validateStateAttributeKey = AttributeKey<ValidateStateResult>("DELTA_OAUTH_VALIDATE_STATE")
     private val ssoStateTimeoutMillis = 10.minutes.inWholeMilliseconds
@@ -23,7 +28,7 @@ class SSOLoginStateService {
             session.copy(
                 ssoState = state,
                 ssoAt = System.currentTimeMillis(),
-                ssoClient = ssoClient.internalClientId
+                ssoClient = ssoClient.internalId
             )
         )
     }

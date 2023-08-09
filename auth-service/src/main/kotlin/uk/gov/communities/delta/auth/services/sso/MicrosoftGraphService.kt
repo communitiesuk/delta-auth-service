@@ -1,17 +1,26 @@
-package uk.gov.communities.delta.auth.services
+package uk.gov.communities.delta.auth.services.sso
 
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
-class MicrosoftGraphService(
-    private val httpClient: HttpClient
-) {
+class MicrosoftGraphService {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val httpClient = HttpClient(Java) {
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
+    }
+
+    // See https://learn.microsoft.com/en-us/graph/api/directoryobject-checkmembergroups
     suspend fun checkCurrentUserGroups(accessToken: String, groupIds: List<String>): List<String> {
         logger.info("Requesting user groups from Microsoft Graph")
         try {

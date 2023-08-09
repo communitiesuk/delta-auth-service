@@ -19,13 +19,21 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
     install(StatusPages) {
         // Currently only the login page is rate limited so always renders the login page for status "TooManyRequests"
         status(HttpStatusCode.TooManyRequests) { call, _ ->
-            call.respond(ThymeleafContent("delta-login",
-                mapOf(
-                    "deltaUrl" to DeltaConfig.fromEnv().deltaWebsiteUrl,
-                    "errorMessage" to "Too many requests from your location, please try again in a few minutes.",
-                    "ssoClients" to ssoConfig.ssoClients.filter { it.buttonText != null },
-                ))
-            )
+            try {
+                call.respond(
+                    ThymeleafContent(
+                        "delta-login",
+                        mapOf(
+                            "deltaUrl" to DeltaConfig.fromEnv().deltaWebsiteUrl,
+                            "errorMessage" to "Too many requests from your location, please try again in a few minutes.",
+                            "ssoClients" to ssoConfig.ssoClients.filter { it.buttonText != null },
+                        )
+                    )
+                )
+            } catch (e: Exception) {
+                logger.error("Failed to render Delta login page after rate limit", e)
+                call.respondText("Failed to render error page. Request id ${call.callId}")
+            }
         }
         for (s in statusErrorPageDefinitions) {
             status(s.key) { call, _ ->
@@ -57,7 +65,7 @@ open class UserVisibleServerError(
     val userVisibleMessage: String,
     val title: String = "Error"
 ) :
-    Exception("${errorCode} $exceptionMessage")
+    Exception("$errorCode $exceptionMessage")
 
 class HttpNotFoundException(message: String) : Exception(message)
 

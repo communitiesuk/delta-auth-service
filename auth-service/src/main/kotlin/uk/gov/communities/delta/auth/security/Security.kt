@@ -9,8 +9,9 @@ import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.config.OAuthClient
-import uk.gov.communities.delta.auth.config.ServiceConfig
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.oauthClientCallbackRoute
+import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
 
 // "Delta-Client: client-id:secret" header auth for internal APIs
 const val CLIENT_HEADER_AUTH_NAME = "delta-client-header-auth"
@@ -22,15 +23,15 @@ const val DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME = "delta-ldap-service-users-basi
 // Requires client header auth
 const val OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME = "oauth-bearer-access-token"
 
-// Single Sign On through Azure AD, should only be used by the login and callback routes directly involved in SSO
-const val OAUTH_CLIENT_TO_AZURE_AD = "oauth-client-to-azure-ad"
+// Single Sign On through Azure AD, only used by the login and callback routes directly involved in SSO
+const val SSO_AZURE_AD_OAUTH_CLIENT = "oauth-client-to-azure-ad"
 
 fun Application.configureSecurity(injection: Injection) {
     val logger = LoggerFactory.getLogger("Application.Security")
     val ldapAuthenticationService = injection.ldapServiceUserAuthenticationService()
     val oAuthSessionService = injection.oAuthSessionService
-    val serviceConfig = injection.serviceConfig
-    val oauthClientProviderLookupService = injection.oauthClientProviderLookupService
+    val serviceConfig = injection.authServiceConfig
+    val oauthClientProviderLookupService = injection.ssoOAuthClientProviderLookupService
     val oauthHttpClient = HttpClient(Java) {
         install(ContentNegotiation) {
             json()
@@ -62,23 +63,23 @@ fun Application.configureSecurity(injection: Injection) {
             }
         }
 
-        deltaOAuth(serviceConfig, oauthHttpClient, oauthClientProviderLookupService)
+        azureAdSingleSignOn(serviceConfig, oauthHttpClient, oauthClientProviderLookupService)
     }
 }
 
-fun AuthenticationConfig.deltaOAuth(
-    serviceConfig: ServiceConfig,
+fun AuthenticationConfig.azureAdSingleSignOn(
+    authServiceConfig: AuthServiceConfig,
     oauthHttpClient: HttpClient,
-    oAuthClientProviderLookupService: OAuthClientProviderLookupService,
+    ssoOAuthClientProviderLookupService: SSOOAuthClientProviderLookupService,
 ) {
-    oauth(OAUTH_CLIENT_TO_AZURE_AD) {
-        urlProvider = { "${serviceConfig.serviceUrl}${oauthClientCallbackRoute(parameters["ssoClientId"]!!)}" }
+    oauth(SSO_AZURE_AD_OAUTH_CLIENT) {
+        urlProvider = { "${authServiceConfig.serviceUrl}${oauthClientCallbackRoute(parameters["ssoClientId"]!!)}" }
         providerLookup = lookup@{
             // This gets executed during the authentication phase of every request under OAuth authentication.
             // We use it to do some extra checks and skip OAuth if we don't want to carry on with the flow.
-            val ssoClient = oAuthClientProviderLookupService.validateSSOClientForOAuthRequest(this)
+            val ssoClient = ssoOAuthClientProviderLookupService.validateSSOClientForOAuthRequest(this)
                 ?: return@lookup null // Skip authentication and carry straight on to the route handlers
-            return@lookup oAuthClientProviderLookupService.providerConfig(ssoClient)
+            return@lookup ssoOAuthClientProviderLookupService.providerConfig(ssoClient)
         }
         client = oauthHttpClient
     }

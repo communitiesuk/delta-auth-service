@@ -7,7 +7,7 @@ import org.slf4j.spi.LoggingEventBuilder
 @Serializable
 data class AzureADSSOClient(
     // Used in the login + callback urls, /delta/oauth/<internalClientId>/callback
-    val internalClientId: String,
+    val internalId: String,
     val azTenantId: String,
     val azClientId: String,
     val azClientSecret: String,
@@ -21,7 +21,7 @@ data class AzureADSSOClient(
     // User visible text to display on SSO login button, or null to hide button
     val buttonText: String? = null,
 ) {
-    override fun toString() = "AzureADSSOClient($internalClientId, $azTenantId, $azClientId)"
+    override fun toString() = "AzureADSSOClient($internalId, $azTenantId, $azClientId)"
 }
 
 class AzureADSSOConfig(val ssoClients: List<AzureADSSOClient>) {

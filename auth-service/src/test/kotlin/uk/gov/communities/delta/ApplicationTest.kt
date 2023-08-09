@@ -39,7 +39,7 @@ class ApplicationTest {
                 ClientConfig.fromEnv(deltaConfig),
                 deltaConfig,
                 AzureADSSOConfig(emptyList()),
-                ServiceConfig.fromEnv(),
+                AuthServiceConfig.fromEnv(),
             )
             testApp = TestApplication {
                 application {

@@ -109,7 +109,7 @@ class DeltaLoginController(
             it.emailDomain != null && formUsername.lowercase().endsWith(it.emailDomain)
         }
         if (ssoClientMatchingEmailDomain != null) {
-            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalClientId))
+            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))
         }
 
         val cn = formUsername.replace('@', '!')

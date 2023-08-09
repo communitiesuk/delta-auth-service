@@ -11,7 +11,7 @@ import io.ktor.util.*
 import kotlinx.serialization.Serializable
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
-import uk.gov.communities.delta.auth.controllers.external.DeltaOAuthLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -21,6 +21,7 @@ import uk.gov.communities.delta.auth.plugins.addServiceUserUsernameToMDC
 import uk.gov.communities.delta.auth.security.*
 import java.io.File
 
+// A session cookie used during the login flow and cleared after.
 @Serializable
 data class LoginSessionCookie(
     val deltaState: String,
@@ -46,7 +47,7 @@ fun Route.healthcheckRoute() {
 
 fun Route.externalRoutes(
     deltaLoginController: DeltaLoginController,
-    deltaOAuthLoginController: DeltaOAuthLoginController,
+    deltaSSOLoginController: DeltaSSOLoginController,
 ) {
     staticResources("/static", "static")
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
@@ -55,13 +56,13 @@ fun Route.externalRoutes(
     }
 
     route("/delta") {
-        deltaLoginRoutes(deltaLoginController, deltaOAuthLoginController)
+        deltaLoginRoutes(deltaLoginController, deltaSSOLoginController)
     }
 }
 
 fun Route.deltaLoginRoutes(
     deltaLoginController: DeltaLoginController,
-    deltaOAuthLoginController: DeltaOAuthLoginController,
+    deltaSSOLoginController: DeltaSSOLoginController,
 ) {
     install(Sessions) {
         // TODO Add Terraform configuration for this
@@ -79,8 +80,8 @@ fun Route.deltaLoginRoutes(
     }
 
     route("/oauth/{ssoClientId}/") {
-        authenticate(OAUTH_CLIENT_TO_AZURE_AD) {
-            deltaOAuthLoginController.route(this)
+        authenticate(SSO_AZURE_AD_OAUTH_CLIENT) {
+            deltaSSOLoginController.route(this)
         }
     }
 }

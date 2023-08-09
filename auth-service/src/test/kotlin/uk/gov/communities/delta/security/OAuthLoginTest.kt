@@ -20,16 +20,16 @@ import org.hamcrest.MatcherAssert
 import org.junit.*
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
-import uk.gov.communities.delta.auth.controllers.external.DeltaOAuthLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
 import uk.gov.communities.delta.auth.deltaLoginRoutes
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.security.OAuthClientProviderLookupService
-import uk.gov.communities.delta.auth.security.SSOLoginStateService
+import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
+import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.security.configureRateLimiting
-import uk.gov.communities.delta.auth.security.deltaOAuth
+import uk.gov.communities.delta.auth.security.azureAdSingleSignOn
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.MicrosoftGraphService
+import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
@@ -74,7 +74,7 @@ class OAuthLoginTest {
 
     @Test
     fun `Login endpoint throws error with no session cookie`() {
-        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient().get("/delta/oauth/test/login") }
         }.apply {
             assertEquals("reached_login_page", errorCode)
@@ -110,7 +110,7 @@ class OAuthLoginTest {
 
     @Test
     fun `Callback returns error on invalid state`() {
-        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=DIFFERENT-STATE") }
         }.apply {
             assertEquals("callback_invalid_state", errorCode)
@@ -135,7 +135,7 @@ class OAuthLoginTest {
         every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), accountEnabled = false)
         }
-        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
             assertEquals("user_disabled", errorCode)
@@ -147,7 +147,7 @@ class OAuthLoginTest {
         every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf("some-other-group"))
         }
-        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
             assertEquals("not_delta_user", errorCode)
@@ -159,7 +159,7 @@ class OAuthLoginTest {
         coEvery {
             microsoftGraphServiceMock.checkCurrentUserGroups(accessToken, any())
         } answers { listOf() }
-        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
             assertEquals("not_in_required_azure_group", errorCode)
@@ -175,7 +175,7 @@ class OAuthLoginTest {
     @Test
     fun `Callback returns error if admin user is not in admin Azure group`() {
         mockAdminUser()
-        Assert.assertThrows(DeltaOAuthLoginController.Companion.OAuthLoginException::class.java) {
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
             assertEquals("not_in_required_admin_group", errorCode)
@@ -245,7 +245,7 @@ class OAuthLoginTest {
         private val ldapUserLookupServiceMock = mockk<UserLookupService>()
         private val authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
         private val microsoftGraphServiceMock = mockk<MicrosoftGraphService>()
-        private val ssoLoginStateService = SSOLoginStateService()
+        private val ssoLoginStateService = SSOLoginSessionStateService()
         private val accessToken = "header.${"{\"unique_name\": \"user@example.com\"}".encodeBase64()}.trailer"
 
         @BeforeClass
@@ -258,7 +258,7 @@ class OAuthLoginTest {
                 mockk(),
                 authorizationCodeServiceMock
             )
-            val oauthController = DeltaOAuthLoginController(
+            val oauthController = DeltaSSOLoginController(
                 deltaConfig,
                 ClientConfig(listOf(serviceClient)),
                 ssoConfig,
@@ -267,7 +267,7 @@ class OAuthLoginTest {
                 authorizationCodeServiceMock,
                 microsoftGraphServiceMock,
             )
-            val oauthClientProviderLookupService = OAuthClientProviderLookupService(
+            val oauthClientProviderLookupService = SSOOAuthClientProviderLookupService(
                 ssoConfig, ssoLoginStateService
             )
             val mockHttpEngine = MockEngine {
@@ -287,8 +287,8 @@ class OAuthLoginTest {
             testApp = TestApplication {
                 install(CallId) { generate(4) }
                 install(Authentication) {
-                    deltaOAuth(
-                        ServiceConfig("http://auth-service"),
+                    azureAdSingleSignOn(
+                        AuthServiceConfig("http://auth-service"),
                         HttpClient(mockHttpEngine),
                         oauthClientProviderLookupService,
                     )
