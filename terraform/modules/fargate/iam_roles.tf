@@ -37,7 +37,8 @@ resource "aws_iam_policy" "ecs_delta_secret_reader" {
         {
           Effect = "Allow"
           Action = [
-            "secretsmanager:GetSecretValue"
+            "secretsmanager:GetSecretValue",
+            "ssm:GetParameter", "ssm:GetParameters",
           ]
           Resource = var.secrets[*]["valueFrom"]
         }
