@@ -73,7 +73,7 @@ class DeltaSSOLoginController(
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
         val user = lookupUserInAd(email)
-            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/register?from_sso_client=${ssoClient.internalId}")
+            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/register?from_sso_client=${ssoClient.internalId}&email=${email.encodeURLParameter()}")
 
         checkUserEnabled(user)
         lookupAndCheckAzureGroups(user, principal, ssoClient)
