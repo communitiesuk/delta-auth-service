@@ -86,7 +86,7 @@ class DeltaSSOLoginController(
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         call.sessions.clear<LoginSessionCookie>()
-        call.respondRedirect(client.redirectUrl + "?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
+        call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
     }
 
     private suspend fun ApplicationCall.redirectToDeltaLoginErrorPage(ssoError: String) {

@@ -96,7 +96,7 @@ class DeltaLoginControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
             assertTrue("Should redirect to Delta website") {
-                headers["Location"]!!.startsWith(client.redirectUrl)
+                headers["Location"]!!.startsWith(client.deltaWebsiteUrl + "/login/oauth2/redirect")
             }
         }
     }

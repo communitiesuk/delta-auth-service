@@ -73,7 +73,7 @@ class OAuthLoginTest {
         testClient.get("/delta/oauth/test/callback?code=auth-code&state=${state}").apply {
             // Which should redirect us back to Delta with an Authorisation code
             assertEquals(HttpStatusCode.Found, status)
-            assertEquals(headers["Location"], "https://delta/redirect?code=code&state=delta-state")
+            assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             verify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
@@ -200,7 +200,7 @@ class OAuthLoginTest {
         } answers { listOf(ssoClient.requiredGroupId!!, ssoClient.requiredAdminGroupId!!) }
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}").apply {
             assertEquals(HttpStatusCode.Found, status)
-            assertEquals(headers["Location"], "https://delta/redirect?code=code&state=delta-state")
+            assertEquals(headers["Location"], "https://delta/login/oauth2/redirect?code=code&state=delta-state")
         }
     }
 
