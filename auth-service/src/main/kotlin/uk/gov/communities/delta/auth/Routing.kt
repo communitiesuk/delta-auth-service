@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth
 
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
@@ -54,7 +55,7 @@ fun Route.externalRoutes(
     staticResources("/static", "static")
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
     get("/favicon.ico") {
-        call.respondFile(File(javaClass.classLoader.getResource("static/assets/images/favicon.ico")!!.toURI()))
+        call.respondBytes(javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes(), ContentType.Image.XIcon)
     }
 
     route("/delta") {
