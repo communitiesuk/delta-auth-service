@@ -152,7 +152,7 @@ class DeltaSSOLoginController(
         if (ssoClient.emailDomain != null && !email.endsWith(ssoClient.emailDomain)) {
             throw OAuthLoginException(
                 "invalid_email_domain",
-                "Expected email for sso client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was $email",
+                "Expected email for SSO client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was $email",
                 "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk"
             )
         }
@@ -171,8 +171,8 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_azure_group",
                 "User ${user.cn} not in required Azure group ${ssoClient.requiredGroupId}",
-                // TODO DT-528 Process for adding users to group
-                "To use Single Sign On you must be added to the Delta SSO Users group in ${ssoClient.internalId.uppercase()} before you can use this service. Please contact qq@levellingup.gov.uk"
+                // TODO DT-572 Process for adding users to group in DLUHC Azure AD
+                "To use Single Sign On you must be added to the Delta SSO Users group in ${ssoClient.internalId.uppercase()} before you can use this service. Please contact the Service Desk"
             )
         }
 
@@ -181,8 +181,8 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_admin_group",
                 "User ${user.cn} is admin in Delta (member of ${adminGroups.joinToString(", ")}, but not member of required admin group ${ssoClient.requiredAdminGroupId}",
-                // TODO DT-528 Process for adding users to group
-                "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()}. Please contact qq@levellingup.gov.uk"
+                // TODO DT-572 Process for adding users to group in DLUHC Azure AD
+                "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()}. Please contact the Service Desk"
             )
         }
     }
@@ -203,10 +203,9 @@ class DeltaSSOLoginController(
     }
 
     @Serializable
-    // TODO DT-528 Figure out if we reliably get the email claim in the JWT, and if it's the best one to use
-    // Set to unique_name for testing with a test tenant
-    // Azure AD doesn't seem to validate emails at all
-    data class JwtBody(@SerialName("unique_name") val email: String)
+    // TODO DT-572 Figure out whether unique_name is reliably the user's email address in DLUHC AD
+    // Azure AD doesn't seem to validate emails at all so using the "email" claim doesn't seem ideal
+    data class JwtBody(@SerialName("unique_name") val uniqueName: String)
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }
 
@@ -215,7 +214,7 @@ class DeltaSSOLoginController(
             val split = jwt.split('.')
             if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
             val jsonString = split[1].decodeBase64String()
-            return jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString).email
+            return jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString).uniqueName
         } catch (e: Exception) {
             logger.error("Error parsing JWT '{}'", jwt)
             throw InvalidJwtException("Error parsing JWT", e)

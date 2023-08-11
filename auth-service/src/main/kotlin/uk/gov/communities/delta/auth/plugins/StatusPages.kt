@@ -32,7 +32,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                 )
             } catch (e: Exception) {
                 logger.error("Failed to render Delta login page after rate limit", e)
-                call.respondText("Failed to render error page. Request id ${call.callId}")
+                call.respondText("Failed to render login page after reaching rate limit. Request id ${call.callId}")
             }
         }
         for (s in statusErrorPageDefinitions) {

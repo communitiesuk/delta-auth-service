@@ -54,8 +54,6 @@ class SSOOAuthClientProviderLookupService(
             clientSecret = ssoClient.azClientSecret,
             defaultScopes = listOf(
                 "https://graph.microsoft.com/User.Read",
-                // TODO DT-528 Do we need this? Email seems to be supplied anyway
-                "https://graph.microsoft.com/email",
             ),
             onStateCreated = { call, state ->
                 ssoLoginStateService.onSSOStateCreated(call, state, ssoClient)

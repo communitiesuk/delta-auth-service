@@ -69,7 +69,7 @@ class Injection (
 
     val dbPool = DbPool(databaseConfig)
     val authorizationCodeService = AuthorizationCodeService(dbPool)
-    val oAuthSessionService = OAuthSessionService(dbPool)
+    val oauthSessionService = OAuthSessionService(dbPool)
     val ssoLoginStateService = SSOLoginSessionStateService()
     val ssoOAuthClientProviderLookupService = SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
     val microsoftGraphService = MicrosoftGraphService()
@@ -97,7 +97,7 @@ class Injection (
         authorizationCodeService,
         userLookupService,
         samlTokenService,
-        oAuthSessionService,
+        oauthSessionService,
     )
 
     fun refreshUserInfoController() = RefreshUserInfoController(userLookupService, samlTokenService)

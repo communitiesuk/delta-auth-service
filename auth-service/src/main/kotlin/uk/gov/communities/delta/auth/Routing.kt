@@ -95,21 +95,21 @@ fun oauthClientCallbackRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoC
 // "Internal" to the VPC, this is enforced by load balancer rules
 fun Route.internalRoutes(injection: Injection) {
     val generateSAMLTokenController = injection.generateSAMLTokenController()
-    val oAuthTokenController = injection.internalOAuthTokenController()
+    val oauthTokenController = injection.internalOAuthTokenController()
     val refreshUserInfoController = injection.refreshUserInfoController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController)
 
-        oauthTokenRoute(oAuthTokenController)
+        oauthTokenRoute(oauthTokenController)
 
         bearerTokenRoutes(refreshUserInfoController)
     }
 }
 
-fun Route.oauthTokenRoute(oAuthTokenController: OAuthTokenController) {
+fun Route.oauthTokenRoute(oauthTokenController: OAuthTokenController) {
     route("/token") {
-        oAuthTokenController.route(this)
+        oauthTokenController.route(this)
     }
 }
 

@@ -8,8 +8,8 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.Injection
-import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
+import uk.gov.communities.delta.auth.config.OAuthClient
 import uk.gov.communities.delta.auth.oauthClientCallbackRoute
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
 
@@ -29,7 +29,7 @@ const val SSO_AZURE_AD_OAUTH_CLIENT = "oauth-client-to-azure-ad"
 fun Application.configureSecurity(injection: Injection) {
     val logger = LoggerFactory.getLogger("Application.Security")
     val ldapAuthenticationService = injection.ldapServiceUserAuthenticationService()
-    val oAuthSessionService = injection.oAuthSessionService
+    val oauthSessionService = injection.oauthSessionService
     val serviceConfig = injection.authServiceConfig
     val oauthClientProviderLookupService = injection.ssoOAuthClientProviderLookupService
     val oauthHttpClient = HttpClient(Java) {
@@ -59,7 +59,7 @@ fun Application.configureSecurity(injection: Injection) {
                     logger.warn("OAuth Bearer token authentication, rejecting due to missing client authentication")
                     return@authenticate null
                 }
-                oAuthSessionService.retrieveFomAuthToken(it.token, clientPrincipal.client as OAuthClient)
+                oauthSessionService.retrieveFomAuthToken(it.token, clientPrincipal.client as OAuthClient)
             }
         }
 
