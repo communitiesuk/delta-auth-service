@@ -49,7 +49,7 @@ class DbPool(private val config: DatabaseConfig) {
         username = config.user
         password = config.password
         jdbcUrl = config.url
-        maximumPoolSize = 10 // TODO need to reduce idle_in_transaction_session_timeout in parameter group
+        maximumPoolSize = 10
         minimumIdle = 2
         isAutoCommit = false
         transactionIsolation = "TRANSACTION_REPEATABLE_READ"
