@@ -11,12 +11,16 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import kotlin.time.Duration.Companion.seconds
 
 class MicrosoftGraphService {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val httpClient = HttpClient(Java) {
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 10.seconds.inWholeMilliseconds
         }
     }
 
