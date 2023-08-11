@@ -46,9 +46,9 @@ class LdapService(private val config: Configuration) {
                 arrayOf("cn", "memberOf", "mail", "unixHomeDirectory", "givenName", "sn", "userAccountControl")
             )
 
-        val cn = attributes.get("cn").get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
+        val cn = attributes.get("cn")?.get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
         val email =
-            attributes.get("mail").get() as String? ?: throw InvalidLdapUserException("No value for attribute mail")
+            attributes.get("mail")?.get() as String? ?: throw InvalidLdapUserException("No value for attribute mail")
         val totpSecret = attributes.get("unixHomeDirectory")?.get() as String?
         val firstName = attributes.get("givenName")?.get() as String?
         val surname = attributes.get("sn")?.get() as String?

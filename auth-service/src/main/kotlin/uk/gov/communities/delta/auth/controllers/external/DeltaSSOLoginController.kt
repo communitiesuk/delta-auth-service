@@ -57,6 +57,7 @@ class DeltaSSOLoginController(
 
     private suspend fun callback(call: ApplicationCall) {
         val ssoClient = getSSOClient(call)
+        logger.info("Callback request for client ${ssoClient.internalId}")
 
         if (call.parameters.contains("error")) {
             // This means Azure AD returned an error, probably because the user declined the login request

@@ -9,6 +9,7 @@ import java.sql.Connection
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.time.Duration.Companion.seconds
 
 class DbPool(private val config: DatabaseConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -48,9 +49,11 @@ class DbPool(private val config: DatabaseConfig) {
         username = config.user
         password = config.password
         jdbcUrl = config.url
-        maximumPoolSize = 20
+        maximumPoolSize = 10 // TODO need to reduce idle_in_transaction_session_timeout in parameter group
+        minimumIdle = 2
         isAutoCommit = false
         transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+        connectionTimeout = 20.seconds.inWholeMilliseconds
         validate()
     })
 }
