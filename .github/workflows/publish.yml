@@ -21,9 +21,6 @@ jobs:
     outputs:
       image_tag: ${{ steps.determine_tag.outputs.tag }}
     steps:
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m')" >> $GITHUB_OUTPUT
       - name: Checkout
         uses: actions/checkout@v3
 
@@ -37,11 +34,6 @@ jobs:
             && echo "tag=snapshot-$VERSION-${{ github.sha }}" >> $GITHUB_OUTPUT \
             || echo "tag=release-$VERSION" >> $GITHUB_OUTPUT
       - run: docker pull amazoncorretto:17
-      - uses: jpribyl/action-docker-layer-caching@c632825d12ec837065f49726ea27ddd40bcc7894
-        continue-on-error: true
-        with:
-          key: docker-cache-${{ steps.date.outputs.date }}-{hash}
-          restore-keys: docker-cache-${{ steps.date.outputs.date }}-
       - name: Build image
         run: docker build -t $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }} .
         working-directory: auth-service/
