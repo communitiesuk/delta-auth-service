@@ -13,6 +13,7 @@ import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginControlle
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
+import uk.gov.communities.delta.auth.controllers.internal.TasksController
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
@@ -20,6 +21,8 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
+import uk.gov.communities.delta.auth.tasks.DeleteOldAuthCodes
+import uk.gov.communities.delta.auth.tasks.DeleteOldDeltaSessions
 import java.time.Duration
 
 @Suppress("MemberVisibilityCanBePrivate")
@@ -98,6 +101,10 @@ class Injection(
     val rateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
     val successfulLoginCounter: Counter = meterRegistry.counter("login.successfulLogins")
 
+    val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
+    val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
+    val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask)
+
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
             ADLdapLoginService.Configuration(ldapConfig.serviceUserDnFormat),
@@ -144,4 +151,6 @@ class Injection(
             authorizationCodeService,
             microsoftGraphService
         )
+
+    fun tasksController() = TasksController(tasks.associateBy { it.name })
 }

@@ -9,6 +9,7 @@ import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.security.configureSecurity
+import uk.gov.communities.delta.auth.tasks.startScheduler
 
 fun main() {
     val keyStore = SelfSignedSSLCertKeystore.getKeystore()
@@ -47,4 +48,5 @@ fun Application.appModule() {
     configureTemplating(developmentMode)
     configureRouting(Injection.instance)
     configureStatusPages(Injection.instance.deltaConfig.deltaWebsiteUrl, Injection.instance.azureADSSOConfig)
+    startScheduler(Injection.instance.tasks)
 }
