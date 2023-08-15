@@ -65,7 +65,7 @@ class DeltaLoginController(
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
-        errorMessage: String = "", errorLink: String = "#", username: String = "", password: String = ""
+        errorMessage: String = "", errorLink: String = "#", username: String = ""
     ) = respond(
         ThymeleafContent(
             "delta-login",
@@ -74,7 +74,6 @@ class DeltaLoginController(
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,
-                "password" to password,
             )
         )
     )
