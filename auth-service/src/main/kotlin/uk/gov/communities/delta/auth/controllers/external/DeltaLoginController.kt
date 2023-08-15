@@ -8,6 +8,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.server.thymeleaf.*
+import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
@@ -26,6 +27,8 @@ class DeltaLoginController(
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
+    private val failedLoginCounter: Counter,
+    private val successfulLoginCounter: Counter
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
@@ -126,6 +129,7 @@ class DeltaLoginController(
                 // but we're accepting that here for the convenience of being able to see failed logins
                 logger.atInfo().addKeyValue("username", cn)
                     .addKeyValue("loginFailureType", loginResult.javaClass.simpleName).log("Login failed")
+                failedLoginCounter.increment(1.0)
                 val userVisibleError = userVisibleError(loginResult)
                 call.respondLoginPage(
                     client,
@@ -140,7 +144,8 @@ class DeltaLoginController(
                 if (!loginResult.user.isMemberOfDeltaGroup()) {
                     logger.atInfo().addKeyValue("username", cn).addKeyValue("loginFailureType", "NotDeltaUser")
                         .log("Login failed")
-                    call.respondLoginPage(
+                    failedLoginCounter.increment(1.0)
+                    return call.respondLoginPage(
                         client,
                         errorMessage = "Your account exists but is not set up to access Delta. Please contact the Service Desk.",
                         errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
@@ -154,6 +159,7 @@ class DeltaLoginController(
                 )
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")
+                successfulLoginCounter.increment(1.0)
                 call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${queryParams.state.encodeURLParameter()}")
             }
         }

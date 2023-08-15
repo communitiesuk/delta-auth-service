@@ -1,3 +1,7 @@
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
 variable "environment" {
   type = string
 }
@@ -104,4 +108,9 @@ variable "delta_website_local_dev_client_secret_arn" {
   type        = string
   default     = null
   description = "Client secret for a client that redirects to localhost, for use only on the test environment"
+}
+
+variable "auth_metrics_namespace" {
+  description = "Namespace for auth metrics"
+  type        = string
 }

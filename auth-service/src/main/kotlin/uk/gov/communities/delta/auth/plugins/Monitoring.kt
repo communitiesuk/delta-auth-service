@@ -1,11 +1,13 @@
 package uk.gov.communities.delta.auth.plugins
 
-import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
+import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
+import io.micrometer.core.instrument.config.MeterFilter
 import io.ktor.server.request.*
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
@@ -17,7 +19,7 @@ import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_N
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.OAuthSession
 
-fun Application.configureMonitoring() {
+fun Application.configureMonitoring(cloudWatchMeterRegistry: CloudWatchMeterRegistry) {
     install(CallLogging) {
         level = Level.INFO
         callIdMdc("requestId")
@@ -32,6 +34,12 @@ fun Application.configureMonitoring() {
         verify { callId: String ->
             callId.isNotEmpty()
         }
+    }
+    install(MicrometerMetrics) {
+        registry = cloudWatchMeterRegistry
+        registry.config()
+            .meterFilter(MeterFilter.acceptNameStartsWith("login"))
+            .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics
     }
 }
 

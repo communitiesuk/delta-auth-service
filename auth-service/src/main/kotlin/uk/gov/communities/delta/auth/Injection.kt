@@ -1,6 +1,11 @@
 package uk.gov.communities.delta.auth
 
+import io.micrometer.cloudwatch2.CloudWatchConfig
+import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
+import io.micrometer.core.instrument.Clock
+import io.micrometer.core.instrument.Counter
 import org.slf4j.Logger
+import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
@@ -14,6 +19,7 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
+import java.time.Duration
 
 @Suppress("MemberVisibilityCanBePrivate")
 class Injection (
@@ -73,6 +79,21 @@ class Injection (
     val ssoLoginStateService = SSOLoginSessionStateService()
     val ssoOAuthClientProviderLookupService = SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
     val microsoftGraphService = MicrosoftGraphService()
+    val cloudWatchMeterRegistry = CloudWatchMeterRegistry(
+        object : CloudWatchConfig {
+            private val configuration = mapOf(
+                "cloudwatch.namespace" to authServiceConfig.metricsNamespace,
+                "cloudwatch.step" to Duration.ofMinutes(1).toString()
+            )
+
+            override fun get(key: String): String? = configuration[key]
+        },
+        Clock.SYSTEM,
+        CloudWatchAsyncClient.create()
+    )
+    val failedLoginCounter: Counter = cloudWatchMeterRegistry.counter("login.failedLogins")
+    val rateLimitCounter: Counter = cloudWatchMeterRegistry.counter("login.rateLimitedRequests")
+    val successfulLoginCounter: Counter = cloudWatchMeterRegistry.counter("login.successfulLogins")
 
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
@@ -89,7 +110,7 @@ class Injection (
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
             ldapService
         )
-        return DeltaLoginController(clientConfig.oauthClients, azureADSSOConfig, deltaConfig, adLoginService, authorizationCodeService)
+        return DeltaLoginController(clientConfig.oauthClients, azureADSSOConfig, deltaConfig, adLoginService, authorizationCodeService, failedLoginCounter, successfulLoginCounter)
     }
 
     fun internalOAuthTokenController() = OAuthTokenController(
