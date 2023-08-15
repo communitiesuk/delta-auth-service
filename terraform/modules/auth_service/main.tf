@@ -23,7 +23,6 @@ module "fargate" {
   memory                             = var.ecs.memory
   ecs_cloudwatch_log_expiration_days = var.cloudwatch_log_expiration_days
   alarms_sns_topic_arn               = var.alarms_sns_topic_arn
-  auth_metrics_namespace             = var.auth_metrics_namespace
   task_role_arn                      = aws_iam_role.auth_service_task_role.arn
   target_groups = [
     {
