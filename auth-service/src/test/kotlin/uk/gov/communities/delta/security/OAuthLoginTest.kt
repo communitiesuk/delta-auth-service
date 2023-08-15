@@ -239,7 +239,7 @@ class OAuthLoginTest {
     companion object {
         private lateinit var testApp: TestApplication
         private val deltaConfig = DeltaConfig.fromEnv()
-        private val serviceConfig = AuthServiceConfig.fromEnv()
+        private val serviceConfig = AuthServiceConfig("testServiceUrl", "")
         private val serviceClient = testServiceClient()
         private val ssoClient = AzureADSSOClient(
             "test",

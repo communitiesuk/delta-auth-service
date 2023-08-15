@@ -6,9 +6,9 @@ import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
-import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
 import io.micrometer.core.instrument.config.MeterFilter
 import io.ktor.server.request.*
+import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.MDC
@@ -19,7 +19,7 @@ import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_N
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.OAuthSession
 
-fun Application.configureMonitoring(cloudWatchMeterRegistry: CloudWatchMeterRegistry) {
+fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
     install(CallLogging) {
         level = Level.INFO
         callIdMdc("requestId")
@@ -36,7 +36,7 @@ fun Application.configureMonitoring(cloudWatchMeterRegistry: CloudWatchMeterRegi
         }
     }
     install(MicrometerMetrics) {
-        registry = cloudWatchMeterRegistry
+        registry = meterRegistry
         registry.config()
             .meterFilter(MeterFilter.acceptNameStartsWith("login"))
             .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics

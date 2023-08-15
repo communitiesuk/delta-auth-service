@@ -42,7 +42,7 @@ fun Application.appModule() {
 
     configureRateLimiting(Injection.instance.deltaConfig.rateLimit, Injection.instance.rateLimitCounter)
     configureSecurity(Injection.instance)
-    configureMonitoring(Injection.instance.cloudWatchMeterRegistry)
+    configureMonitoring(Injection.instance.meterRegistry)
     configureSerialization()
     configureTemplating(developmentMode)
     configureRouting(Injection.instance)

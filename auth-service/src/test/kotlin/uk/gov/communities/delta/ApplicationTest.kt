@@ -39,7 +39,7 @@ class ApplicationTest {
                 ClientConfig.fromEnv(deltaConfig),
                 deltaConfig,
                 AzureADSSOConfig(emptyList()),
-                AuthServiceConfig.fromEnv(),
+                AuthServiceConfig("testInvalidServiceUrl", ""),
             )
             testApp = TestApplication {
                 application {
