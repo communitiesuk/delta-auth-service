@@ -65,7 +65,7 @@ class DeltaLoginController(
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
-        errorMessage: String = "", errorLink: String = "#", username: String = "", password: String = ""
+        errorMessage: String = "", errorLink: String = "#", username: String = ""
     ) = respond(
         ThymeleafContent(
             "delta-login",
@@ -74,7 +74,6 @@ class DeltaLoginController(
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,
-                "password" to password,
             )
         )
     )
@@ -108,7 +107,6 @@ class DeltaLoginController(
                     errorMessage = userVisibleError.errorMessage,
                     errorLink = userVisibleError.link ?: "#",
                     username = formUsername,
-                    password = password
                 )
             }
 
@@ -120,7 +118,6 @@ class DeltaLoginController(
                         errorMessage = "Your account exists but is not set up to access Delta. Please contact the Service Desk.",
                         errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
                         username = formUsername,
-                        password = password,
                     )
                 }
 
