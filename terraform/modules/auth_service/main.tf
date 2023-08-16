@@ -23,6 +23,7 @@ module "fargate" {
   memory                             = var.ecs.memory
   ecs_cloudwatch_log_expiration_days = var.cloudwatch_log_expiration_days
   alarms_sns_topic_arn               = var.alarms_sns_topic_arn
+  task_role_arn                      = aws_iam_role.auth_service_task_role.arn
   target_groups = [
     {
       tg_arn        = aws_lb_target_group.internal.arn
@@ -75,6 +76,10 @@ module "fargate" {
     {
       name  = "DISABLE_DEVELOPMENT_FALLBACK"
       value = "true"
+    },
+    {
+      name  = "AUTH_METRICS_NAMESPACE"
+      value = var.auth_metrics_namespace
     },
     {
       name  = "SERVICE_URL"

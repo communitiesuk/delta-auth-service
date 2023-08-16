@@ -13,6 +13,7 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
+import io.micrometer.core.instrument.Metrics.counter
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.CoreMatchers
@@ -238,7 +239,7 @@ class OAuthLoginTest {
     companion object {
         private lateinit var testApp: TestApplication
         private val deltaConfig = DeltaConfig.fromEnv()
-        private val serviceConfig = AuthServiceConfig.fromEnv()
+        private val serviceConfig = AuthServiceConfig("testServiceUrl", null)
         private val serviceClient = testServiceClient()
         private val ssoClient = AzureADSSOClient(
             "test",
@@ -268,7 +269,9 @@ class OAuthLoginTest {
                 ssoConfig,
                 deltaConfig,
                 mockk(),
-                authorizationCodeServiceMock
+                authorizationCodeServiceMock,
+                counter("failedLoginNoopCounter"),
+                counter("successfulLoginNoopCounter")
             )
             val oauthController = DeltaSSOLoginController(
                 deltaConfig,
@@ -300,14 +303,14 @@ class OAuthLoginTest {
                 install(CallId) { generate(4) }
                 install(Authentication) {
                     azureAdSingleSignOn(
-                        AuthServiceConfig("http://auth-service"),
+                        AuthServiceConfig("http://auth-service", null),
                         HttpClient(mockOAuthTokenRequestHttpEngine),
                         oauthClientProviderLookupService,
                     )
                 }
                 application {
                     configureTemplating(false)
-                    configureRateLimiting(10)
+                    configureRateLimiting(10, counter("rateLimitingNoopCounter"))
                     routing {
                         route("/delta") {
                             deltaLoginRoutes(serviceConfig, loginPageController, oauthController)

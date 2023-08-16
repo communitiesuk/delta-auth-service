@@ -40,9 +40,9 @@ fun Application.appModule() {
         Injection.instance.dbPool.eagerInit()
     }
 
-    configureRateLimiting(Injection.instance.deltaConfig.rateLimit)
+    configureRateLimiting(Injection.instance.deltaConfig.rateLimit, Injection.instance.rateLimitCounter)
     configureSecurity(Injection.instance)
-    configureMonitoring()
+    configureMonitoring(Injection.instance.meterRegistry)
     configureSerialization()
     configureTemplating(developmentMode)
     configureRouting(Injection.instance)

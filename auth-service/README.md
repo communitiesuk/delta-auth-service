@@ -11,7 +11,7 @@
 
 ## Run
 
-* Start with `./gradlew run`
+* Start with `./gradlew run` (to run locally with AWS metrics run through aws-vault as `aws-vault exec <profile> -- .\gradlew.bat run` and set environment variable AUTH_METRICS_NAMESPACE to e.g. "localYourName/AuthService")
 
 Alternatively open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
 with `uk.gov.communities.delta.auth.ApplicationKt` as the main class and environment variables set from `.env`. (See below image for an example)

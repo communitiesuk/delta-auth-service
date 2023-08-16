@@ -69,6 +69,7 @@ module "auth_service" {
   delta_hostname                 = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
   bastion_security_group_id      = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
   private_dns                    = data.terraform_remote_state.common_infra.outputs.private_dns
+  auth_metrics_namespace         = "test/AuthService"
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-test.s3.amazonaws.com/CASRVTEST/CASRVtest.dluhctest.local_CASRVtest.crt"
