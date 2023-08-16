@@ -110,7 +110,6 @@ variable "delta_website_local_dev_client_secret_arn" {
   description = "Client secret for a client that redirects to localhost, for use only on the test environment"
 }
 
-variable "auth_metrics_namespace" {
-  description = "Namespace for auth metrics"
-  type        = string
+locals {
+  auth_metrics_namespace = "${var.environment}/AuthService"
 }

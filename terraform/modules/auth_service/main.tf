@@ -79,7 +79,7 @@ module "fargate" {
     },
     {
       name  = "AUTH_METRICS_NAMESPACE"
-      value = var.auth_metrics_namespace
+      value = local.auth_metrics_namespace
     },
     {
       name  = "SERVICE_URL"

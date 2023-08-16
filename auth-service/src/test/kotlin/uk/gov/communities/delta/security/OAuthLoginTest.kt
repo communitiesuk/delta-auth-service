@@ -109,10 +109,7 @@ class OAuthLoginTest {
         client.get("/delta/oauth/test/callback?error=some_azure_error_code&error_description=Description&state=${loginState.state}")
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
-                MatcherAssert.assertThat(
-                    headers["Location"],
-                    CoreMatchers.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error")
-                )
+                assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error"))
                 verify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
             }
     }
@@ -132,10 +129,7 @@ class OAuthLoginTest {
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
-                MatcherAssert.assertThat(
-                    headers["Location"],
-                    CoreMatchers.startsWith("${deltaConfig.deltaWebsiteUrl}/register")
-                )
+                assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/register"))
             }
     }
 

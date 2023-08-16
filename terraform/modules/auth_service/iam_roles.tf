@@ -38,8 +38,11 @@ data "aws_iam_policy_document" "auth_service_metrics_access" {
   statement {
     actions = ["cloudwatch:PutMetricData"]
     effect  = "Allow"
-    resources = [
-      "*"
-    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = [local.auth_metrics_namespace]
+      variable = "cloudwatch:namespace"
+    }
   }
 }

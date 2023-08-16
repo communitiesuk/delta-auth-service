@@ -48,7 +48,6 @@ module "auth_service" {
   bastion_security_group_id      = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
   db_backup_retention_days       = 14
   private_dns                    = data.terraform_remote_state.common_infra.outputs.private_dns
-  auth_metrics_namespace         = "production/AuthService"
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-production.s3.amazonaws.com/CASRVPRODUCTION/CASRVproduction.dluhcdata.local_CASRVproduction.crt"

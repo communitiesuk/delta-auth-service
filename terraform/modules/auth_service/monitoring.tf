@@ -3,7 +3,7 @@ resource "aws_cloudwatch_metric_alarm" "fail_rate_high_login" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "login.failedLogins.count"
-  namespace           = var.auth_metrics_namespace
+  namespace           = local.auth_metrics_namespace
   period              = 300
   statistic           = "Sum"
   threshold           = 20 //Highest in last month (10/08) is 10
@@ -19,7 +19,7 @@ resource "aws_cloudwatch_metric_alarm" "success_rate_high_login" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "login.successfulLogins.count"
-  namespace           = var.auth_metrics_namespace
+  namespace           = local.auth_metrics_namespace
   period              = 300
   statistic           = "Sum"
   threshold           = 30 // Highest in last month (10/08) is 23
@@ -35,7 +35,7 @@ resource "aws_cloudwatch_metric_alarm" "auth_rate_limit_reached" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   metric_name         = "login.rateLimitedRequests.count"
-  namespace           = var.auth_metrics_namespace
+  namespace           = local.auth_metrics_namespace
   period              = 120
   statistic           = "Sum"
   threshold           = 1
