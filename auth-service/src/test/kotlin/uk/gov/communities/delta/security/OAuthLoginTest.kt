@@ -239,7 +239,7 @@ class OAuthLoginTest {
     companion object {
         private lateinit var testApp: TestApplication
         private val deltaConfig = DeltaConfig.fromEnv()
-        private val serviceConfig = AuthServiceConfig("testServiceUrl", "")
+        private val serviceConfig = AuthServiceConfig("testServiceUrl", null)
         private val serviceClient = testServiceClient()
         private val ssoClient = AzureADSSOClient(
             "test",
@@ -303,7 +303,7 @@ class OAuthLoginTest {
                 install(CallId) { generate(4) }
                 install(Authentication) {
                     azureAdSingleSignOn(
-                        AuthServiceConfig("http://auth-service", ""),
+                        AuthServiceConfig("http://auth-service", null),
                         HttpClient(mockOAuthTokenRequestHttpEngine),
                         oauthClientProviderLookupService,
                     )

@@ -80,7 +80,7 @@ class Injection (
     val ssoLoginStateService = SSOLoginSessionStateService()
     val ssoOAuthClientProviderLookupService = SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
     val microsoftGraphService = MicrosoftGraphService()
-    val meterRegistry = if (authServiceConfig.metricsNamespace == "") SimpleMeterRegistry() else CloudWatchMeterRegistry(
+    val meterRegistry = if (authServiceConfig.metricsNamespace.isNullOrEmpty()) SimpleMeterRegistry() else CloudWatchMeterRegistry(
         object : CloudWatchConfig {
             private val configuration = mapOf(
                 "cloudwatch.namespace" to authServiceConfig.metricsNamespace,
