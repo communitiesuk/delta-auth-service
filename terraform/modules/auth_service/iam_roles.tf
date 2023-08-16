@@ -36,8 +36,8 @@ resource "aws_iam_policy" "auth_service_metrics_access" {
 # tfsec:ignore:aws-iam-no-policy-wildcards
 data "aws_iam_policy_document" "auth_service_metrics_access" {
   statement {
-    actions = ["cloudwatch:PutMetricData"]
-    effect  = "Allow"
+    actions   = ["cloudwatch:PutMetricData"]
+    effect    = "Allow"
     resources = ["*"]
     condition {
       test     = "StringEquals"
