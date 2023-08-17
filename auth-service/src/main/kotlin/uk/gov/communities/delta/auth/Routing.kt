@@ -1,11 +1,9 @@
 package uk.gov.communities.delta.auth
 
 import io.ktor.http.*
-import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
-import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -19,10 +17,7 @@ import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginControlle
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
-import uk.gov.communities.delta.auth.plugins.CSP
-import uk.gov.communities.delta.auth.plugins.addBearerSessionInfoToMDC
-import uk.gov.communities.delta.auth.plugins.addClientIdToMDC
-import uk.gov.communities.delta.auth.plugins.addServiceUserUsernameToMDC
+import uk.gov.communities.delta.auth.plugins.*
 import uk.gov.communities.delta.auth.security.*
 import java.io.File
 
@@ -37,14 +32,8 @@ data class LoginSessionCookie(
 )
 
 fun Application.configureRouting(injection: Injection) {
+    installCachingHeaders()
     routing {
-        install(CachingHeaders) {
-            options { call, _ ->
-                if (call.response.headers["Cache-Control"] == null)
-                    CachingOptions(CacheControl.NoStore(CacheControl.Visibility.Private))
-                else null
-            }
-        }
         healthcheckRoute()
         internalRoutes(injection)
         externalRoutes(injection.authServiceConfig, injection.externalDeltaLoginController(), injection.deltaOAuthLoginController())
