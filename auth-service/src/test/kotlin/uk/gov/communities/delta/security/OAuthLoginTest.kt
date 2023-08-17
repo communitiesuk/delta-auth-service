@@ -146,6 +146,18 @@ class OAuthLoginTest {
     }
 
     @Test
+    fun `Callback returns error if user has no email`()  {
+        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), email = null)
+        }
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
+            runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
+        }.apply {
+            assertEquals("user_no_mail_attribute", errorCode)
+        }
+    }
+
+    @Test
     fun `Callback returns error if user is not in Delta users group`()  {
         every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf("some-other-group"))

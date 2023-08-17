@@ -87,6 +87,25 @@ class DeltaLoginControllerTest {
     }
 
     @Test
+    fun testLoginPostNoEmail() = testSuspend {
+        loginResult = IADLdapLoginService.LdapLoginSuccess(
+            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.requiredGroupCn), email = null)
+        )
+        testClient.submitForm(
+            url = "/login?response_type=code&client_id=delta-website&state=1234",
+            formParameters = parameters {
+                append("username", "user")
+                append("password", "pass")
+            }
+        ).apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(bodyAsText(), "Your account exists but is not fully set up (missing mail attribute). Please contact the Service Desk.")
+            verify(exactly=1) { failedLoginCounter.increment(1.0) }
+            verify(exactly=0) { successfulLoginCounter.increment(1.0) }
+        }
+    }
+
+    @Test
     fun testLoginPostSuccess() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(
             testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.requiredGroupCn))

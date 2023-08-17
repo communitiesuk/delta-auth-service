@@ -150,6 +150,18 @@ class DeltaLoginController(
                     )
                 }
 
+                if (loginResult.user.email.isNullOrEmpty()) {
+                    logger.atInfo().addKeyValue("username", cn).addKeyValue("loginFailureType", "NoMailAttribute")
+                        .log("Login failed")
+                    failedLoginCounter.increment(1.0)
+                    return call.respondLoginPage(
+                        client,
+                        errorMessage = "Your account exists but is not fully set up (missing mail attribute). Please contact the Service Desk.",
+                        errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
+                        username = formUsername,
+                    )
+                }
+
                 val authCode = authenticationCodeService.generateAndStore(
                     userCn = loginResult.user.cn, client = client, traceId = call.callId!!
                 )

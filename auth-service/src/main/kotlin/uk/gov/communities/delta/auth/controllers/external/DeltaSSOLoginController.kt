@@ -77,6 +77,7 @@ class DeltaSSOLoginController(
             ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/register?from_sso_client=${ssoClient.internalId}&email=${email.encodeURLParameter()}")
 
         checkUserEnabled(user)
+        checkUserHasEmail(user)
         lookupAndCheckAzureGroups(user, principal, ssoClient)
         checkDeltaUsersGroup(user)
 
@@ -145,6 +146,16 @@ class DeltaSSOLoginController(
                 "user_disabled",
                 "User ${user.cn} is disabled in Active Directory, login blocked",
                 "Your Delta user account is disabled. Please contact the service desk"
+            )
+        }
+    }
+
+    private fun checkUserHasEmail(user: LdapUser) {
+        if (user.email.isNullOrEmpty()) {
+            throw OAuthLoginException(
+                "user_no_mail_attribute",
+                "User ${user.cn} has no email set in Active Directory, login blocked",
+                "Your Delta user account is not fully set up (missing mail attribute). Please contact the Service Desk."
             )
         }
     }
