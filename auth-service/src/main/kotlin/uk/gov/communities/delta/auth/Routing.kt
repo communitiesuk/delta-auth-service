@@ -40,9 +40,10 @@ fun Application.configureRouting(injection: Injection) {
     routing {
         install(CachingHeaders) {
             options { call, _ ->
-                if(call.response.headers["Cache-Control"] == null)
+                if (call.response.headers["Cache-Control"] == null)
                     CachingOptions(CacheControl.NoStore(CacheControl.Visibility.Private))
-                else null }
+                else null
+            }
         }
         healthcheckRoute()
         internalRoutes(injection)

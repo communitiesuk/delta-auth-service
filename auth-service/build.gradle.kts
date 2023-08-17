@@ -52,7 +52,7 @@ dependencies {
     implementation("io.ktor:ktor-server-forwarded-header:$ktorVersion")
 
     // Headers
-    implementation("io.ktor:ktor-server-caching-headers:$ktorVersion")
+    implementation("io.ktor:ktor-server-caching-headers-jvm:$ktorVersion")
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
@@ -70,8 +70,7 @@ dependencies {
     // Database
     implementation("org.postgresql:postgresql:42.6.0")
     implementation("com.zaxxer:HikariCP:5.0.1") // Connection pool
-    implementation("org.flywaydb:flyway-core:9.20.1")
-    implementation("io.ktor:ktor-server-caching-headers-jvm:2.3.2") // Migrations
+    implementation("org.flywaydb:flyway-core:9.20.1") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")

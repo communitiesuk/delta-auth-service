@@ -7,8 +7,8 @@ val CSP = createRouteScopedPlugin("CSP") {
 
     onCallRespond { call ->
         call.addCSPHeader()
-        }
     }
+}
 
 
 fun ApplicationCall.addCSPHeader() {

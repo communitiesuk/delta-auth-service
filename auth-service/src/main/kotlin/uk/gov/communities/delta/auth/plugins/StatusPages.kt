@@ -62,8 +62,11 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
         }
     }
     install(CachingHeaders) {
-        // it suggested renaming both "call" and "content" to  "_" but I don't know if that is actually helpful?
-        options { _, _ -> CachingOptions(CacheControl.NoStore(CacheControl.Visibility.Private)) }
+        options { call, _ ->
+            if (call.response.headers["Cache-Control"] == null)
+                CachingOptions(CacheControl.NoStore(CacheControl.Visibility.Private))
+            else null
+        }
     }
 }
 
