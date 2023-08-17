@@ -1,7 +1,9 @@
 package uk.gov.communities.delta.auth.plugins
 
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
+import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
@@ -58,6 +60,10 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             logger.error("StatusPages NotFoundException", ex)
             call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl)
         }
+    }
+    install(CachingHeaders) {
+        // it suggested renaming both "call" and "content" to  "_" but I don't know if that is actually helpful?
+        options { _, _ -> CachingOptions(CacheControl.NoStore(CacheControl.Visibility.Private)) }
     }
 }
 

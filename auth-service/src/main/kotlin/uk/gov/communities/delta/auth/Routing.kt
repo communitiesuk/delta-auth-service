@@ -1,9 +1,11 @@
 package uk.gov.communities.delta.auth
 
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
+import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -36,6 +38,12 @@ data class LoginSessionCookie(
 
 fun Application.configureRouting(injection: Injection) {
     routing {
+        install(CachingHeaders) {
+            options { call, _ ->
+                if(call.response.headers["Cache-Control"] == null)
+                    CachingOptions(CacheControl.NoStore(CacheControl.Visibility.Private))
+                else null }
+        }
         healthcheckRoute()
         internalRoutes(injection)
         externalRoutes(injection.authServiceConfig, injection.externalDeltaLoginController(), injection.deltaOAuthLoginController())
@@ -54,7 +62,9 @@ fun Route.externalRoutes(
     deltaSSOLoginController: DeltaSSOLoginController,
 ) {
     install(CSP)
-    staticResources("/static", "static")
+    staticResources("/static", "static") {
+        cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
+    }
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
     get("/favicon.ico") {
         call.respondBytes(javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes(), ContentType.Image.XIcon)
