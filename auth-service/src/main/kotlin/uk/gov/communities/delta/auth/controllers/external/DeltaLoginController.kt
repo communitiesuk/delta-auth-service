@@ -11,6 +11,7 @@ import io.ktor.server.thymeleaf.*
 import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.OAuthClient
@@ -22,6 +23,7 @@ import uk.gov.communities.delta.auth.services.withAuthCode
 
 
 class DeltaLoginController(
+    private val authServiceConfig: AuthServiceConfig,
     private val clients: List<OAuthClient>,
     private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
@@ -95,6 +97,7 @@ class DeltaLoginController(
     )
 
     private suspend fun loginPost(call: ApplicationCall) {
+        call.checkOriginHeader()
         val queryParams = call.getLoginQueryParams()
             ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
 
@@ -205,4 +208,13 @@ class DeltaLoginController(
     }
 
     private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.requiredGroupCn)
+
+    private fun ApplicationCall.checkOriginHeader() {
+        val origin = request.headers["Origin"]
+        if (origin != authServiceConfig.serviceUrl) {
+            throw InvalidOriginException("Origin header validation failed, expected '${authServiceConfig.serviceUrl}' got '$origin'")
+        }
+    }
+
+    class InvalidOriginException(message: String) : Exception(message)
 }

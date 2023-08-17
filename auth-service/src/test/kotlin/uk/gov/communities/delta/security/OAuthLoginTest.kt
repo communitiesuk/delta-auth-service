@@ -271,6 +271,7 @@ class OAuthLoginTest {
             authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
             ldapUserLookupServiceMock = mockk<UserLookupService>()
             val loginPageController = DeltaLoginController(
+                serviceConfig,
                 listOf(serviceClient),
                 ssoConfig,
                 deltaConfig,
