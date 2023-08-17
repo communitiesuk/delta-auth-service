@@ -6,7 +6,7 @@ fun testLdapUser(
     dn: String = "dn",
     cn: String = "cn",
     memberOfCNs: List<String> = emptyList(),
-    email: String = "email",
+    email: String? = "email",
     deltaTOTPSecret: String? = null,
     name: String = "Test User",
     accountEnabled: Boolean = true,

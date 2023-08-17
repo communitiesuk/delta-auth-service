@@ -1,3 +1,7 @@
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
 variable "environment" {
   type = string
 }
@@ -17,6 +21,7 @@ variable "external_alb" {
     security_group_id = string
     cloudfront_key    = string
     listener_arn      = string
+    primary_hostname  = string
   })
 }
 
@@ -103,4 +108,8 @@ variable "delta_website_local_dev_client_secret_arn" {
   type        = string
   default     = null
   description = "Client secret for a client that redirects to localhost, for use only on the test environment"
+}
+
+locals {
+  auth_metrics_namespace = "${var.environment}/AuthService"
 }

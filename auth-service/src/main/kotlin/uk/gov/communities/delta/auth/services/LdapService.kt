@@ -23,6 +23,8 @@ class LdapService(private val config: Configuration) {
         env[Context.SECURITY_AUTHENTICATION] = "simple"
         env[Context.SECURITY_PRINCIPAL] = userDn
         env[Context.SECURITY_CREDENTIALS] = password
+        env["com.sun.jndi.ldap.connect.timeout"] = "5000"
+        env["com.sun.jndi.ldap.read.timeout"] = "10000"
         env["com.sun.jndi.ldap.connect.pool"] = if (poolConnection) "true" else "false"
         env["com.sun.jndi.ldap.connect.pool.protocol"] = "plain ssl"
         env["com.sun.jndi.ldap.connect.pool.timeout"] = "60000" // Milliseconds. Relevant timeouts are 900s for AD and 350s for NLB.
@@ -44,9 +46,8 @@ class LdapService(private val config: Configuration) {
                 arrayOf("cn", "memberOf", "mail", "unixHomeDirectory", "givenName", "sn", "userAccountControl")
             )
 
-        val cn = attributes.get("cn").get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
-        val email =
-            attributes.get("mail").get() as String? ?: throw InvalidLdapUserException("No value for attribute mail")
+        val cn = attributes.get("cn")?.get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
+        val email = attributes.get("mail")?.get() as String?
         val totpSecret = attributes.get("unixHomeDirectory")?.get() as String?
         val firstName = attributes.get("givenName")?.get() as String?
         val surname = attributes.get("sn")?.get() as String?
@@ -79,7 +80,7 @@ data class LdapUser(
     val dn: String,
     val cn: String,
     val memberOfCNs: List<String>,
-    val email: String,
+    val email: String?,
     val deltaTOTPSecret: String?,
     val name: String,
     val accountEnabled: Boolean,

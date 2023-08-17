@@ -121,6 +121,19 @@ resource "aws_security_group_rule" "s3_egress" {
   prefix_list_ids = [data.aws_prefix_list.s3.id]
 }
 
+# Outbound internet access required for OAuth to Azure AD
+# tfsec:ignore:aws-vpc-no-public-egress-sgr
+resource "aws_security_group_rule" "outbound_internet_from_tasks" {
+  type              = "egress"
+  security_group_id = aws_security_group.tasks.id
+  description       = "Egress HTTPS outbound to internet"
+
+  protocol    = "tcp"
+  from_port   = 443
+  to_port     = 443
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
 resource "aws_ecs_service" "main" {
   name                = "ecs-service-${var.environment}"
   cluster             = aws_ecs_cluster.main.id

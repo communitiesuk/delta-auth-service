@@ -1,7 +1,6 @@
 package uk.gov.communities.delta.auth.config
 
 import org.opensaml.security.x509.BasicX509Credential
-import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
 
 open class Client(val clientId: String, val clientSecret: String, val samlCredential: BasicX509Credential) {
@@ -14,10 +13,10 @@ class OAuthClient(
     clientId: String,
     clientSecret: String,
     samlCredential: BasicX509Credential,
-    val redirectUrl: String
+    val deltaWebsiteUrl: String,
 ) : Client(clientId, clientSecret, samlCredential) {
     override fun toString(): String {
-        return "Client($clientId, redirectUrl=$redirectUrl)"
+        return "Client($clientId, deltaWebsiteUrl=$deltaWebsiteUrl)"
     }
 }
 
@@ -41,7 +40,7 @@ class ClientConfig(val clients: List<Client>) {
                     "delta-website",
                     deltaWebsiteSecret,
                     samlCredentials,
-                    deltaConfig.deltaWebsiteUrl + "/login/oauth2/redirect",
+                    deltaConfig.deltaWebsiteUrl,
                 )
             }
             val devDeltaWebsite = devDeltaWebsiteSecret?.let {
@@ -49,7 +48,7 @@ class ClientConfig(val clients: List<Client>) {
                     "delta-website-dev",
                     devDeltaWebsiteSecret,
                     SAMLConfig.insecureHardcodedCredentials(),
-                    "http://localhost:8080/login/oauth2/redirect",
+                    "http://localhost:8080",
                 )
             }
             return ClientConfig(listOfNotNull(marklogic, deltaWebsite, devDeltaWebsite))

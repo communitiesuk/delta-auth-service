@@ -10,9 +10,16 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
+import io.micrometer.core.instrument.Counter
+import io.mockk.clearAllMocks
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.AfterClass
+import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.configureRateLimiting
@@ -56,6 +63,7 @@ class RateLimitingTest {
             assertSuccessfulGetRequest(forwardedFor)
         }
         assertBlockedGetRequest(forwardedFor)
+        verify(exactly=1) { rateLimitLoginCounter.increment(1.0) }
     }
 
     @Test
@@ -68,6 +76,13 @@ class RateLimitingTest {
         }
         assertBlockedGetRequest(forwardFor1)
         assertSuccessfulGetRequest(forwardFor2)
+        verify(exactly=1) { rateLimitLoginCounter.increment(1.0) }
+    }
+
+    @Before
+    fun resetCounter() {
+        clearAllMocks()
+        every { rateLimitLoginCounter.increment(1.0) } returns Unit
     }
 
     companion object {
@@ -75,6 +90,7 @@ class RateLimitingTest {
         private lateinit var testClient: HttpClient
         val client = testServiceClient()
         private const val rateLimitValue = 2
+        val rateLimitLoginCounter = mockk<Counter>()
 
         @BeforeClass
         @JvmStatic
@@ -82,8 +98,8 @@ class RateLimitingTest {
             testApp = TestApplication {
                 application {
                     configureTemplating(false)
-                    configureRateLimiting(rateLimitValue)
-                    configureStatusPages("test.url")
+                    configureRateLimiting(rateLimitValue, rateLimitLoginCounter)
+                    configureStatusPages("test.url", AzureADSSOConfig(emptyList()))
                     routing {
                         rateLimit(RateLimitName(loginRateLimitName)) {
                             route("/delta/login") {

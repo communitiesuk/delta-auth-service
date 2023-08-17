@@ -16,6 +16,7 @@
 <header th:replace="~{fragments/template.html :: header}"></header>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="ssoClients" type="java.util.List<uk.gov.communities.delta.auth.config.AzureADSSOClient>" */-->
 <!--/*@thymesVar id="errorMessage" type="java.lang.String" */-->
 <!--/*@thymesVar id="errorLink" type="java.lang.String" */-->
 <!--/*@thymesVar id="username" type="java.lang.String" */-->
@@ -68,10 +69,19 @@
             <div class="govuk-grid-column-one-third">
                 <h2 class="govuk-heading-m">Not a user?</h2>
                 <a th:href="${deltaUrl} + '/register'" role="button" draggable="false"
-                   class="govuk-button govuk-button--secondary"
-                   data-module="govuk-button">
+                   class="govuk-button govuk-button--secondary">
                     Create DELTA account
                 </a>
+                <div th:if="${ssoClients.size() > 0}">
+                    <h2 class="govuk-heading-m">DLUHC users</h2>
+                    <a th:each="ssoClient: ${ssoClients}"
+                       th:href="'/delta/oauth/' + ${ssoClient.internalId} + '/login'"
+                       th:text="${ssoClient.buttonText}"
+                       href="/delta/oauth/login" role="button" draggable="false"
+                       class="govuk-button govuk-button--secondary">
+                        Single Sign On
+                    </a>
+                </div>
             </div>
         </div>
         <div>

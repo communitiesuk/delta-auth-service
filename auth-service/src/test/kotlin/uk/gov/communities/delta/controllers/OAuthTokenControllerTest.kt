@@ -88,14 +88,14 @@ class OAuthTokenControllerTest {
         private val authorizationCodeService = mockk<AuthorizationCodeService>()
         private val userLookupService = mockk<UserLookupService>()
         private val samlTokenService = mockk<SAMLTokenService>()
-        private val oAuthSessionService = mockk<OAuthSessionService>()
+        private val oauthSessionService = mockk<OAuthSessionService>()
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             every { authorizationCodeService.lookupAndInvalidate(any(), client) } answers { null }
             every { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
-            every { oAuthSessionService.create(authCode, client) } answers { session }
+            every { oauthSessionService.create(authCode, client) } answers { session }
             every { userLookupService.lookupUserByCn(authCode.userCn) } answers { user }
             every {
                 samlTokenService.generate(
@@ -106,7 +106,7 @@ class OAuthTokenControllerTest {
                 )
             } answers { "SAML Token" }
             controller = OAuthTokenController(
-                listOf(client), authorizationCodeService, userLookupService, samlTokenService, oAuthSessionService
+                listOf(client), authorizationCodeService, userLookupService, samlTokenService, oauthSessionService
             )
 
             testApp = TestApplication {

@@ -71,7 +71,7 @@ class RefreshUserInfoControllerTest {
 
         private val userLookupService = mockk<UserLookupService>()
         private val samlTokenService = mockk<SAMLTokenService>()
-        private val oAuthSessionService = mockk<OAuthSessionService>()
+        private val oauthSessionService = mockk<OAuthSessionService>()
 
         @BeforeClass
         @JvmStatic
@@ -85,8 +85,8 @@ class RefreshUserInfoControllerTest {
                     any()
                 )
             } answers { "SAML Token" }
-            every { oAuthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
-            every { oAuthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
+            every { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
+            every { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
 
             controller = RefreshUserInfoController(userLookupService, samlTokenService)
             testApp = TestApplication {
@@ -96,7 +96,7 @@ class RefreshUserInfoControllerTest {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
                             authenticate {
-                                oAuthSessionService.retrieveFomAuthToken(it.token, client)
+                                oauthSessionService.retrieveFomAuthToken(it.token, client)
                             }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {

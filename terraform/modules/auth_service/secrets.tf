@@ -87,3 +87,32 @@ resource "aws_secretsmanager_secret_version" "database_password" {
   secret_id     = aws_secretsmanager_secret.database_password.id
   secret_string = random_password.database_password.result
 }
+
+resource "random_id" "cookie_mac_key" {
+  byte_length = 32
+}
+
+resource "aws_secretsmanager_secret" "cookie_mac_key" {
+  name                    = "tf-${var.environment}-auth-service-cookie-mac-key"
+  description             = "Shared hex MAC key for signing auth service session cookies"
+  recovery_window_in_days = 0
+  kms_key_id              = aws_kms_key.auth_service.arn
+}
+
+resource "aws_secretsmanager_secret_version" "cookie_mac_key" {
+  secret_id     = aws_secretsmanager_secret.cookie_mac_key.id
+  secret_string = random_id.cookie_mac_key.hex
+}
+
+# Ideally we'd create this and set it to an initial value of "[]", then ignore changes
+# but that's not currently possible in Terraform https://github.com/hashicorp/terraform-provider-aws/issues/10898
+data "aws_secretsmanager_secret" "sso_config" {
+  name = "auth-service-sso-config-${var.environment}"
+
+  lifecycle {
+    postcondition {
+      condition     = self.kms_key_id == aws_kms_key.auth_service.arn
+      error_message = "Secret must use the auth service KMS key"
+    }
+  }
+}

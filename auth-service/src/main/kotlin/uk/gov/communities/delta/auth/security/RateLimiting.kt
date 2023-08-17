@@ -4,12 +4,13 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.forwardedheaders.*
 import io.ktor.server.plugins.ratelimit.*
+import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.minutes
 
 const val loginRateLimitName = "protectLogin"
 
-fun Application.configureRateLimiting(rateLimit: Int) {
+fun Application.configureRateLimiting(rateLimit: Int, rateLimitCounter: Counter) {
     val logger = LoggerFactory.getLogger("Application.RateLimiting")
 
     install(XForwardedHeaders) {
@@ -27,6 +28,7 @@ fun Application.configureRateLimiting(rateLimit: Int) {
             modifyResponse { applicationCall, state ->
                 if (state is RateLimiter.State.Exhausted){
                     val remoteHost = applicationCall.request.origin.remoteHost
+                    rateLimitCounter.increment(1.0)
                     logger.warn("Rate Limit reached for IP Address $remoteHost")
                 }
             }

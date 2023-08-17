@@ -6,10 +6,15 @@ import io.ktor.server.plugins.callid.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
 import io.ktor.server.thymeleaf.*
+import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.LoginSessionCookie
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
@@ -18,9 +23,12 @@ import uk.gov.communities.delta.auth.services.withAuthCode
 
 class DeltaLoginController(
     private val clients: List<OAuthClient>,
+    private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
+    private val failedLoginCounter: Counter,
+    private val successfulLoginCounter: Counter
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
@@ -34,11 +42,15 @@ class DeltaLoginController(
     }
 
     private suspend fun loginGet(call: ApplicationCall) {
-        if (call.getLoginQueryParams() == null) {
+        val params = call.getLoginQueryParams()
+        if (params == null) {
             logger.info("Invalid parameters for login request, redirecting back to Delta")
-            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
+            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
         }
-        call.respondLoginPage()
+        val client = params.client
+        logger.info("Creating login session cookie for client {}", client.clientId)
+        call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = client.clientId))
+        call.respondLoginPage(client)
     }
 
     private class LoginQueryParams(val client: OAuthClient, val state: String)
@@ -65,12 +77,16 @@ class DeltaLoginController(
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
-        errorMessage: String = "", errorLink: String = "#", username: String = ""
+        client: OAuthClient,
+        errorMessage: String = "",
+        errorLink: String = "#",
+        username: String = "",
     ) = respond(
         ThymeleafContent(
             "delta-login",
             mapOf(
-                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "deltaUrl" to client.deltaWebsiteUrl,
+                "ssoClients" to ssoConfig.ssoClients.filter { it.buttonText != null },
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,
@@ -80,20 +96,29 @@ class DeltaLoginController(
 
     private suspend fun loginPost(call: ApplicationCall) {
         val queryParams = call.getLoginQueryParams()
-            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params")
+            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
 
+        val client = queryParams.client
         val formParameters = call.receiveParameters()
         val formUsername = formParameters["username"]
         val password = formParameters["password"]
 
         if (formUsername.isNullOrEmpty()) return call.respondLoginPage(
-            errorMessage = "Username is required", errorLink = "#username"
+            client, errorMessage = "Username is required", errorLink = "#username"
         )
         if (password.isNullOrEmpty()) return call.respondLoginPage(
+            client,
             errorMessage = "Password is required",
             errorLink = "#password",
             username = formUsername,
         )
+
+        val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
+            it.emailDomain != null && formUsername.lowercase().endsWith(it.emailDomain)
+        }
+        if (ssoClientMatchingEmailDomain != null) {
+            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))
+        }
 
         val cn = formUsername.replace('@', '!')
         when (val loginResult = ldapService.ldapLogin(cn, password)) {
@@ -102,8 +127,10 @@ class DeltaLoginController(
                 // but we're accepting that here for the convenience of being able to see failed logins
                 logger.atInfo().addKeyValue("username", cn)
                     .addKeyValue("loginFailureType", loginResult.javaClass.simpleName).log("Login failed")
+                failedLoginCounter.increment(1.0)
                 val userVisibleError = userVisibleError(loginResult)
                 call.respondLoginPage(
+                    client,
                     errorMessage = userVisibleError.errorMessage,
                     errorLink = userVisibleError.link ?: "#",
                     username = formUsername,
@@ -114,19 +141,34 @@ class DeltaLoginController(
                 if (!loginResult.user.isMemberOfDeltaGroup()) {
                     logger.atInfo().addKeyValue("username", cn).addKeyValue("loginFailureType", "NotDeltaUser")
                         .log("Login failed")
-                    call.respondLoginPage(
+                    failedLoginCounter.increment(1.0)
+                    return call.respondLoginPage(
+                        client,
                         errorMessage = "Your account exists but is not set up to access Delta. Please contact the Service Desk.",
                         errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
                         username = formUsername,
                     )
                 }
 
+                if (loginResult.user.email.isNullOrEmpty()) {
+                    logger.atInfo().addKeyValue("username", cn).addKeyValue("loginFailureType", "NoMailAttribute")
+                        .log("Login failed")
+                    failedLoginCounter.increment(1.0)
+                    return call.respondLoginPage(
+                        client,
+                        errorMessage = "Your account exists but is not fully set up (missing mail attribute). Please contact the Service Desk.",
+                        errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
+                        username = formUsername,
+                    )
+                }
+
                 val authCode = authenticationCodeService.generateAndStore(
-                    userCn = loginResult.user.cn, client = queryParams.client, traceId = call.callId!!
+                    userCn = loginResult.user.cn, client = client, traceId = call.callId!!
                 )
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")
-                call.respondRedirect(queryParams.client.redirectUrl + "?code=${authCode.code}&state=${queryParams.state.encodeURLParameter()}")
+                successfulLoginCounter.increment(1.0)
+                call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${queryParams.state.encodeURLParameter()}")
             }
         }
     }

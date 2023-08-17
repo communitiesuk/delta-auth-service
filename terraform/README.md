@@ -18,4 +18,6 @@ Common Infrastructure must be set up first.
 2. Create a service user in the environment's Active Directory instance with username "auth-service.app" and groups
    "dluhc-service-users" and "AWS Delegated Administrators",
    then create a new secret `auth-service-ldap-user-password-${var.environment}` containing the user's password and using the KMS key created above
-3. Create the rest of the infrastructure with `terraform apply`
+3. Create a new secret `auth-service-sso-config-${var.environment}` with SSO config, see AzureADSSOConfig.kt, or set to "[]" to disable SSO
+4. Create the rest of the infrastructure with `terraform apply`
+5. Update the `${var.environment}-auth-service-rate-limit` SSM Parameter to your desired value

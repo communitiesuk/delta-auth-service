@@ -19,7 +19,7 @@ class OAuthTokenController(
     private val authorizationCodeService: IAuthorizationCodeService,
     private val userLookupService: UserLookupService,
     private val samlTokenService: SAMLTokenService,
-    private val oAuthSessionService: OAuthSessionService,
+    private val oauthSessionService: OAuthSessionService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -48,7 +48,7 @@ class OAuthTokenController(
             logger.error("Invalid auth code {}", code)
             return call.respond(HttpStatusCode.BadRequest, JsonErrorResponse("invalid_grant", "Invalid auth code"))
         }
-        val session = oAuthSessionService.create(authCode, client)
+        val session = oauthSessionService.create(authCode, client)
         val user = userLookupService.lookupUserByCn(session.userCn)
         val samlToken = samlTokenService.samlTokenForSession(session, user)
 
@@ -71,8 +71,6 @@ class OAuthTokenController(
         val delta_ldap_user: LdapUser,
         val saml_token: String,
         val expires_at_epoch_second: Long,
-        // TODO remove delta_user property
-        val delta_user: String = delta_ldap_user.cn,
         val token_type: String = "bearer",
         val expires_in: String = TOKEN_EXPIRY_SECONDS.toString(),
     )
