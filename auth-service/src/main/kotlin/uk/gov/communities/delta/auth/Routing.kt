@@ -19,7 +19,6 @@ import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.*
 import uk.gov.communities.delta.auth.security.*
-import java.io.File
 
 // A session cookie used during the login flow and cleared after.
 @Serializable
@@ -36,7 +35,11 @@ fun Application.configureRouting(injection: Injection) {
     routing {
         healthcheckRoute()
         internalRoutes(injection)
-        externalRoutes(injection.authServiceConfig, injection.externalDeltaLoginController(), injection.deltaOAuthLoginController())
+        externalRoutes(
+            injection.authServiceConfig,
+            injection.externalDeltaLoginController(),
+            injection.deltaOAuthLoginController()
+        )
     }
 }
 
@@ -57,7 +60,10 @@ fun Route.externalRoutes(
     }
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
     get("/favicon.ico") {
-        call.respondBytes(javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes(), ContentType.Image.XIcon)
+        call.respondBytes(
+            javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes(),
+            ContentType.Image.XIcon
+        )
     }
 
     route("/delta") {
@@ -73,7 +79,8 @@ fun Route.deltaLoginRoutes(
     install(Sessions) {
         val key = hex(Env.getRequiredOrDevFallback("COOKIE_SIGNING_KEY_HEX", "1234"))
         cookie<LoginSessionCookie>("LOGIN_SESSION") {
-            cookie.extensions["SameSite"] = "Lax" // We need the cookie to be present when being redirected back to the SSO callback endpoint
+            cookie.extensions["SameSite"] =
+                "Lax" // We need the cookie to be present when being redirected back to the SSO callback endpoint
             cookie.secure = serviceConfig.serviceUrl.startsWith("https")
             transform(SessionTransportTransformerMessageAuthentication(key))
         }

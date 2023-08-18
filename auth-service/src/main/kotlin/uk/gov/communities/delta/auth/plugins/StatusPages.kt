@@ -38,7 +38,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
         }
         for (s in statusErrorPageDefinitions) {
             status(s.key) { call, _ ->
-                    call.addCSPHeader()
+                call.addCSPHeader()
                 call.respondStatusPage(s.value, deltaWebsiteUrl)
             }
         }
