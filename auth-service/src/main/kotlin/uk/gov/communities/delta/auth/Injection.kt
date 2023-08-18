@@ -23,7 +23,7 @@ import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupSe
 import java.time.Duration
 
 @Suppress("MemberVisibilityCanBePrivate")
-class Injection (
+class Injection(
     val ldapConfig: LDAPConfig,
     val databaseConfig: DatabaseConfig,
     val clientConfig: ClientConfig,
@@ -78,20 +78,22 @@ class Injection (
     val authorizationCodeService = AuthorizationCodeService(dbPool)
     val oauthSessionService = OAuthSessionService(dbPool)
     val ssoLoginStateService = SSOLoginSessionStateService()
-    val ssoOAuthClientProviderLookupService = SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
+    val ssoOAuthClientProviderLookupService =
+        SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
     val microsoftGraphService = MicrosoftGraphService()
-    val meterRegistry = if (authServiceConfig.metricsNamespace.isNullOrEmpty()) SimpleMeterRegistry() else CloudWatchMeterRegistry(
-        object : CloudWatchConfig {
-            private val configuration = mapOf(
-                "cloudwatch.namespace" to authServiceConfig.metricsNamespace,
-                "cloudwatch.step" to Duration.ofMinutes(1).toString()
-            )
+    val meterRegistry =
+        if (authServiceConfig.metricsNamespace.isNullOrEmpty()) SimpleMeterRegistry() else CloudWatchMeterRegistry(
+            object : CloudWatchConfig {
+                private val configuration = mapOf(
+                    "cloudwatch.namespace" to authServiceConfig.metricsNamespace,
+                    "cloudwatch.step" to Duration.ofMinutes(1).toString()
+                )
 
-            override fun get(key: String): String? = configuration[key]
-        },
-        Clock.SYSTEM,
-        CloudWatchAsyncClient.create()
-    )
+                override fun get(key: String): String? = configuration[key]
+            },
+            Clock.SYSTEM,
+            CloudWatchAsyncClient.create()
+        )
     val failedLoginCounter: Counter = meterRegistry.counter("login.failedLogins")
     val rateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
     val successfulLoginCounter: Counter = meterRegistry.counter("login.successfulLogins")
@@ -111,7 +113,15 @@ class Injection (
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
             ldapService
         )
-        return DeltaLoginController(clientConfig.oauthClients, azureADSSOConfig, deltaConfig, adLoginService, authorizationCodeService, failedLoginCounter, successfulLoginCounter)
+        return DeltaLoginController(
+            clientConfig.oauthClients,
+            azureADSSOConfig,
+            deltaConfig,
+            adLoginService,
+            authorizationCodeService,
+            failedLoginCounter,
+            successfulLoginCounter
+        )
     }
 
     fun internalOAuthTokenController() = OAuthTokenController(
@@ -125,5 +135,13 @@ class Injection (
     fun refreshUserInfoController() = RefreshUserInfoController(userLookupService, samlTokenService)
 
     fun deltaOAuthLoginController() =
-        DeltaSSOLoginController(deltaConfig, clientConfig, azureADSSOConfig, ssoLoginStateService, userLookupService, authorizationCodeService, microsoftGraphService)
+        DeltaSSOLoginController(
+            deltaConfig,
+            clientConfig,
+            azureADSSOConfig,
+            ssoLoginStateService,
+            userLookupService,
+            authorizationCodeService,
+            microsoftGraphService
+        )
 }

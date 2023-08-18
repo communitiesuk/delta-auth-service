@@ -51,6 +51,9 @@ dependencies {
     implementation("io.ktor:ktor-server-rate-limit:$ktorVersion")
     implementation("io.ktor:ktor-server-forwarded-header:$ktorVersion")
 
+    // Headers
+    implementation("io.ktor:ktor-server-caching-headers-jvm:$ktorVersion")
+
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
     implementation("io.micrometer:micrometer-registry-cloudwatch2:1.11.2")
