@@ -11,6 +11,7 @@ class AuthServiceConfig(val serviceUrl: String, val metricsNamespace: String?) {
     }
 
     fun log(logger: LoggingEventBuilder) {
-        logger.addKeyValue("SERVICE_URL", serviceUrl).addKeyValue("AUTH_METRICS_NAMESPACE", metricsNamespace).log("Service config")
+        logger.addKeyValue("SERVICE_URL", serviceUrl).addKeyValue("AUTH_METRICS_NAMESPACE", metricsNamespace)
+            .log("Service config")
     }
 }

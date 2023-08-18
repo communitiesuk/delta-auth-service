@@ -79,7 +79,7 @@ class SAMLTokenService {
         username: String,
         roles: List<String>,
         validFrom: Instant,
-        validTo: Instant
+        validTo: Instant,
     ): Assertion {
         val assertion =
             AssertionBuilder().buildObject(SAMLConstants.SAML20_NS, Assertion.DEFAULT_ELEMENT_LOCAL_NAME, "saml")

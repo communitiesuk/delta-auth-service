@@ -18,7 +18,7 @@ data class AuthCode(
     val userCn: String,
     val client: Client,
     val createdAt: Instant,
-    val traceId: String
+    val traceId: String,
 ) {
     fun expired() = createdAt.plusSeconds(AuthorizationCodeService.AUTH_CODE_VALID_DURATION_SECONDS) < Instant.now()
 }

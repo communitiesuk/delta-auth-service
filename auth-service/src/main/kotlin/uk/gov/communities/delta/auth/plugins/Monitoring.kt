@@ -6,9 +6,9 @@ import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
-import io.micrometer.core.instrument.config.MeterFilter
 import io.ktor.server.request.*
 import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.config.MeterFilter
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.MDC
@@ -46,7 +46,7 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
 internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) -> Unit> {
     override fun install(
         pipeline: ApplicationCallPipeline,
-        handler: suspend (ApplicationCall, suspend () -> Unit) -> Unit
+        handler: suspend (ApplicationCall, suspend () -> Unit) -> Unit,
     ) {
         pipeline.intercept(ApplicationCallPipeline.Call) {
             handler(call, ::proceed)

@@ -26,7 +26,7 @@ fun Application.configureRateLimiting(rateLimit: Int, rateLimitCounter: Counter)
                 remoteHost
             }
             modifyResponse { applicationCall, state ->
-                if (state is RateLimiter.State.Exhausted){
+                if (state is RateLimiter.State.Exhausted) {
                     val remoteHost = applicationCall.request.origin.remoteHost
                     rateLimitCounter.increment(1.0)
                     logger.warn("Rate Limit reached for IP Address $remoteHost")

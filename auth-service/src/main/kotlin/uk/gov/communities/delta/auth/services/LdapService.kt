@@ -27,7 +27,8 @@ class LdapService(private val config: Configuration) {
         env["com.sun.jndi.ldap.read.timeout"] = "10000"
         env["com.sun.jndi.ldap.connect.pool"] = if (poolConnection) "true" else "false"
         env["com.sun.jndi.ldap.connect.pool.protocol"] = "plain ssl"
-        env["com.sun.jndi.ldap.connect.pool.timeout"] = "60000" // Milliseconds. Relevant timeouts are 900s for AD and 350s for NLB.
+        env["com.sun.jndi.ldap.connect.pool.timeout"] =
+            "60000" // Milliseconds. Relevant timeouts are 900s for AD and 350s for NLB.
 
         return try {
             val context = InitialDirContext(env)

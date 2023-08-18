@@ -19,7 +19,7 @@ interface IADLdapLoginService {
 
     sealed interface LdapLoginResult
     class LdapLoginSuccess(val user: LdapUser) : LdapLoginResult
-    sealed class LdapLoginFailure() : LdapLoginResult
+    sealed class LdapLoginFailure : LdapLoginResult
 
     object BadConnection : LdapLoginFailure()
     object UnknownNamingException : LdapLoginFailure()

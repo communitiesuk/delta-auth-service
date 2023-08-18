@@ -7,7 +7,7 @@ import uk.gov.communities.delta.auth.services.LdapUser
 
 @Serializable
 data class DeltaLdapPrincipal(
-    val ldapUser: LdapUser
+    val ldapUser: LdapUser,
 ) : Principal {
     val username = ldapUser.cn
 }

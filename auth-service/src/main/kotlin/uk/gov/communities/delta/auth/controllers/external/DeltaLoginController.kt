@@ -28,7 +28,7 @@ class DeltaLoginController(
     private val ldapService: IADLdapLoginService,
     private val authenticationCodeService: IAuthorizationCodeService,
     private val failedLoginCounter: Counter,
-    private val successfulLoginCounter: Counter
+    private val successfulLoginCounter: Counter,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 

@@ -16,6 +16,7 @@ class DeltaConfig(
     }
 
     fun log(logger: LoggingEventBuilder) {
-        logger.addKeyValue("DELTA_WEBSITE_URL", deltaWebsiteUrl).addKeyValue("AUTH_RATE_LIMIT", rateLimit).log("Delta config")
+        logger.addKeyValue("DELTA_WEBSITE_URL", deltaWebsiteUrl).addKeyValue("AUTH_RATE_LIMIT", rateLimit)
+            .log("Delta config")
     }
 }

@@ -173,7 +173,7 @@ class DeltaSSOLoginController(
     private suspend fun lookupAndCheckAzureGroups(
         user: LdapUser,
         principal: OAuthAccessTokenResponse.OAuth2,
-        ssoClient: AzureADSSOClient
+        ssoClient: AzureADSSOClient,
     ) {
         val groups = listOfNotNull(ssoClient.requiredGroupId, ssoClient.requiredAdminGroupId)
         if (groups.isEmpty()) return

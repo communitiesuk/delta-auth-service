@@ -60,7 +60,7 @@ data class ClientPrincipal(val client: Client) : Principal
 
 fun AuthenticationConfig.clientHeaderAuth(
     name: String,
-    configure: ClientHeaderAuthProvider.Config.() -> Unit
+    configure: ClientHeaderAuthProvider.Config.() -> Unit,
 ) {
     val provider = ClientHeaderAuthProvider(ClientHeaderAuthProvider.Config(name).apply(configure))
     register(provider)

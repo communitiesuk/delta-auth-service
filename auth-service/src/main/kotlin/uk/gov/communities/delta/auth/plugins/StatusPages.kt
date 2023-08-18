@@ -65,7 +65,7 @@ open class UserVisibleServerError(
     val errorCode: String,
     exceptionMessage: String,
     val userVisibleMessage: String,
-    val title: String = "Error"
+    val title: String = "Error",
 ) :
     Exception("$errorCode $exceptionMessage")
 

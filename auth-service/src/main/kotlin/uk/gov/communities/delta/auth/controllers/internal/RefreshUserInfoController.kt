@@ -37,6 +37,6 @@ class RefreshUserInfoController(
     data class UserInfoResponse(
         val delta_ldap_user: LdapUser,
         val saml_token: String,
-        val expires_at_epoch_second: Long
+        val expires_at_epoch_second: Long,
     )
 }
