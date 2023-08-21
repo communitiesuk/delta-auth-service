@@ -39,8 +39,10 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
     }
     install(MicrometerMetrics) {
         registry = meterRegistry
+        meterBinders = emptyList()
         registry.config()
-            .meterFilter(MeterFilter.acceptNameStartsWith("login"))
+            .meterFilter(MeterFilter.acceptNameStartsWith("login."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("tasks."))
             .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics
     }
 }

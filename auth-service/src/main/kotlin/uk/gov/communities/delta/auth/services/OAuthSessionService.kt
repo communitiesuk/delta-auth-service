@@ -4,6 +4,7 @@ import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
 import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.utils.TimeSource
 import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
@@ -16,7 +17,8 @@ data class OAuthSession(
     val createdAt: Instant,
     val traceId: String,
 ) : Principal {
-    fun expired() = createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < Instant.now()
+    fun expired(timeSource: TimeSource) =
+        createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
 }
 
 interface IOAuthSessionService {
@@ -24,7 +26,7 @@ interface IOAuthSessionService {
     fun retrieveFomAuthToken(authToken: String, client: OAuthClient): OAuthSession?
 }
 
-class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
+class OAuthSessionService(private val dbPool: DbPool, private val timeSource: TimeSource) : IOAuthSessionService {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -34,7 +36,7 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
 
     override fun create(authCode: AuthCode, client: OAuthClient): OAuthSession {
         val token = randomBase64(TOKEN_LENGTH_BYTES)
-        val now = Instant.now()
+        val now = timeSource.now()
         val deltaSession = insert(authCode, client, token, now)
 
         logger.atInfo().withSession(deltaSession).log("Generated session at {}", now)
@@ -43,7 +45,7 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
 
     override fun retrieveFomAuthToken(authToken: String, client: OAuthClient): OAuthSession? {
         val session = select(authToken, client) ?: return null
-        if (session.expired()) {
+        if (session.expired(timeSource)) {
             logger.atInfo().withSession(session).log("Session expired. Crated at {}", session.createdAt)
             return null
         }

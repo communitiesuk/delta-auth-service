@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.services
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
 import uk.gov.communities.delta.auth.config.Client
+import uk.gov.communities.delta.auth.utils.TimeSource
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -20,10 +21,12 @@ data class AuthCode(
     val createdAt: Instant,
     val traceId: String,
 ) {
-    fun expired() = createdAt.plusSeconds(AuthorizationCodeService.AUTH_CODE_VALID_DURATION_SECONDS) < Instant.now()
+    fun expired(timeSource: TimeSource) =
+        createdAt.plusSeconds(AuthorizationCodeService.AUTH_CODE_VALID_DURATION_SECONDS) < timeSource.now()
 }
 
-class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeService {
+class AuthorizationCodeService(private val dbPool: DbPool, private val timeSource: TimeSource) :
+    IAuthorizationCodeService {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -33,7 +36,7 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
 
     override fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
         val code = randomBase64(AUTH_CODE_LENGTH_BYTES)
-        val now = Instant.now()
+        val now = timeSource.now()
         val authCode = AuthCode(code, userCn, client, now, traceId)
         insert(authCode)
 
@@ -43,7 +46,7 @@ class AuthorizationCodeService(private val dbPool: DbPool) : IAuthorizationCodeS
 
     override fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
         val entry = deleteReturning(code, client) ?: return null
-        if (entry.expired()) {
+        if (entry.expired(timeSource)) {
             logger.atWarn().withAuthCode(entry).log("Expired auth code '{}'", code)
             return null
         }

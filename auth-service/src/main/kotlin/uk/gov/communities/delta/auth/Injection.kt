@@ -23,6 +23,8 @@ import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
 import uk.gov.communities.delta.auth.tasks.DeleteOldAuthCodes
 import uk.gov.communities.delta.auth.tasks.DeleteOldDeltaSessions
+import uk.gov.communities.delta.auth.tasks.TaskRunner
+import uk.gov.communities.delta.auth.utils.TimeSource
 import java.time.Duration
 
 @Suppress("MemberVisibilityCanBePrivate")
@@ -36,7 +38,7 @@ class Injection(
 ) {
     companion object {
         lateinit var instance: Injection
-        fun startupInitFromEnvironment() {
+        fun startupInitFromEnvironment(): Injection {
             if (::instance.isInitialized) {
                 throw Exception("Already initialised")
             }
@@ -49,6 +51,7 @@ class Injection(
                 AzureADSSOConfig.fromEnv(),
                 AuthServiceConfig.fromEnv(),
             )
+            return instance
         }
     }
 
@@ -78,8 +81,8 @@ class Injection(
     )
 
     val dbPool = DbPool(databaseConfig)
-    val authorizationCodeService = AuthorizationCodeService(dbPool)
-    val oauthSessionService = OAuthSessionService(dbPool)
+    val authorizationCodeService = AuthorizationCodeService(dbPool, TimeSource.System)
+    val oauthSessionService = OAuthSessionService(dbPool, TimeSource.System)
     val ssoLoginStateService = SSOLoginSessionStateService()
     val ssoOAuthClientProviderLookupService =
         SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
@@ -104,6 +107,9 @@ class Injection(
     val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
     val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
     val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask)
+    fun tasksMap() = tasks.associateBy { it.name }
+
+    fun taskRunner() = TaskRunner(meterRegistry)
 
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
@@ -152,5 +158,5 @@ class Injection(
             microsoftGraphService
         )
 
-    fun tasksController() = TasksController(tasks.associateBy { it.name })
+    fun tasksController() = TasksController(tasksMap(), taskRunner())
 }

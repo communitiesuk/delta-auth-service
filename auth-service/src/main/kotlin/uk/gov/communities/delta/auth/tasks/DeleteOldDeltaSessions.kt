@@ -1,12 +1,15 @@
 package uk.gov.communities.delta.auth.tasks
 
+import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.services.DbPool
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import kotlin.time.Duration.Companion.hours
 
-class DeleteOldDeltaSessions(private val db: DbPool) : AuthServiceTask("DeleteOldDeltaSessions", 12.hours) {
+class DeleteOldDeltaSessions(private val db: DbPool) :
+    AuthServiceTask("DeleteOldDeltaSessions") {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     override suspend fun execute() {
         db.useConnection {
             val stmt = it.prepareStatement(

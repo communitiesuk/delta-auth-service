@@ -9,7 +9,6 @@ import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.configureRateLimiting
 import uk.gov.communities.delta.auth.security.configureSecurity
-import uk.gov.communities.delta.auth.tasks.startScheduler
 
 fun main() {
     val keyStore = SelfSignedSSLCertKeystore.getKeystore()
@@ -32,21 +31,21 @@ fun main() {
 }
 
 fun Application.appModule() {
-    Injection.instance.logConfig(log)
+    val injection = Injection.instance
+    injection.logConfig(log)
 
     if (developmentMode) {
         // Skip database connection and migrations in development mode and in tests
         log.info("Skipping database initialisation, will happen on first connection")
     } else {
-        Injection.instance.dbPool.eagerInit()
+        injection.dbPool.eagerInit()
     }
 
-    configureRateLimiting(Injection.instance.deltaConfig.rateLimit, Injection.instance.rateLimitCounter)
-    configureSecurity(Injection.instance)
-    configureMonitoring(Injection.instance.meterRegistry)
+    configureRateLimiting(injection.deltaConfig.rateLimit, injection.rateLimitCounter)
+    configureSecurity(injection)
+    configureMonitoring(injection.meterRegistry)
     configureSerialization()
     configureTemplating(developmentMode)
-    configureRouting(Injection.instance)
-    configureStatusPages(Injection.instance.deltaConfig.deltaWebsiteUrl, Injection.instance.azureADSSOConfig)
-    startScheduler(Injection.instance.tasks)
+    configureRouting(injection)
+    configureStatusPages(injection.deltaConfig.deltaWebsiteUrl, injection.azureADSSOConfig)
 }

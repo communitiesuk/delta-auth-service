@@ -1,12 +1,14 @@
 package uk.gov.communities.delta.auth.tasks
 
+import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.services.DbPool
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import kotlin.time.Duration.Companion.hours
 
-class DeleteOldAuthCodes(private val db: DbPool) : AuthServiceTask("DeleteOldAuthCodes", 12.hours) {
+class DeleteOldAuthCodes(private val db: DbPool) : AuthServiceTask("DeleteOldAuthCodes") {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     override suspend fun execute() {
         db.useConnection {
             val stmt = it.prepareStatement(

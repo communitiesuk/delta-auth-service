@@ -10,8 +10,9 @@ import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.tasks.AuthServiceTask
+import uk.gov.communities.delta.auth.tasks.TaskRunner
 
-class TasksController(private val tasks: Map<String, AuthServiceTask>) {
+class TasksController(private val tasks: Map<String, AuthServiceTask>, private val taskRunner: TaskRunner) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -28,7 +29,7 @@ class TasksController(private val tasks: Map<String, AuthServiceTask>) {
         logger.info("Dispatching task {} due to request", keyValue("taskName", taskName))
 
         (scope + MDCContext()).launch {
-            task.run()
+            taskRunner.runTask(task)
         }
     }
 }
