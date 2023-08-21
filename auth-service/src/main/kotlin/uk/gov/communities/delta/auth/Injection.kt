@@ -13,7 +13,6 @@ import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginControlle
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
-import uk.gov.communities.delta.auth.controllers.internal.TasksController
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
@@ -157,6 +156,4 @@ class Injection(
             authorizationCodeService,
             microsoftGraphService
         )
-
-    fun tasksController() = TasksController(tasksMap(), taskRunner())
 }

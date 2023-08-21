@@ -107,7 +107,6 @@ fun Route.internalRoutes(injection: Injection) {
     val generateSAMLTokenController = injection.generateSAMLTokenController()
     val oauthTokenController = injection.internalOAuthTokenController()
     val refreshUserInfoController = injection.refreshUserInfoController()
-    val tasksController = injection.tasksController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController)
@@ -115,10 +114,6 @@ fun Route.internalRoutes(injection: Injection) {
         oauthTokenRoute(oauthTokenController)
 
         bearerTokenRoutes(refreshUserInfoController)
-
-        route("/tasks") {
-            tasksController.route(this)
-        }
     }
 }
 
