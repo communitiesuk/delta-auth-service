@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.auth.*
+import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
@@ -34,6 +35,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
         const val TOKEN_LENGTH_BYTES = 24
     }
 
+    @Blocking
     override fun create(authCode: AuthCode, client: DeltaLoginEnabledClient): OAuthSession {
         val token = randomBase64(TOKEN_LENGTH_BYTES)
         val now = timeSource.now()
@@ -43,6 +45,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
         return deltaSession
     }
 
+    @Blocking
     override fun retrieveFomAuthToken(authToken: String, client: DeltaLoginEnabledClient): OAuthSession? {
         val session = select(authToken, client) ?: return null
         if (session.expired(timeSource)) {

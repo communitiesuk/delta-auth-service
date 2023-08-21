@@ -6,6 +6,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
@@ -16,7 +18,7 @@ import java.time.Instant
 
 class OAuthTokenController(
     private val clients: List<DeltaLoginEnabledClient>,
-    private val authorizationCodeService: IAuthorizationCodeService,
+    private val authorizationCodeService: AuthorizationCodeService,
     private val userLookupService: UserLookupService,
     private val samlTokenService: SAMLTokenService,
     private val oauthSessionService: OAuthSessionService,
@@ -43,26 +45,37 @@ class OAuthTokenController(
                 JsonErrorResponse("invalid_client", "Invalid client id or secret")
             )
 
-        val authCode = authorizationCodeService.lookupAndInvalidate(code, client)
-        if (authCode == null) {
-            logger.error("Invalid auth code {}", code)
-            return call.respond(HttpStatusCode.BadRequest, JsonErrorResponse("invalid_grant", "Invalid auth code"))
+        val userSession = exchangeAuthCodeForSession(code, client)
+        if (userSession == null) {
+            logger.warn("Invalid auth code '{}'", code)
+            return call.respond(
+                HttpStatusCode.BadRequest,
+                JsonErrorResponse("invalid_grant", "Invalid auth code")
+            )
         }
-        val session = oauthSessionService.create(authCode, client)
-        val user = userLookupService.lookupUserByCn(session.userCn)
-        val samlToken = samlTokenService.samlTokenForSession(session, user)
 
-        logger.atInfo().withSession(session).log("Successful token request")
+        val samlToken = samlTokenService.samlTokenForSession(userSession.session, userSession.user)
+        logger.atInfo().withSession(userSession.session).log("Successful token request")
 
         call.respond(
             AccessTokenResponse(
-                access_token = session.authToken,
-                delta_ldap_user = user,
+                access_token = userSession.session.authToken,
+                delta_ldap_user = userSession.user,
                 saml_token = samlToken.token,
                 expires_at_epoch_second = samlToken.expiry.epochSecond
             )
         )
     }
+
+    private suspend fun exchangeAuthCodeForSession(code: String, client: DeltaLoginEnabledClient) =
+        withContext(Dispatchers.IO) {
+            val authCode = authorizationCodeService.lookupAndInvalidate(code, client) ?: return@withContext null
+            val session = oauthSessionService.create(authCode, client)
+            val user = userLookupService.lookupUserByCn(session.userCn)
+            UserSession(session, user)
+        }
+
+    private class UserSession(val session: OAuthSession, val user: LdapUser)
 
     @Suppress("PropertyName")
     @Serializable

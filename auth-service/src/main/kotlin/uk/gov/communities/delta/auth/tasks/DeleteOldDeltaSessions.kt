@@ -10,6 +10,8 @@ class DeleteOldDeltaSessions(private val db: DbPool) :
     AuthServiceTask("DeleteOldDeltaSessions") {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    // Tasks are run separately anyway
+    @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun execute() {
         db.useConnection {
             val stmt = it.prepareStatement(

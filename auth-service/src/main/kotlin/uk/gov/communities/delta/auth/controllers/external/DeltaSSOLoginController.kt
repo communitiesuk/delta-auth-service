@@ -8,19 +8,18 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.util.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AzureADSSOClient
-import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.ClientConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
@@ -37,7 +36,7 @@ class DeltaSSOLoginController(
     private val ssoConfig: AzureADSSOConfig,
     private val ssoLoginStateService: SSOLoginSessionStateService,
     private val ldapLookupService: UserLookupService,
-    private val authorizationCodeService: IAuthorizationCodeService,
+    private val authorizationCodeService: AuthorizationCodeService,
     private val microsoftGraphService: MicrosoftGraphService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -82,9 +81,7 @@ class DeltaSSOLoginController(
         checkDeltaUsersGroup(user)
 
         val client = clientConfig.oauthClients.first { it.clientId == session.clientId }
-        val authCode = authorizationCodeService.generateAndStore(
-            userCn = user.cn, client = client, traceId = call.callId!!
-        )
+        val authCode = generateAuthToken(user, client, call.callId!!)
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         call.sessions.clear<LoginSessionCookie>()
@@ -114,6 +111,13 @@ class DeltaSSOLoginController(
             ?: throw HttpNotFoundException("No OAuth client found for id $ssoClientId")
     }
 
+    private suspend fun generateAuthToken(user: LdapUser, client: Client, trace: String) =
+        withContext(Dispatchers.IO) {
+            authorizationCodeService.generateAndStore(
+                userCn = user.cn, client = client, traceId = trace
+            )
+        }
+
     private fun validateOAuthStateInSession(call: ApplicationCall): LoginSessionCookie {
         val session = call.sessions.get<LoginSessionCookie>()
             ?: throw OAuthLoginException("callback_no_session", "Reached callback with no session")
@@ -127,7 +131,7 @@ class DeltaSSOLoginController(
         return session
     }
 
-    private fun lookupUserInAd(email: String): LdapUser? {
+    private suspend fun lookupUserInAd(email: String): LdapUser? {
         val cn = email.replace('@', '!')
         return try {
             ldapLookupService.lookupUserByCn(cn)

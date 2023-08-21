@@ -12,18 +12,23 @@ import io.ktor.server.sessions.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.micrometer.core.instrument.Counter
-import io.mockk.*
+import io.mockk.clearAllMocks
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
-import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -159,10 +164,13 @@ class DeltaLoginControllerTest {
     }
 
     @Before
-    fun resetCounters() {
+    fun resetMocks() {
         clearAllMocks()
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit
+        every { authorizationCodeService.generateAndStore(any(), any(), any()) } answers {
+            AuthCode("test-auth-code", "user", client, Instant.now(), "trace")
+        }
     }
 
     companion object {
@@ -173,6 +181,7 @@ class DeltaLoginControllerTest {
         val client = testServiceClient()
         val failedLoginCounter = mockk<Counter>()
         val successfulLoginCounter = mockk<Counter>()
+        val authorizationCodeService = mockk<AuthorizationCodeService>()
 
         @BeforeClass
         @JvmStatic
@@ -183,19 +192,14 @@ class DeltaLoginControllerTest {
                 AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain"))),
                 deltaConfig,
                 object : IADLdapLoginService {
-                    override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
+                    override suspend fun ldapLogin(
+                        username: String,
+                        password: String,
+                    ): IADLdapLoginService.LdapLoginResult {
                         return loginResult
                     }
                 },
-                object : IAuthorizationCodeService {
-                    override fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
-                        return AuthCode("test-auth-code", "user", client, Instant.now(), "trace")
-                    }
-
-                    override fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
-                        throw NotImplementedError("Not required for test")
-                    }
-                },
+                authorizationCodeService,
                 failedLoginCounter,
                 successfulLoginCounter
             )

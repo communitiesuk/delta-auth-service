@@ -9,6 +9,8 @@ import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.server.thymeleaf.*
 import io.micrometer.core.instrument.Counter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
@@ -17,7 +19,7 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.withAuthCode
 
@@ -28,7 +30,7 @@ class DeltaLoginController(
     private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
-    private val authenticationCodeService: IAuthorizationCodeService,
+    private val authenticationCodeService: AuthorizationCodeService,
     private val failedLoginCounter: Counter,
     private val successfulLoginCounter: Counter,
 ) {
@@ -165,9 +167,11 @@ class DeltaLoginController(
                     )
                 }
 
-                val authCode = authenticationCodeService.generateAndStore(
-                    userCn = loginResult.user.cn, client = client, traceId = call.callId!!
-                )
+                val authCode = withContext(Dispatchers.IO) {
+                    authenticationCodeService.generateAndStore(
+                        userCn = loginResult.user.cn, client = client, traceId = call.callId!!
+                    )
+                }
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")
                 successfulLoginCounter.increment(1.0)

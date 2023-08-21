@@ -9,6 +9,8 @@ import java.time.temporal.ChronoUnit
 class DeleteOldAuthCodes(private val db: DbPool) : AuthServiceTask("DeleteOldAuthCodes") {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    // Tasks are run separately anyway
+    @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun execute() {
         db.useConnection {
             val stmt = it.prepareStatement(

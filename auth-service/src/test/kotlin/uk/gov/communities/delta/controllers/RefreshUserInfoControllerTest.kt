@@ -8,6 +8,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
@@ -76,7 +77,7 @@ class RefreshUserInfoControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            every { userLookupService.lookupUserByCn(session.userCn) } answers { user }
+            coEvery { userLookupService.lookupUserByCn(session.userCn) } answers { user }
             every {
                 samlTokenService.generate(
                     client.samlCredential,
