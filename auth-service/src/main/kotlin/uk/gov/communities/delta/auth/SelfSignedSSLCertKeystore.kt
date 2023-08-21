@@ -11,22 +11,22 @@ import java.security.KeyStore
 */
 class SelfSignedSSLCertKeystore {
     companion object {
-        const val keyStorePassword = ""
+        const val KEY_STORE_PASSWORD = ""
         private val logger = LoggerFactory.getLogger(SelfSignedSSLCertKeystore::class.java)
 
         fun getKeystore(): KeyStore {
             val keyStoreFile = File("sslKeystore.jks")
             if (keyStoreFile.exists()) {
-                return KeyStore.getInstance(keyStoreFile, keyStorePassword.toCharArray())
+                return KeyStore.getInstance(keyStoreFile, KEY_STORE_PASSWORD.toCharArray())
             }
             logger.info("Generating a new SSL Keystore")
             val keyStore = buildKeyStore {
                 certificate("auth-service") {
-                    password = keyStorePassword
+                    password = KEY_STORE_PASSWORD
                     domains = listOf("localhost")
                 }
             }
-            keyStore.saveToFile(keyStoreFile, keyStorePassword)
+            keyStore.saveToFile(keyStoreFile, KEY_STORE_PASSWORD)
             return keyStore
         }
     }

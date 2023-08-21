@@ -18,8 +18,8 @@ fun main() {
         }
         sslConnector(keyStore = keyStore,
             keyAlias = "auth-service",
-            keyStorePassword = { SelfSignedSSLCertKeystore.keyStorePassword.toCharArray() },
-            privateKeyPassword = { SelfSignedSSLCertKeystore.keyStorePassword.toCharArray() }) {
+            keyStorePassword = { SelfSignedSSLCertKeystore.KEY_STORE_PASSWORD.toCharArray() },
+            privateKeyPassword = { SelfSignedSSLCertKeystore.KEY_STORE_PASSWORD.toCharArray() }) {
             port = 8443
         }
         module {
