@@ -8,14 +8,14 @@ import io.ktor.server.routing.*
 import io.ktor.server.util.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ClientSecretCheck
 import uk.gov.communities.delta.auth.services.*
 import java.time.Instant
 
 class OAuthTokenController(
-    private val clients: List<OAuthClient>,
+    private val clients: List<DeltaLoginEnabledClient>,
     private val authorizationCodeService: IAuthorizationCodeService,
     private val userLookupService: UserLookupService,
     private val samlTokenService: SAMLTokenService,

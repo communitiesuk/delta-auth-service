@@ -14,7 +14,7 @@ import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
@@ -24,7 +24,7 @@ import uk.gov.communities.delta.auth.services.withAuthCode
 
 class DeltaLoginController(
     private val authServiceConfig: AuthServiceConfig,
-    private val clients: List<OAuthClient>,
+    private val clients: List<DeltaLoginEnabledClient>,
     private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
@@ -55,7 +55,7 @@ class DeltaLoginController(
         call.respondLoginPage(client)
     }
 
-    private class LoginQueryParams(val client: OAuthClient, val state: String)
+    private class LoginQueryParams(val client: DeltaLoginEnabledClient, val state: String)
 
     private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
         val responseType = request.queryParameters["response_type"]
@@ -79,7 +79,7 @@ class DeltaLoginController(
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
-        client: OAuthClient,
+        client: DeltaLoginEnabledClient,
         errorMessage: String = "",
         errorLink: String = "#",
         username: String = "",

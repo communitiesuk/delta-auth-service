@@ -11,7 +11,7 @@ import io.ktor.server.request.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
-import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.oauthClientCallbackRoute
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
 import kotlin.time.Duration.Companion.seconds
@@ -65,7 +65,7 @@ fun Application.configureSecurity(injection: Injection) {
                     logger.warn("OAuth Bearer token authentication, rejecting due to missing client authentication")
                     return@authenticate null
                 }
-                oauthSessionService.retrieveFomAuthToken(it.token, clientPrincipal.client as OAuthClient)
+                oauthSessionService.retrieveFomAuthToken(it.token, clientPrincipal.client as DeltaLoginEnabledClient)
             }
         }
 
