@@ -52,7 +52,10 @@ class RateLimitingTest {
             }
         }.apply {
             assertContains(bodyAsText(), "<title>DELTA | Sign in</title>")
-            assertContains(bodyAsText(), "<a href=\"\">Too many requests from your location, please try again in a few minutes.</a>")
+            assertContains(
+                bodyAsText(),
+                "<a href=\"\">Too many requests from your location, please try again in a few minutes.</a>"
+            )
         }
     }
 
@@ -63,7 +66,7 @@ class RateLimitingTest {
             assertSuccessfulGetRequest(forwardedFor)
         }
         assertBlockedGetRequest(forwardedFor)
-        verify(exactly=1) { rateLimitLoginCounter.increment(1.0) }
+        verify(exactly = 1) { rateLimitLoginCounter.increment(1.0) }
     }
 
     @Test
@@ -76,7 +79,7 @@ class RateLimitingTest {
         }
         assertBlockedGetRequest(forwardFor1)
         assertSuccessfulGetRequest(forwardFor2)
-        verify(exactly=1) { rateLimitLoginCounter.increment(1.0) }
+        verify(exactly = 1) { rateLimitLoginCounter.increment(1.0) }
     }
 
     @Before
@@ -103,7 +106,7 @@ class RateLimitingTest {
                     routing {
                         rateLimit(RateLimitName(loginRateLimitName)) {
                             route("/delta/login") {
-                                this.get{
+                                this.get {
                                     call.respondText("Get request allowed through")
                                 }
                                 this.post {

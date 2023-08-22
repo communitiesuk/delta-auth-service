@@ -144,7 +144,7 @@ class OAuthLoginTest {
     }
 
     @Test
-    fun `Callback returns error if user is disabled`()  {
+    fun `Callback returns error if user is disabled`() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), accountEnabled = false)
         }
@@ -156,7 +156,7 @@ class OAuthLoginTest {
     }
 
     @Test
-    fun `Callback returns error if user has no email`()  {
+    fun `Callback returns error if user has no email`() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), email = null)
         }
@@ -168,7 +168,7 @@ class OAuthLoginTest {
     }
 
     @Test
-    fun `Callback returns error if user is not in Delta users group`()  {
+    fun `Callback returns error if user is not in Delta users group`() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf("some-other-group"))
         }
