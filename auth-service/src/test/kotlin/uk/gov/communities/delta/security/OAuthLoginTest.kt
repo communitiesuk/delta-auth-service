@@ -90,6 +90,15 @@ class OAuthLoginTest {
         }
     }
 
+    @Test
+    fun `Callback endpoint throws error with no session cookie`() {
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
+            runBlocking { testClient().get("/delta/oauth/test/callback") }
+        }.apply {
+            assertEquals("callback_no_session", errorCode)
+        }
+    }
+
     private class LoginState(val cookie: Cookie, val state: String)
 
     // Cookie and state parameter as though the user had just been redirected to Azure
@@ -349,7 +358,7 @@ class OAuthLoginTest {
 }
 
 class SingleInstanceRunner<T>(clazz: Class<T>) : BlockJUnit4ClassRunner(clazz) {
-    val instance: Any by lazy { super.createTest() }
+    private val instance: Any by lazy { super.createTest() }
 
     override fun createTest() = instance
 }
