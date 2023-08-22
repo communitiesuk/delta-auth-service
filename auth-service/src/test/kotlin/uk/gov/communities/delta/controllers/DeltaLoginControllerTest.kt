@@ -186,7 +186,7 @@ class DeltaLoginControllerTest {
             val controller = DeltaLoginController(
                 AuthServiceConfig("http://localhost", null),
                 listOf(client),
-                AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain"))),
+                AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain", required = true))),
                 deltaConfig,
                 object : IADLdapLoginService {
                     override suspend fun ldapLogin(

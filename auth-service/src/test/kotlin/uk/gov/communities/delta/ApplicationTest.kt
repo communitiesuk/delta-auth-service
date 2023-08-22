@@ -6,6 +6,7 @@ import io.ktor.http.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import org.junit.BeforeClass
+import org.slf4j.helpers.NOPLogger
 import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.appModule
 import uk.gov.communities.delta.auth.config.*
@@ -41,6 +42,7 @@ class ApplicationTest {
                 AzureADSSOConfig(emptyList()),
                 AuthServiceConfig("testInvalidServiceUrl", null),
             )
+            Injection.instance.logConfig(NOPLogger.NOP_LOGGER)
             testApp = TestApplication {
                 application {
                     appModule()

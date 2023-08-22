@@ -117,7 +117,7 @@ class DeltaLoginController(
         )
 
         val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
-            it.emailDomain != null && formUsername.lowercase().endsWith(it.emailDomain)
+            it.required && formUsername.lowercase().endsWith(it.emailDomain)
         }
         if (ssoClientMatchingEmailDomain != null) {
             return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))

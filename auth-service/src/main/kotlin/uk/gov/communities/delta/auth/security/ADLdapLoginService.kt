@@ -49,6 +49,15 @@ class ADLdapLoginService(
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
     override suspend fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
+        if (username.length > 1000) {
+            logger.warn("Username too long {}", username.length)
+            return IADLdapLoginService.InvalidUsername
+        }
+        if (password.length > 1000) {
+            logger.warn("Password too long {}", password.length)
+            return IADLdapLoginService.InvalidUsernameOrPassword
+        }
+
         if (!username.matches(LDAPConfig.VALID_USERNAME_REGEX)) {
             logger.warn("Invalid username '{}'", username)
             return IADLdapLoginService.InvalidUsername

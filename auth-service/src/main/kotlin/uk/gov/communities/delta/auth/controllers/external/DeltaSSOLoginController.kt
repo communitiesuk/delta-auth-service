@@ -161,10 +161,10 @@ class DeltaSSOLoginController(
     }
 
     private fun checkEmailDomain(email: String, ssoClient: AzureADSSOClient) {
-        if (ssoClient.emailDomain != null && !email.endsWith(ssoClient.emailDomain)) {
+        if (!email.endsWith(ssoClient.emailDomain)) {
             throw OAuthLoginException(
                 "invalid_email_domain",
-                "Expected email for SSO client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was $email",
+                "Expected email for SSO client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was '$email'",
                 "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk"
             )
         }
