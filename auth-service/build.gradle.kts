@@ -85,17 +85,26 @@ task("migrate", JavaExec::class) {
     classpath = sourceSets["main"].runtimeClasspath
 }
 
-tasks {
-    "run"(JavaExec::class) {
-        val envFile = file(".env")
-        if (envFile.exists()) {
-            println("Reading from .env file")
-            envFile.readLines().forEach {
-                if (it.isNotEmpty() && !it.startsWith("#")) {
-                    val (key, value) = it.split("=")
-                    environment(key, value)
-                }
+fun JavaExec.readEnvFile() {
+    val envFile = file(".env")
+    if (envFile.exists()) {
+        envFile.readLines().forEach {
+            if (it.isNotEmpty() && !it.startsWith("#")) {
+                val (key, value) = it.split("=")
+                environment(key, value)
             }
         }
+    }
+}
+
+task("runTask", JavaExec::class) {
+    mainClass.set("uk.gov.communities.delta.auth.tasks.RunTaskMainKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    readEnvFile()
+}
+
+tasks {
+    "run"(JavaExec::class) {
+        readEnvFile()
     }
 }

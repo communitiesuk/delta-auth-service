@@ -113,3 +113,15 @@ To update them:
 * Download the updated bundle and replace the existing files, following the folder structure in this repo
 * Find and replace in the CSS file to change links to "/assets/" to "/static/assets/"
 * Update the version numbers linked from the HTML header
+
+## Scheduled tasks
+
+You can run a task locally by setting the RUN_TASK environment variable and using the "runTask" gradle task, for example
+
+```shell
+RUN_TASK=DeleteOldAuthCodes ./gradlew runTask
+```
+
+In hosted environments scheduled tasks are run using AWS EventBridge Scheduler,
+which invokes an ECS task with the RUN_TASK environment variable set, and the Docker [entrypoint script](./entrypoint.sh)
+will execute the task instead of the application.

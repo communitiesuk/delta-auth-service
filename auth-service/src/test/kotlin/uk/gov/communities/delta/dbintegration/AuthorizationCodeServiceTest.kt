@@ -3,6 +3,7 @@ package uk.gov.communities.delta.dbintegration
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
+import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -40,7 +41,7 @@ class AuthorizationCodeServiceTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            service = AuthorizationCodeService(testDbPool)
+            service = AuthorizationCodeService(testDbPool, TimeSource.System)
         }
     }
 }

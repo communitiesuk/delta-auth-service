@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.services
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.ktor.utils.io.core.*
 import org.flywaydb.core.Flyway
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DatabaseConfig
@@ -11,7 +12,7 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.time.Duration.Companion.seconds
 
-class DbPool(private val config: DatabaseConfig) {
+class DbPool(private val config: DatabaseConfig) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     private val connectionPoolDelegate = lazy(::createPoolAndMigrate)
@@ -56,6 +57,10 @@ class DbPool(private val config: DatabaseConfig) {
         connectionTimeout = 20.seconds.inWholeMilliseconds
         validate()
     })
+
+    override fun close() {
+        connectionPool.close()
+    }
 }
 
 fun main() {

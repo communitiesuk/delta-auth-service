@@ -4,6 +4,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.OAuthSessionService
+import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
@@ -51,7 +52,7 @@ class OAuthSessionServiceTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            service = OAuthSessionService(testDbPool)
+            service = OAuthSessionService(testDbPool, TimeSource.System)
         }
     }
 }
