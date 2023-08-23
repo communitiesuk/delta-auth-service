@@ -1,16 +1,14 @@
 package uk.gov.communities.delta.auth.services
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
 import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.utils.TimeSource
 import java.sql.Timestamp
 import java.time.Instant
-
-interface IAuthorizationCodeService {
-    fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode
-    fun lookupAndInvalidate(code: String, client: Client): AuthCode?
-}
 
 // The authorization code is the value we include in the URL when we redirect back to the Delta website
 // It's a short-lived code that can be exchanged using the token endpoint for user details and a longer lived access token
@@ -25,8 +23,7 @@ data class AuthCode(
         createdAt.plusSeconds(AuthorizationCodeService.AUTH_CODE_VALID_DURATION_SECONDS) < timeSource.now()
 }
 
-class AuthorizationCodeService(private val dbPool: DbPool, private val timeSource: TimeSource) :
-    IAuthorizationCodeService {
+class AuthorizationCodeService(private val dbPool: DbPool, private val timeSource: TimeSource) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -34,18 +31,18 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
         const val AUTH_CODE_LENGTH_BYTES = 24
     }
 
-    override fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
+    suspend fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
         val code = randomBase64(AUTH_CODE_LENGTH_BYTES)
         val now = timeSource.now()
         val authCode = AuthCode(code, userCn, client, now, traceId)
-        insert(authCode)
+        withContext(Dispatchers.IO) { insert(authCode) }
 
         logger.atInfo().withAuthCode(authCode).log("Generated auth code at {}", now)
         return authCode
     }
 
-    override fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
-        val entry = deleteReturning(code, client) ?: return null
+    suspend fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
+        val entry = withContext(Dispatchers.IO) { deleteReturning(code, client) } ?: return null
         if (entry.expired(timeSource)) {
             logger.atWarn().withAuthCode(entry).log("Expired auth code '{}'", code)
             return null
@@ -53,8 +50,9 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
         return entry
     }
 
+    @Blocking
     private fun insert(authCode: AuthCode) {
-        dbPool.connection().use {
+        dbPool.useConnection {
             val stmt = it.prepareStatement(
                 "INSERT INTO authorization_code (username, client_id, code_hash, created_at, trace_id) " +
                         "VALUES (?, ?, ?, ?, ?)"
@@ -69,6 +67,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
         }
     }
 
+    @Blocking
     private fun deleteReturning(code: String, client: Client): AuthCode? {
         val codeHash = try {
             hashBase64String(code)
@@ -101,5 +100,5 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
     }
 }
 
-fun LoggingEventBuilder.withAuthCode(authCode: AuthCode) =
+fun LoggingEventBuilder.withAuthCode(authCode: AuthCode): LoggingEventBuilder =
     addKeyValue("username", authCode.code).addKeyValue("trace", authCode.traceId)

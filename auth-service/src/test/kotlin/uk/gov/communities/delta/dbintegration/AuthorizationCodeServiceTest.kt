@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.dbintegration
 
+import io.ktor.test.dispatcher.*
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
@@ -12,20 +13,20 @@ import kotlin.test.assertNull
 class AuthorizationCodeServiceTest {
 
     @Test
-    fun testLookupInvalidCodeFails() {
+    fun testLookupInvalidCodeFails() = testSuspend {
         val result = service.lookupAndInvalidate("invalid_code", client)
         assertNull(result)
     }
 
     @Test
-    fun testLookupCodeWrongClientFails() {
+    fun testLookupCodeWrongClientFails() = testSuspend {
         val code = service.generateAndStore("some.user", client, "traceId")
         val result = service.lookupAndInvalidate(code.code, testServiceClient("wrong-client"))
         assertNull(result)
     }
 
     @Test
-    fun testRetrieveValidCode() {
+    fun testRetrieveValidCode() = testSuspend {
         val code = service.generateAndStore("some.user", client, "traceId")
         val result = service.lookupAndInvalidate(code.code, client)
         assertNotNull(result)

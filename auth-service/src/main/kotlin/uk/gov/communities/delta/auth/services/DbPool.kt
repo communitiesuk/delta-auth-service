@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.utils.io.core.*
 import org.flywaydb.core.Flyway
+import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DatabaseConfig
 import java.sql.Connection
@@ -18,10 +19,12 @@ class DbPool(private val config: DatabaseConfig) : Closeable {
     private val connectionPoolDelegate = lazy(::createPoolAndMigrate)
     private val connectionPool: HikariDataSource by connectionPoolDelegate
 
+    @Blocking
     fun connection(): Connection {
-        return connectionPool.connection
+        return connectionPool.getConnection()
     }
 
+    @Blocking
     @OptIn(ExperimentalContracts::class)
     inline fun <R> useConnection(block: (Connection) -> R): R {
         contract {
@@ -59,7 +62,9 @@ class DbPool(private val config: DatabaseConfig) : Closeable {
     })
 
     override fun close() {
-        connectionPool.close()
+        if (connectionPoolDelegate.isInitialized()) {
+            connectionPool.close()
+        }
     }
 }
 

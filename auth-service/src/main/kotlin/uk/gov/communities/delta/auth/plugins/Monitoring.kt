@@ -18,7 +18,6 @@ import uk.gov.communities.delta.auth.security.ClientPrincipal
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.OAuthSession
-import kotlin.collections.mutableMapOf
 import kotlin.collections.set
 
 fun Application.configureMonitoring(meterRegistry: MeterRegistry) {

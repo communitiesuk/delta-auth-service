@@ -20,7 +20,7 @@ import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
@@ -37,7 +37,7 @@ class DeltaSSOLoginController(
     private val ssoConfig: AzureADSSOConfig,
     private val ssoLoginStateService: SSOLoginSessionStateService,
     private val ldapLookupService: UserLookupService,
-    private val authorizationCodeService: IAuthorizationCodeService,
+    private val authorizationCodeService: AuthorizationCodeService,
     private val microsoftGraphService: MicrosoftGraphService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -127,7 +127,7 @@ class DeltaSSOLoginController(
         return session
     }
 
-    private fun lookupUserInAd(email: String): LdapUser? {
+    private suspend fun lookupUserInAd(email: String): LdapUser? {
         val cn = email.replace('@', '!')
         return try {
             ldapLookupService.lookupUserByCn(cn)

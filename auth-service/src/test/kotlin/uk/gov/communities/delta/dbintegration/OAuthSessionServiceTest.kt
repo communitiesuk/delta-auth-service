@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.dbintegration
 
+import io.ktor.test.dispatcher.*
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.services.AuthCode
@@ -13,13 +14,13 @@ import kotlin.test.assertNull
 
 class OAuthSessionServiceTest {
     @Test
-    fun testLookupInvalidTokenFails() {
+    fun testLookupInvalidTokenFails() = testSuspend {
         val result = service.retrieveFomAuthToken("invalidToken", client)
         assertNull(result)
     }
 
     @Test
-    fun testLookupInvalidClientFails() {
+    fun testLookupInvalidClientFails() = testSuspend {
         val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace")
         val createResult = service.create(authCode, client)
 
@@ -28,7 +29,7 @@ class OAuthSessionServiceTest {
     }
 
     @Test
-    fun testCreateAndRetrieveSession() {
+    fun testCreateAndRetrieveSession() = testSuspend {
         val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace")
         val createResult = service.create(authCode, client)
 

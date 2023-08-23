@@ -16,8 +16,6 @@ import io.ktor.utils.io.*
 import io.micrometer.core.instrument.Metrics.counter
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
-import org.hamcrest.CoreMatchers
-import org.hamcrest.MatcherAssert
 import org.junit.*
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
@@ -75,7 +73,7 @@ class OAuthLoginTest {
             // Which should redirect us back to Delta with an Authorisation code
             assertEquals(HttpStatusCode.Found, status)
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
-            verify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+            coVerify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
     }
@@ -110,7 +108,7 @@ class OAuthLoginTest {
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
                 assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error"))
-                verify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+                coVerify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
             }
     }
 
@@ -125,7 +123,7 @@ class OAuthLoginTest {
 
     @Test
     fun `Callback redirects to Delta create user page if no ldap user`() = testSuspend {
-        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } throws (NameNotFoundException())
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } throws (NameNotFoundException())
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
@@ -135,7 +133,7 @@ class OAuthLoginTest {
 
     @Test
     fun `Callback returns error if user is disabled`()  {
-        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), accountEnabled = false)
         }
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
@@ -147,7 +145,7 @@ class OAuthLoginTest {
 
     @Test
     fun `Callback returns error if user has no email`()  {
-        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), email = null)
         }
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
@@ -159,7 +157,7 @@ class OAuthLoginTest {
 
     @Test
     fun `Callback returns error if user is not in Delta users group`()  {
-        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf("some-other-group"))
         }
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
@@ -181,7 +179,7 @@ class OAuthLoginTest {
     }
 
     private fun mockAdminUser() {
-        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn, "datamart-delta-admin"))
         }
     }
@@ -223,10 +221,10 @@ class OAuthLoginTest {
     @Before
     fun setupMocks() {
         clearAllMocks()
-        every { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn))
         }
-        every { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
+        coEvery { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
             AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")
         }
         coEvery {

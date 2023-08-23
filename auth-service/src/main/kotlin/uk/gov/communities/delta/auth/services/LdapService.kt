@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.auth.services
 
 import kotlinx.serialization.Serializable
+import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import java.lang.Integer.parseInt
 import java.util.*
@@ -16,6 +17,7 @@ class LdapService(private val config: Configuration) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(config.groupDnFormat.replace("%s", "([\\w-]+)"))
 
+    @Blocking
     fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialDirContext {
         val env = Hashtable<String, String>()
         env[Context.INITIAL_CONTEXT_FACTORY] = "com.sun.jndi.ldap.LdapCtxFactory"
@@ -40,6 +42,7 @@ class LdapService(private val config: Configuration) {
         }
     }
 
+    @Blocking
     fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
         val attributes =
             ctx.getAttributes(
