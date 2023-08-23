@@ -8,15 +8,16 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.util.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.ClientConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
@@ -81,7 +82,9 @@ class DeltaSSOLoginController(
         checkDeltaUsersGroup(user)
 
         val client = clientConfig.oauthClients.first { it.clientId == session.clientId }
-        val authCode = generateAuthToken(user, client, call.callId!!)
+        val authCode = authorizationCodeService.generateAndStore(
+            userCn = user.cn, client = client, traceId = call.callId!!
+        )
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         call.sessions.clear<LoginSessionCookie>()
@@ -110,13 +113,6 @@ class DeltaSSOLoginController(
         return ssoConfig.ssoClients.firstOrNull { it.internalId == ssoClientId }
             ?: throw HttpNotFoundException("No OAuth client found for id $ssoClientId")
     }
-
-    private suspend fun generateAuthToken(user: LdapUser, client: Client, trace: String) =
-        withContext(Dispatchers.IO) {
-            authorizationCodeService.generateAndStore(
-                userCn = user.cn, client = client, traceId = trace
-            )
-        }
 
     private fun validateOAuthStateInSession(call: ApplicationCall): LoginSessionCookie {
         val session = call.sessions.get<LoginSessionCookie>()

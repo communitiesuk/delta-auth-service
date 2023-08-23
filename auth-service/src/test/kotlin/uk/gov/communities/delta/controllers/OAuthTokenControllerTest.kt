@@ -94,9 +94,9 @@ class OAuthTokenControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            every { authorizationCodeService.lookupAndInvalidate(any(), client) } answers { null }
-            every { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
-            every { oauthSessionService.create(authCode, client) } answers { session }
+            coEvery { authorizationCodeService.lookupAndInvalidate(any(), client) } answers { null }
+            coEvery { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
+            coEvery { oauthSessionService.create(authCode, client) } answers { session }
             coEvery { userLookupService.lookupUserByCn(authCode.userCn) }.returns(user)
             every {
                 samlTokenService.generate(

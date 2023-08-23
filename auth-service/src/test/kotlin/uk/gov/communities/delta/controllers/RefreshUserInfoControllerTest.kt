@@ -86,8 +86,8 @@ class RefreshUserInfoControllerTest {
                     any()
                 )
             } answers { "SAML Token" }
-            every { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
-            every { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
+            coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
+            coEvery { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
 
             controller = RefreshUserInfoController(userLookupService, samlTokenService)
             testApp = TestApplication {

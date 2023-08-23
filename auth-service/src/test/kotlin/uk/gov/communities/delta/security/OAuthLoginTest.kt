@@ -73,7 +73,7 @@ class OAuthLoginTest {
             // Which should redirect us back to Delta with an Authorisation code
             assertEquals(HttpStatusCode.Found, status)
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
-            verify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+            coVerify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
     }
@@ -108,7 +108,7 @@ class OAuthLoginTest {
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
                 assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error"))
-                verify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+                coVerify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
             }
     }
 
@@ -224,7 +224,7 @@ class OAuthLoginTest {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn))
         }
-        every { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
+        coEvery { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
             AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")
         }
         coEvery {

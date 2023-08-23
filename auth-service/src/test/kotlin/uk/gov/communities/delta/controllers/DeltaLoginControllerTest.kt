@@ -12,10 +12,7 @@ import io.ktor.server.sessions.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.micrometer.core.instrument.Counter
-import io.mockk.clearAllMocks
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.LoginSessionCookie
@@ -168,7 +165,7 @@ class DeltaLoginControllerTest {
         clearAllMocks()
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit
-        every { authorizationCodeService.generateAndStore(any(), any(), any()) } answers {
+        coEvery { authorizationCodeService.generateAndStore(any(), any(), any()) } answers {
             AuthCode("test-auth-code", "user", client, Instant.now(), "trace")
         }
     }

@@ -1,5 +1,7 @@
 package uk.gov.communities.delta.auth.services
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
@@ -29,20 +31,18 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
         const val AUTH_CODE_LENGTH_BYTES = 24
     }
 
-    @Blocking
-    fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
+    suspend fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
         val code = randomBase64(AUTH_CODE_LENGTH_BYTES)
         val now = timeSource.now()
         val authCode = AuthCode(code, userCn, client, now, traceId)
-        insert(authCode)
+        withContext(Dispatchers.IO) { insert(authCode) }
 
         logger.atInfo().withAuthCode(authCode).log("Generated auth code at {}", now)
         return authCode
     }
 
-    @Blocking
-    fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
-        val entry = deleteReturning(code, client) ?: return null
+    suspend fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
+        val entry = withContext(Dispatchers.IO) { deleteReturning(code, client) } ?: return null
         if (entry.expired(timeSource)) {
             logger.atWarn().withAuthCode(entry).log("Expired auth code '{}'", code)
             return null
@@ -50,6 +50,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
         return entry
     }
 
+    @Blocking
     private fun insert(authCode: AuthCode) {
         dbPool.useConnection {
             val stmt = it.prepareStatement(
@@ -66,6 +67,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
         }
     }
 
+    @Blocking
     private fun deleteReturning(code: String, client: Client): AuthCode? {
         val codeHash = try {
             hashBase64String(code)
