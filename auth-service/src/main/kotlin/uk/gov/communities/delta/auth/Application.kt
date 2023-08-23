@@ -23,7 +23,7 @@ fun main() {
             port = 8443
         }
         module {
-            Injection.startupInitFromEnvironment()
+            Injection.startupInitFromEnvironment().registerShutdownHook()
             appModule()
         }
     }

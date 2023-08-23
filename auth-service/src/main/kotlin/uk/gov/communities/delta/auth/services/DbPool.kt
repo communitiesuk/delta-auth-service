@@ -62,7 +62,9 @@ class DbPool(private val config: DatabaseConfig) : Closeable {
     })
 
     override fun close() {
-        connectionPool.close()
+        if (connectionPoolDelegate.isInitialized()) {
+            connectionPool.close()
+        }
     }
 }
 

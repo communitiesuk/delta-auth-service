@@ -68,6 +68,10 @@ class Injection(
         dbPool.close()
     }
 
+    fun registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(Thread { close() })
+    }
+
     private val samlTokenService = SAMLTokenService()
     private val ldapService = LdapService(
         LdapService.Configuration(
