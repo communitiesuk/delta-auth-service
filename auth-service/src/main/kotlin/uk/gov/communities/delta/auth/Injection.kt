@@ -63,6 +63,11 @@ class Injection(
         authServiceConfig.log(logger.atInfo())
     }
 
+    fun close() {
+        meterRegistry.close()
+        dbPool.close()
+    }
+
     private val samlTokenService = SAMLTokenService()
     private val ldapService = LdapService(
         LdapService.Configuration(

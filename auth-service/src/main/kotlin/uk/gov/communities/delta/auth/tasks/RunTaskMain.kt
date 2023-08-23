@@ -23,4 +23,5 @@ fun main() {
             taskRunner.runTask(task)
         }
     }
+    injection.close()
 }
