@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.controllers
 
 import io.ktor.client.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
@@ -12,13 +13,12 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.micrometer.core.instrument.Counter
 import io.mockk.*
-import org.junit.AfterClass
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
+import kotlinx.coroutines.runBlocking
+import org.junit.*
 import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
@@ -127,6 +127,22 @@ class DeltaLoginControllerTest {
     }
 
     @Test
+    fun testLoginPostChecksOriginHeader() = testSuspend {
+        val client = testApp.createClient { followRedirects = false }
+        Assert.assertThrows(DeltaLoginController.InvalidOriginException::class.java) {
+            runBlocking {
+                client.submitForm(
+                    url = "/login?response_type=code&client_id=delta-website&state=1234",
+                    formParameters = parameters {
+                        append("username", "user")
+                        append("password", "pass")
+                    }
+                )
+            }
+        }
+    }
+
+    @Test
     fun testLoginPostSSODomainRedirects() = testSuspend {
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
@@ -162,6 +178,7 @@ class DeltaLoginControllerTest {
         @JvmStatic
         fun setup() {
             val controller = DeltaLoginController(
+                AuthServiceConfig("http://localhost", null),
                 listOf(client),
                 AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain"))),
                 deltaConfig,
@@ -196,7 +213,12 @@ class DeltaLoginControllerTest {
                     }
                 }
             }
-            testClient = testApp.createClient { followRedirects = false }
+            testClient = testApp.createClient {
+                followRedirects = false
+                defaultRequest {
+                    headers.append("Origin", "http://localhost")
+                }
+            }
         }
 
         @AfterClass
