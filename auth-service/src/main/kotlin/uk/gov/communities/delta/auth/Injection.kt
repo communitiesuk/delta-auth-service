@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth
 
+import OrganisationService
 import io.micrometer.cloudwatch2.CloudWatchConfig
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
 import io.micrometer.core.instrument.Clock
@@ -10,6 +11,7 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -20,6 +22,8 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
+import uk.gov.communities.delta.auth.utils.EmailService
+import uk.gov.communities.delta.auth.utils.RegistrationService
 import java.time.Duration
 
 @Suppress("MemberVisibilityCanBePrivate")
@@ -124,6 +128,10 @@ class Injection(
         )
     }
 
+    fun externalDeltaUserRegisterController(): DeltaUserRegistrationController {
+        return DeltaUserRegistrationController(deltaConfig, organisationSearchService(), registrationService())
+    }
+
     fun internalOAuthTokenController() = OAuthTokenController(
         clientConfig.oauthClients,
         authorizationCodeService,
@@ -144,4 +152,8 @@ class Injection(
             authorizationCodeService,
             microsoftGraphService
         )
+
+    fun organisationSearchService() = OrganisationService(OrganisationService.makeHTTPClient())
+    fun registrationService() = RegistrationService(deltaConfig, organisationSearchService(), emailService())
+    fun emailService() = EmailService()
 }

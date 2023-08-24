@@ -58,6 +58,9 @@ dependencies {
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
     implementation("io.micrometer:micrometer-registry-cloudwatch2:1.11.2")
 
+    //Emails
+    implementation("com.sun.mail:javax.mail:1.6.2")
+
     // Logging
     implementation("ch.qos.logback:logback-classic:1.4.8")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder

@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -38,7 +39,8 @@ fun Application.configureRouting(injection: Injection) {
         externalRoutes(
             injection.authServiceConfig,
             injection.externalDeltaLoginController(),
-            injection.deltaOAuthLoginController()
+            injection.deltaOAuthLoginController(),
+            injection.externalDeltaUserRegisterController()
         )
     }
 }
@@ -53,6 +55,7 @@ fun Route.externalRoutes(
     serviceConfig: AuthServiceConfig,
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
+    deltaUserRegistrationController: DeltaUserRegistrationController
 ) {
     install(CSP)
     staticResources("/static", "static") {
@@ -64,6 +67,10 @@ fun Route.externalRoutes(
             javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes(),
             ContentType.Image.XIcon
         )
+    }
+
+    route("/delta/register") {
+        deltaUserRegistrationController.registerRoutes(this)
     }
 
     route("/delta") {

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" class="govuk-template " xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/template.html :: head (title='DELTA | Setup')}">
+    <title>DELTA | Setup</title>
+</head>
+
+<body class="govuk-template__body govuk-body">
+<a href="#main-content" class="govuk-skip-link" data-module="govuk-skip-link">Skip to main content</a>
+<header th:replace="~{fragments/template.html :: header}"></header>
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!-- List of errors paired with error links -->
+<!--/*@thymesVar id="allErrors" type="java.lang.ArrayList" */-->
+<!--/*@thymesVar id="firstNameErrorMessages" type="java.lang.ArrayList" */-->
+<!--/*@thymesVar id="firstName" type="java.lang.String" */-->
+<!--/*@thymesVar id="lastNameErrorMessages" type="java.lang.ArrayList" */-->
+<!--/*@thymesVar id="lastName" type="java.lang.String" */-->
+<!--/*@thymesVar id="emailAddressErrorMessages" type="java.lang.ArrayList" */-->
+<!--/*@thymesVar id="emailAddress" type="java.lang.String" */-->
+<!--/*@thymesVar id="confirmEmailErrorMessages" type="java.lang.ArrayList" */-->
+<!--/*@thymesVar id="confirmEmailAddress" type="java.lang.String" */-->
+
+<div class="govuk-width-container" id="registerPage">
+    <main class="govuk-main-wrapper " id="main-content" role="main">
+        <h1 class="govuk-heading-xl">Register</h1>
+        <div th:if="${not #lists.isEmpty(allErrors)}" class="govuk-error-summary"
+             data-module="govuk-error-summary">
+            <div role="alert">
+                <h2 class="govuk-error-summary__title">
+                    There is a problem
+                </h2>
+                <div class="govuk-error-summary__body">
+                    <ul class="govuk-list govuk-error-summary__list">
+                        <li th:each="error: ${allErrors}">
+                            <a th:text="${error[0]}" th:href="${error[1]}" href="#">Error message</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <p class="govuk-body">
+            Enter your details in the form below to request a new user account for DELTA.
+        </p>
+        <p class="govuk-body">
+            Note that user accounts will only be set up for individuals with a legitimate requirement to enter or use
+            the data on DELTA. All account details and actions are fully auditable by DLUHC and external
+            audit companies. Please read the DELTA <a class="govuk-link" th:href="${deltaUrl} + '/privacy-policy'">Privacy
+            policy</a>, <a href="#" th:href="${deltaUrl} + '/usage-policy'">Usage policy</a> and <a href="#"
+                                                                                                    th:href="${deltaUrl} + '/terms-and-conditions'">Terms
+            & conditions</a> before registering.
+            See <a th:href="${deltaUrl} + '/about-delta'">About DELTA</a> for further information on DELTA. If you have
+            any other queries,
+            or have an
+            existing DELTA account that you need updated, please contact the DLUHC Service Desk: <a class="govuk-link"
+                                                                                                    href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a>
+            or call 0203 829 0743.
+        </p>
+        <div class="govuk-warning-text">
+            <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+            <strong class="govuk-warning-text__text">
+                <span class="govuk-warning-text__assistive">Warning</span>
+                We cannot set up shared email accounts. Use your personal business email address.
+            </strong>
+        </div>
+
+        <form class="item-form form" id="registration_form" th:action="@{#}" method="post">
+            <div class="govuk-form-group"
+                 th:classappend="${not(#lists.isEmpty(firstNameErrorMessages))} ? 'govuk-form-group--error'">
+                <label class="govuk-label" for="firstName">First name:</label>
+                <div id="firstNameError" th:each="errorMessage: ${firstNameErrorMessages}">
+                    <span class="govuk-visually-hidden">Error:</span>
+                    <p class="govuk-error-message" th:text="${errorMessage}"></p>
+                </div>
+                <input class="govuk-input govuk-!-width-two-thirds" id="firstName" name="firstName" aria-required="true"
+                       required th:value="${firstName}"
+                       th:classappend="${not(#lists.isEmpty(firstNameErrorMessages))} ? 'govuk-input--error'">
+            </div>
+            <div class="govuk-form-group"
+                 th:classappend="${not(#lists.isEmpty(lastNameErrorMessages))} ? 'govuk-form-group--error'">
+                <label class="govuk-label" for="lastName">Last name:</label>
+                <div id="lastNameError" th:each="errorMessage: ${lastNameErrorMessages}">
+                    <span class="govuk-visually-hidden">Error:</span>
+                    <p class="govuk-error-message" th:text="${errorMessage}"></p>
+                </div>
+                <input class="govuk-input govuk-!-width-two-thirds" id="lastName" name="lastName" aria-required="true"
+                       required th:value="${lastName}"
+                       th:classappend="${not(#lists.isEmpty(lastNameErrorMessages))} ? 'govuk-input--error'">
+            </div>
+            <div class="govuk-form-group"
+                 th:classappend="${not(#lists.isEmpty(emailAddressErrorMessages))} ? 'govuk-form-group--error'">
+                <label class="govuk-label" for="emailAddress">Email address:</label>
+                <div id="emailAddressError" th:each="errorMessage: ${emailAddressErrorMessages}">
+                    <span class="govuk-visually-hidden">Error:</span>
+                    <p class="govuk-error-message" th:text="${errorMessage}"></p>
+                </div>
+                <input class="govuk-input govuk-!-width-two-thirds" id="emailAddress" name="emailAddress"
+                       aria-required="true" required th:value="${emailAddress}"
+                       th:classappend="${not(#lists.isEmpty(emailAddressErrorMessages))} ? 'govuk-input--error'">
+            </div>
+            <div class="govuk-form-group"
+                 th:classappend="${not(#lists.isEmpty(confirmEmailErrorMessages))} ? 'govuk-form-group--error'">
+                <label class="govuk-label" for="confirmEmailAddress">Confirm email address:</label>
+                <div id="confirmEmailAddressError"
+                     th:each="errorMessage: ${confirmEmailErrorMessages}">
+                    <span class="govuk-visually-hidden">Error:</span>
+                    <p class="govuk-error-message" th:text="${errorMessage}"></p>
+                </div>
+                <input class="govuk-input govuk-!-width-two-thirds" id="confirmEmailAddress" name="confirmEmailAddress"
+                       aria-required="true" required th:value="${confirmEmailAddress}"
+                       th:classappend="${not(#lists.isEmpty(confirmEmailErrorMessages))} ? 'govuk-input--error'">
+            </div>
+            <div class="govuk-button-group">
+                <input data-prevent-double-click="true" data-module="govuk-button" class="govuk-button" type="submit"
+                       value="Register" formnovalidate/>
+            </div>
+
+        </form>
+    </main>
+
+
+</div>
+<footer th:replace="~{fragments/template.html :: footer (deltaUrl=${deltaUrl})}"></footer>
+</body>
+</html>
