@@ -96,7 +96,6 @@ class OAuthLoginTest {
     // shared between tests to avoid repeating the requests
     private val loginState: LoginState by lazy {
         runBlocking {
-            println("Running loginState")
             val client = testClient()
             client.get("/delta/login?response_type=code&client_id=delta-website&state=delta-state")
             val state = client.get("/delta/oauth/test/login").headers["Location"]!!.stateFromRedirectUrl()
