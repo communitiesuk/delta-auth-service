@@ -16,7 +16,7 @@ class LdapAuthenticationService(private val ldapService: IADLdapLoginService, pr
 
     private val logger = LoggerFactory.getLogger(LdapAuthenticationService::class.java)
 
-    fun authenticate(credential: UserPasswordCredential): DeltaLdapPrincipal? {
+    suspend fun authenticate(credential: UserPasswordCredential): DeltaLdapPrincipal? {
         logger.debug("Authenticating LDAP service user '{}'", credential.name)
 
         when (val loginResult = ldapService.ldapLogin(credential.name, credential.password)) {

@@ -18,6 +18,7 @@ import uk.gov.communities.delta.auth.security.ClientPrincipal
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.OAuthSession
+import kotlin.collections.set
 
 fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
     install(CallLogging) {
@@ -37,8 +38,10 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
     }
     install(MicrometerMetrics) {
         registry = meterRegistry
+        meterBinders = emptyList()
         registry.config()
-            .meterFilter(MeterFilter.acceptNameStartsWith("login"))
+            .meterFilter(MeterFilter.acceptNameStartsWith("login."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("tasks."))
             .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics
     }
 }

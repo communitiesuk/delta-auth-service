@@ -1,5 +1,8 @@
 package uk.gov.communities.delta.auth.security
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.services.LdapService
@@ -14,7 +17,7 @@ import javax.naming.directory.InitialDirContext
  * LDAP binds with Active Directory specific error handling
  */
 interface IADLdapLoginService {
-    fun ldapLogin(username: String, password: String): LdapLoginResult
+    suspend fun ldapLogin(username: String, password: String): LdapLoginResult
 
 
     sealed interface LdapLoginResult
@@ -45,7 +48,16 @@ class ADLdapLoginService(
 
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
-    override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
+    override suspend fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
+        if (username.length > 1000) {
+            logger.warn("Username too long {}", username.length)
+            return IADLdapLoginService.InvalidUsername
+        }
+        if (password.length > 1000) {
+            logger.warn("Password too long {}", password.length)
+            return IADLdapLoginService.InvalidUsernameOrPassword
+        }
+
         if (!username.matches(LDAPConfig.VALID_USERNAME_REGEX)) {
             logger.warn("Invalid username '{}'", username)
             return IADLdapLoginService.InvalidUsername
@@ -53,9 +65,12 @@ class ADLdapLoginService(
 
         val userDn = config.userDnFormat.format(username)
 
-        return ldapBind(userDn, password)
+        return withContext(Dispatchers.IO) {
+            ldapBind(userDn, password)
+        }
     }
 
+    @Blocking
     private fun ldapBind(userDn: String, password: String): IADLdapLoginService.LdapLoginResult {
         var context: InitialDirContext? = null
         return try {

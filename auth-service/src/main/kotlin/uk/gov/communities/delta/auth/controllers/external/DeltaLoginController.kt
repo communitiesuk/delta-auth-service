@@ -11,22 +11,24 @@ import io.ktor.server.thymeleaf.*
 import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.withAuthCode
 
 
 class DeltaLoginController(
-    private val clients: List<OAuthClient>,
+    private val authServiceConfig: AuthServiceConfig,
+    private val clients: List<DeltaLoginEnabledClient>,
     private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
     private val ldapService: IADLdapLoginService,
-    private val authenticationCodeService: IAuthorizationCodeService,
+    private val authorizationCodeService: AuthorizationCodeService,
     private val failedLoginCounter: Counter,
     private val successfulLoginCounter: Counter,
 ) {
@@ -53,7 +55,7 @@ class DeltaLoginController(
         call.respondLoginPage(client)
     }
 
-    private class LoginQueryParams(val client: OAuthClient, val state: String)
+    private class LoginQueryParams(val client: DeltaLoginEnabledClient, val state: String)
 
     private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
         val responseType = request.queryParameters["response_type"]
@@ -77,7 +79,7 @@ class DeltaLoginController(
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
-        client: OAuthClient,
+        client: DeltaLoginEnabledClient,
         errorMessage: String = "",
         errorLink: String = "#",
         username: String = "",
@@ -95,6 +97,7 @@ class DeltaLoginController(
     )
 
     private suspend fun loginPost(call: ApplicationCall) {
+        call.checkOriginHeader()
         val queryParams = call.getLoginQueryParams()
             ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
 
@@ -114,7 +117,7 @@ class DeltaLoginController(
         )
 
         val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
-            it.emailDomain != null && formUsername.lowercase().endsWith(it.emailDomain)
+            it.required && formUsername.lowercase().endsWith(it.emailDomain)
         }
         if (ssoClientMatchingEmailDomain != null) {
             return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))
@@ -162,7 +165,7 @@ class DeltaLoginController(
                     )
                 }
 
-                val authCode = authenticationCodeService.generateAndStore(
+                val authCode = authorizationCodeService.generateAndStore(
                     userCn = loginResult.user.cn, client = client, traceId = call.callId!!
                 )
 
@@ -205,4 +208,13 @@ class DeltaLoginController(
     }
 
     private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.requiredGroupCn)
+
+    private fun ApplicationCall.checkOriginHeader() {
+        val origin = request.headers["Origin"]
+        if (origin != authServiceConfig.serviceUrl) {
+            throw InvalidOriginException("Origin header validation failed, expected '${authServiceConfig.serviceUrl}' got '$origin'")
+        }
+    }
+
+    class InvalidOriginException(message: String) : Exception(message)
 }

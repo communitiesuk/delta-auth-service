@@ -1,9 +1,13 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.auth.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import org.slf4j.spi.LoggingEventBuilder
-import uk.gov.communities.delta.auth.config.OAuthClient
+import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
+import uk.gov.communities.delta.auth.utils.TimeSource
 import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
@@ -11,20 +15,21 @@ import kotlin.time.Duration.Companion.hours
 data class OAuthSession(
     val id: Int, // Our internal database id, no relation to the value of the SESSIONID cookie in Delta, or sessionId from Delta's logs
     val userCn: String,
-    val client: OAuthClient,
+    val client: DeltaLoginEnabledClient,
     val authToken: String,
     val createdAt: Instant,
     val traceId: String,
 ) : Principal {
-    fun expired() = createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < Instant.now()
+    fun expired(timeSource: TimeSource) =
+        createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
 }
 
 interface IOAuthSessionService {
-    fun create(authCode: AuthCode, client: OAuthClient): OAuthSession
-    fun retrieveFomAuthToken(authToken: String, client: OAuthClient): OAuthSession?
+    suspend fun create(authCode: AuthCode, client: DeltaLoginEnabledClient): OAuthSession
+    suspend fun retrieveFomAuthToken(authToken: String, client: DeltaLoginEnabledClient): OAuthSession?
 }
 
-class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
+class OAuthSessionService(private val dbPool: DbPool, private val timeSource: TimeSource) : IOAuthSessionService {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -32,18 +37,19 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
         const val TOKEN_LENGTH_BYTES = 24
     }
 
-    override fun create(authCode: AuthCode, client: OAuthClient): OAuthSession {
+    override suspend fun create(authCode: AuthCode, client: DeltaLoginEnabledClient): OAuthSession {
         val token = randomBase64(TOKEN_LENGTH_BYTES)
-        val now = Instant.now()
-        val deltaSession = insert(authCode, client, token, now)
+        val now = timeSource.now()
+        val deltaSession = withContext(Dispatchers.IO) { insert(authCode, client, token, now) }
 
         logger.atInfo().withSession(deltaSession).log("Generated session at {}", now)
         return deltaSession
     }
 
-    override fun retrieveFomAuthToken(authToken: String, client: OAuthClient): OAuthSession? {
-        val session = select(authToken, client) ?: return null
-        if (session.expired()) {
+
+    override suspend fun retrieveFomAuthToken(authToken: String, client: DeltaLoginEnabledClient): OAuthSession? {
+        val session = withContext(Dispatchers.IO) { select(authToken, client) } ?: return null
+        if (session.expired(timeSource)) {
             logger.atInfo().withSession(session).log("Session expired. Crated at {}", session.createdAt)
             return null
         }
@@ -51,7 +57,8 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
         return session
     }
 
-    private fun insert(authCode: AuthCode, client: OAuthClient, token: String, now: Instant): OAuthSession {
+    @Blocking
+    private fun insert(authCode: AuthCode, client: DeltaLoginEnabledClient, token: String, now: Instant): OAuthSession {
         return dbPool.useConnection {
             val stmt = it.prepareStatement(
                 "INSERT INTO delta_session (username, client_id, auth_token_hash, created_at, trace_id) " +
@@ -77,7 +84,8 @@ class OAuthSessionService(private val dbPool: DbPool) : IOAuthSessionService {
         }
     }
 
-    private fun select(authToken: String, client: OAuthClient): OAuthSession? {
+    @Blocking
+    private fun select(authToken: String, client: DeltaLoginEnabledClient): OAuthSession? {
         return dbPool.useConnection {
             val stmt =
                 it.prepareStatement(

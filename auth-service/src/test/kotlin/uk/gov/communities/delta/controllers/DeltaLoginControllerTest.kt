@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.controllers
 
 import io.ktor.client.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
@@ -12,18 +13,19 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.micrometer.core.instrument.Counter
 import io.mockk.*
-import org.junit.AfterClass
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
+import kotlinx.coroutines.runBlocking
+import org.junit.*
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -127,6 +129,22 @@ class DeltaLoginControllerTest {
     }
 
     @Test
+    fun testLoginPostChecksOriginHeader() = testSuspend {
+        val client = testApp.createClient { followRedirects = false }
+        Assert.assertThrows(DeltaLoginController.InvalidOriginException::class.java) {
+            runBlocking {
+                client.submitForm(
+                    url = "/login?response_type=code&client_id=delta-website&state=1234",
+                    formParameters = parameters {
+                        append("username", "user")
+                        append("password", "pass")
+                    }
+                )
+            }
+        }
+    }
+
+    @Test
     fun testLoginPostSSODomainRedirects() = testSuspend {
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
@@ -143,10 +161,13 @@ class DeltaLoginControllerTest {
     }
 
     @Before
-    fun resetCounters() {
+    fun resetMocks() {
         clearAllMocks()
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit
+        coEvery { authorizationCodeService.generateAndStore(any(), any(), any()) } answers {
+            AuthCode("test-auth-code", "user", client, Instant.now(), "trace")
+        }
     }
 
     companion object {
@@ -157,28 +178,25 @@ class DeltaLoginControllerTest {
         val client = testServiceClient()
         val failedLoginCounter = mockk<Counter>()
         val successfulLoginCounter = mockk<Counter>()
+        val authorizationCodeService = mockk<AuthorizationCodeService>()
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             val controller = DeltaLoginController(
+                AuthServiceConfig("http://localhost", null),
                 listOf(client),
-                AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain"))),
+                AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain", required = true))),
                 deltaConfig,
                 object : IADLdapLoginService {
-                    override fun ldapLogin(username: String, password: String): IADLdapLoginService.LdapLoginResult {
+                    override suspend fun ldapLogin(
+                        username: String,
+                        password: String,
+                    ): IADLdapLoginService.LdapLoginResult {
                         return loginResult
                     }
                 },
-                object : IAuthorizationCodeService {
-                    override fun generateAndStore(userCn: String, client: Client, traceId: String): AuthCode {
-                        return AuthCode("test-auth-code", "user", client, Instant.now(), "trace")
-                    }
-
-                    override fun lookupAndInvalidate(code: String, client: Client): AuthCode? {
-                        throw NotImplementedError("Not required for test")
-                    }
-                },
+                authorizationCodeService,
                 failedLoginCounter,
                 successfulLoginCounter
             )
@@ -196,7 +214,12 @@ class DeltaLoginControllerTest {
                     }
                 }
             }
-            testClient = testApp.createClient { followRedirects = false }
+            testClient = testApp.createClient {
+                followRedirects = false
+                defaultRequest {
+                    headers.append("Origin", "http://localhost")
+                }
+            }
         }
 
         @AfterClass

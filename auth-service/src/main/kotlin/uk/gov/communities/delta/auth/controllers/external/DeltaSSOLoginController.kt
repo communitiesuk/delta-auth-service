@@ -20,7 +20,7 @@ import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
-import uk.gov.communities.delta.auth.services.IAuthorizationCodeService
+import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
@@ -37,7 +37,7 @@ class DeltaSSOLoginController(
     private val ssoConfig: AzureADSSOConfig,
     private val ssoLoginStateService: SSOLoginSessionStateService,
     private val ldapLookupService: UserLookupService,
-    private val authorizationCodeService: IAuthorizationCodeService,
+    private val authorizationCodeService: AuthorizationCodeService,
     private val microsoftGraphService: MicrosoftGraphService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -127,7 +127,7 @@ class DeltaSSOLoginController(
         return session
     }
 
-    private fun lookupUserInAd(email: String): LdapUser? {
+    private suspend fun lookupUserInAd(email: String): LdapUser? {
         val cn = email.replace('@', '!')
         return try {
             ldapLookupService.lookupUserByCn(cn)
@@ -161,10 +161,10 @@ class DeltaSSOLoginController(
     }
 
     private fun checkEmailDomain(email: String, ssoClient: AzureADSSOClient) {
-        if (ssoClient.emailDomain != null && !email.endsWith(ssoClient.emailDomain)) {
+        if (!email.endsWith(ssoClient.emailDomain)) {
             throw OAuthLoginException(
                 "invalid_email_domain",
-                "Expected email for SSO client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was $email",
+                "Expected email for SSO client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was '$email'",
                 "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk"
             )
         }

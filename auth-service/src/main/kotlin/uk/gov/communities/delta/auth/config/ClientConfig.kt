@@ -9,7 +9,7 @@ open class Client(val clientId: String, val clientSecret: String, val samlCreden
     }
 }
 
-class OAuthClient(
+class DeltaLoginEnabledClient(
     clientId: String,
     clientSecret: String,
     samlCredential: BasicX509Credential,
@@ -36,7 +36,7 @@ class ClientConfig(val clients: List<Client>) {
             val marklogic =
                 Client("marklogic", marklogicSecret, samlCredentials)
             val deltaWebsite = deltaWebsiteSecret?.let {
-                OAuthClient(
+                DeltaLoginEnabledClient(
                     "delta-website",
                     deltaWebsiteSecret,
                     samlCredentials,
@@ -44,7 +44,7 @@ class ClientConfig(val clients: List<Client>) {
                 )
             }
             val devDeltaWebsite = devDeltaWebsiteSecret?.let {
-                OAuthClient(
+                DeltaLoginEnabledClient(
                     "delta-website-dev",
                     devDeltaWebsiteSecret,
                     SAMLConfig.insecureHardcodedCredentials(),
@@ -55,7 +55,7 @@ class ClientConfig(val clients: List<Client>) {
         }
     }
 
-    val oauthClients = clients.filterIsInstance<OAuthClient>()
+    val oauthClients = clients.filterIsInstance<DeltaLoginEnabledClient>()
 
     fun log(logger: LoggingEventBuilder) {
         logger.log("Enabled clients {}", clients)

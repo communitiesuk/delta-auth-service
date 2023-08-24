@@ -7,6 +7,7 @@ import io.ktor.http.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
@@ -93,10 +94,10 @@ class OAuthTokenControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            every { authorizationCodeService.lookupAndInvalidate(any(), client) } answers { null }
-            every { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
-            every { oauthSessionService.create(authCode, client) } answers { session }
-            every { userLookupService.lookupUserByCn(authCode.userCn) } answers { user }
+            coEvery { authorizationCodeService.lookupAndInvalidate(any(), client) } answers { null }
+            coEvery { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
+            coEvery { oauthSessionService.create(authCode, client) } answers { session }
+            coEvery { userLookupService.lookupUserByCn(authCode.userCn) }.returns(user)
             every {
                 samlTokenService.generate(
                     client.samlCredential,

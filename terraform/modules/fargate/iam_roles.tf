@@ -48,13 +48,11 @@ resource "aws_iam_policy" "ecs_delta_secret_reader" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_image_runner_role_kms_policy_attachment" {
-  count      = length(var.secret_kms_key_arns) > 0 ? 1 : 0
   role       = aws_iam_role.ecs_image_runner_role.name
-  policy_arn = aws_iam_policy.ecs_kms_decrypt[0].arn
+  policy_arn = aws_iam_policy.ecs_kms_decrypt.arn
 }
 
 resource "aws_iam_policy" "ecs_kms_decrypt" {
-  count  = length(var.secret_kms_key_arns) > 0 ? 1 : 0
   name   = "${var.app_name}-secret-kms-decrypt-${var.environment}"
   policy = data.aws_iam_policy_document.ecs_kms_decrypt.json
 }
