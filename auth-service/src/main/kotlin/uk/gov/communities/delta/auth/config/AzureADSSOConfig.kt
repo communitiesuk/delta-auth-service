@@ -11,9 +11,10 @@ data class AzureADSSOClient(
     val azTenantId: String,
     val azClientId: String,
     val azClientSecret: String,
-    // Redirect attempts to log in with an email and password under this domain to the OAuth flow,
-    // or null to skip enforcing SSO for the domain. Must include the "@" prefix.
-    val emailDomain: String? = null,
+    // Only allows the SSO provider to log users in under this domain. Must include the "@" prefix.
+    val emailDomain: String,
+    // Force users with a matching email domain to use the SSO flow rather than username + password
+    val required: Boolean = false,
     // Object ID of a group in Azure AD that all SSO users must be a member of to log in, or null to allow all users
     val requiredGroupId: String? = null,
     // Group that Admins (DELTA_ADMIN_ROLES) must be part of or their login will be rejected, or null to allow all users
@@ -24,7 +25,7 @@ data class AzureADSSOClient(
     override fun toString() = "AzureADSSOClient($internalId, $azTenantId, $azClientId)"
 
     init {
-        if (emailDomain != null && !emailDomain.startsWith("@")) {
+        if (!emailDomain.startsWith("@")) {
             throw Exception("AzureADSSOConfig emailDomain must start with @")
         }
     }

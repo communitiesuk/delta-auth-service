@@ -17,6 +17,8 @@ import io.micrometer.core.instrument.Metrics.counter
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
+import org.junit.runner.RunWith
+import org.junit.runners.BlockJUnit4ClassRunner
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
@@ -40,6 +42,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 
+@RunWith(SingleInstanceRunner::class)
 class OAuthLoginTest {
 
     @Test
@@ -178,6 +181,16 @@ class OAuthLoginTest {
         }
     }
 
+    @Test
+    fun `Callback returns error if email doesn't match domain`() {
+        every { ssoConfig.ssoClients } answers { listOf(ssoClient.copy(emailDomain = "@different.domain")) }
+        Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
+            runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
+        }.apply {
+            assertEquals("invalid_email_domain", errorCode)
+        }
+    }
+
     private fun mockAdminUser() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
             testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn, "datamart-delta-admin"))
@@ -235,6 +248,7 @@ class OAuthLoginTest {
         } answers {
             listOf(ssoClient.requiredGroupId!!)
         }
+        every { ssoConfig.ssoClients } answers { listOf(ssoClient) }
     }
 
     private fun String.stateFromRedirectUrl() =
@@ -250,11 +264,12 @@ class OAuthLoginTest {
             "tenant-id",
             "sso-client-id",
             "sso-client-secret",
+            "@example.com",
             buttonText = "Test SSO",
             requiredGroupId = "required-group-id",
             requiredAdminGroupId = "required-admin-group-id",
         )
-        private val ssoConfig = AzureADSSOConfig(listOf(ssoClient))
+        private val ssoConfig = mockk<AzureADSSOConfig>()
         private val accessToken = "header.${"{\"unique_name\": \"user@example.com\"}".encodeBase64()}.trailer"
         private lateinit var ldapUserLookupServiceMock: UserLookupService
         private lateinit var authorizationCodeServiceMock: AuthorizationCodeService
@@ -294,7 +309,7 @@ class OAuthLoginTest {
                 respond(
                     content = ByteReadChannel(
                         """{
-                                "access_token": "header.${"{\"unique_name\": \"user@example.com\"}".encodeBase64()}.trailer",
+                                "access_token": $accessToken,
                                 "token_type": "Bearer",
                                 "expires_in": 3599,
                                 "scope": "Some.Scope"
@@ -331,4 +346,10 @@ class OAuthLoginTest {
             testApp.stop()
         }
     }
+}
+
+class SingleInstanceRunner<T>(clazz: Class<T>) : BlockJUnit4ClassRunner(clazz) {
+    val instance: Any by lazy { super.createTest() }
+
+    override fun createTest() = instance
 }
