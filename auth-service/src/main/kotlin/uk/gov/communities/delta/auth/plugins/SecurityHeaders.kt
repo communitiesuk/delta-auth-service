@@ -6,18 +6,20 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.response.*
 
-val CSP = createRouteScopedPlugin("CSP") {
-
+val BrowserSecurityHeaders = createRouteScopedPlugin("CSP") {
     onCallRespond { call ->
-        call.addCSPHeader()
+        call.addSecurityHeaders()
     }
 }
 
-
-fun ApplicationCall.addCSPHeader() {
+fun ApplicationCall.addSecurityHeaders() {
     response.header(
         "Content-Security-Policy",
         "default-src 'self'"
+    )
+    response.header(
+        "Referrer-Policy",
+        "same-origin"
     )
 }
 

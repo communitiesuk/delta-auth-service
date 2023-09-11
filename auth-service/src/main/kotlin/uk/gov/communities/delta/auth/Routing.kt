@@ -57,7 +57,7 @@ fun Route.externalRoutes(
     deltaSSOLoginController: DeltaSSOLoginController,
     deltaUserRegistrationController: DeltaUserRegistrationController
 ) {
-    install(CSP)
+    install(BrowserSecurityHeaders)
     staticResources("/static", "static") {
         cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
     }

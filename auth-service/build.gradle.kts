@@ -1,10 +1,10 @@
-val ktorVersion = "2.3.2"
-val kotlinVersion = "1.8.22"
+val ktorVersion = "2.3.3"
+val kotlinVersion = "1.9.10"
 
 plugins {
-    kotlin("jvm") version "1.8.22"
-    id("io.ktor.plugin") version "2.3.2"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.8.22"
+    kotlin("jvm") version "1.9.10"
+    id("io.ktor.plugin") version "2.3.3"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.10"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -56,16 +56,16 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.11.2")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.11.3")
 
     //Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.4.8")
+    implementation("ch.qos.logback:logback-classic:1.4.11")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.3")
 
     // OpenSAML
     implementation("org.opensaml:opensaml-core:4.0.1")
@@ -74,12 +74,12 @@ dependencies {
     // Database
     implementation("org.postgresql:postgresql:42.6.0")
     implementation("com.zaxxer:HikariCP:5.0.1") // Connection pool
-    implementation("org.flywaydb:flyway-core:9.20.1") // Migrations
+    implementation("org.flywaydb:flyway-core:9.21.2") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.13.5")
+    testImplementation("io.mockk:mockk:1.13.7")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.

@@ -64,8 +64,8 @@ class DeltaLoginControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your account has been disabled")
-            verify(exactly=1) { failedLoginCounter.increment(1.0) }
-            verify(exactly=0) { successfulLoginCounter.increment(1.0) }
+            verify(exactly = 1) { failedLoginCounter.increment(1.0) }
+            verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
         }
     }
 
@@ -83,8 +83,8 @@ class DeltaLoginControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your account exists but is not set up to access Delta.")
-            verify(exactly=1) { failedLoginCounter.increment(1.0) }
-            verify(exactly=0) { successfulLoginCounter.increment(1.0) }
+            verify(exactly = 1) { failedLoginCounter.increment(1.0) }
+            verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
         }
     }
 
@@ -101,9 +101,12 @@ class DeltaLoginControllerTest {
             }
         ).apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertContains(bodyAsText(), "Your account exists but is not fully set up (missing mail attribute). Please contact the Service Desk.")
-            verify(exactly=1) { failedLoginCounter.increment(1.0) }
-            verify(exactly=0) { successfulLoginCounter.increment(1.0) }
+            assertContains(
+                bodyAsText(),
+                "Your account exists but is not fully set up (missing mail attribute). Please contact the Service Desk."
+            )
+            verify(exactly = 1) { failedLoginCounter.increment(1.0) }
+            verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
         }
     }
 
@@ -123,8 +126,8 @@ class DeltaLoginControllerTest {
             assertTrue("Should redirect to Delta website") {
                 headers["Location"]!!.startsWith(client.deltaWebsiteUrl + "/login/oauth2/redirect")
             }
-            verify(exactly=0) { failedLoginCounter.increment(1.0) }
-            verify(exactly=1) { successfulLoginCounter.increment(1.0) }
+            verify(exactly = 0) { failedLoginCounter.increment(1.0) }
+            verify(exactly = 1) { successfulLoginCounter.increment(1.0) }
         }
     }
 
@@ -155,8 +158,8 @@ class DeltaLoginControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
             assertEquals(oauthClientLoginRoute("dev"), headers["Location"], "Should redirect to OAuth route")
-            verify(exactly=0) { failedLoginCounter.increment(1.0) }
-            verify(exactly=0) { successfulLoginCounter.increment(1.0) }
+            verify(exactly = 0) { failedLoginCounter.increment(1.0) }
+            verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
         }
     }
 

@@ -19,7 +19,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
     install(StatusPages) {
         // Currently only the login page is rate limited so always renders the login page for status "TooManyRequests"
         status(HttpStatusCode.TooManyRequests) { call, _ ->
-            call.addCSPHeader()
+            call.addSecurityHeaders()
             try {
                 call.respond(
                     ThymeleafContent(
@@ -38,7 +38,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
         }
         for (s in statusErrorPageDefinitions) {
             status(s.key) { call, _ ->
-                call.addCSPHeader()
+                call.addSecurityHeaders()
                 call.respondStatusPage(s.value, deltaWebsiteUrl)
             }
         }
