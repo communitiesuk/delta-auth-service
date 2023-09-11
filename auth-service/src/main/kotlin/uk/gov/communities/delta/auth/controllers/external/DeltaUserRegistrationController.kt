@@ -81,7 +81,7 @@ class DeltaUserRegistrationController(
         if (confirmEmailAddress.isEmpty()) confirmEmailAddressErrors.add(confirmEmailAddressEmpty)
         else if (confirmEmailAddress != emailAddress) confirmEmailAddressErrors.add(notEqualEmails)
 
-        if (firstNameErrors.isNotEmpty() || lastNameErrors.isNotEmpty() || emailAddressErrors.isNotEmpty() || confirmEmailAddressErrors.isNotEmpty()) {
+        if (hasErrors(firstNameErrors, lastNameErrors, emailAddressErrors, confirmEmailAddressErrors)) {
             return call.respondRegisterPage(
                 firstNameErrors,
                 lastNameErrors,
@@ -113,6 +113,15 @@ class DeltaUserRegistrationController(
             }
             return call.respondToResult(registrationResult)
         }
+    }
+
+    private fun hasErrors(
+        firstNameErrors: ArrayList<String>,
+        lastNameErrors: ArrayList<String>,
+        emailAddressErrors: ArrayList<String>,
+        confirmEmailAddressErrors: ArrayList<String>
+    ): Boolean {
+        return firstNameErrors.isNotEmpty() || lastNameErrors.isNotEmpty() || emailAddressErrors.isNotEmpty() || confirmEmailAddressErrors.isNotEmpty()
     }
 
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {

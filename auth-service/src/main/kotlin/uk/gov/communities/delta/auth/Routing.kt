@@ -85,9 +85,7 @@ fun Route.deltaRegisterRoutes(
         deltaUserRegistrationController.registerSuccessRoute(this)
     }
 
-//    route("") { //TODO - is this the right way? Is there a default sort of option? (asked Ben in Slack)
-        deltaUserRegistrationController.registerFormRoutes(this)
-//    }
+    deltaUserRegistrationController.registerFormRoutes(this)
 }
 
 fun Route.deltaLoginRoutes(

@@ -9,6 +9,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import kotlin.time.Duration.Companion.seconds
 
 @Serializable
@@ -22,9 +23,9 @@ class Organisation(
 ) {
 }
 
-class OrganisationService(private val httpClient: HttpClient) {
+class OrganisationService(private val httpClient: HttpClient, private val deltaConfig: DeltaConfig) {
     suspend fun findAllByDomain(domain: String): List<Organisation> {
-        return httpClient.get("http://localhost:8030/organisation/search?domain=${domain.encodeURLParameter()}") // TODO - use correct url - environment variable?
+        return httpClient.get(deltaConfig.masterStoreBaseNoAuth +"organisation/search?domain=${domain.encodeURLParameter()}") // TODO - use correct url - environment variable?
             .body<OrganisationSearchResponse>().organisations
     }
 
