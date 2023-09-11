@@ -137,7 +137,7 @@ class OAuthSSOLoginTest {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
             memberOfCNs = listOf(deltaConfig.datamartDeltaUser)
         )
-        val organisations = listOf(Organisation("E1234"))
+        val organisations = listOf(Organisation("E1234", null, "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         val registration = Registration("Example", "User", "user@example.com")
         coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated
@@ -156,7 +156,7 @@ class OAuthSSOLoginTest {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
             memberOfCNs = listOf(deltaConfig.datamartDeltaUser)
         )
-        val organisations = listOf(Organisation("E1234"))
+        val organisations = listOf(Organisation("E1234", null, "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         val registration = Registration("Example", "User", "user@example.com")
         coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated

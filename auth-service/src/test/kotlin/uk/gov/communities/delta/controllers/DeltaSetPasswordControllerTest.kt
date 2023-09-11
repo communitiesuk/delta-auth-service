@@ -234,7 +234,7 @@ class DeltaSetPasswordControllerTest {
         private const val deltaUserDnFormat = "CN=%s"
         private val userDN = String.format(deltaUserDnFormat, userCN)
         private val deltaConfig = DeltaConfig.fromEnv()
-        private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "")
+        private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
         private val authenticator: Authenticator = object : Authenticator() {
             override fun getPasswordAuthentication(): PasswordAuthentication {
                 return PasswordAuthentication("", "")

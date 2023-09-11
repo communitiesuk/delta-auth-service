@@ -90,7 +90,11 @@ class OAuthTokenControllerTest {
         private val userLookupService = mockk<UserLookupService>()
         private val samlTokenService = mockk<SAMLTokenService>()
         private val oauthSessionService = mockk<OAuthSessionService>()
+        private val accessGroupsService = mockk<AccessGroupsService>()
+        private val organisationService = mockk<OrganisationService>()
+        private val memberOfToDeltaRolesMapper = mockk<MemberOfToDeltaRolesMapper>()
 
+        @Suppress("MoveLambdaOutsideParentheses")
         @BeforeClass
         @JvmStatic
         fun setup() {
@@ -98,6 +102,16 @@ class OAuthTokenControllerTest {
             coEvery { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
             coEvery { oauthSessionService.create(authCode, client) } answers { session }
             coEvery { userLookupService.lookupUserByCn(authCode.userCn) }.returns(user)
+            coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
+            coEvery { organisationService.findAllNamesAndCodes() }.returns(listOf())
+            every { memberOfToDeltaRolesMapper.map(any()) }.returns(
+                MemberOfToDeltaRolesMapper.Roles(
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+                )
+            )
             every {
                 samlTokenService.generate(
                     client.samlCredential,
@@ -107,7 +121,8 @@ class OAuthTokenControllerTest {
                 )
             } answers { "SAML Token" }
             controller = OAuthTokenController(
-                listOf(client), authorizationCodeService, userLookupService, samlTokenService, oauthSessionService
+                listOf(client), authorizationCodeService, userLookupService, samlTokenService, oauthSessionService,
+                accessGroupsService, organisationService, { _, _, _ -> memberOfToDeltaRolesMapper }
             )
 
             testApp = TestApplication {

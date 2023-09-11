@@ -89,6 +89,7 @@ class Injection(
     )
     private val emailService = EmailService(emailConfig)
     private val userService = UserService(ldapService)
+    private val accessGroupsService = AccessGroupsService(ldapService, ldapConfig)
 
     val dbPool = DbPool(databaseConfig)
 
@@ -192,6 +193,9 @@ class Injection(
         userLookupService,
         samlTokenService,
         oauthSessionService,
+        accessGroupsService,
+        organisationService,
+        ::MemberOfToDeltaRolesMapper
     )
 
     fun refreshUserInfoController() = RefreshUserInfoController(userLookupService, samlTokenService)

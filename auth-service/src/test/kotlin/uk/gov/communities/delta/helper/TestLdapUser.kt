@@ -8,7 +8,17 @@ fun testLdapUser(
     memberOfCNs: List<String> = emptyList(),
     email: String? = "email",
     deltaTOTPSecret: String? = null,
-    name: String = "Test User",
     firstName: String = "Test",
+    lastName: String = "Surname",
+    fullName: String = "Test Surname",
     accountEnabled: Boolean = true,
-) = LdapUser(dn, cn, memberOfCNs, email, deltaTOTPSecret, name, firstName, accountEnabled)
+    mangledDeltaObjectGuid: String = "mangled-id",
+    telephone: String? = null,
+    mobile: String? = null,
+    positionInOrganisation: String? = null,
+    reasonForAccess: String? = null,
+    comment: String? = null,
+) = LdapUser(
+    dn, cn, memberOfCNs, email, deltaTOTPSecret, firstName, lastName, fullName, accountEnabled,
+    mangledDeltaObjectGuid, telephone, mobile, positionInOrganisation, reasonForAccess, comment
+)

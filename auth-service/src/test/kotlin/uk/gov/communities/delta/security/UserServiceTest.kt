@@ -21,7 +21,7 @@ class UserServiceTest {
     private val ldapService = mockk<LdapService>()
     private val userService = UserService(ldapService)
     private val deltaUserDnFormat = "CN=%s"
-    private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "")
+    private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
     private val userEmail = "user@example.com"
     private val registration = Registration("Test", "User", userEmail)
     private val container = slot<Attributes>()
