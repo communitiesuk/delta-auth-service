@@ -22,8 +22,6 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
-import uk.gov.communities.delta.auth.utils.EmailService
-import uk.gov.communities.delta.auth.utils.RegistrationService
 import uk.gov.communities.delta.auth.tasks.DeleteOldAuthCodes
 import uk.gov.communities.delta.auth.tasks.DeleteOldDeltaSessions
 import uk.gov.communities.delta.auth.tasks.TaskRunner
@@ -36,6 +34,7 @@ class Injection(
     val databaseConfig: DatabaseConfig,
     val clientConfig: ClientConfig,
     val deltaConfig: DeltaConfig,
+    val emailConfig: EmailConfig,
     val azureADSSOConfig: AzureADSSOConfig,
     val authServiceConfig: AuthServiceConfig,
 ) {
@@ -51,6 +50,7 @@ class Injection(
                 DatabaseConfig.fromEnv(),
                 ClientConfig.fromEnv(deltaConfig),
                 deltaConfig,
+                EmailConfig.fromEnv(),
                 AzureADSSOConfig.fromEnv(),
                 AuthServiceConfig.fromEnv(),
             )
@@ -62,6 +62,7 @@ class Injection(
         ldapConfig.log(logger.atInfo())
         databaseConfig.log(logger.atInfo())
         deltaConfig.log(logger.atInfo())
+        emailConfig.log(logger.atInfo())
         clientConfig.log(logger.atInfo())
         azureADSSOConfig.log(logger.atInfo())
         authServiceConfig.log(logger.atInfo())
@@ -77,12 +78,8 @@ class Injection(
     }
 
     private val samlTokenService = SAMLTokenService()
-    private val ldapService = LdapService(
-        LdapService.Configuration(
-            ldapUrl = ldapConfig.deltaLdapUrl,
-            groupDnFormat = ldapConfig.groupDnFormat
-        )
-    )
+    private val ldapService = LdapService(ldapConfig)
+
     private val userLookupService = UserLookupService(
         UserLookupService.Configuration(
             ldapConfig.deltaUserDnFormat,
@@ -151,7 +148,12 @@ class Injection(
     }
 
     fun externalDeltaUserRegisterController(): DeltaUserRegistrationController {
-        return DeltaUserRegistrationController(deltaConfig, organisationSearchService(), registrationService())
+        return DeltaUserRegistrationController(
+            deltaConfig,
+            authServiceConfig,
+            organisationSearchService(),
+            registrationService()
+        )
     }
 
     fun internalOAuthTokenController() = OAuthTokenController(
@@ -176,6 +178,19 @@ class Injection(
         )
 
     fun organisationSearchService() = OrganisationService(OrganisationService.makeHTTPClient())
-    fun registrationService() = RegistrationService(deltaConfig, organisationSearchService(), emailService())
-    fun emailService() = EmailService()
+
+    fun registrationService() =
+        RegistrationService(
+            deltaConfig,
+            emailConfig,
+            ldapConfig,
+            organisationSearchService(),
+            emailService(),
+            newUserService(),
+            userLookupService
+        )
+
+    fun emailService() = EmailService(emailConfig)
+
+    fun newUserService() = NewUserService(ldapService, ldapConfig)
 }

@@ -70,12 +70,24 @@ fun Route.externalRoutes(
     }
 
     route("/delta/register") {
-        deltaUserRegistrationController.registerRoutes(this)
+        deltaRegisterRoutes(deltaUserRegistrationController)
     }
 
     route("/delta") {
         deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
     }
+}
+
+fun Route.deltaRegisterRoutes(
+    deltaUserRegistrationController: DeltaUserRegistrationController
+) {
+    route("/success") {
+        deltaUserRegistrationController.registerSuccessRoute(this)
+    }
+
+//    route("") { //TODO - is this the right way? Is there a default sort of option? (asked Ben in Slack)
+        deltaUserRegistrationController.registerFormRoutes(this)
+//    }
 }
 
 fun Route.deltaLoginRoutes(

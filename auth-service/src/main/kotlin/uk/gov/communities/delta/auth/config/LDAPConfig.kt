@@ -10,6 +10,7 @@ data class LDAPConfig(
     val serviceUserRequiredGroupCn: String,
     val authServiceUserCn: String,
     val authServiceUserPassword: String,
+    val domainRealm: String,
 ) {
     companion object {
         fun fromEnv(): LDAPConfig = LDAPConfig(
@@ -28,7 +29,8 @@ data class LDAPConfig(
             ),
             serviceUserRequiredGroupCn = "dluhc-service-users",
             authServiceUserCn = Env.getEnv("LDAP_AUTH_SERVICE_USER") ?: "auth-service.app",
-            authServiceUserPassword = Env.getRequired("LDAP_AUTH_SERVICE_USER_PASSWORD")
+            authServiceUserPassword = Env.getRequired("LDAP_AUTH_SERVICE_USER_PASSWORD"),
+            domainRealm = Env.getRequiredOrDevFallback("LDAP_DOMAIN_REALM", "dluhctest.local")
         )
 
         val VALID_USERNAME_REGEX = Regex("^[\\w-.!]+$")

@@ -3,25 +3,25 @@ package uk.gov.communities.delta.auth.services
 import kotlinx.serialization.Serializable
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import java.lang.Integer.parseInt
 import java.util.*
 import javax.naming.Context
 import javax.naming.NamingException
-import javax.naming.directory.Attributes
-import javax.naming.directory.InitialDirContext
+import javax.naming.directory.*
 
-class LdapService(private val config: Configuration) {
-
-    data class Configuration(val ldapUrl: String, val groupDnFormat: String)
+class LdapService(
+    private val ldapConfig: LDAPConfig
+) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val groupDnToCnRegex = Regex(config.groupDnFormat.replace("%s", "([\\w-]+)"))
+    private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
 
     @Blocking
     fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialDirContext {
         val env = Hashtable<String, String>()
         env[Context.INITIAL_CONTEXT_FACTORY] = "com.sun.jndi.ldap.LdapCtxFactory"
-        env[Context.PROVIDER_URL] = config.ldapUrl
+        env[Context.PROVIDER_URL] = ldapConfig.deltaLdapUrl
         env[Context.SECURITY_AUTHENTICATION] = "simple"
         env[Context.SECURITY_PRINCIPAL] = userDn
         env[Context.SECURITY_CREDENTIALS] = password

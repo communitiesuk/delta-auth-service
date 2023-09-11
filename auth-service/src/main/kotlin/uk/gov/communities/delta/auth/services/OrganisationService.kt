@@ -17,8 +17,9 @@ class OrganisationSearchResponse(@SerialName("organisation-results") val organis
 @Serializable
 class Organisation(
     @SerialName("code") val code: String,
-    @SerialName("retired-date") val retiredDate: String? = null
-) { //TODO - get actual name for retired-date - this will be used for user creation with retired org domains
+//    TODO - get actual name for retired-date - this will be used for user creation with retired org domains
+//    @SerialName("retired-date") val retiredDate: String? = null
+) {
 }
 
 class OrganisationService(private val httpClient: HttpClient) {

@@ -2,10 +2,11 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8"/>
-    <title>DLUHC DELTA: Registration request accepted</title>
+    <title>DLUHC DELTA - Account</title>
     <style>
         p {
             font-family: calibri;
+            /* TODO - gives warning "Font property font-family does not have generic default" - is this ok? */
             font-size: 12pt;
         }
 
@@ -14,38 +15,38 @@
         }
     </style>
 </head>
-
 <body>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
 <!--/*@thymesVar id="userFirstName" type="java.lang.String" */-->
-<!--/*@thymesVar id="setPasswordUrl" type="java.lang.String" */-->
 
 <p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
 
-<p>
-    Following your on-line request, you are receiving this email because you have requested a new user account on <a
-        href="https://delta.communities.gov.uk/">DELTA</a>, the online data collection and grants administration system
-    of the Department for Levelling Up, Housing and Communities (DLUHC).
-</p>
-
-<p>Please note that your username will be the email address to which this email has been sent.</p>
-
-<p>Please click on the link below to set your password and activate your account.</p>
+<p>You are receiving this email because you have requested an account on <a th:href="@{${deltaUrl}}">DELTA</a>,
+    the online data collection and grants administration system of the Department for Levelling Up, Housing and
+    Communities (DLUHC).</p>
 
 <p>
-    <a th:href="@{${setPasswordUrl}}">Activate your DELTA account</a>. <b>This link is only valid for a short time so
-    please activate your
-    account now</b>.
+    Our records show that you already have a DELTA account for this email address. If you have forgotten your DELTA
+    password, you can reset it with following link.
 </p>
 <p>
-    Please note the DELTA User Account <a th:href="@{${deltaUrl}+'privacy-policy'}">Privacy Policy</a> and the
-    application <a th:href="@{${deltaUrl}+'usage-policy'}">Usage Policy</a>.
+    <a th:href="@{${deltaUrl}+'/forgot-password'}">Forgotten Password</a>.
+</p>
+<p>
+    When you have logged in to DELTA please go to My Account to complete the set-up of your account.
+</p>
+<p>
+    Please note the DELTA User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
+    application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
 </p>
 <p>
     If you have any questions or need help please email the DLUHC Service Desk on <a
         href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a> or call
     0203 829 0743.
+</p>
+<p>
+    DELTA can be accessed at <a th:href="@{${deltaUrl}}">DELTA</a>
 </p>
 <p>
     Regards
@@ -64,5 +65,6 @@
     for other lawful purposes. Correspondents should note that all communications from Department for Levelling Up,
     Housing and Communities may be automatically logged, monitored and/or recorded for lawful purposes.
 </p>
+<!-- TODO - could we make this disclaimer stuff be a templated fragment thing so that it isn't written out in a bunch of places? -->
 </body>
 </html>
