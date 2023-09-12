@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.utils
 
+import Organisation
 import OrganisationService
 import java.util.*
 
@@ -12,10 +13,11 @@ class EmailAddressChecker(private val organisationService: OrganisationService) 
         return emailRegex.matches(email)
     }
 
-    suspend fun hasKnownDomain(email: String): Boolean {
+    suspend fun hasKnownNotRetiredDomain(email: String): Boolean {
         if (email.count { it == '@' } != 1) return false
         val domain = emailToDomain(email)
-        return organisationService.findAllByDomain(domain).isNotEmpty()
+        val organisations = organisationService.findAllByDomain(domain)
+        return organisations.any { organisation: Organisation -> !organisation.retired }
     }
 }
 

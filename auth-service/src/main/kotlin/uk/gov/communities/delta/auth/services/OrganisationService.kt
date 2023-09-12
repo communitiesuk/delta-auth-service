@@ -10,6 +10,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import java.time.LocalDate
 import kotlin.time.Duration.Companion.seconds
 
 @Serializable
@@ -18,9 +19,9 @@ class OrganisationSearchResponse(@SerialName("organisation-results") val organis
 @Serializable
 class Organisation(
     @SerialName("code") val code: String,
-//    TODO - get actual name for retired-date - this will be used for user creation with retired org domains
-//    @SerialName("retired-date") val retiredDate: String? = null
+    @SerialName("retirement-date") val retirementDate: String? = null
 ) {
+    val retired = retirementDate != null && LocalDate.parse(retirementDate.substring(IntRange(0,9))) < LocalDate.now()
 }
 
 class OrganisationService(private val httpClient: HttpClient, private val deltaConfig: DeltaConfig) {

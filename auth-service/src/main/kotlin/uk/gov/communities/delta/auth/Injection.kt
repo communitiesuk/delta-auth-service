@@ -192,5 +192,7 @@ class Injection(
 
     fun emailService() = EmailService(emailConfig)
 
-    fun newUserService() = NewUserService(ldapService, ldapConfig)
+    fun newUserService() = NewUserService(ldapService, ldapConfig, groupService())
+
+    fun groupService() = GroupService(ldapService, ldapConfig)
 }

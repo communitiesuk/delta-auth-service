@@ -57,7 +57,7 @@ class DeltaUserRegistrationController(
     private val notEqualEmails = "Email addresses do not match"
     private val notAnEmailAddress = "Email address must be a valid email address"
     private val notAKnownDomain =
-        "Email address domain not recognised, please use an email address associated with an organisation using DELTA or Contact Us"
+        "Email address domain not recognised, please use an email address associated with an organisation using DELTA"
 
     private suspend fun registerPost(call: ApplicationCall) {
         val formParameters = call.receiveParameters()
@@ -76,7 +76,7 @@ class DeltaUserRegistrationController(
         if (emailAddress.isEmpty()) emailAddressErrors.add(emailAddressEmpty)
         else {
             if (!emailAddressChecker.hasValidEmailFormat(emailAddress)) emailAddressErrors.add(notAnEmailAddress)
-            else if (!emailAddressChecker.hasKnownDomain(emailAddress)) emailAddressErrors.add(notAKnownDomain)
+            else if (!emailAddressChecker.hasKnownNotRetiredDomain(emailAddress)) emailAddressErrors.add(notAKnownDomain)
         }
         if (confirmEmailAddress.isEmpty()) confirmEmailAddressErrors.add(confirmEmailAddressEmpty)
         else if (confirmEmailAddress != emailAddress) confirmEmailAddressErrors.add(notEqualEmails)

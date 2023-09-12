@@ -8,6 +8,7 @@ import javax.naming.directory.*
 class NewUserService(
     private val ldapService: LdapService,
     private val ldapConfig: LDAPConfig,
+    private val groupService: GroupService,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -20,7 +21,6 @@ class NewUserService(
             throw e
         }
     }
-
 
     private fun addUserToAD(adUser: ADUser) {
         val context = ldapService.bind(
@@ -48,14 +48,17 @@ class NewUserService(
     }
 
     fun addUserToGroup(adUser: ADUser, groupName: String) {
-        val member = BasicAttribute("member", adUser.dn)
-        val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
-        val context = ldapService.bind(
+        val groupDN = ldapConfig.groupDnFormat.format(groupName)
+        val context = ldapService.bind( //TODO - refactor according to Bens branch
             ldapConfig.serviceUserDnFormat.format(ldapConfig.authServiceUserCn),
             ldapConfig.authServiceUserPassword,
             poolConnection = true
         )
-        val groupDN = ldapConfig.groupDnFormat.format(groupName)
+        if (!ldapService.groupExists(context, groupDN)) {
+            groupService.createGroup(groupName)
+        }
+        val member = BasicAttribute("member", adUser.dn)
+        val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
         context.modifyAttributes(groupDN, modificationItems)
     }
 }

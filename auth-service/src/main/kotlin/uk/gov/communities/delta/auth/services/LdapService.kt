@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.services
 
+import io.ktor.util.reflect.*
 import kotlinx.serialization.Serializable
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
@@ -64,6 +65,16 @@ class LdapService(
             match?.groups?.get(1)?.value
         }
         return LdapUser(userDn, cn, memberOfGroupCNs, email, totpSecret, name, accountEnabled)
+    }
+
+    @Blocking
+    fun groupExists(ctx: InitialDirContext, groupDn: String) :Boolean {
+        val attributes =
+            ctx.getAttributes(
+                groupDn,
+                arrayOf("cn")
+            )
+        return attributes.get("cn") != null
     }
 
     @Suppress("UNCHECKED_CAST")

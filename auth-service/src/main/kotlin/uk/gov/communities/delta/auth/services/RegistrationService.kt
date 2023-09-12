@@ -94,10 +94,11 @@ class RegistrationService(
 
         try {
             organisations.forEach {
-                newUserService.addUserToGroup(
-                    adUser,
-                    organisationUserGroup(it.code)
-                )
+                if (!it.retired)
+                    newUserService.addUserToGroup(
+                        adUser,
+                        organisationUserGroup(it.code)
+                    )
             }
 
         } catch (e: Exception) {
