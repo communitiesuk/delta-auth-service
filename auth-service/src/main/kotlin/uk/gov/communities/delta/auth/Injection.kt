@@ -177,7 +177,7 @@ class Injection(
             microsoftGraphService
         )
 
-    fun organisationSearchService() = OrganisationService(OrganisationService.makeHTTPClient())
+    fun organisationSearchService() = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
 
     fun registrationService() =
         RegistrationService(
