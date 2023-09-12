@@ -68,23 +68,18 @@ class RegistrationService(
         return UserCreated(registration, "tokenOrUrl") //TODO - token
     }
 
-    companion object {
-        const val DATAMART_DELTA_USER = "datamart-delta-user" // TODO - this is already in auth service as deltaConfig.requiredGroupCN - do we want to use that here or this there or just have it twice?
-        const val DATAMART_DELTA_REPORT_USERS = "datamart-delta-report-users"
-    }
-
     private fun addUserToDefaultGroups(adUser: ADUser) {
         try {
-            newUserService.addUserToGroup(adUser, DATAMART_DELTA_REPORT_USERS)
-            newUserService.addUserToGroup(adUser, DATAMART_DELTA_USER)
+            newUserService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
+            newUserService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
         } catch (e: Exception) {
             logger.error("Issue adding member to group: {}", e.toString())
             throw e
         }
     }
 
-    private fun organisationUserGroup(orgCode: String) : String {
-        return String.format("%s-%s", DATAMART_DELTA_USER, orgCode)
+    private fun organisationUserGroup(orgCode: String): String {
+        return String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode)
     }
 
     private suspend fun addUserToDomainOrganisations(adUser: ADUser) {

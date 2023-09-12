@@ -146,7 +146,7 @@ class OAuthLoginTest {
     @Test
     fun `Callback returns error if user is disabled`() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), accountEnabled = false)
+            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser), accountEnabled = false)
         }
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
@@ -158,7 +158,7 @@ class OAuthLoginTest {
     @Test
     fun `Callback returns error if user has no email`() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn), email = null)
+            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser), email = null)
         }
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
@@ -202,7 +202,7 @@ class OAuthLoginTest {
 
     private fun mockAdminUser() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn, "datamart-delta-admin"))
+            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser, "datamart-delta-admin"))
         }
     }
 
@@ -244,7 +244,7 @@ class OAuthLoginTest {
     fun setupMocks() {
         clearAllMocks()
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.requiredGroupCn))
+            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
         }
         coEvery { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
             AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")

@@ -207,7 +207,7 @@ class DeltaLoginController(
         }
     }
 
-    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.requiredGroupCn)
+    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.datamartDeltaUser)
 
     private fun ApplicationCall.checkOriginHeader() {
         val origin = request.headers["Origin"]
