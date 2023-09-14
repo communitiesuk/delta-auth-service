@@ -11,10 +11,7 @@ import io.ktor.server.thymeleaf.*
 import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
-import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
+import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
@@ -52,10 +49,19 @@ class DeltaLoginController(
         val client = params.client
         logger.info("Creating login session cookie for client {}", client.clientId)
         call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = client.clientId))
-        call.respondLoginPage(client)
+
+        if (params.useSSOClient != null) {
+            call.respondRedirect(oauthClientLoginRoute(params.useSSOClient.internalId))
+        } else {
+            call.respondLoginPage(client)
+        }
     }
 
-    private class LoginQueryParams(val client: DeltaLoginEnabledClient, val state: String)
+    private class LoginQueryParams(
+        val client: DeltaLoginEnabledClient,
+        val state: String,
+        val useSSOClient: AzureADSSOClient?,
+    )
 
     private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
         val responseType = request.queryParameters["response_type"]
@@ -75,7 +81,9 @@ class DeltaLoginController(
             logger.warn("No client found with client id {}", clientId)
             return null
         }
-        return LoginQueryParams(client, state)
+        val ssoClient = request.queryParameters["sso-client"]
+            ?.let { param -> ssoConfig.ssoClients.firstOrNull { it.internalId == param } }
+        return LoginQueryParams(client, state, ssoClient)
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
