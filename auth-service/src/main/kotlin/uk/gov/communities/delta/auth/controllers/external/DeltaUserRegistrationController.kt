@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.oauthClientLoginRoute
+import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
 import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.RegistrationService
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
@@ -100,7 +100,12 @@ class DeltaUserRegistrationController(
                 it.required && emailAddress.lowercase().endsWith(it.emailDomain)
             }
             if (ssoClientMatchingEmailDomain != null) {
-                return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))
+                return call.respondRedirect(
+                    oauthClientLoginRouteWithEmail(
+                        ssoClientMatchingEmailDomain.internalId,
+                        emailAddress
+                    )
+                )
             }
 
             val registration = Registration(firstName, lastName, emailAddress)

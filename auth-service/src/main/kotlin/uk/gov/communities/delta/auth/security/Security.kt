@@ -88,7 +88,7 @@ fun AuthenticationConfig.azureAdSingleSignOn(
             val ssoClient = ssoOAuthClientProviderLookupService.validateSSOClientForOAuthRequest(this)
                 ?: return@lookup null // Skip authentication and carry straight on to the route handlers
             logger.debug("Validated sso client for OAuth provider lookup for request to {}", request.uri)
-            return@lookup ssoOAuthClientProviderLookupService.providerConfig(ssoClient)
+            return@lookup ssoOAuthClientProviderLookupService.providerConfig(ssoClient, parameters["email"]) // TODO - does this return null if there isn't a parameter
         }
         client = oauthHttpClient
     }

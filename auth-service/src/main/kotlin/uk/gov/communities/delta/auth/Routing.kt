@@ -117,6 +117,9 @@ fun Route.deltaLoginRoutes(
 }
 
 fun oauthClientLoginRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/login"
+fun oauthClientLoginRouteWithEmail(ssoClientInternalId: String, email: String) =
+    "/delta/oauth/${ssoClientInternalId}/login?email=${email.encodeURLParameter()}"
+
 fun oauthClientCallbackRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/callback"
 
 // "Internal" to the VPC, this is enforced by load balancer rules

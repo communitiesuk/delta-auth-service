@@ -44,7 +44,7 @@ class SSOOAuthClientProviderLookupService(
         return ssoClient
     }
 
-    fun providerConfig(ssoClient: AzureADSSOClient) =
+    fun providerConfig(ssoClient: AzureADSSOClient, expectedEmail: String? = null) =
         OAuthServerSettings.OAuth2ServerSettings(
             name = "azure",
             authorizeUrl = "https://login.microsoftonline.com/${ssoClient.azTenantId}/oauth2/v2.0/authorize",
@@ -57,6 +57,9 @@ class SSOOAuthClientProviderLookupService(
             ),
             onStateCreated = { call, state ->
                 ssoLoginStateService.onSSOStateCreated(call, state, ssoClient)
-            }
+            },
+            extraAuthParameters = if (expectedEmail != null) listOf(
+                Pair("login_hint", expectedEmail)
+            ) else emptyList()
         )
 }

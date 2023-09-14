@@ -35,7 +35,7 @@ import kotlin.test.assertTrue
 
 
 class DeltaLoginControllerTest {
-
+// TODO - check tests run/fix them for changes
     @Test
     fun testLoginPage() = testSuspend {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {

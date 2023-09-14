@@ -15,7 +15,7 @@ import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
-import uk.gov.communities.delta.auth.oauthClientLoginRoute
+import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
@@ -120,7 +120,7 @@ class DeltaLoginController(
             it.required && formUsername.lowercase().endsWith(it.emailDomain)
         }
         if (ssoClientMatchingEmailDomain != null) {
-            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))
+            return call.respondRedirect(oauthClientLoginRouteWithEmail(ssoClientMatchingEmailDomain.internalId, formUsername))
         }
 
         val cn = formUsername.replace('@', '!')
