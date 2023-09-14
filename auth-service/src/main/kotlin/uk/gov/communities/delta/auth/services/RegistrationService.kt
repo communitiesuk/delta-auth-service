@@ -14,7 +14,7 @@ class RegistrationService(
     private val ldapConfig: LDAPConfig,
     private val organisationService: OrganisationService,
     private val emailService: EmailService,
-    private val newUserService: NewUserService,
+    private val userService: UserService,
     private val userLookupService: UserLookupService,
 ) {
     sealed class RegistrationResult
@@ -29,19 +29,13 @@ class RegistrationService(
 
     private val logger = LoggerFactory.getLogger(javaClass) // TODO - add logs where useful
 
-    suspend fun register(registration: Registration): RegistrationResult {
-        val adUser = ADUser(registration, ldapConfig)
+    suspend fun register(registration: Registration, ssoUser: Boolean = false): RegistrationResult {
+        val adUser = ADUser(registration, ssoUser, ldapConfig)
         if (userLookupService.userExists(adUser.cn)) {
             return UserAlreadyExists(registration)
         }
 
-//        TODO - for SSO users (add domain check) - implement different create user route (no need for password)
-//                    - does this need to come via register page in the same way?
-//                    - is their account just created automatically on first log in or do they still have to register?
-//                          - If people log in via SSO and don't have a delta account yet then we make them a delta account and redirect them to delta logged into that account
-//                          - If people attempt to register for delta with an email that is one of the SSO required org domains then we redirect them to SSO and once they have logged in treat it as above
-
-        newUserService.createUser(adUser)
+        userService.createUser(adUser)
 
         addUserToDefaultGroups(adUser)
 
@@ -70,8 +64,8 @@ class RegistrationService(
 
     private fun addUserToDefaultGroups(adUser: ADUser) {
         try {
-            newUserService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
-            newUserService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
+            userService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
+            userService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
         } catch (e: Exception) {
             logger.error("Issue adding member to group: {}", e.toString())
             throw e
@@ -90,7 +84,7 @@ class RegistrationService(
         try {
             organisations.forEach {
                 if (!it.retired)
-                    newUserService.addUserToGroup(
+                    userService.addUserToGroup(
                         adUser,
                         organisationUserGroup(it.code)
                     )

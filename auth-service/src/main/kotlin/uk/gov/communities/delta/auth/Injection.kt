@@ -147,14 +147,14 @@ class Injection(
         )
     }
 
-    fun externalDeltaUserRegisterController(): DeltaUserRegistrationController {
-        return DeltaUserRegistrationController(
-            deltaConfig,
-            authServiceConfig,
-            organisationSearchService(),
-            registrationService()
-        )
-    }
+    fun externalDeltaUserRegisterController() = DeltaUserRegistrationController(
+        deltaConfig,
+        authServiceConfig,
+        azureADSSOConfig,
+        organisationSearchService(),
+        registrationService()
+    )
+
 
     fun internalOAuthTokenController() = OAuthTokenController(
         clientConfig.oauthClients,
@@ -174,7 +174,8 @@ class Injection(
             ssoLoginStateService,
             userLookupService,
             authorizationCodeService,
-            microsoftGraphService
+            microsoftGraphService,
+            registrationService()
         )
 
     fun organisationSearchService() = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
@@ -186,13 +187,13 @@ class Injection(
             ldapConfig,
             organisationSearchService(),
             emailService(),
-            newUserService(),
+            userService(),
             userLookupService
         )
 
     fun emailService() = EmailService(emailConfig)
 
-    fun newUserService() = NewUserService(ldapService, ldapConfig, groupService())
+    fun userService() = UserService(ldapService, ldapConfig, groupService())
 
     fun groupService() = GroupService(ldapService, ldapConfig)
 }

@@ -9,7 +9,9 @@ import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.RegistrationService
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
@@ -17,6 +19,7 @@ import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 class DeltaUserRegistrationController(
     private val deltaConfig: DeltaConfig,
     private val authServiceConfig: AuthServiceConfig,
+    private val ssoConfig: AzureADSSOConfig,
     organisationService: OrganisationService,
     private val registrationService: RegistrationService,
 ) {
@@ -63,8 +66,8 @@ class DeltaUserRegistrationController(
         val formParameters = call.receiveParameters()
         val firstName = formParameters["firstName"].orEmpty()
         val lastName = formParameters["lastName"].orEmpty()
-        val emailAddress = formParameters["emailAddress"].orEmpty()
-        val confirmEmailAddress = formParameters["confirmEmailAddress"].orEmpty()
+        val emailAddress = formParameters["emailAddress"].orEmpty().lowercase()
+        val confirmEmailAddress = formParameters["confirmEmailAddress"].orEmpty().lowercase()
 
         val firstNameErrors = ArrayList<String>()
         val lastNameErrors = ArrayList<String>()
@@ -93,6 +96,13 @@ class DeltaUserRegistrationController(
                 confirmEmailAddress
             )
         } else {
+            val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
+                it.required && emailAddress.lowercase().endsWith(it.emailDomain)
+            }
+            if (ssoClientMatchingEmailDomain != null) {
+                return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))
+            }
+
             val registration = Registration(firstName, lastName, emailAddress)
             lateinit var registrationResult: RegistrationService.RegistrationResult
             try {
@@ -143,10 +153,10 @@ class DeltaUserRegistrationController(
     }
 
     private suspend fun ApplicationCall.respondRegisterPage(
-        firstNameErrors: ArrayList<String> = ArrayList<String>(),
-        lastNameErrors: ArrayList<String> = ArrayList<String>(),
-        emailAddressErrors: ArrayList<String> = ArrayList<String>(),
-        confirmEmailAddressErrors: ArrayList<String> = ArrayList<String>(),
+        firstNameErrors: ArrayList<String> = ArrayList(),
+        lastNameErrors: ArrayList<String> = ArrayList(),
+        emailAddressErrors: ArrayList<String> = ArrayList(),
+        confirmEmailAddressErrors: ArrayList<String> = ArrayList(),
         firstName: String = "",
         lastName: String = "",
         emailAddress: String = "",

@@ -5,7 +5,7 @@ import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.utils.ADUser
 import javax.naming.directory.*
 
-class NewUserService(
+class UserService(
     private val ldapService: LdapService,
     private val ldapConfig: LDAPConfig,
     private val groupService: GroupService,
@@ -38,6 +38,8 @@ class NewUserService(
         container.put(BasicAttribute("mail", adUser.mail))
         container.put(BasicAttribute("st", adUser.st))
         container.put(BasicAttribute("userAccountControl", adUser.userAccountControl))
+        if (adUser.password != null) container.put(ADUser.getPasswordAttribute(adUser.password!!))
+        if (adUser.comment != null) container.put(BasicAttribute("comment", adUser.comment))
 
         try {
             context.createSubcontext(adUser.dn, container)

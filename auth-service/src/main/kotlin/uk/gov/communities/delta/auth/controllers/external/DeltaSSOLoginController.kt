@@ -20,12 +20,9 @@ import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
-import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.LdapUser
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
-import uk.gov.communities.delta.auth.services.withAuthCode
 import javax.naming.NameNotFoundException
 
 /*
@@ -39,6 +36,7 @@ class DeltaSSOLoginController(
     private val ldapLookupService: UserLookupService,
     private val authorizationCodeService: AuthorizationCodeService,
     private val microsoftGraphService: MicrosoftGraphService,
+    private val registrationService: RegistrationService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -73,8 +71,17 @@ class DeltaSSOLoginController(
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
-        val user = lookupUserInAd(email)
-            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/register?from_sso_client=${ssoClient.internalId}&email=${email.encodeURLParameter()}")
+        var user = lookupUserInAd(email)
+        if (user == null) {
+            registrationService.register(
+                extractRegistrationFromTrustedJwt(principal.accessToken),
+                ssoUser = true
+            )
+            // TODO - add check (login_hint) that SSO user and email from original registration form are the same - currently making anything@softwire.com while logged in as me -> logging in as me and account not made
+            user = lookupUserInAd(email) // TODO - can this be done more efficiently?
+            if (user == null) throw RuntimeException() // TODO - needed to be not possibly null - make register return a user? Part of the result?
+            // TODO - check if cookie is set, if not give different error to what is thrown normally
+        }
 
         checkUserEnabled(user)
         checkUserHasEmail(user)
@@ -217,7 +224,11 @@ class DeltaSSOLoginController(
     @Serializable
     // TODO DT-572 Figure out whether unique_name is reliably the user's email address in DLUHC AD
     // Azure AD doesn't seem to validate emails at all so using the "email" claim doesn't seem ideal
-    data class JwtBody(@SerialName("unique_name") val uniqueName: String)
+    data class JwtBody(
+        @SerialName("unique_name") val uniqueName: String,
+        @SerialName("given_name") val givenName: String,
+        @SerialName("family_name") val familyName: String
+    )
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }
 
@@ -227,6 +238,23 @@ class DeltaSSOLoginController(
             if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
             val jsonString = split[1].decodeBase64String()
             return jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString).uniqueName
+        } catch (e: Exception) {
+            logger.error("Error parsing JWT '{}'", jwt)
+            throw InvalidJwtException("Error parsing JWT", e)
+        }
+    }
+
+    private fun extractRegistrationFromTrustedJwt(jwt: String): Registration {
+        try {
+            val split = jwt.split('.')
+            if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
+            val jsonString = split[1].decodeBase64String()
+            val json = jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString)
+            return Registration(
+                json.givenName,
+                json.familyName,
+                json.uniqueName.lowercase()
+            )
         } catch (e: Exception) {
             logger.error("Error parsing JWT '{}'", jwt)
             throw InvalidJwtException("Error parsing JWT", e)
