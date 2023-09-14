@@ -136,19 +136,22 @@ class DeltaUserRegistrationController(
         emailAddressErrors: ArrayList<String>,
         confirmEmailAddressErrors: ArrayList<String>
     ): Boolean {
-        return firstNameErrors.isNotEmpty() || lastNameErrors.isNotEmpty() || emailAddressErrors.isNotEmpty() || confirmEmailAddressErrors.isNotEmpty()
+        return arrayOf(
+            firstNameErrors,
+            lastNameErrors,
+            emailAddressErrors,
+            confirmEmailAddressErrors
+        ).any { it.isNotEmpty() }
     }
 
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
         when (registrationResult) {
             is RegistrationService.UserCreated -> {
-                return respondRedirect(authServiceConfig.serviceUrl + "/delta/register/success?emailAddress=${registrationResult.registration.emailAddress.encodeURLParameter()}")
+                return respondSuccessPage(registrationResult.registration.emailAddress)
             }
 
             is RegistrationService.UserAlreadyExists -> {
-                // TODO - this should go to the success page so that it doesn't confirm existence of an account already?
-                //          - should this also then imply failure if domain is wrong? - should that bit of logic come first? - it does
-                //          - also send an email to the user so in genuine cases confusion is minimised - done
+                return respondSuccessPage(registrationResult.registration.emailAddress)
             }
 
             is RegistrationService.RegistrationFailure -> {
@@ -156,6 +159,9 @@ class DeltaUserRegistrationController(
             }
         }
     }
+
+    private suspend fun ApplicationCall.respondSuccessPage(emailAddress: String) =
+        respondRedirect(authServiceConfig.serviceUrl + "/delta/register/success?emailAddress=${emailAddress.encodeURLParameter()}")
 
     private suspend fun ApplicationCall.respondRegisterPage(
         firstNameErrors: ArrayList<String> = ArrayList(),

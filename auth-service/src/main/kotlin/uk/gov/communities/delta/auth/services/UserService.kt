@@ -13,7 +13,7 @@ class UserService(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun createUser(adUser: ADUser) {
+    suspend fun createUser(adUser: ADUser) {
         try {
             addUserToAD(adUser)
         } catch (e: Exception) {
@@ -22,13 +22,7 @@ class UserService(
         }
     }
 
-    private fun addUserToAD(adUser: ADUser) {
-        val context = ldapService.bind(
-            ldapConfig.serviceUserDnFormat.format(ldapConfig.authServiceUserCn),
-            ldapConfig.authServiceUserPassword,
-            poolConnection = true
-        )
-
+    private suspend fun addUserToAD(adUser: ADUser) {
         val container: Attributes = BasicAttributes()
         container.put(adUser.objClasses)
         container.put(BasicAttribute("userPrincipalName", adUser.userPrincipalName))
@@ -41,26 +35,26 @@ class UserService(
         if (adUser.password != null) container.put(ADUser.getPasswordAttribute(adUser.password!!))
         if (adUser.comment != null) container.put(BasicAttribute("comment", adUser.comment))
 
-        try {
-            context.createSubcontext(adUser.dn, container)
-        } catch (e: Exception) {
-            logger.error("Problem creating user: {}", e.toString())
-            throw e
+        ldapService.useServiceUserBind {
+            try {
+                it.createSubcontext(adUser.dn, container)
+            } catch (e: Exception) {
+                logger.error("Problem creating user: {}", e.toString())
+                throw e
+            }
         }
     }
 
-    fun addUserToGroup(adUser: ADUser, groupName: String) {
+    suspend fun addUserToGroup(adUser: ADUser, groupName: String) {
         val groupDN = ldapConfig.groupDnFormat.format(groupName)
-        val context = ldapService.bind( //TODO - refactor according to Bens branch
-            ldapConfig.serviceUserDnFormat.format(ldapConfig.authServiceUserCn),
-            ldapConfig.authServiceUserPassword,
-            poolConnection = true
-        )
-        if (!ldapService.groupExists(context, groupDN)) {
-            groupService.createGroup(groupName)
+
+            if (!groupService.groupExists(groupDN)) {
+                groupService.createGroup(groupName)
+            }
+        ldapService.useServiceUserBind {
+            val member = BasicAttribute("member", adUser.dn)
+            val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
+           it.modifyAttributes(groupDN, modificationItems)
         }
-        val member = BasicAttribute("member", adUser.dn)
-        val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
-        context.modifyAttributes(groupDN, modificationItems)
     }
 }

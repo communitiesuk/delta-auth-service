@@ -62,7 +62,7 @@ class RegistrationService(
         return UserCreated(registration, "tokenOrUrl") //TODO - token
     }
 
-    private fun addUserToDefaultGroups(adUser: ADUser) {
+    private suspend fun addUserToDefaultGroups(adUser: ADUser) {
         try {
             userService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
             userService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
@@ -116,7 +116,7 @@ class RegistrationService(
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                         "userFirstName" to registrationResult.registration.firstName,
-//                    "setPasswordUrl" to setPasswordUrl // TODO - from token
+//                    "setPasswordUrl" to setPasswordUrl // TODO - from token, encode if needed
                     )
                 )
             }

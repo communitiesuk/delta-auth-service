@@ -1,6 +1,8 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.util.reflect.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
@@ -10,6 +12,10 @@ import java.util.*
 import javax.naming.Context
 import javax.naming.NamingException
 import javax.naming.directory.*
+import javax.naming.ldap.InitialLdapContext
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 class LdapService(
     private val ldapConfig: LDAPConfig
@@ -19,7 +25,7 @@ class LdapService(
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
 
     @Blocking
-    fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialDirContext {
+    fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialLdapContext {
         val env = Hashtable<String, String>()
         env[Context.INITIAL_CONTEXT_FACTORY] = "com.sun.jndi.ldap.LdapCtxFactory"
         env[Context.PROVIDER_URL] = ldapConfig.deltaLdapUrl
@@ -34,12 +40,27 @@ class LdapService(
             "60000" // Milliseconds. Relevant timeouts are 900s for AD and 350s for NLB.
 
         return try {
-            val context = InitialDirContext(env)
+            val context = InitialLdapContext(env, null)
             logger.debug("Successful bind for DN {}", userDn)
             context
         } catch (e: NamingException) {
             logger.debug("LDAP bind failed for user $userDn", e)
             throw e
+        }
+    }
+
+    @OptIn(ExperimentalContracts::class)
+    suspend fun <R> useServiceUserBind(block: (InitialLdapContext) -> R): R {
+        contract {
+            callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+        }
+        return withContext(Dispatchers.IO) {
+            val ctx = bind(ldapConfig.authServiceUserDn, ldapConfig.authServiceUserPassword, poolConnection = true)
+            try {
+                block(ctx)
+            } finally {
+                ctx.close()
+            }
         }
     }
 
@@ -65,16 +86,6 @@ class LdapService(
             match?.groups?.get(1)?.value
         }
         return LdapUser(userDn, cn, memberOfGroupCNs, email, totpSecret, name, accountEnabled)
-    }
-
-    @Blocking
-    fun groupExists(ctx: InitialDirContext, groupDn: String) :Boolean {
-        val attributes =
-            ctx.getAttributes(
-                groupDn,
-                arrayOf("cn")
-            )
-        return attributes.get("cn") != null
     }
 
     @Suppress("UNCHECKED_CAST")

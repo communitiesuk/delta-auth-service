@@ -77,10 +77,8 @@ class DeltaSSOLoginController(
                 extractRegistrationFromTrustedJwt(principal.accessToken),
                 ssoUser = true
             )
-            // TODO - add check (login_hint) that SSO user and email from original registration form are the same - currently making anything@softwire.com while logged in as me -> logging in as me and account not made
-            user = lookupUserInAd(email) // TODO - can this be done more efficiently?
-            if (user == null) throw RuntimeException() // TODO - needed to be not possibly null - make register return a user? Part of the result?
-            // TODO - check if cookie is set, if not give different error to what is thrown normally
+            user = lookupUserInAd(email)!!
+            // TODO - check if cookie is set, if not give different error to what is thrown normally - use DT-595
         }
 
         checkUserEnabled(user)

@@ -14,7 +14,7 @@ data class LDAPConfig(
 ) {
     companion object {
         fun fromEnv(): LDAPConfig = LDAPConfig(
-            deltaLdapUrl = Env.getRequiredOrDevFallback("DELTA_LDAP_URL", "ldaps://dluhctest.local:2636"), // TODO - add certificate bit to readme, mkae this use ldapS url env variable
+            deltaLdapUrl = Env.getRequiredOrDevFallback("DELTA_LDAP_URL", "ldaps://dluhctest.local:2636"),
             serviceUserDnFormat = Env.getRequiredOrDevFallback(
                 "LDAP_SERVICE_USER_DN_FORMAT",
                 "CN=%s,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"

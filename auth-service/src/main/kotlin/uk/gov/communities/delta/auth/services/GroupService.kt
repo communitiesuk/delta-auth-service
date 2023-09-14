@@ -14,7 +14,7 @@ class GroupService(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun createGroup(groupName: String) {
+    suspend fun createGroup(groupName: String) {
         try {
             addGroupToAD(ADGroup(groupName, ldapConfig))
         } catch (e: Exception) {
@@ -23,22 +23,29 @@ class GroupService(
         }
     }
 
-    private fun addGroupToAD(adGroup: ADGroup) {
-        val context = ldapService.bind(
-            ldapConfig.serviceUserDnFormat.format(ldapConfig.authServiceUserCn),
-            ldapConfig.authServiceUserPassword,
-            poolConnection = true
-        )
+    suspend fun groupExists(groupDn: String) :Boolean {
+        var attributes : Attributes = BasicAttributes()
+        ldapService.useServiceUserBind {
+            attributes =
+                it.getAttributes(
+                    groupDn,
+                    arrayOf("cn")
+                )
+        }
+        return attributes.get("cn") != null
+    }
 
+    private suspend fun addGroupToAD(adGroup: ADGroup) {
         val container: Attributes = BasicAttributes()
         container.put(adGroup.objectClasses)
         container.put(BasicAttribute("cn", adGroup.cn))
-
-        try {
-            context.createSubcontext(adGroup.dn, container)
-        } catch (e: Exception) {
-            logger.error("Problem creating group: {}", e.toString())
-            throw e
+        ldapService.useServiceUserBind {
+            try {
+                it.createSubcontext(adGroup.dn, container)
+            } catch (e: Exception) {
+                logger.error("Problem creating group: {}", e.toString())
+                throw e
+            }
         }
     }
 }

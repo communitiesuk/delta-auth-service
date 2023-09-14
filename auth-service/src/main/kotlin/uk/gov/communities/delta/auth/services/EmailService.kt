@@ -16,7 +16,6 @@ import java.util.*
 
 class EmailService(private val emailConfig: EmailConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
-//    TODO - check everything is encoded correctly?
 
     fun sendTemplateEmail(
         template: String,

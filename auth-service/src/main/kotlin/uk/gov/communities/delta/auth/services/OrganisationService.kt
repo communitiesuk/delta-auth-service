@@ -26,7 +26,7 @@ class Organisation(
 
 class OrganisationService(private val httpClient: HttpClient, private val deltaConfig: DeltaConfig) {
     suspend fun findAllByDomain(domain: String): List<Organisation> {
-        return httpClient.get(deltaConfig.masterStoreBaseNoAuth +"organisation/search?domain=${domain.encodeURLParameter()}") // TODO - use correct url - environment variable?
+        return httpClient.get(deltaConfig.masterStoreBaseNoAuth +"organisation/search?domain=${domain.encodeURLParameter()}")
             .body<OrganisationSearchResponse>().organisations
     }
 
