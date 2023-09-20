@@ -2,7 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8"/>
-    <title>DLUHC DELTA: Registration request accepted</title>
+    <title>DLUHC DELTA: Set Your Password</title>
     <style>
         p {
             font-family: calibri, serif;
@@ -24,20 +24,20 @@
 <p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
 
 <p>
-    Following your on-line request, you are receiving this email because you have requested a new user account on <a
+    You are receiving this email because you have tried to use an expired password setting link on <a
         th:href="@{${deltaUrl}}">DELTA</a>, the online data collection and grants administration system
     of the Department for Levelling Up, Housing and Communities (DLUHC).
 </p>
-
-<p>Please note that your username will be the email address to which this email has been sent.</p>
 
 <p>Please click on the link below to set your password and activate your account.</p>
 
 <p>
     <a th:href="@{${setPasswordUrl}}">Activate your DELTA account</a>. <b>This link is only valid for 24 hours so
-    please activate your
-    account now</b>.
+    please activate your account now</b>.
 </p>
+
+<p>Please note that your username will be the email address to which this email has been sent.</p>
+
 <p>
     Please note the DELTA User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
     application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.

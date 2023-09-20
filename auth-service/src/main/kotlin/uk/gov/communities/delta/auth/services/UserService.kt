@@ -17,7 +17,7 @@ class UserService(
         try {
             addUserToAD(adUser)
         } catch (e: Exception) {
-            logger.error("Problem creating user {}", e.toString())
+            logger.error("Error creating user with dn {} : {}", adUser.dn, e.toString())
             throw e
         }
     }
@@ -48,13 +48,30 @@ class UserService(
     suspend fun addUserToGroup(adUser: ADUser, groupName: String) {
         val groupDN = ldapConfig.groupDnFormat.format(groupName)
 
-            if (!groupService.groupExists(groupDN)) {
-                groupService.createGroup(groupName)
-            }
+        if (!groupService.groupExists(groupDN)) {
+            groupService.createGroup(groupName)
+        }
         ldapService.useServiceUserBind {
             val member = BasicAttribute("member", adUser.dn)
             val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
-           it.modifyAttributes(groupDN, modificationItems)
+            it.modifyAttributes(groupDN, modificationItems)
+        }
+    }
+
+    suspend fun setPassword(userDN: String, password: String) {
+        val modificationItems = arrayOf(
+            ModificationItem(DirContext.REPLACE_ATTRIBUTE, ADUser.getPasswordAttribute(password)),
+            ModificationItem(
+                DirContext.REPLACE_ATTRIBUTE,
+                BasicAttribute("userAccountControl", ADUser.accountFlags(true))
+            )
+        )
+        ldapService.useServiceUserBind {
+            try {
+                it.modifyAttributes(userDN, modificationItems)
+            } catch (e: Exception) {
+                throw e
+            }
         }
     }
 }

@@ -75,9 +75,9 @@ class LdapService(
         val cn = attributes.get("cn")?.get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
         val email = attributes.get("mail")?.get() as String?
         val totpSecret = attributes.get("unixHomeDirectory")?.get() as String?
-        val firstName = attributes.get("givenName")?.get() as String?
-        val surname = attributes.get("sn")?.get() as String?
-        val name = (firstName ?: "") + " " + (surname ?: "")
+        val firstName = attributes.get("givenName")?.get() as String? ?: ""
+        val surname = attributes.get("sn")?.get() as String? ?: ""
+        val name = "$firstName $surname"
         val memberOfGroupDNs = attributes.getMemberOfList()
         val accountEnabled = attributes.getAccountEnabled()
 
@@ -85,7 +85,7 @@ class LdapService(
             val match = groupDnToCnRegex.matchEntire(it)
             match?.groups?.get(1)?.value
         }
-        return LdapUser(userDn, cn, memberOfGroupCNs, email, totpSecret, name, accountEnabled)
+        return LdapUser(userDn, cn, memberOfGroupCNs, email, totpSecret, name, firstName, accountEnabled)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -108,7 +108,8 @@ data class LdapUser(
     val memberOfCNs: List<String>,
     val email: String?,
     val deltaTOTPSecret: String?,
-    val name: String,
+    val fullName: String,
+    val firstName: String,
     val accountEnabled: Boolean,
 )
 

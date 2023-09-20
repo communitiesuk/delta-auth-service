@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
 import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.RegistrationService
+import uk.gov.communities.delta.auth.services.getResultTypeString
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 
 class DeltaUserRegistrationController(
@@ -55,6 +56,10 @@ class DeltaUserRegistrationController(
 
     private val firstNameEmpty = "First name must not be empty"
     private val lastNameEmpty = "Last name must not be empty"
+    private val firstNameContainsDisallowedCharacters =
+        "First name must not contain special characters <, >, \", =, or &"
+    private val lastNameContainsDisallowedCharacters = "Last name must not contain special characters <, >, \", =, or &"
+    private val emailContainsDisallowedCharacters = "Email must not contain special characters <, >, \", =, or &"
     private val emailAddressEmpty = "Email address must not be empty"
     private val confirmEmailAddressEmpty = "Confirm email address must not be empty"
     private val notEqualEmails = "Email addresses do not match"
@@ -76,6 +81,10 @@ class DeltaUserRegistrationController(
 
         if (firstName.isEmpty()) firstNameErrors.add(firstNameEmpty)
         if (lastName.isEmpty()) lastNameErrors.add(lastNameEmpty)
+        // Delta has had issues with XSS in the past, so we disallow these characters as an extra precaution
+        if (hasDisallowedSpecialCharacters(firstName)) firstNameErrors.add(firstNameContainsDisallowedCharacters)
+        if (hasDisallowedSpecialCharacters(lastName)) lastNameErrors.add(lastNameContainsDisallowedCharacters)
+        if (hasDisallowedSpecialCharacters(emailAddress)) emailAddressErrors.add(emailContainsDisallowedCharacters)
         if (emailAddress.isEmpty()) emailAddressErrors.add(emailAddressEmpty)
         else {
             if (!emailAddressChecker.hasValidEmailFormat(emailAddress)) emailAddressErrors.add(notAnEmailAddress)
@@ -86,14 +95,14 @@ class DeltaUserRegistrationController(
 
         if (hasErrors(firstNameErrors, lastNameErrors, emailAddressErrors, confirmEmailAddressErrors)) {
             return call.respondRegisterPage(
-                firstNameErrors,
-                lastNameErrors,
-                emailAddressErrors,
-                confirmEmailAddressErrors,
                 firstName,
                 lastName,
                 emailAddress,
-                confirmEmailAddress
+                confirmEmailAddress,
+                firstNameErrors,
+                lastNameErrors,
+                emailAddressErrors,
+                confirmEmailAddressErrors
             )
         } else {
             val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
@@ -112,19 +121,29 @@ class DeltaUserRegistrationController(
             lateinit var registrationResult: RegistrationService.RegistrationResult
             try {
                 registrationResult = registrationService.register(registration)
-                registrationService.sendRegistrationEmail(registrationResult)
             } catch (e: Exception) {
-                logger.error("Error registering user {}", e.toString()) // TODO - improve error messages
-                return call.respondRegisterPage(
-                    firstNameErrors,
-                    lastNameErrors,
-                    emailAddressErrors,
-                    confirmEmailAddressErrors,
+                logger.error(
+                    "Error registering user with  name: {} {}, email address: {}. Error: {}",
                     firstName,
                     lastName,
                     emailAddress,
-                    confirmEmailAddress
+                    e.toString()
                 )
+                throw e // TODO - handle errors in a tidier way so these two can be combined - make specific exceptions
+            }
+            try {
+                registrationService.sendRegistrationEmail(registrationResult)
+            } catch (e: Exception) {
+                // If it fails on this step the user never gets a link and doesn't know if account is made - TODO - is there a solution to this?
+                logger.error(
+                    "Error sending email after registration for first name: {}, last name: {}, email address: {}. Result of registration was {}. Error: {}",
+                    firstName,
+                    lastName,
+                    emailAddress,
+                    getResultTypeString(registrationResult),
+                    e.toString()
+                )
+                throw e
             }
             return call.respondToResult(registrationResult)
         }
@@ -144,6 +163,10 @@ class DeltaUserRegistrationController(
         ).any { it.isNotEmpty() }
     }
 
+    private fun hasDisallowedSpecialCharacters(word: String): Boolean {
+        return word.contains("[<>\"=&]")
+    }
+
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
         when (registrationResult) {
             is RegistrationService.UserCreated -> {
@@ -155,7 +178,7 @@ class DeltaUserRegistrationController(
             }
 
             is RegistrationService.RegistrationFailure -> {
-                // TODO - fill in
+                throw registrationResult.exception
             }
         }
     }
@@ -164,14 +187,14 @@ class DeltaUserRegistrationController(
         respondRedirect(authServiceConfig.serviceUrl + "/delta/register/success?emailAddress=${emailAddress.encodeURLParameter()}")
 
     private suspend fun ApplicationCall.respondRegisterPage(
-        firstNameErrors: ArrayList<String> = ArrayList(),
-        lastNameErrors: ArrayList<String> = ArrayList(),
-        emailAddressErrors: ArrayList<String> = ArrayList(),
-        confirmEmailAddressErrors: ArrayList<String> = ArrayList(),
         firstName: String = "",
         lastName: String = "",
         emailAddress: String = "",
-        confirmEmailAddress: String = ""
+        confirmEmailAddress: String = "",
+        firstNameErrors: ArrayList<String> = ArrayList(),
+        lastNameErrors: ArrayList<String> = ArrayList(),
+        emailAddressErrors: ArrayList<String> = ArrayList(),
+        confirmEmailAddressErrors: ArrayList<String> = ArrayList()
     ) {
         val errors = ArrayList<ArrayList<String>>()
         firstNameErrors.forEach { message ->

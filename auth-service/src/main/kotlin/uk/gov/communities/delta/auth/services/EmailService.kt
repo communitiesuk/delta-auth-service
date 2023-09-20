@@ -1,9 +1,6 @@
 package uk.gov.communities.delta.auth.services
 
-import jakarta.mail.Address
-import jakarta.mail.Message
-import jakarta.mail.Session
-import jakarta.mail.Transport
+import jakarta.mail.*
 import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
 import org.slf4j.LoggerFactory
@@ -45,8 +42,8 @@ class EmailService(private val emailConfig: EmailConfig) {
             msg.setText(content)
             msg.setHeader("Content-Type", "text/html")
             Transport.send(msg)
-        } catch (e: Exception) { // TODO - split into different exceptions for clearer error messages
-            logger.error("Failed to sendTemplateEmail, will ignore", e)
+        } catch (e: Exception) {
+            logger.error("Failed to sendTemplateEmail", e)
             throw e
         }
     }

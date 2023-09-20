@@ -22,8 +22,13 @@
 <!--/*@thymesVar id="confirmEmailAddress" type="java.lang.String" */-->
 
 <div class="govuk-width-container" id="registerPage">
+    <ol class="govuk-breadcrumbs__list">
+        <li class="govuk-breadcrumbs__list-item"><a class="govuk-breadcrumbs__link" data-th-href="${deltaUrl}">Home</a>
+        </li>
+        <li class="govuk-breadcrumbs__list-item">Register</li>
+    </ol>
+    <!--    TODO - the formatting of the breadcrumbs is off - are they worth digging into CSS for? -->
     <main class="govuk-main-wrapper " id="main-content" role="main">
-<!--        TODO - breadcrumbs - "Sign in > Register"  -->
         <h1 class="govuk-heading-xl">Register</h1>
         <div th:if="${not #lists.isEmpty(allErrors)}" class="govuk-error-summary"
              data-module="govuk-error-summary">

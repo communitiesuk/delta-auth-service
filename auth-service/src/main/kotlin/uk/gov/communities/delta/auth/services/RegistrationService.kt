@@ -2,9 +2,11 @@ package uk.gov.communities.delta.auth.services
 
 import OrganisationService
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.controllers.external.getSetPasswordURL
 import uk.gov.communities.delta.auth.utils.ADUser
 import uk.gov.communities.delta.auth.utils.emailToDomain
 
@@ -12,54 +14,42 @@ class RegistrationService(
     private val deltaConfig: DeltaConfig,
     private val emailConfig: EmailConfig,
     private val ldapConfig: LDAPConfig,
+    private val authServiceConfig: AuthServiceConfig,
+    private val setPasswordTokenService: SetPasswordTokenService,
     private val organisationService: OrganisationService,
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
 ) {
     sealed class RegistrationResult
-    class UserCreated(val registration: Registration, val token: String) : RegistrationResult()
+    class UserCreated(val registration: Registration, val token: String, val userCN: String) : RegistrationResult()
     class UserAlreadyExists(val registration: Registration) : RegistrationResult()
-    class RegistrationFailure(val exception: Exception?) : RegistrationResult()
+    class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
     // Previously users could be datamart users but not delta users, at migration we only transferred over users who
     // were delta users so there should never be users who exist but aren't delta users - therefore can remove all logic
     // for attaching users and checking if they are indeed delta users (if they somehow existed they'd get a "contact
     // the service desk" error at login which is what we want
 
-    private val logger = LoggerFactory.getLogger(javaClass) // TODO - add logs where useful
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     suspend fun register(registration: Registration, ssoUser: Boolean = false): RegistrationResult {
         val adUser = ADUser(registration, ssoUser, ldapConfig)
         if (userLookupService.userExists(adUser.cn)) {
+            logger.warn("User with DN {} tried to register but user already exists", adUser.dn)
             return UserAlreadyExists(registration)
         }
 
-        userService.createUser(adUser)
+        try {
+            userService.createUser(adUser)
+            addUserToDefaultGroups(adUser)
+            addUserToDomainOrganisations(adUser)
+        } catch (e: Exception) {
+            return RegistrationFailure(e)
+        }
 
-        addUserToDefaultGroups(adUser)
-
-        addUserToDomainOrganisations(adUser)
-
-//        TODO - get value for setPasswordUrl (if not SSO person)
-//              - create table in database for reset password tokens
-//                  - containing: user CN, token, timestamp
-//                  - watch for timing attacks on comparison of tokens
-//              - add row to table containing token
-//              - send email containing url as before (ensure url encoding happens where necessary)
-//              - compare token to tokens in the database on set password
-//              - make sure each token can only be used once!
-//              - implement the rest of set password
-//                  - removing nunjucks
-//                  - remove unnecessary code e.g. for reset rather than set etc
-//        val request: ForgotPasswordRequest = registration.emailAddress
-//        val result: ForgotPasswordResult = passwordService.forgotPassword(request)
-//        if (!result.isSuccessful()) return RegistrationResult(
-//            RegistrationResult.Status.OTHER_FAILURE,
-//            registration.emailAddress!!
-//        )
-
-        return UserCreated(registration, "tokenOrUrl") //TODO - token
+        logger.info("User successfully created with DN {}", adUser.dn)
+        return UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
     }
 
     private suspend fun addUserToDefaultGroups(adUser: ADUser) {
@@ -67,7 +57,7 @@ class RegistrationService(
             userService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
             userService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
         } catch (e: Exception) {
-            logger.error("Issue adding member to group: {}", e.toString())
+            logger.error("Error adding user with dn {} to default groups: {}", adUser.dn, e.toString())
             throw e
         }
     }
@@ -80,7 +70,7 @@ class RegistrationService(
         val organisations = organisationService.findAllByDomain(
             emailToDomain(adUser.mail)
         )
-
+        logger.info("Adding user with DN {} to domain organisations", adUser.dn)
         try {
             organisations.forEach {
                 if (!it.retired)
@@ -89,9 +79,9 @@ class RegistrationService(
                         organisationUserGroup(it.code)
                     )
             }
-
         } catch (e: Exception) {
-            throw e // TODO
+            logger.error("Error adding user with dn {} to domain organisations: {}", adUser.dn, e.toString())
+            throw e
         }
     }
 
@@ -116,7 +106,11 @@ class RegistrationService(
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                         "userFirstName" to registrationResult.registration.firstName,
-//                    "setPasswordUrl" to setPasswordUrl // TODO - from token, encode if needed
+                        "setPasswordUrl" to getSetPasswordURL(
+                            registrationResult.token,
+                            registrationResult.userCN,
+                            authServiceConfig.serviceUrl
+                        )
                     )
                 )
             }
@@ -134,7 +128,7 @@ class RegistrationService(
             }
 
             is RegistrationFailure -> {
-                // TODO - complete this
+                // No email needs to be sent if the registration fails
             }
         }
     }
@@ -145,3 +139,19 @@ class Registration(
     val lastName: String,
     val emailAddress: String
 )
+
+fun getResultTypeString(registrationResult: RegistrationService.RegistrationResult): String {
+    return when (registrationResult) {
+        is RegistrationService.UserCreated -> {
+            "UserCreated"
+        }
+
+        is RegistrationService.UserAlreadyExists -> {
+            "UserAlreadyExists"
+        }
+
+        is RegistrationService.RegistrationFailure -> {
+            "RegistrationFailure"
+        }
+    }
+}

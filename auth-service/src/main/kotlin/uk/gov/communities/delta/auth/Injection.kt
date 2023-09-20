@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
 import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
@@ -79,7 +80,6 @@ class Injection(
 
     private val samlTokenService = SAMLTokenService()
     private val ldapService = LdapService(ldapConfig)
-
     private val userLookupService = UserLookupService(
         UserLookupService.Configuration(
             ldapConfig.deltaUserDnFormat,
@@ -88,8 +88,26 @@ class Injection(
         ),
         ldapService
     )
+    private val emailService = EmailService(emailConfig)
+    private val userService = UserService(ldapService, ldapConfig, groupService())
 
     val dbPool = DbPool(databaseConfig)
+
+    val setPasswordTokenService = SetPasswordTokenService(dbPool, TimeSource.System)
+    val organisationSearchService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
+    val registrationService =
+        RegistrationService(
+            deltaConfig,
+            emailConfig,
+            ldapConfig,
+            authServiceConfig,
+            setPasswordTokenService,
+            organisationSearchService,
+            emailService,
+            userService,
+            userLookupService
+        )
+
     val authorizationCodeService = AuthorizationCodeService(dbPool, TimeSource.System)
     val oauthSessionService = OAuthSessionService(dbPool, TimeSource.System)
     val ssoLoginStateService = SSOLoginSessionStateService()
@@ -151,10 +169,11 @@ class Injection(
         deltaConfig,
         authServiceConfig,
         azureADSSOConfig,
-        organisationSearchService(),
-        registrationService()
+        organisationSearchService,
+        registrationService,
     )
 
+    fun externalDeltaSetPasswordController() = DeltaSetPasswordController(deltaConfig, ldapConfig, emailConfig, authServiceConfig, userService, setPasswordTokenService, userLookupService, emailService)
 
     fun internalOAuthTokenController() = OAuthTokenController(
         clientConfig.oauthClients,
@@ -175,25 +194,8 @@ class Injection(
             userLookupService,
             authorizationCodeService,
             microsoftGraphService,
-            registrationService()
+            registrationService
         )
-
-    fun organisationSearchService() = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
-
-    fun registrationService() =
-        RegistrationService(
-            deltaConfig,
-            emailConfig,
-            ldapConfig,
-            organisationSearchService(),
-            emailService(),
-            userService(),
-            userLookupService
-        )
-
-    fun emailService() = EmailService(emailConfig)
-
-    fun userService() = UserService(ldapService, ldapConfig, groupService())
 
     fun groupService() = GroupService(ldapService, ldapConfig)
 }

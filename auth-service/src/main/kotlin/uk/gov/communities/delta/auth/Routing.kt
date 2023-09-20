@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
 import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
@@ -40,7 +41,8 @@ fun Application.configureRouting(injection: Injection) {
             injection.authServiceConfig,
             injection.externalDeltaLoginController(),
             injection.deltaOAuthLoginController(),
-            injection.externalDeltaUserRegisterController()
+            injection.externalDeltaUserRegisterController(),
+            injection.externalDeltaSetPasswordController(),
         )
     }
 }
@@ -55,7 +57,8 @@ fun Route.externalRoutes(
     serviceConfig: AuthServiceConfig,
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
-    deltaUserRegistrationController: DeltaUserRegistrationController
+    deltaUserRegistrationController: DeltaUserRegistrationController,
+    deltaSetPasswordController: DeltaSetPasswordController
 ) {
     install(BrowserSecurityHeaders)
     staticResources("/static", "static") {
@@ -73,9 +76,21 @@ fun Route.externalRoutes(
         deltaRegisterRoutes(deltaUserRegistrationController)
     }
 
+    route("/delta/set-password"){
+        deltaSetPasswordRoutes(deltaSetPasswordController)
+    }
+
     route("/delta") {
         deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
     }
+}
+
+fun Route.deltaSetPasswordRoutes(deltaSetPasswordController: DeltaSetPasswordController) {
+    route("/success") {
+        deltaSetPasswordController.setPasswordSuccessRoute(this)
+    }
+    // TODO - should this be rate limited?
+    deltaSetPasswordController.setPasswordFormRoutes(this)
 }
 
 fun Route.deltaRegisterRoutes(

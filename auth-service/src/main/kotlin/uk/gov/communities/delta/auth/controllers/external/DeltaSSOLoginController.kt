@@ -150,7 +150,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "user_disabled",
                 "User ${user.cn} is disabled in Active Directory, login blocked",
-                "Your Delta user account is disabled. Please contact the service desk"
+                "Your Delta user account is disabled. If you haven't used your account before please check for an activation email otherwise please contact the service desk"
             )
         }
     }
