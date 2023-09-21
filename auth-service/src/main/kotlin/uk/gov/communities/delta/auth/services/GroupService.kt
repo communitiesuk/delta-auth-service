@@ -2,7 +2,7 @@ package uk.gov.communities.delta.auth.services
 
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.utils.ADGroup
+import javax.naming.directory.Attribute
 import javax.naming.directory.Attributes
 import javax.naming.directory.BasicAttribute
 import javax.naming.directory.BasicAttributes
@@ -18,13 +18,13 @@ class GroupService(
         try {
             addGroupToAD(ADGroup(groupName, ldapConfig))
         } catch (e: Exception) {
-            logger.error("Problem creating user {}", e.toString())
+            logger.error("Problem creating group with name {} in AD", groupName, e)
             throw e
         }
     }
 
-    suspend fun groupExists(groupDn: String) :Boolean {
-        var attributes : Attributes = BasicAttributes()
+    suspend fun groupExists(groupDn: String): Boolean {
+        var attributes: Attributes = BasicAttributes()
         ldapService.useServiceUserBind {
             attributes =
                 it.getAttributes(
@@ -40,12 +40,23 @@ class GroupService(
         container.put(adGroup.objectClasses)
         container.put(BasicAttribute("cn", adGroup.cn))
         ldapService.useServiceUserBind {
-            try {
-                it.createSubcontext(adGroup.dn, container)
-            } catch (e: Exception) {
-                logger.error("Problem creating group: {}", e.toString())
-                throw e
-            }
+            it.createSubcontext(adGroup.dn, container)
+        }
+    }
+
+    class ADGroup(val cn: String, private val ldapConfig: LDAPConfig) {
+        val dn: String = cnToDN(cn)
+        val objectClasses = objClasses()
+
+        private fun objClasses(): Attribute {
+            val objClasses: Attribute = BasicAttribute("objectClass")
+            objClasses.add("group")
+            objClasses.add("top")
+            return objClasses
+        }
+
+        private fun cnToDN(cn: String): String {
+            return String.format(ldapConfig.groupDnFormat, cn)
         }
     }
 }

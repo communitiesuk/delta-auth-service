@@ -1,6 +1,9 @@
 package uk.gov.communities.delta.auth.services
 
-import jakarta.mail.*
+import jakarta.mail.Address
+import jakarta.mail.Message
+import jakarta.mail.Session
+import jakarta.mail.Transport
 import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
 import org.slf4j.LoggerFactory
@@ -11,8 +14,16 @@ import uk.gov.communities.delta.auth.plugins.makeTemplateResolver
 import java.util.*
 
 
-class EmailService(private val emailConfig: EmailConfig) {
+class EmailService(emailConfig: EmailConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private var session: Session = Session.getInstance(emailConfig.emailProps, emailConfig.emailAuthenticator)
+    private var templateEngine: TemplateEngine = TemplateEngine()
+
+    init {
+        val templateResolver = templateEngine.makeTemplateResolver()
+        templateResolver.prefix = templateResolver.prefix + "emails/"
+        templateEngine.setTemplateResolver(templateResolver)
+    }
 
     fun sendTemplateEmail(
         template: String,
@@ -20,11 +31,6 @@ class EmailService(private val emailConfig: EmailConfig) {
         subject: String,
         mappedValues: Map<String, String>,
     ) {
-        val session = Session.getInstance(emailConfig.emailProps, emailConfig.emailAuthenticator)
-        val templateEngine = TemplateEngine()
-        val templateResolver = templateEngine.makeTemplateResolver()
-        templateResolver.prefix = templateResolver.prefix + "emails/"
-        templateEngine.setTemplateResolver(templateResolver)
         val context = Context(Locale.getDefault(), mappedValues)
         val content = templateEngine.process(template, context)
         try {

@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.auth.controllers.external
 
-import OrganisationService
+import uk.gov.communities.delta.auth.services.Organisation
+import uk.gov.communities.delta.auth.services.OrganisationService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -16,16 +17,17 @@ import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.RegistrationService
 import uk.gov.communities.delta.auth.services.getResultTypeString
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
+import uk.gov.communities.delta.auth.utils.emailToDomain
 
 class DeltaUserRegistrationController(
     private val deltaConfig: DeltaConfig,
     private val authServiceConfig: AuthServiceConfig,
     private val ssoConfig: AzureADSSOConfig,
-    organisationService: OrganisationService,
+    private val organisationService: OrganisationService,
     private val registrationService: RegistrationService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
-    private val emailAddressChecker = EmailAddressChecker(organisationService)
+    private val emailAddressChecker = EmailAddressChecker()
 
     fun registerFormRoutes(route: Route) {
         route.post {
@@ -65,7 +67,7 @@ class DeltaUserRegistrationController(
     private val notEqualEmails = "Email addresses do not match"
     private val notAnEmailAddress = "Email address must be a valid email address"
     private val notAKnownDomain =
-        "Email address domain not recognised, please use an email address associated with an organisation using DELTA"
+        "Email address domain not recognised, please use an email address associated with an organisation using DELTA. Please contact the service desk if you think this should have worked."
 
     private suspend fun registerPost(call: ApplicationCall) {
         val formParameters = call.receiveParameters()
@@ -81,14 +83,22 @@ class DeltaUserRegistrationController(
 
         if (firstName.isEmpty()) firstNameErrors.add(firstNameEmpty)
         if (lastName.isEmpty()) lastNameErrors.add(lastNameEmpty)
+
         // Delta has had issues with XSS in the past, so we disallow these characters as an extra precaution
         if (hasDisallowedSpecialCharacters(firstName)) firstNameErrors.add(firstNameContainsDisallowedCharacters)
         if (hasDisallowedSpecialCharacters(lastName)) lastNameErrors.add(lastNameContainsDisallowedCharacters)
         if (hasDisallowedSpecialCharacters(emailAddress)) emailAddressErrors.add(emailContainsDisallowedCharacters)
+
+        var organisations: List<Organisation> = listOf()
         if (emailAddress.isEmpty()) emailAddressErrors.add(emailAddressEmpty)
         else {
             if (!emailAddressChecker.hasValidEmailFormat(emailAddress)) emailAddressErrors.add(notAnEmailAddress)
-            else if (!emailAddressChecker.hasKnownNotRetiredDomain(emailAddress)) emailAddressErrors.add(notAKnownDomain)
+            else {
+                organisations = organisationService.findAllByDomain(emailToDomain(emailAddress))
+                if (!emailAddressChecker.hasKnownNotRetiredDomain(emailAddress, organisations)) emailAddressErrors.add(
+                    notAKnownDomain
+                )
+            }
         }
         if (confirmEmailAddress.isEmpty()) confirmEmailAddressErrors.add(confirmEmailAddressEmpty)
         else if (confirmEmailAddress != emailAddress) confirmEmailAddressErrors.add(notEqualEmails)
@@ -120,14 +130,14 @@ class DeltaUserRegistrationController(
             val registration = Registration(firstName, lastName, emailAddress)
             lateinit var registrationResult: RegistrationService.RegistrationResult
             try {
-                registrationResult = registrationService.register(registration)
+                registrationResult = registrationService.register(registration, organisations)
             } catch (e: Exception) {
                 logger.error(
-                    "Error registering user with  name: {} {}, email address: {}. Error: {}",
+                    "Error registering user with  name: {} {}, email address: {}",
                     firstName,
                     lastName,
                     emailAddress,
-                    e.toString()
+                    e
                 )
                 throw e // TODO - handle errors in a tidier way so these two can be combined - make specific exceptions
             }
@@ -136,12 +146,12 @@ class DeltaUserRegistrationController(
             } catch (e: Exception) {
                 // If it fails on this step the user never gets a link and doesn't know if account is made - TODO - is there a solution to this?
                 logger.error(
-                    "Error sending email after registration for first name: {}, last name: {}, email address: {}. Result of registration was {}. Error: {}",
+                    "Error sending email after registration for first name: {}, last name: {}, email address: {}. Result of registration was {}",
                     firstName,
                     lastName,
                     emailAddress,
                     getResultTypeString(registrationResult),
-                    e.toString()
+                    e
                 )
                 throw e
             }
@@ -168,13 +178,13 @@ class DeltaUserRegistrationController(
     }
 
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
-        when (registrationResult) {
+        return when (registrationResult) {
             is RegistrationService.UserCreated -> {
-                return respondSuccessPage(registrationResult.registration.emailAddress)
+                respondSuccessPage(registrationResult.registration.emailAddress)
             }
 
             is RegistrationService.UserAlreadyExists -> {
-                return respondSuccessPage(registrationResult.registration.emailAddress)
+                respondSuccessPage(registrationResult.registration.emailAddress)
             }
 
             is RegistrationService.RegistrationFailure -> {

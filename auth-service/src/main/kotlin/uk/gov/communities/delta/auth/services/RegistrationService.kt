@@ -1,14 +1,11 @@
 package uk.gov.communities.delta.auth.services
 
-import OrganisationService
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.getSetPasswordURL
-import uk.gov.communities.delta.auth.utils.ADUser
-import uk.gov.communities.delta.auth.utils.emailToDomain
 
 class RegistrationService(
     private val deltaConfig: DeltaConfig,
@@ -16,7 +13,6 @@ class RegistrationService(
     private val ldapConfig: LDAPConfig,
     private val authServiceConfig: AuthServiceConfig,
     private val setPasswordTokenService: SetPasswordTokenService,
-    private val organisationService: OrganisationService,
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
@@ -29,21 +25,24 @@ class RegistrationService(
     // Previously users could be datamart users but not delta users, at migration we only transferred over users who
     // were delta users so there should never be users who exist but aren't delta users - therefore can remove all logic
     // for attaching users and checking if they are indeed delta users (if they somehow existed they'd get a "contact
-    // the service desk" error at login which is what we want
+    // the service desk" error at login which is what we want)
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun register(registration: Registration, ssoUser: Boolean = false): RegistrationResult {
-        val adUser = ADUser(registration, ssoUser, ldapConfig)
+    suspend fun register(
+        registration: Registration,
+        organisations: List<Organisation>,
+        ssoUser: Boolean = false
+    ): RegistrationResult {
+        val adUser = UserService.ADUser(registration, ssoUser, ldapConfig)
         if (userLookupService.userExists(adUser.cn)) {
             logger.warn("User with DN {} tried to register but user already exists", adUser.dn)
             return UserAlreadyExists(registration)
         }
-
         try {
             userService.createUser(adUser)
             addUserToDefaultGroups(adUser)
-            addUserToDomainOrganisations(adUser)
+            addUserToOrganisations(adUser, organisations)
         } catch (e: Exception) {
             return RegistrationFailure(e)
         }
@@ -52,12 +51,12 @@ class RegistrationService(
         return UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
     }
 
-    private suspend fun addUserToDefaultGroups(adUser: ADUser) {
+    private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
         try {
             userService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
             userService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
         } catch (e: Exception) {
-            logger.error("Error adding user with dn {} to default groups: {}", adUser.dn, e.toString())
+            logger.error("Error adding user with dn {} to default groups", adUser.dn, e)
             throw e
         }
     }
@@ -66,10 +65,7 @@ class RegistrationService(
         return String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode)
     }
 
-    private suspend fun addUserToDomainOrganisations(adUser: ADUser) {
-        val organisations = organisationService.findAllByDomain(
-            emailToDomain(adUser.mail)
-        )
+    private suspend fun addUserToOrganisations(adUser: UserService.ADUser, organisations: List<Organisation>) {
         logger.info("Adding user with DN {} to domain organisations", adUser.dn)
         try {
             organisations.forEach {
@@ -80,7 +76,7 @@ class RegistrationService(
                     )
             }
         } catch (e: Exception) {
-            logger.error("Error adding user with dn {} to domain organisations: {}", adUser.dn, e.toString())
+            logger.error("Error adding user with dn {} to domain organisations", adUser.dn, e)
             throw e
         }
     }

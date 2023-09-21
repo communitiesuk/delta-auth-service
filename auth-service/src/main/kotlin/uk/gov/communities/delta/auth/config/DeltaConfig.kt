@@ -9,11 +9,15 @@ class DeltaConfig(
 ) {
     val datamartDeltaUser = "datamart-delta-user"
     val datamartDeltaReportUsers = "datamart-delta-report-users"
+
     companion object {
         fun fromEnv() = DeltaConfig(
             deltaWebsiteUrl = Env.getRequiredOrDevFallback("DELTA_WEBSITE_URL", "http://localhost:8080"),
             rateLimit = Env.getRequiredOrDevFallback("AUTH_RATE_LIMIT", "10").toInt(),
-            masterStoreBaseNoAuth = Env.getRequiredOrDevFallback("DELTA_MASTER_STORE_BASE_NO_AUTH", "http://localhost:8030/")
+            masterStoreBaseNoAuth = Env.getRequiredOrDevFallback(
+                "DELTA_MARKLOGIC_LDAP_AUTH_APP_SERVICE",
+                "http://localhost:8030/"
+            )
         )
     }
 

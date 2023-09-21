@@ -1,3 +1,5 @@
+package uk.gov.communities.delta.auth.services
+
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.java.*
@@ -14,7 +16,7 @@ import java.time.LocalDate
 import kotlin.time.Duration.Companion.seconds
 
 @Serializable
-class OrganisationSearchResponse(@SerialName("organisation-results") val organisations: List<Organisation>) {}
+class OrganisationSearchResponse(@SerialName("organisation-results") val organisations: List<Organisation>)
 
 @Serializable
 class Organisation(

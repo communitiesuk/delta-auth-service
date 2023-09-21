@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.controllers.external
 
+import uk.gov.communities.delta.auth.services.OrganisationService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -23,6 +24,7 @@ import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
+import uk.gov.communities.delta.auth.utils.emailToDomain
 import javax.naming.NameNotFoundException
 
 /*
@@ -37,6 +39,7 @@ class DeltaSSOLoginController(
     private val authorizationCodeService: AuthorizationCodeService,
     private val microsoftGraphService: MicrosoftGraphService,
     private val registrationService: RegistrationService,
+    private val organisationService: OrganisationService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -66,7 +69,7 @@ class DeltaSSOLoginController(
         val session = validateOAuthStateInSession(call)
 
         val principal = call.principal<OAuthAccessTokenResponse.OAuth2>()!!
-        val email = extractEmailFromTrustedJwt(principal.accessToken)
+        val email = parseTrustedAzureJwt(principal.accessToken).emailAddress
         checkEmailDomain(email, ssoClient)
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
@@ -74,11 +77,13 @@ class DeltaSSOLoginController(
         var user = lookupUserInAd(email)
         if (user == null) {
             registrationService.register(
-                extractRegistrationFromTrustedJwt(principal.accessToken),
+                parseTrustedAzureJwt(principal.accessToken),
+                organisationService.findAllByDomain(emailToDomain(email)),
                 ssoUser = true
             )
             user = lookupUserInAd(email)!!
             // TODO - check if cookie is set, if not give different error to what is thrown normally - use DT-595
+//                    - won't get to here because cookie check is earlier on - forward via delta with login-hint before getting to this point so cookie will always be set
         }
 
         checkUserEnabled(user)
@@ -230,19 +235,7 @@ class DeltaSSOLoginController(
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }
 
-    private fun extractEmailFromTrustedJwt(jwt: String): String {
-        try {
-            val split = jwt.split('.')
-            if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
-            val jsonString = split[1].decodeBase64String()
-            return jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString).uniqueName
-        } catch (e: Exception) {
-            logger.error("Error parsing JWT '{}'", jwt)
-            throw InvalidJwtException("Error parsing JWT", e)
-        }
-    }
-
-    private fun extractRegistrationFromTrustedJwt(jwt: String): Registration {
+    private fun parseTrustedAzureJwt(jwt: String): Registration {
         try {
             val split = jwt.split('.')
             if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
