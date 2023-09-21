@@ -53,6 +53,14 @@ class DeltaLoginControllerTest {
     }
 
     @Test
+    fun testLoginPageWithSSOParamRedirects() = testSuspend {
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234&sso-client=dev").apply {
+            assertEquals(HttpStatusCode.Found, status)
+            assertEquals(oauthClientLoginRoute("dev"), headers["Location"], "Should redirect to OAuth route")
+        }
+    }
+
+    @Test
     fun testLoginPostAccountDisabled() = testSuspend {
         loginResult = IADLdapLoginService.DisabledAccount
         testClient.submitForm(
