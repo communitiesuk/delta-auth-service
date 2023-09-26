@@ -9,7 +9,7 @@ import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.LdapService
 import uk.gov.communities.delta.helper.testLdapUser
-import javax.naming.directory.InitialDirContext
+import javax.naming.ldap.InitialLdapContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -25,7 +25,7 @@ class ADLdapLoginServiceTest {
             ADLdapLoginService.Configuration("CN=%s,OU=Users,DC=test"),
             ldapService
         )
-        val mockContext = mockk<InitialDirContext>(relaxed = true)
+        val mockContext = mockk<InitialLdapContext>(relaxed = true)
         every { ldapService.bind("CN=username,OU=Users,DC=test", "password") }.returns(mockContext)
         every { ldapService.mapUserFromContext(mockContext, "CN=username,OU=Users,DC=test") }.returns(testLdapUser())
     }

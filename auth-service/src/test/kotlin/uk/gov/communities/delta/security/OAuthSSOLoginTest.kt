@@ -26,9 +26,7 @@ import uk.gov.communities.delta.auth.deltaLoginRoutes
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.azureAdSingleSignOn
 import uk.gov.communities.delta.auth.security.configureRateLimiting
-import uk.gov.communities.delta.auth.services.AuthCode
-import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
@@ -43,7 +41,7 @@ import kotlin.test.assertTrue
 
 
 @RunWith(SingleInstanceRunner::class)
-class OAuthLoginTest {
+class OAuthSSOLoginTest {
 
     @Test
     fun testOAuthFlow() = testSuspend {
@@ -134,12 +132,18 @@ class OAuthLoginTest {
     }
 
     @Test
-    fun `Callback redirects to Delta create user page if no ldap user`() = testSuspend {
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } throws (NameNotFoundException())
+    fun `Callback calls register function if no ldap user`() = testSuspend {
+        val userCN = "user!example.com"
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
+        val organisations = listOf(Organisation("E1234"))
+        coEvery { organisationService.findAllByDomain("example.com") } returns organisations
+        val registration = Registration("Example", "User", "user@example.com")
+        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.UserCreated(registration, "token", userCN)
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
+                coVerify(exactly = 1) { registrationService.register(any(), organisations, true) }
                 assertEquals(HttpStatusCode.Found, status)
-                assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/register"))
+                assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             }
     }
 
@@ -279,11 +283,14 @@ class OAuthLoginTest {
             requiredAdminGroupId = "required-admin-group-id",
         )
         private val ssoConfig = mockk<AzureADSSOConfig>()
-        private val accessToken = "header.${"{\"unique_name\": \"user@example.com\"}".encodeBase64()}.trailer"
+        private val accessToken =
+            "header.${"{\"unique_name\": \"user@example.com\", \"given_name\": \"Example\", \"family_name\": \"User\"}".encodeBase64()}.trailer"
         private lateinit var ldapUserLookupServiceMock: UserLookupService
         private lateinit var authorizationCodeServiceMock: AuthorizationCodeService
         private lateinit var microsoftGraphServiceMock: MicrosoftGraphService
         private lateinit var ssoLoginStateService: SSOLoginSessionStateService
+        private lateinit var registrationService: RegistrationService
+        private lateinit var organisationService: OrganisationService
 
         @BeforeClass
         @JvmStatic
@@ -292,6 +299,8 @@ class OAuthLoginTest {
             microsoftGraphServiceMock = mockk<MicrosoftGraphService>()
             authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
             ldapUserLookupServiceMock = mockk<UserLookupService>()
+            registrationService = mockk<RegistrationService>()
+            organisationService = mockk<OrganisationService>()
             val loginPageController = DeltaLoginController(
                 serviceConfig,
                 listOf(serviceClient),
@@ -310,6 +319,8 @@ class OAuthLoginTest {
                 ldapUserLookupServiceMock,
                 authorizationCodeServiceMock,
                 microsoftGraphServiceMock,
+                registrationService,
+                organisationService,
             )
             val oauthClientProviderLookupService = SSOOAuthClientProviderLookupService(
                 ssoConfig, ssoLoginStateService

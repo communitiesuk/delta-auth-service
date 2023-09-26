@@ -22,6 +22,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
+import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
@@ -157,15 +158,16 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSSODomainRedirects() = testSuspend {
+        val testUserEmail = "user@sso.domain"
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
-                append("username", "user@sso.domain")
+                append("username", testUserEmail)
                 append("password", "pass")
             }
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
-            assertEquals(oauthClientLoginRoute("dev"), headers["Location"], "Should redirect to OAuth route")
+            assertEquals(oauthClientLoginRouteWithEmail("dev", testUserEmail), headers["Location"], "Should redirect to OAuth route")
             verify(exactly = 0) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
         }
