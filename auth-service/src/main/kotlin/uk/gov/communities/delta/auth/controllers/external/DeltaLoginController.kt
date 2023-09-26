@@ -12,6 +12,7 @@ import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
@@ -51,6 +52,9 @@ class DeltaLoginController(
         call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = client.clientId))
 
         if (params.useSSOClient != null) {
+            if (params.expectedEmail != null) {
+                call.respondRedirect(oauthClientLoginRouteWithEmail(params.useSSOClient.internalId, params.expectedEmail))
+            }
             call.respondRedirect(oauthClientLoginRoute(params.useSSOClient.internalId))
         } else {
             call.respondLoginPage(client)
@@ -61,6 +65,7 @@ class DeltaLoginController(
         val client: DeltaLoginEnabledClient,
         val state: String,
         val useSSOClient: AzureADSSOClient?,
+        val expectedEmail: String?,
     )
 
     private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
@@ -83,7 +88,8 @@ class DeltaLoginController(
         }
         val ssoClient = request.queryParameters["sso-client"]
             ?.let { param -> ssoConfig.ssoClients.firstOrNull { it.internalId == param } }
-        return LoginQueryParams(client, state, ssoClient)
+        val expectedEmail = request.queryParameters["expected-email"]
+        return LoginQueryParams(client, state, ssoClient, expectedEmail)
     }
 
     private suspend fun ApplicationCall.respondLoginPage(

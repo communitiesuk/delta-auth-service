@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
+import uk.gov.communities.delta.auth.deltaRouteWithEmail
 import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.RegistrationService
 import uk.gov.communities.delta.auth.services.getResultTypeString
@@ -120,7 +120,8 @@ class DeltaUserRegistrationController(
             }
             if (ssoClientMatchingEmailDomain != null) {
                 return call.respondRedirect(
-                    oauthClientLoginRouteWithEmail(
+                    deltaRouteWithEmail(
+                        deltaConfig.deltaWebsiteUrl,
                         ssoClientMatchingEmailDomain.internalId,
                         emailAddress
                     )

@@ -131,9 +131,12 @@ fun Route.deltaLoginRoutes(
     }
 }
 
+fun deltaRouteWithEmail(deltaUrl:String, ssoClientInternalId: String, email: String) =
+    deltaUrl  + "/oauth2/authorization/delta-auth?sso-client=${ssoClientInternalId}&expected-email=${email.encodeURLParameter()}"
+
 fun oauthClientLoginRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/login"
 fun oauthClientLoginRouteWithEmail(ssoClientInternalId: String, email: String) =
-    "/delta/oauth/${ssoClientInternalId}/login?email=${email.encodeURLParameter()}"
+    "/delta/oauth/${ssoClientInternalId}/login?expected-email=${email.encodeURLParameter()}"
 
 fun oauthClientCallbackRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/callback"
 
