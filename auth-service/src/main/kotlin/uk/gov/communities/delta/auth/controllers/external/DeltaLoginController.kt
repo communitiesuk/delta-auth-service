@@ -20,7 +20,6 @@ import uk.gov.communities.delta.auth.services.withAuthCode
 
 
 class DeltaLoginController(
-    private val authServiceConfig: AuthServiceConfig,
     private val clients: List<DeltaLoginEnabledClient>,
     private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
@@ -110,7 +109,6 @@ class DeltaLoginController(
     )
 
     private suspend fun loginPost(call: ApplicationCall) {
-        call.checkOriginHeader()
         val queryParams = call.getLoginQueryParams()
             ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
 
@@ -221,19 +219,4 @@ class DeltaLoginController(
     }
 
     private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.datamartDeltaUser)
-
-    private fun ApplicationCall.checkOriginHeader() {
-        val origin = request.headers["Origin"]
-        if (origin != authServiceConfig.serviceUrl) {
-            logger.warn(
-                "Origin header check failure, expected '{}' got '{}' for user agent {}",
-                authServiceConfig.serviceUrl,
-                origin,
-                request.headers["User-Agent"]
-            )
-            throw InvalidOriginException("Origin header validation failed, expected '${authServiceConfig.serviceUrl}' got '$origin'")
-        }
-    }
-
-    class InvalidOriginException(message: String) : Exception(message)
 }

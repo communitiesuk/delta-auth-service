@@ -6,6 +6,7 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.server.application.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
@@ -16,13 +17,14 @@ import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
+import uk.gov.communities.delta.auth.plugins.InvalidOriginException
 import uk.gov.communities.delta.auth.plugins.configureTemplating
+import uk.gov.communities.delta.auth.plugins.originHeaderCheck
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
@@ -161,7 +163,7 @@ class DeltaLoginControllerTest {
     @Test
     fun testLoginPostChecksOriginHeader() = testSuspend {
         val client = testApp.createClient { followRedirects = false }
-        Assert.assertThrows(DeltaLoginController.InvalidOriginException::class.java) {
+        Assert.assertThrows(InvalidOriginException::class.java) {
             runBlocking {
                 client.submitForm(
                     url = "/login?response_type=code&client_id=delta-website&state=1234",
@@ -219,7 +221,6 @@ class DeltaLoginControllerTest {
         @JvmStatic
         fun setup() {
             val controller = DeltaLoginController(
-                AuthServiceConfig("http://localhost", null),
                 listOf(client),
                 AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain", required = true))),
                 deltaConfig,
@@ -244,6 +245,7 @@ class DeltaLoginControllerTest {
                     configureTemplating(false)
                     routing {
                         route("/login") {
+                            install(originHeaderCheck("http://localhost"))
                             controller.loginRoutes(this)
                         }
                     }

@@ -152,7 +152,7 @@ class RegistrationService(
 
 class EmailException(val e: Exception) : Exception("Issue sending email")
 
-class Registration(
+data class Registration(
     val firstName: String,
     val lastName: String,
     val emailAddress: String
