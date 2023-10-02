@@ -101,4 +101,4 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
 }
 
 fun LoggingEventBuilder.withAuthCode(authCode: AuthCode): LoggingEventBuilder =
-    addKeyValue("username", authCode.code).addKeyValue("trace", authCode.traceId)
+    addKeyValue("username", authCode.userCn).addKeyValue("trace", authCode.traceId)
