@@ -31,7 +31,7 @@ data class LDAPConfig(
             authServiceUserPassword = Env.getRequired("LDAP_AUTH_SERVICE_USER_PASSWORD")
         )
 
-        val VALID_USERNAME_REGEX = Regex("^[\\w-.!]+$")
+        val VALID_USERNAME_REGEX = Regex("^[\\w-.!']+$")
     }
 
     val authServiceUserDn = serviceUserDnFormat.format(authServiceUserCn)
