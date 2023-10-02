@@ -1,6 +1,5 @@
 package uk.gov.communities.delta.auth
 
-import uk.gov.communities.delta.auth.services.OrganisationService
 import io.micrometer.cloudwatch2.CloudWatchConfig
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
 import io.micrometer.core.instrument.Clock
@@ -89,7 +88,7 @@ class Injection(
         ldapService
     )
     private val emailService = EmailService(emailConfig)
-    private val userService = UserService(ldapService, ldapConfig, groupService())
+    private val userService = UserService(ldapService)
 
     val dbPool = DbPool(databaseConfig)
 
@@ -104,7 +103,8 @@ class Injection(
             setPasswordTokenService,
             emailService,
             userService,
-            userLookupService
+            userLookupService,
+            groupService()
         )
 
     val authorizationCodeService = AuthorizationCodeService(dbPool, TimeSource.System)
@@ -172,7 +172,16 @@ class Injection(
         registrationService,
     )
 
-    fun externalDeltaSetPasswordController() = DeltaSetPasswordController(deltaConfig, ldapConfig, emailConfig, authServiceConfig, userService, setPasswordTokenService, userLookupService, emailService)
+    fun externalDeltaSetPasswordController() = DeltaSetPasswordController(
+        deltaConfig,
+        ldapConfig,
+        emailConfig,
+        authServiceConfig,
+        userService,
+        setPasswordTokenService,
+        userLookupService,
+        emailService
+    )
 
     fun internalOAuthTokenController() = OAuthTokenController(
         clientConfig.oauthClients,
@@ -189,6 +198,7 @@ class Injection(
             deltaConfig,
             clientConfig,
             azureADSSOConfig,
+            authServiceConfig,
             ssoLoginStateService,
             userLookupService,
             authorizationCodeService,

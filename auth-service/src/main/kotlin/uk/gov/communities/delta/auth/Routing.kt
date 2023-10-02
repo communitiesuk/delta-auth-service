@@ -64,10 +64,13 @@ fun Route.externalRoutes(
     staticResources("/static", "static") {
         cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
     }
+
+    val faviconBytes = javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes()
+
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
     get("/favicon.ico") {
         call.respondBytes(
-            javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes(),
+            faviconBytes,
             ContentType.Image.XIcon
         )
     }
@@ -76,7 +79,7 @@ fun Route.externalRoutes(
         deltaRegisterRoutes(deltaUserRegistrationController)
     }
 
-    route("/delta/set-password"){
+    route("/delta/set-password") {
         deltaSetPasswordRoutes(deltaSetPasswordController)
     }
 
@@ -131,8 +134,8 @@ fun Route.deltaLoginRoutes(
     }
 }
 
-fun deltaRouteWithEmail(deltaUrl:String, ssoClientInternalId: String, email: String) =
-    deltaUrl  + "/oauth2/authorization/delta-auth?sso-client=${ssoClientInternalId}&expected-email=${email.encodeURLParameter()}"
+fun deltaRouteWithEmail(deltaUrl: String, ssoClientInternalId: String, email: String) =
+    deltaUrl + "/oauth2/authorization/delta-auth?sso-client=${ssoClientInternalId}&expected-email=${email.encodeURLParameter()}"
 
 fun oauthClientLoginRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/login"
 fun oauthClientLoginRouteWithEmail(ssoClientInternalId: String, email: String) =

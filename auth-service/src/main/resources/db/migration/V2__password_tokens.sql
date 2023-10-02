@@ -1,6 +1,6 @@
 CREATE TABLE set_password_tokens
 (
-    user_cn    text UNIQUE PRIMARY KEY,
+    user_cn    text PRIMARY KEY,
     token      bytea     NOT NULL,
     created_at timestamp NOT NULL
 );

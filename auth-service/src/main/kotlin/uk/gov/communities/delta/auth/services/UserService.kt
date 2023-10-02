@@ -3,13 +3,12 @@ package uk.gov.communities.delta.auth.services
 import com.google.common.base.Strings
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import java.io.UnsupportedEncodingException
 import javax.naming.directory.*
 
 class UserService(
     private val ldapService: LdapService,
-    private val ldapConfig: LDAPConfig,
-    private val groupService: GroupService,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -36,26 +35,25 @@ class UserService(
         if (adUser.password != null) container.put(ADUser.getPasswordAttribute(adUser.password!!))
         if (adUser.comment != null) container.put(BasicAttribute("comment", adUser.comment))
 
-        ldapService.useServiceUserBind {
-            try {
-                it.createSubcontext(adUser.dn, container)
-            } catch (e: Exception) {
-                logger.error("Problem creating user", e)
-                throw e
+        val enabled = adUser.userAccountControl == ADUser.accountFlags(true)
+        if (enabled && adUser.password == null) {
+            logger.error("Trying to create an enabled user without a password")
+            throw UserVisibleServerError(
+                "passwordless_user",
+                "Trying to create user with no password",
+                "Something went wrong",
+                "Registration Error"
+            )
+        } else {
+            ldapService.useServiceUserBind {
+                try {
+                    it.createSubcontext(adUser.dn, container)
+                    logger.info("{} user created with dn {}", if (enabled) "Enabled" else "Disabled", adUser.dn)
+                } catch (e: Exception) {
+                    logger.error("Problem creating user", e)
+                    throw e
+                }
             }
-        }
-    }
-
-    suspend fun addUserToGroup(adUser: ADUser, groupName: String) {
-        val groupDN = ldapConfig.groupDnFormat.format(groupName)
-
-        if (!groupService.groupExists(groupDN)) {
-            groupService.createGroup(groupName)
-        }
-        ldapService.useServiceUserBind {
-            val member = BasicAttribute("member", adUser.dn)
-            val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
-            it.modifyAttributes(groupDN, modificationItems)
         }
     }
 
@@ -70,13 +68,14 @@ class UserService(
         ldapService.useServiceUserBind {
             try {
                 it.modifyAttributes(userDN, modificationItems)
+                logger.info("Account enabled and password set for user with dn {}", userDN)
             } catch (e: Exception) {
                 throw e
             }
         }
     }
 
-    class ADUser(registration: Registration, ssoUser: Boolean, private val ldapConfig: LDAPConfig ) {
+    class ADUser(registration: Registration, ssoUser: Boolean, private val ldapConfig: LDAPConfig) {
         var cn: String = emailToCN(registration.emailAddress)
         var givenName: String = registration.firstName
         var sn: String = registration.lastName
@@ -86,7 +85,7 @@ class UserService(
         var userPrincipalName: String = cnToPrincipalName(cn)
         var st: String = "active"
         var objClasses = objClasses()
-        var password = if (ssoUser) randomBase64(20) else null
+        var password = if (ssoUser) randomBase64(18) else null
         var comment = if (ssoUser) "Created via SSO" else null
 
         private fun objClasses(): Attribute {
@@ -114,7 +113,7 @@ class UserService(
             private const val NORMAL_ACCOUNT_FLAG = 512
             private const val ACCOUNTDISABLE_FLAG = 2
             fun accountFlags(enabled: Boolean): String {
-                return  if (enabled) {
+                return if (enabled) {
                     NORMAL_ACCOUNT_FLAG.toString()
                 } else {
                     return (NORMAL_ACCOUNT_FLAG + ACCOUNTDISABLE_FLAG).toString()

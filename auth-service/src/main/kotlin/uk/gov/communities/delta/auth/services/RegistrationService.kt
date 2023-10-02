@@ -16,9 +16,10 @@ class RegistrationService(
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
+    private val groupService: GroupService,
 ) {
     sealed class RegistrationResult
-    class UserCreated(val registration: Registration, val token: String, val userCN: String) : RegistrationResult()
+    class UserCreated(val registration: Registration, val token: String?, val userCN: String) : RegistrationResult()
     class UserAlreadyExists(val registration: Registration) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
@@ -48,13 +49,18 @@ class RegistrationService(
         }
 
         logger.info("User successfully created with DN {}", adUser.dn)
-        return UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
+        return UserCreated(
+            registration,
+            if (ssoUser) null else setPasswordTokenService.createToken(adUser.cn),
+            adUser.cn
+        )
     }
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
         try {
-            userService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
-            userService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
+            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
+            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
+            logger.info("User with DN {} added to default groups", adUser.dn)
         } catch (e: Exception) {
             logger.error("Error adding user with dn {} to default groups", adUser.dn, e)
             throw e
@@ -69,11 +75,13 @@ class RegistrationService(
         logger.info("Adding user with DN {} to domain organisations", adUser.dn)
         try {
             organisations.forEach {
-                if (!it.retired)
-                    userService.addUserToGroup(
+                if (!it.retired) {
+                    groupService.addUserToGroup(
                         adUser,
                         organisationUserGroup(it.code)
                     )
+                    logger.info("Added user with DN {} to domain organisation with code {}", adUser.dn, it.code)
+                }
             }
         } catch (e: Exception) {
             logger.error("Error adding user with dn {} to domain organisations", adUser.dn, e)
@@ -103,7 +111,7 @@ class RegistrationService(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                         "userFirstName" to registrationResult.registration.firstName,
                         "setPasswordUrl" to getSetPasswordURL(
-                            registrationResult.token,
+                            registrationResult.token!!,
                             registrationResult.userCN,
                             authServiceConfig.serviceUrl
                         )

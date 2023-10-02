@@ -36,7 +36,6 @@ import kotlin.test.assertTrue
 
 
 class DeltaLoginControllerTest {
-// TODO - check tests run/fix them for changes
     @Test
     fun testLoginPage() = testSuspend {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
@@ -120,6 +119,26 @@ class DeltaLoginControllerTest {
     }
 
     @Test
+    fun testLoginUserNotExisting() = testSuspend {
+        loginResult = IADLdapLoginService.InvalidUsernameOrPassword
+        testClient.submitForm(
+            url = "/login?response_type=code&client_id=delta-website&state=1234",
+            formParameters = parameters {
+                append("username", "user")
+                append("password", "pass")
+            }
+        ).apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(
+                bodyAsText(),
+                "Your username or password are incorrect. Please try again or reset your password. Five incorrect login attempts will lock your account for 30 minutes, you may have to try later."
+            )
+            verify(exactly = 1) { failedLoginCounter.increment(1.0) }
+            verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
+        }
+    }
+
+    @Test
     fun testLoginPostSuccess() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(
             testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
@@ -167,7 +186,11 @@ class DeltaLoginControllerTest {
             }
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
-            assertEquals(oauthClientLoginRouteWithEmail("dev", testUserEmail), headers["Location"], "Should redirect to OAuth route")
+            assertEquals(
+                oauthClientLoginRouteWithEmail("dev", testUserEmail),
+                headers["Location"],
+                "Should redirect to OAuth route"
+            )
             verify(exactly = 0) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
         }

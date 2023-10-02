@@ -1,6 +1,5 @@
 package uk.gov.communities.delta.auth.controllers.external
 
-import uk.gov.communities.delta.auth.services.OrganisationService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -15,10 +14,7 @@ import kotlinx.serialization.json.Json
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AzureADSSOClient
-import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.ClientConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
@@ -34,6 +30,7 @@ class DeltaSSOLoginController(
     private val deltaConfig: DeltaConfig,
     private val clientConfig: ClientConfig,
     private val ssoConfig: AzureADSSOConfig,
+    private val authServiceConfig: AuthServiceConfig,
     private val ssoLoginStateService: SSOLoginSessionStateService,
     private val ldapLookupService: UserLookupService,
     private val authorizationCodeService: AuthorizationCodeService,
@@ -76,14 +73,15 @@ class DeltaSSOLoginController(
 
         var user = lookupUserInAd(email)
         if (user == null) {
+            if (!ssoClient.required) {
+                return call.respondRedirect(authServiceConfig.serviceUrl + "/register")
+            }
             registrationService.register(
                 parseTrustedAzureJwt(principal.accessToken),
                 organisationService.findAllByDomain(emailToDomain(email)),
                 ssoUser = true
             )
             user = lookupUserInAd(email)!!
-            // TODO - check if cookie is set, if not give different error to what is thrown normally - use DT-595
-//                    - won't get to here because cookie check is earlier on - forward via delta with login-hint before getting to this point so cookie will always be set
         }
 
         checkUserEnabled(user)

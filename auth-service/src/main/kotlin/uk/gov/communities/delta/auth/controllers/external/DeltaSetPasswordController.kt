@@ -157,7 +157,7 @@ class DeltaSetPasswordController(
                         "An error occurred please try again or contact the service desk"
                     )
                 }
-                this.respondSuccessPage()
+                this.respondRedirect(authServiceConfig.serviceUrl + "/delta/set-password/success")
             }
         }
     }

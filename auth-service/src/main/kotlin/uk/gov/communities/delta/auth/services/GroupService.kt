@@ -2,10 +2,7 @@ package uk.gov.communities.delta.auth.services
 
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import javax.naming.directory.Attribute
-import javax.naming.directory.Attributes
-import javax.naming.directory.BasicAttribute
-import javax.naming.directory.BasicAttributes
+import javax.naming.directory.*
 
 class GroupService(
     private val ldapService: LdapService,
@@ -14,11 +11,11 @@ class GroupService(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun createGroup(groupName: String) {
+    suspend fun createGroup(groupCN: String) {
         try {
-            addGroupToAD(ADGroup(groupName, ldapConfig))
+            addGroupToAD(ADGroup(groupCN, ldapConfig))
         } catch (e: Exception) {
-            logger.error("Problem creating group with name {} in AD", groupName, e)
+            logger.error("Problem creating group with cn {} in AD", groupCN, e)
             throw e
         }
     }
@@ -35,12 +32,27 @@ class GroupService(
         return attributes.get("cn") != null
     }
 
+    suspend fun addUserToGroup(adUser: UserService.ADUser, groupCN: String) {
+        val groupDN = ldapConfig.groupDnFormat.format(groupCN)
+
+        if (!groupExists(groupDN)) {
+            createGroup(groupCN)
+        }
+        ldapService.useServiceUserBind {
+            val member = BasicAttribute("member", adUser.dn)
+            val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
+            it.modifyAttributes(groupDN, modificationItems)
+            logger.info("User with dn {} added to group with dn {}", adUser.dn, groupDN)
+        }
+    }
+
     private suspend fun addGroupToAD(adGroup: ADGroup) {
         val container: Attributes = BasicAttributes()
         container.put(adGroup.objectClasses)
         container.put(BasicAttribute("cn", adGroup.cn))
         ldapService.useServiceUserBind {
             it.createSubcontext(adGroup.dn, container)
+            logger.info("Group with dn {} created on active directory", adGroup.dn)
         }
     }
 

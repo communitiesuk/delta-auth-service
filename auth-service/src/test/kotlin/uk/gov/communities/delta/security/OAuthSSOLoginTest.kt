@@ -132,13 +132,42 @@ class OAuthSSOLoginTest {
     }
 
     @Test
-    fun `Callback calls register function if no ldap user`() = testSuspend {
+    fun `Callback redirects to register page if no ldap user for non-required SSO client`() = testSuspend {
         val userCN = "user!example.com"
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
+            memberOfCNs = listOf(deltaConfig.datamartDeltaUser)
+        )
         val organisations = listOf(Organisation("E1234"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         val registration = Registration("Example", "User", "user@example.com")
-        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.UserCreated(registration, "token", userCN)
+        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.UserCreated(
+            registration,
+            "token",
+            userCN
+        )
+        testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
+            .apply {
+                coVerify(exactly = 0) { registrationService.register(any(), organisations, true) }
+                assertEquals(HttpStatusCode.Found, status)
+                assertEquals(serviceConfig.serviceUrl + "/register", headers["Location"])
+            }
+    }
+
+    @Test
+    fun `Callback calls register function if no ldap user for required SSO client`() = testSuspend {
+        every { ssoConfig.ssoClients } answers { listOf(ssoClient.copy(required = true)) }
+        val userCN = "user!example.com"
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
+            memberOfCNs = listOf(deltaConfig.datamartDeltaUser)
+        )
+        val organisations = listOf(Organisation("E1234"))
+        coEvery { organisationService.findAllByDomain("example.com") } returns organisations
+        val registration = Registration("Example", "User", "user@example.com")
+        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.UserCreated(
+            registration,
+            "token",
+            userCN
+        )
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
                 coVerify(exactly = 1) { registrationService.register(any(), organisations, true) }
@@ -315,6 +344,7 @@ class OAuthSSOLoginTest {
                 deltaConfig,
                 ClientConfig(listOf(serviceClient)),
                 ssoConfig,
+                serviceConfig,
                 ssoLoginStateService,
                 ldapUserLookupServiceMock,
                 authorizationCodeServiceMock,
