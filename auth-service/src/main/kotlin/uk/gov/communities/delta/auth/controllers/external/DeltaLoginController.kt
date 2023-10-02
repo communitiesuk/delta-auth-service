@@ -111,7 +111,7 @@ class DeltaLoginController(
 
         val client = queryParams.client
         val formParameters = call.receiveParameters()
-        val formUsername = formParameters["username"]
+        val formUsername = formParameters["username"]?.trim()
         val password = formParameters["password"]
 
         if (formUsername.isNullOrEmpty()) return call.respondLoginPage(
