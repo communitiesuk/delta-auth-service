@@ -15,16 +15,21 @@ class EmailConfig(
 ) {
     companion object {
         fun fromEnv(): EmailConfig {
-            val smtpUsername = Env.getRequiredOrDevFallback("MAIL_SMTP_USERNAME", "")
-            val smtpPassword = Env.getRequiredOrDevFallback("MAIL_SMTP_PASSWORD", "")
+            val props = Properties()
+            val smtpUsername = Env.getEnv("MAIL_SMTP_USERNAME")
+            val smtpPassword = Env.getEnv("MAIL_SMTP_PASSWORD")
             val authenticator: Authenticator = object : Authenticator() {
                 override fun getPasswordAuthentication(): PasswordAuthentication {
-                    return PasswordAuthentication(smtpUsername, smtpPassword)
+                    return PasswordAuthentication(smtpUsername ?: "", smtpPassword ?: "")
+                }
+
+                override fun toString(): String {
+                    return smtpUsername ?: "No value for MAIL_SMTP_USERNAME"
                 }
             }
-            val props = Properties()
-            props["mail.smtp.auth"] = if (Env.devFallbackEnabled) "false" else "true"
-            props["mail.smtp.starttls.enable"] = "true"
+            val useAuth = smtpUsername != null
+            props["mail.smtp.auth"] = useAuth
+            props["mail.smtp.starttls.enable"] = useAuth
             props["mail.smtp.host"] = Env.getRequiredOrDevFallback("MAIL_SMTP_HOST", "localhost")
             props["mail.smtp.port"] = Env.getRequiredOrDevFallback("MAIL_SMTP_PORT", "25")
             return EmailConfig(
@@ -44,10 +49,7 @@ class EmailConfig(
     fun log(logger: LoggingEventBuilder) {
         logger.addKeyValue("MAIL_SMTP_HOST", emailProps["mail.smtp.host"])
             .addKeyValue("MAIL_SMTP_PORT", emailProps["mail.smtp.port"])
-            .addKeyValue(
-                "MAIL_SMTP_USERNAME",
-                Env.getRequiredOrDevFallback("MAIL_SMTP_USERNAME", "Not required")
-            ) // TODO - is this necessary/is there a better way/can I get it out of the authenticator?
+            .addKeyValue("MAIL_SMTP_USERNAME", emailAuthenticator.toString())
             .log("Email config")
     }
 }

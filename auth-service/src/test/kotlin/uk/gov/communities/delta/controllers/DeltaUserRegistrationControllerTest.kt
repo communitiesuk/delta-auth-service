@@ -95,6 +95,19 @@ class DeltaUserRegistrationControllerTest {
     }
 
     @Test
+    fun testRegistrationFormValidationBadEmailError() = testSuspend {
+        coEvery { organisationService.findAllByDomain(any()) } returns listOf()
+        testClient.submitForm(
+            url = "/register",
+            formParameters = correctFormParameters("notAn@EmailStringcom")
+        ).apply {
+            coVerify(exactly = 0) { userService.createUser(any()) }
+            assertFormPage(bodyAsText(), status)
+            assertContains(bodyAsText(), "Email address must be a valid email address")
+        }
+    }
+
+    @Test
     fun testRegistrationForAlreadyExistingStandardUser() = testSuspend {
         coEvery { userLookupService.userExists(cnStart + standardDomain) } returns true
         testClient.submitForm(

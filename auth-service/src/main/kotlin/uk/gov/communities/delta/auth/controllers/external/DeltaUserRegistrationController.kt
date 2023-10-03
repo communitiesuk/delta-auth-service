@@ -1,7 +1,5 @@
 package uk.gov.communities.delta.auth.controllers.external
 
-import uk.gov.communities.delta.auth.services.Organisation
-import uk.gov.communities.delta.auth.services.OrganisationService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -13,9 +11,7 @@ import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.deltaRouteWithEmail
-import uk.gov.communities.delta.auth.services.Registration
-import uk.gov.communities.delta.auth.services.RegistrationService
-import uk.gov.communities.delta.auth.services.getResultTypeString
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import uk.gov.communities.delta.auth.utils.emailToDomain
 
@@ -132,26 +128,23 @@ class DeltaUserRegistrationController(
             lateinit var registrationResult: RegistrationService.RegistrationResult
             try {
                 registrationResult = registrationService.register(registration, organisations)
-            } catch (e: Exception) {
-                logger.error(
-                    "Error registering user with  name: {} {}, email address: {}",
-                    firstName,
-                    lastName,
-                    emailAddress,
-                    e
-                )
-                throw e // TODO - handle errors in a tidier way so these two can be combined - make specific exceptions
-            }
-            try {
                 registrationService.sendRegistrationEmail(registrationResult)
-            } catch (e: Exception) {
-                // If it fails on this step the user never gets a link and doesn't know if account is made - TODO - is there a solution to this?
+            } catch (e: EmailException) {
                 logger.error(
                     "Error sending email after registration for first name: {}, last name: {}, email address: {}. Result of registration was {}",
                     firstName,
                     lastName,
                     emailAddress,
                     getResultTypeString(registrationResult),
+                    e
+                )
+                throw e.e
+            } catch (e: Exception) {
+                logger.error(
+                    "Error registering user with  name: {} {}, email address: {}",
+                    firstName,
+                    lastName,
+                    emailAddress,
                     e
                 )
                 throw e
@@ -182,6 +175,10 @@ class DeltaUserRegistrationController(
         return when (registrationResult) {
             is RegistrationService.UserCreated -> {
                 respondSuccessPage(registrationResult.registration.emailAddress)
+            }
+
+            is RegistrationService.SSOUserCreated -> {
+                // Never happens
             }
 
             is RegistrationService.UserAlreadyExists -> {

@@ -4,28 +4,14 @@ import java.util.*
 
 class PasswordChecker {
 
-    private fun containsCommonString(lowerCasePassword: String): Boolean {
-        val commonStrings = arrayOf("qwerty", "abcd", "123456", "password")
-        for (commonString in commonStrings) {
-            if (lowerCasePassword.contains(commonString)) return true
-        }
-        return false
-    }
+    private fun containsCommonString(lowerCasePassword: String) =
+        listOf("qwerty", "abcd", "123456", "password").any { lowerCasePassword.contains(it) }
 
-    private fun hasInsufficientUniqueCharacters(password: String): Boolean {
-        val uniqueCharacters: MutableSet<Char> = HashSet()
-        for (c in password.toCharArray()) uniqueCharacters.add(c)
-        return uniqueCharacters.size < 5
-    }
+    private fun hasInsufficientUniqueCharacters(password: String) = password.toCharArray().distinct().size < 5
 
     private fun containsPartOfUserEmail(lowerCasePassword: String, userEmail: String): Boolean {
-        val wordsInUserEmail =
-            userEmail.lowercase(Locale.getDefault()).split("[\\W0-9_]".toRegex()).dropLastWhile { it.isEmpty() }
-                .toTypedArray()
-        for (word in wordsInUserEmail) {
-            if (lowerCasePassword.contains(word) && word.length > 4) return true
-        }
-        return false
+        val wordsInUserEmail = userEmail.lowercase(Locale.getDefault()).split("[\\W0-9_]".toRegex())
+        return wordsInUserEmail.any { lowerCasePassword.contains(it) && it.length > 4 }
     }
 
     fun isCommonPassword(userCN: String, password: String): Boolean {

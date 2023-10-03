@@ -28,7 +28,7 @@ class GroupServiceTest {
     private val container = slot<Attributes>()
     private val modificationItems = slot<Array<ModificationItem>>()
     private val context = mockk<InitialLdapContext>()
-    private val contextBlock = slot<(InitialLdapContext) -> Unit>()
+    private val contextBlock = slot<(InitialLdapContext) -> Any>()
     private val adUser = UserService.ADUser(Registration("Test", "User", "user@example.com"), false, ldapConfig)
     private val attributes = BasicAttributes()
 

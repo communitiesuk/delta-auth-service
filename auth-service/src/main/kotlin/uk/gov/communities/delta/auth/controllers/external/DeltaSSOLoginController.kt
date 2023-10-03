@@ -76,11 +76,15 @@ class DeltaSSOLoginController(
             if (!ssoClient.required) {
                 return call.respondRedirect(authServiceConfig.serviceUrl + "/register")
             }
-            registrationService.register(
+            val registrationResult = registrationService.register(
                 parseTrustedAzureJwt(principal.accessToken),
                 organisationService.findAllByDomain(emailToDomain(email)),
                 ssoUser = true
             )
+            if (registrationResult !is RegistrationService.SSOUserCreated) {
+                logger.error("Error creating SSO User, result was {}", registrationResult.toString())
+                throw Exception("Error creating SSO User")
+            }
             user = lookupUserInAd(email)!!
         }
 

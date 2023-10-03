@@ -47,7 +47,7 @@ class DeltaSetPasswordController(
     private suspend fun setPasswordGet(call: ApplicationCall) {
         val userCN = call.request.queryParameters["userCN"].orEmpty()
         val token = call.request.queryParameters["token"].orEmpty()
-        when (setPasswordTokenService.useToken(token, userCN)) {
+        when (setPasswordTokenService.validateToken(token, userCN)) {
             is SetPasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException("set_password_no_token", "Set password token did not exist")
             }
@@ -58,7 +58,7 @@ class DeltaSetPasswordController(
             }
 
             is SetPasswordTokenService.ValidToken -> {
-                call.respondSetPasswordPage(userCN, token)
+                call.respondSetPasswordPage()
             }
         }
     }
@@ -86,13 +86,14 @@ class DeltaSetPasswordController(
             else if (Strings.isNullOrEmpty(confirmPassword)) "Confirm password is required."
             else if (newPassword != confirmPassword) "Passwords did not match."
             else if (newPassword.length < 12) "Password must be at least 12 characters long."
-            else if (passwordChecker.isCommonPassword(newPassword, userCN))
+            else if (passwordChecker.isCommonPassword(userCN, newPassword))
                 "Passwords must not be a commonly used password format or contain your username"
             else null
 
-        val errorPresent = message != null
-        val tokenResult = setPasswordTokenService.useToken(token, userCN, !errorPresent)
-        call.respondToResult(tokenResult, message, newPassword)
+        if (message != null) return call.respondSetPasswordPage(message)
+
+        val tokenResult = setPasswordTokenService.consumeToken(token, userCN)
+        call.respondToResult(tokenResult, newPassword)
     }
 
     private suspend fun sendNewSetPasswordLink(userCN: String) {
@@ -128,7 +129,6 @@ class DeltaSetPasswordController(
 
     private suspend fun ApplicationCall.respondToResult(
         tokenResult: SetPasswordTokenService.TokenResult,
-        message: String?,
         newPassword: String
     ) {
         when (tokenResult) {
@@ -145,17 +145,12 @@ class DeltaSetPasswordController(
             }
 
             is SetPasswordTokenService.ValidToken -> {
-                if (message != null) return this.respondSetPasswordPage(tokenResult.userCN, tokenResult.token, message)
                 val userDN = String.format(ldapConfig.deltaUserDnFormat, tokenResult.userCN)
                 try {
                     userService.setPassword(userDN, newPassword)
                 } catch (e: Exception) {
-                    logger.error("Error setting password for user with DN {}", userDN, e)
-                    return this.respondSetPasswordPage(
-                        tokenResult.userCN,
-                        tokenResult.token,
-                        "An error occurred please try again or contact the service desk"
-                    )
+                    logger.atError().addKeyValue("UserDN", userDN).log("Error setting password for user with DN {}", e)
+                    throw e
                 }
                 this.respondRedirect(authServiceConfig.serviceUrl + "/delta/set-password/success")
             }
@@ -167,14 +162,10 @@ class DeltaSetPasswordController(
         respond(ThymeleafContent("set-password-success", mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)))
 
     private suspend fun ApplicationCall.respondSetPasswordPage(
-        userCN: String,
-        token: String,
         message: String? = null,
     ) {
         val mapOfValues = mutableMapOf(
             "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-            "userCN" to userCN,
-            "token" to token,
         )
         if (message != null) mapOfValues += "message" to message
         respond(

@@ -77,7 +77,7 @@ class DeltaSetPasswordControllerTest {
             url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { setPasswordTokenService.useToken(validToken, userCN, true) }
+            coVerify(exactly = 1) { setPasswordTokenService.consumeToken(validToken, userCN) }
             assertSuccessPageRedirect(status, headers)
         }
     }
@@ -91,9 +91,41 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", "Not" + validPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { setPasswordTokenService.useToken(validToken, userCN, true) }
+            coVerify(exactly = 0) { setPasswordTokenService.consumeToken(validToken, userCN) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
+        }
+    }
+
+    @Test
+    fun testSetPasswordCommonPasswordError() = testSuspend {
+        val badPassword = "qwerty123456"
+        testClient.submitForm(
+            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            formParameters = parameters {
+                append("newPassword", badPassword)
+                append("confirmPassword", badPassword)
+            }
+        ).apply {
+            coVerify(exactly = 0) { setPasswordTokenService.consumeToken(validToken, userCN) }
+            assertFormPage(bodyAsText())
+            assertContains(bodyAsText(), "Passwords must not be a commonly used password format or contain your username")
+        }
+    }
+
+    @Test
+    fun testSetPasswordNameInPasswordError() = testSuspend {
+        val badPassword = "userexample1"
+        testClient.submitForm(
+            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            formParameters = parameters {
+                append("newPassword", badPassword)
+                append("confirmPassword", badPassword)
+            }
+        ).apply {
+            coVerify(exactly = 0) { setPasswordTokenService.consumeToken(validToken, userCN) }
+            assertFormPage(bodyAsText())
+            assertContains(bodyAsText(), "Passwords must not be a commonly used password format or contain your username")
         }
     }
 
@@ -135,16 +167,28 @@ class DeltaSetPasswordControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            setPasswordTokenService.useToken(validToken, userCN, any())
+            setPasswordTokenService.validateToken(validToken, userCN)
         } returns SetPasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            setPasswordTokenService.useToken(expiredToken, userCN, any())
+            setPasswordTokenService.validateToken(expiredToken, userCN)
         } returns SetPasswordTokenService.ExpiredToken(userCN)
         coEvery {
-            setPasswordTokenService.useToken(invalidToken, userCN, any())
+            setPasswordTokenService.validateToken(invalidToken, userCN)
         } returns SetPasswordTokenService.NoSuchToken
         coEvery {
-            setPasswordTokenService.useToken("", any(), any())
+            setPasswordTokenService.validateToken("", any())
+        } returns SetPasswordTokenService.NoSuchToken
+        coEvery {
+            setPasswordTokenService.consumeToken(validToken, userCN)
+        } returns SetPasswordTokenService.ValidToken(validToken, userCN)
+        coEvery {
+            setPasswordTokenService.consumeToken(expiredToken, userCN)
+        } returns SetPasswordTokenService.ExpiredToken(userCN)
+        coEvery {
+            setPasswordTokenService.consumeToken(invalidToken, userCN)
+        } returns SetPasswordTokenService.NoSuchToken
+        coEvery {
+            setPasswordTokenService.consumeToken("", any())
         } returns SetPasswordTokenService.NoSuchToken
         coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(userCN) } returns "token"

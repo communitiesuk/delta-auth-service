@@ -21,13 +21,11 @@ class GroupService(
     }
 
     suspend fun groupExists(groupDn: String): Boolean {
-        var attributes: Attributes = BasicAttributes()
-        ldapService.useServiceUserBind {
-            attributes =
-                it.getAttributes(
-                    groupDn,
-                    arrayOf("cn")
-                )
+        val attributes = ldapService.useServiceUserBind {
+            it.getAttributes(
+                groupDn,
+                arrayOf("cn")
+            )
         }
         return attributes.get("cn") != null
     }
@@ -42,7 +40,7 @@ class GroupService(
             val member = BasicAttribute("member", adUser.dn)
             val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
             it.modifyAttributes(groupDN, modificationItems)
-            logger.info("User with dn {} added to group with dn {}", adUser.dn, groupDN)
+            logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to group with dn {}", groupDN)
         }
     }
 

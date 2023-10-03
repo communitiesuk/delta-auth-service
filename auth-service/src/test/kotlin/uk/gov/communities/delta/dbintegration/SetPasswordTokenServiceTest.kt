@@ -15,39 +15,39 @@ import kotlin.test.assertTrue
 class SetPasswordTokenServiceTest {
     @Test
     fun testLookupInvalidTokenFails() = testSuspend {
-        val result = service.useToken("invalidToken", userCN)
+        val result = service.validateToken("invalidToken", userCN)
         assertTrue(result is SetPasswordTokenService.NoSuchToken)
     }
 
     @Test
     fun testLookupWrongUserFails() = testSuspend {
         val token = service.createToken(userCN)
-        val result = service.useToken(token, "not$userCN")
+        val result = service.validateToken(token, "not$userCN")
         assertTrue(result is SetPasswordTokenService.NoSuchToken)
     }
 
     @Test
     fun testLookupCorrectUserWithoutDelete() = testSuspend {
         val token = service.createToken(userCN)
-        val result = service.useToken(token, userCN)
+        val result = service.validateToken(token, userCN)
         assertTrue(result is SetPasswordTokenService.ValidToken)
     }
 
     @Test
     fun testLookupWithDelete() = testSuspend {
         val token = service.createToken(userCN)
-        var result = service.useToken(token, userCN, true)
+        var result = service.consumeToken(token, userCN)
         assertTrue(result is SetPasswordTokenService.ValidToken)
-        result = service.useToken(token, userCN)
+        result = service.validateToken(token, userCN)
         assertTrue(result is SetPasswordTokenService.NoSuchToken)
     }
 
     @Test
     fun testLookupWithoutDelete() = testSuspend {
         val token = service.createToken(userCN)
-        var result = service.useToken(token, userCN, false)
+        var result = service.validateToken(token, userCN)
         assertTrue(result is SetPasswordTokenService.ValidToken)
-        result = service.useToken(token, userCN)
+        result = service.validateToken(token, userCN)
         assertTrue(result is SetPasswordTokenService.ValidToken)
     }
 
@@ -55,9 +55,9 @@ class SetPasswordTokenServiceTest {
     fun testOnlyOneTokenPerUser() = testSuspend {
         val originalToken = service.createToken(userCN)
         val replacementToken = service.createToken(userCN)
-        var result = service.useToken(originalToken, userCN)
+        var result = service.validateToken(originalToken, userCN)
         assertTrue(result is SetPasswordTokenService.NoSuchToken)
-        result = service.useToken(replacementToken, userCN, true)
+        result = service.consumeToken(replacementToken, userCN)
         assertTrue(result is SetPasswordTokenService.ValidToken)
     }
 
@@ -80,7 +80,7 @@ class SetPasswordTokenServiceTest {
                 it.commit()
             }
         }
-        val result = service.useToken(token, userCN)
+        val result = service.validateToken(token, userCN)
         assertTrue(result is SetPasswordTokenService.ExpiredToken)
     }
 

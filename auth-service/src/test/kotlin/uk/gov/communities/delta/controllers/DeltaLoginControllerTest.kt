@@ -22,7 +22,6 @@ import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
-import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
@@ -187,7 +186,7 @@ class DeltaLoginControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
             assertEquals(
-                oauthClientLoginRouteWithEmail("dev", testUserEmail),
+                oauthClientLoginRoute("dev", testUserEmail),
                 headers["Location"],
                 "Should redirect to OAuth route"
             )

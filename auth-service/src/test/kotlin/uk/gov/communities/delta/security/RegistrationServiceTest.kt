@@ -57,7 +57,6 @@ class RegistrationServiceTest {
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
         coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
-        assertTrue(registrationResult.token != null)
     }
 
     @Test
@@ -73,8 +72,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
         coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
-        assertTrue(registrationResult is RegistrationService.UserCreated)
-        assertTrue(registrationResult.token == null)
+        assertTrue(registrationResult is RegistrationService.SSOUserCreated)
     }
 
     @Test
@@ -105,7 +103,6 @@ class RegistrationServiceTest {
         coVerify(exactly = 4) { groupService.addUserToGroup(any(), any()) }
         coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
-        assertTrue(registrationResult.token != null)
     }
 
     @Test
@@ -122,7 +119,6 @@ class RegistrationServiceTest {
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
         coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
-        assertTrue(registrationResult.token != null)
     }
 
     private fun groupName(orgCode: String) = String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode)

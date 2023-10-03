@@ -50,14 +50,20 @@ class SetPasswordTokenService(private val dbPool: DbPool, private val timeSource
         }
     }
 
-    suspend fun useToken(token: String, userCN: String, delete: Boolean = false): TokenResult {
+    suspend fun validateToken(token: String, userCN: String) : TokenResult {
         return withContext(Dispatchers.IO) {
-            read(token, userCN, delete)
+            readToken(token, userCN, false)
+        }
+    }
+
+    suspend fun consumeToken(token: String, userCN: String) : TokenResult {
+        return withContext(Dispatchers.IO) {
+            readToken(token, userCN, true)
         }
     }
 
     @Blocking
-    private fun read(token: String, userCN: String, delete: Boolean): TokenResult {
+    private fun readToken(token: String, userCN: String, delete: Boolean): TokenResult {
         dbPool.useConnection {
             val stmt = if (delete) it.prepareStatement(
                 "DELETE FROM set_password_tokens WHERE token = ? AND user_cn = ? " +

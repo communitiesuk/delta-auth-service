@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
-import uk.gov.communities.delta.auth.oauthClientLoginRouteWithEmail
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
@@ -53,7 +52,7 @@ class DeltaLoginController(
 
         if (params.useSSOClient != null) {
             if (params.expectedEmail != null) {
-                call.respondRedirect(oauthClientLoginRouteWithEmail(params.useSSOClient.internalId, params.expectedEmail))
+                call.respondRedirect(oauthClientLoginRoute(params.useSSOClient.internalId, params.expectedEmail))
             }
             call.respondRedirect(oauthClientLoginRoute(params.useSSOClient.internalId))
         } else {
@@ -134,7 +133,7 @@ class DeltaLoginController(
             it.required && formUsername.lowercase().endsWith(it.emailDomain)
         }
         if (ssoClientMatchingEmailDomain != null) {
-            return call.respondRedirect(oauthClientLoginRouteWithEmail(ssoClientMatchingEmailDomain.internalId, formUsername))
+            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId, formUsername))
         }
 
         val cn = formUsername.replace('@', '!')

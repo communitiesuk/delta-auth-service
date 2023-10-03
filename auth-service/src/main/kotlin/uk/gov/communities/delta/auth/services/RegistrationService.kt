@@ -19,7 +19,8 @@ class RegistrationService(
     private val groupService: GroupService,
 ) {
     sealed class RegistrationResult
-    class UserCreated(val registration: Registration, val token: String?, val userCN: String) : RegistrationResult()
+    class UserCreated(val registration: Registration, val token: String, val userCN: String) : RegistrationResult()
+    object SSOUserCreated : RegistrationResult()
     class UserAlreadyExists(val registration: Registration) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
@@ -37,7 +38,7 @@ class RegistrationService(
     ): RegistrationResult {
         val adUser = UserService.ADUser(registration, ssoUser, ldapConfig)
         if (userLookupService.userExists(adUser.cn)) {
-            logger.warn("User with DN {} tried to register but user already exists", adUser.dn)
+            logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
             return UserAlreadyExists(registration)
         }
         try {
@@ -45,24 +46,24 @@ class RegistrationService(
             addUserToDefaultGroups(adUser)
             addUserToOrganisations(adUser, organisations)
         } catch (e: Exception) {
+            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             return RegistrationFailure(e)
         }
 
-        logger.info("User successfully created with DN {}", adUser.dn)
-        return UserCreated(
-            registration,
-            if (ssoUser) null else setPasswordTokenService.createToken(adUser.cn),
-            adUser.cn
-        )
+        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
+        return if (ssoUser)
+            SSOUserCreated
+        else
+            UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
     }
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
         try {
             groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
             groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
-            logger.info("User with DN {} added to default groups", adUser.dn)
+            logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to default groups")
         } catch (e: Exception) {
-            logger.error("Error adding user with dn {} to default groups", adUser.dn, e)
+            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to default groups", e)
             throw e
         }
     }
@@ -72,7 +73,7 @@ class RegistrationService(
     }
 
     private suspend fun addUserToOrganisations(adUser: UserService.ADUser, organisations: List<Organisation>) {
-        logger.info("Adding user with DN {} to domain organisations", adUser.dn)
+        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to domain organisations")
         try {
             organisations.forEach {
                 if (!it.retired) {
@@ -80,11 +81,12 @@ class RegistrationService(
                         adUser,
                         organisationUserGroup(it.code)
                     )
-                    logger.info("Added user with DN {} to domain organisation with code {}", adUser.dn, it.code)
+                    logger.atInfo().addKeyValue("UserDN", adUser.dn)
+                        .log("Added user to domain organisation with code {}", it.code)
                 }
             }
         } catch (e: Exception) {
-            logger.error("Error adding user with dn {} to domain organisations", adUser.dn, e)
+            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to domain organisations", e)
             throw e
         }
     }
@@ -101,42 +103,54 @@ class RegistrationService(
     }
 
     fun sendRegistrationEmail(registrationResult: RegistrationResult) {
-        when (registrationResult) {
-            is UserCreated -> {
-                emailService.sendTemplateEmail(
-                    "new-user",
-                    getRegistrationEmailContacts(registrationResult.registration),
-                    "DLUHC DELTA - New User Account",
-                    mapOf(
-                        "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                        "userFirstName" to registrationResult.registration.firstName,
-                        "setPasswordUrl" to getSetPasswordURL(
-                            registrationResult.token!!,
-                            registrationResult.userCN,
-                            authServiceConfig.serviceUrl
+        try {
+            when (registrationResult) {
+                is UserCreated -> {
+                    emailService.sendTemplateEmail(
+                        "new-user",
+                        getRegistrationEmailContacts(registrationResult.registration),
+                        "DLUHC DELTA - New User Account",
+                        mapOf(
+                            "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                            "userFirstName" to registrationResult.registration.firstName,
+                            "setPasswordUrl" to getSetPasswordURL(
+                                registrationResult.token,
+                                registrationResult.userCN,
+                                authServiceConfig.serviceUrl
+                            )
                         )
                     )
-                )
-            }
+                }
 
-            is UserAlreadyExists -> {
-                emailService.sendTemplateEmail(
-                    "already-a-user",
-                    getRegistrationEmailContacts(registrationResult.registration),
-                    "DLUHC DELTA - Account",
-                    mapOf(
-                        "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                        "userFirstName" to registrationResult.registration.firstName,
+                is SSOUserCreated -> {
+                    // No email sent
+                }
+
+                is UserAlreadyExists -> {
+                    emailService.sendTemplateEmail(
+                        "already-a-user",
+                        getRegistrationEmailContacts(registrationResult.registration),
+                        "DLUHC DELTA - Account",
+                        mapOf(
+                            "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                            "userFirstName" to registrationResult.registration.firstName,
+                        )
                     )
-                )
-            }
+                }
 
-            is RegistrationFailure -> {
-                // No email needs to be sent if the registration fails
+                is RegistrationFailure -> {
+                    // No email needs to be sent if the registration fails
+                }
             }
+        } catch (e: Exception) {
+            logger.atError().log("Problem sending email", e)
+            throw EmailException(e)
         }
+
     }
 }
+
+class EmailException(val e: Exception) : Exception("Issue sending email")
 
 class Registration(
     val firstName: String,
@@ -148,6 +162,10 @@ fun getResultTypeString(registrationResult: RegistrationService.RegistrationResu
     return when (registrationResult) {
         is RegistrationService.UserCreated -> {
             "UserCreated"
+        }
+
+        is RegistrationService.SSOUserCreated -> {
+            "SSOUserCreated"
         }
 
         is RegistrationService.UserAlreadyExists -> {

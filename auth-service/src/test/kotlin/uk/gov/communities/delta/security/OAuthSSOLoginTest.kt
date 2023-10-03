@@ -140,11 +140,7 @@ class OAuthSSOLoginTest {
         val organisations = listOf(Organisation("E1234"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         val registration = Registration("Example", "User", "user@example.com")
-        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.UserCreated(
-            registration,
-            "token",
-            userCN
-        )
+        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
                 coVerify(exactly = 0) { registrationService.register(any(), organisations, true) }
@@ -163,11 +159,7 @@ class OAuthSSOLoginTest {
         val organisations = listOf(Organisation("E1234"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         val registration = Registration("Example", "User", "user@example.com")
-        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.UserCreated(
-            registration,
-            "token",
-            userCN
-        )
+        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
                 coVerify(exactly = 1) { registrationService.register(any(), organisations, true) }

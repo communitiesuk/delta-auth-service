@@ -17,7 +17,7 @@ class UserService(
         try {
             addUserToAD(adUser)
         } catch (e: Exception) {
-            logger.error("Error creating user with dn {}", adUser.dn, e)
+            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             throw e
         }
     }
@@ -37,20 +37,14 @@ class UserService(
 
         val enabled = adUser.userAccountControl == ADUser.accountFlags(true)
         if (enabled && adUser.password == null) {
-            logger.error("Trying to create an enabled user without a password")
-            throw UserVisibleServerError(
-                "passwordless_user",
-                "Trying to create user with no password",
-                "Something went wrong",
-                "Registration Error"
-            )
+            throw Exception("Trying to create user with no password")
         } else {
             ldapService.useServiceUserBind {
                 try {
                     it.createSubcontext(adUser.dn, container)
-                    logger.info("{} user created with dn {}", if (enabled) "Enabled" else "Disabled", adUser.dn)
+                    logger.atInfo().addKeyValue("UserDN", adUser.dn).log("{} user created", if (enabled) "Enabled" else "Disabled")
                 } catch (e: Exception) {
-                    logger.error("Problem creating user", e)
+                    logger.atError().addKeyValue("UserDN", adUser.dn).log("Problem creating user", e)
                     throw e
                 }
             }
@@ -68,7 +62,7 @@ class UserService(
         ldapService.useServiceUserBind {
             try {
                 it.modifyAttributes(userDN, modificationItems)
-                logger.info("Account enabled and password set for user with dn {}", userDN)
+                logger.atInfo().addKeyValue("UserDN", userDN).log("Account enabled and password set")
             } catch (e: Exception) {
                 throw e
             }
@@ -121,7 +115,7 @@ class UserService(
             }
 
             fun getPasswordAttribute(password: String): Attribute {
-                lateinit var bytes: ByteArray
+                val bytes: ByteArray
                 try {
                     val quoted = '"'.toString() + password + '"'
                     bytes = quoted.toByteArray(charset("UTF-16LE"))
