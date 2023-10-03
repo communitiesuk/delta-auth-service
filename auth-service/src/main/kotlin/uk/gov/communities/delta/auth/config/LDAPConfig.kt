@@ -33,7 +33,7 @@ data class LDAPConfig(
             domainRealm = Env.getRequiredOrDevFallback("LDAP_DOMAIN_REALM", "dluhctest.local")
         )
 
-        val VALID_USERNAME_REGEX = Regex("^[\\w-.!]+$")
+        val VALID_USERNAME_REGEX = Regex("^[\\w-.!']+$")
     }
 
     val authServiceUserDn = serviceUserDnFormat.format(authServiceUserCn)

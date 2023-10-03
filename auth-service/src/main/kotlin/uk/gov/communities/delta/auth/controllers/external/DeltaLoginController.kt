@@ -117,7 +117,7 @@ class DeltaLoginController(
 
         val client = queryParams.client
         val formParameters = call.receiveParameters()
-        val formUsername = formParameters["username"]
+        val formUsername = formParameters["username"]?.trim()
         val password = formParameters["password"]
 
         if (formUsername.isNullOrEmpty()) return call.respondLoginPage(
@@ -226,6 +226,7 @@ class DeltaLoginController(
     private fun ApplicationCall.checkOriginHeader() {
         val origin = request.headers["Origin"]
         if (origin != authServiceConfig.serviceUrl) {
+            logger.warn("Origin header check failure, expected '{}' got '{}' for user agent {}", authServiceConfig.serviceUrl, origin, request.headers["User-Agent"])
             throw InvalidOriginException("Origin header validation failed, expected '${authServiceConfig.serviceUrl}' got '$origin'")
         }
     }
