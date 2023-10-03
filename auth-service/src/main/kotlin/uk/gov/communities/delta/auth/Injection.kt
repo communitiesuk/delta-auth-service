@@ -127,8 +127,11 @@ class Injection(
             CloudWatchAsyncClient.create()
         )
     val failedLoginCounter: Counter = meterRegistry.counter("login.failedLogins")
-    val rateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
+    val loginRateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
     val successfulLoginCounter: Counter = meterRegistry.counter("login.successfulLogins")
+
+    val registrationRateLimitCounter: Counter = meterRegistry.counter("registration.rateLimitedRequests")
+    val setPasswordRateLimitCounter: Counter = meterRegistry.counter("setPassword.rateLimitedRequests")
 
     val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
     val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)

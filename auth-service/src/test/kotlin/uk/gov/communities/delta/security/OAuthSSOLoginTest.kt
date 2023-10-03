@@ -380,7 +380,12 @@ class OAuthSSOLoginTest {
                 }
                 application {
                     configureTemplating(false)
-                    configureRateLimiting(10, counter("rateLimitingNoopCounter"))
+                    configureRateLimiting(
+                        10,
+                        counter("loginRateLimitingNoopCounter"),
+                        counter("registrationRateLimitingNoopCounter"),
+                        counter("setPasswordRateLimitingNoopCounter")
+                    )
                     routing {
                         route("/delta") {
                             deltaLoginRoutes(serviceConfig, loginPageController, oauthController)

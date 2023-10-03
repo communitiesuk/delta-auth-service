@@ -41,6 +41,8 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
         meterBinders = emptyList()
         registry.config()
             .meterFilter(MeterFilter.acceptNameStartsWith("login."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("registration."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("setPassword."))
             .meterFilter(MeterFilter.acceptNameStartsWith("tasks."))
             .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics
     }

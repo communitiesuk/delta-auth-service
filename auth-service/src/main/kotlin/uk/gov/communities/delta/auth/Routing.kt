@@ -92,8 +92,9 @@ fun Route.deltaSetPasswordRoutes(deltaSetPasswordController: DeltaSetPasswordCon
     route("/success") {
         deltaSetPasswordController.setPasswordSuccessRoute(this)
     }
-    // TODO - should this be rate limited?
-    deltaSetPasswordController.setPasswordFormRoutes(this)
+    rateLimit(RateLimitName(setPasswordRateLimitName)) {
+        deltaSetPasswordController.setPasswordFormRoutes(this)
+    }
 }
 
 fun Route.deltaRegisterRoutes(
@@ -103,7 +104,9 @@ fun Route.deltaRegisterRoutes(
         deltaUserRegistrationController.registerSuccessRoute(this)
     }
 
-    deltaUserRegistrationController.registerFormRoutes(this)
+    rateLimit(RateLimitName(registrationRateLimitName)) {
+        deltaUserRegistrationController.registerFormRoutes(this)
+    }
 }
 
 fun Route.deltaLoginRoutes(
