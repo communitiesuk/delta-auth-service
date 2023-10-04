@@ -88,10 +88,10 @@ class DeltaUserRegistrationController(
         var organisations: List<Organisation> = listOf()
         if (emailAddress.isEmpty()) emailAddressErrors.add(emailAddressEmpty)
         else {
-            if (!emailAddressChecker.hasValidEmailFormat(emailAddress)) emailAddressErrors.add(notAnEmailAddress)
+            if (!emailAddressChecker.hasValidFormat(emailAddress)) emailAddressErrors.add(notAnEmailAddress)
             else {
                 organisations = organisationService.findAllByDomain(emailToDomain(emailAddress))
-                if (!emailAddressChecker.hasKnownNotRetiredDomain(emailAddress, organisations)) emailAddressErrors.add(
+                if (!emailAddressChecker.hasKnownNotRetiredDomain(organisations)) emailAddressErrors.add(
                     notAKnownDomain
                 )
             }

@@ -7,16 +7,13 @@ import java.util.*
 
 class EmailAddressChecker {
 
-    fun hasValidEmailFormat(email: String): Boolean {
+    fun hasValidFormat(email: String): Boolean {
         if (email.count { it == '@' } != 1) return false
-
-        val emailRegex = """^[\w-+.']+@([\w-']+\.)+[\w-]{2,4}$""".toRegex()
         val cn = email.replace("@", "!")
-        return emailRegex.matches(email) && LDAPConfig.VALID_USERNAME_REGEX.matches(cn)
+        return LDAPConfig.VALID_EMAIL_REGEX.matches(email) && LDAPConfig.VALID_USERNAME_REGEX.matches(cn)
     }
 
-    fun hasKnownNotRetiredDomain(email: String, organisations: List<Organisation>): Boolean {
-        if (email.count { it == '@' } != 1) return false
+    fun hasKnownNotRetiredDomain(organisations: List<Organisation>): Boolean {
         return organisations.any { organisation: Organisation -> !organisation.retired }
     }
 }
