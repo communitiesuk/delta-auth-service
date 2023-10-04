@@ -109,7 +109,10 @@ class DeltaSetPasswordControllerTest {
         ).apply {
             coVerify(exactly = 0) { setPasswordTokenService.consumeToken(validToken, userCN) }
             assertFormPage(bodyAsText())
-            assertContains(bodyAsText(), "Passwords must not be a commonly used password format or contain your username")
+            assertContains(
+                bodyAsText(),
+                "Passwords must not be a commonly used password format or contain your username"
+            )
         }
     }
 
@@ -125,7 +128,10 @@ class DeltaSetPasswordControllerTest {
         ).apply {
             coVerify(exactly = 0) { setPasswordTokenService.consumeToken(validToken, userCN) }
             assertFormPage(bodyAsText())
-            assertContains(bodyAsText(), "Passwords must not be a commonly used password format or contain your username")
+            assertContains(
+                bodyAsText(),
+                "Passwords must not be a commonly used password format or contain your username"
+            )
         }
     }
 

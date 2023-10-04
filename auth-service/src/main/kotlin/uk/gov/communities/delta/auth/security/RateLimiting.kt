@@ -12,10 +12,15 @@ const val loginRateLimitName = "protectLogin"
 const val registrationRateLimitName = "protectRegistration"
 const val setPasswordRateLimitName = "protectSetPassword"
 
-fun Application.configureRateLimiting(rateLimit: Int, loginRateLimitCounter: Counter, registrationRateLimitCounter: Counter, setPasswordRateLimitCounter: Counter) {
+fun Application.configureRateLimiting(
+    rateLimit: Int,
+    loginRateLimitCounter: Counter,
+    registrationRateLimitCounter: Counter,
+    setPasswordRateLimitCounter: Counter
+) {
     val logger = LoggerFactory.getLogger("Application.RateLimiting")
 
-    fun RateLimitConfig.setUpRateLimit(rateLimitName: String, pageName : String, counter: Counter) {
+    fun RateLimitConfig.setUpRateLimit(rateLimitName: String, pageName: String, counter: Counter) {
         register(RateLimitName(rateLimitName)) {
             rateLimiter(limit = rateLimit, refillPeriod = 5.minutes)
             requestKey { applicationCall ->

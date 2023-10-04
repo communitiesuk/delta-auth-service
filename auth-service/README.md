@@ -8,18 +8,22 @@
   and delta for port forwarding commands
 * Copy `.env.template` to `.env` and fill it in as instructed in that file
 * Postgres, by default on port 5438, use `docker compose up -d`
-* Follow the steps in delta repository README `delta\biz-tier-app\delta\README.md` to set up LDAPS certificate 
+* Follow the steps in delta repository README `delta\biz-tier-app\delta\README.md` to set up LDAPS certificate
 
 ## Run
 
-* Start with `./gradlew run` (to run locally with AWS metrics run through aws-vault as `aws-vault exec <profile> -- .\gradlew.bat run` and set environment variable AUTH_METRICS_NAMESPACE to e.g. "localYourName/AuthService")
+* Start with `./gradlew run` (to run locally with AWS metrics run through aws-vault
+  as `aws-vault exec <profile> -- .\gradlew.bat run` and set environment variable AUTH_METRICS_NAMESPACE to e.g. "
+  localYourName/AuthService")
 
 Alternatively open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
-with `uk.gov.communities.delta.auth.ApplicationKt` as the main class and environment variables set from `.env`. (See below image for an example)
+with `uk.gov.communities.delta.auth.ApplicationKt` as the main class and environment variables set from `.env`. (See
+below image for an example)
 
 ![img.png](runConfiguration.png)
 
-Set the `io.ktor.development` property to `true` (`-Dio.ktor.development=true` JVM arg) to enable development mode (faster restarts, reloading of templates).
+Set the `io.ktor.development` property to `true` (`-Dio.ktor.development=true` JVM arg) to enable development mode (
+faster restarts, reloading of templates).
 
 ## Tests
 
@@ -46,7 +50,9 @@ which allows us to use a standard OAuth client library in Delta.
 
 #### 1. Login Redirect
 
-Delta redirects unauthenticated users to the auth service `http://localhost:8088/delta/login?response_type=code&client_id=delta-website&state=1234` (use `client-id=delta-website-dev` for local dev).
+Delta redirects unauthenticated users to the auth
+service `http://localhost:8088/delta/login?response_type=code&client_id=delta-website&state=1234` (
+use `client-id=delta-website-dev` for local dev).
 
 The user will be shown a login page and provide a username and password as a standard form submission.
 
@@ -124,5 +130,6 @@ RUN_TASK=DeleteOldAuthCodes ./gradlew runTask
 ```
 
 In hosted environments scheduled tasks are run using AWS EventBridge Scheduler,
-which invokes an ECS task with the RUN_TASK environment variable set, and the Docker [entrypoint script](./entrypoint.sh)
+which invokes an ECS task with the RUN_TASK environment variable set, and the
+Docker [entrypoint script](./entrypoint.sh)
 will execute the task instead of the application.

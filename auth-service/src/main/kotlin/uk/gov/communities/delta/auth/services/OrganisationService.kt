@@ -23,12 +23,12 @@ class Organisation(
     @SerialName("code") val code: String,
     @SerialName("retirement-date") val retirementDate: String? = null
 ) {
-    val retired = retirementDate != null && LocalDate.parse(retirementDate.substring(IntRange(0,9))) < LocalDate.now()
+    val retired = retirementDate != null && LocalDate.parse(retirementDate.substring(IntRange(0, 9))) < LocalDate.now()
 }
 
 class OrganisationService(private val httpClient: HttpClient, private val deltaConfig: DeltaConfig) {
     suspend fun findAllByDomain(domain: String): List<Organisation> {
-        return httpClient.get(deltaConfig.masterStoreBaseNoAuth +"organisation/search?domain=${domain.encodeURLParameter()}")
+        return httpClient.get(deltaConfig.masterStoreBaseNoAuth + "organisation/search?domain=${domain.encodeURLParameter()}")
             .body<OrganisationSearchResponse>().organisations
     }
 

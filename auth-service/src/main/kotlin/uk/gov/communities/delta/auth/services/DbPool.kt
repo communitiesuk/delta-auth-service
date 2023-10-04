@@ -21,7 +21,7 @@ class DbPool(private val config: DatabaseConfig) : Closeable {
 
     @Blocking
     fun connection(): Connection {
-        return connectionPool.getConnection()
+        return connectionPool.connection
     }
 
     @Blocking

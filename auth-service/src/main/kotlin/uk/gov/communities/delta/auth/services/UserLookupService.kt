@@ -17,11 +17,11 @@ class UserLookupService(
         val bindUserPassword: String,
     )
 
-    suspend fun userExists(cn: String) :Boolean {
+    suspend fun userExists(cn: String): Boolean {
         return try {
             lookupUserByCn(cn)
             true
-        } catch (e :NameNotFoundException) {
+        } catch (e: NameNotFoundException) {
             false
         }
     }

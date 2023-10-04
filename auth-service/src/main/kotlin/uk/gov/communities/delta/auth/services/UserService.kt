@@ -3,7 +3,6 @@ package uk.gov.communities.delta.auth.services
 import com.google.common.base.Strings
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import java.io.UnsupportedEncodingException
 import javax.naming.directory.*
 
@@ -42,7 +41,8 @@ class UserService(
             ldapService.useServiceUserBind {
                 try {
                     it.createSubcontext(adUser.dn, container)
-                    logger.atInfo().addKeyValue("UserDN", adUser.dn).log("{} user created", if (enabled) "Enabled" else "Disabled")
+                    logger.atInfo().addKeyValue("UserDN", adUser.dn)
+                        .log("{} user created", if (enabled) "Enabled" else "Disabled")
                 } catch (e: Exception) {
                     logger.atError().addKeyValue("UserDN", adUser.dn).log("Problem creating user", e)
                     throw e

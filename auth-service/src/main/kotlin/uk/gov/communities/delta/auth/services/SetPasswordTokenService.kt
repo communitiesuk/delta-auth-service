@@ -50,13 +50,13 @@ class SetPasswordTokenService(private val dbPool: DbPool, private val timeSource
         }
     }
 
-    suspend fun validateToken(token: String, userCN: String) : TokenResult {
+    suspend fun validateToken(token: String, userCN: String): TokenResult {
         return withContext(Dispatchers.IO) {
             readToken(token, userCN, false)
         }
     }
 
-    suspend fun consumeToken(token: String, userCN: String) : TokenResult {
+    suspend fun consumeToken(token: String, userCN: String): TokenResult {
         return withContext(Dispatchers.IO) {
             readToken(token, userCN, true)
         }

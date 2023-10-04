@@ -87,7 +87,7 @@ class SetPasswordTokenServiceTest {
     @Test
     fun testTokenCreation() = testSuspend {
         val token = service.createToken(userCN)
-        assertEquals(SetPasswordTokenService.TOKEN_LENGTH_BYTES * 8/6, token.length)
+        assertEquals(SetPasswordTokenService.TOKEN_LENGTH_BYTES * 8 / 6, token.length)
     }
 
     companion object {
