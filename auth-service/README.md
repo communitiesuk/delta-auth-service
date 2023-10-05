@@ -3,7 +3,7 @@
 ## Setup
 
 * Requires Java 17
-* Forward localhost:2389 to port 389 of the test environment Active Directory,
+* Forward localhost:2636 to port 636 of the test environment Active Directory,
   see the delta-common-infrastructure repository for details of the bastion host,
   and delta for port forwarding commands
 * Copy `.env.template` to `.env` and fill it in as instructed in that file
