@@ -64,8 +64,10 @@ module "auth_service" {
   cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
   alarms_sns_topic_arn           = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
   internal_alb                   = data.terraform_remote_state.common_infra.outputs.auth_internal_alb
+  //noinspection HILUnresolvedReference
   external_alb                   = data.terraform_remote_state.common_infra.outputs.public_albs.auth
   ml_secret_kms_key_arn          = data.terraform_remote_state.common_infra.outputs.deploy_user_kms_key_arn
+  //noinspection HILUnresolvedReference
   delta_hostname                 = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
   bastion_security_group_id      = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
   private_dns                    = data.terraform_remote_state.common_infra.outputs.private_dns
@@ -76,9 +78,18 @@ module "auth_service" {
     LDAP_SERVICE_USER_DN_FORMAT = "CN=%s,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_DELTA_USER_DN_FORMAT   = "CN=%s,CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
+    LDAP_DOMAIN_REALM           = "dluhctest.local"
   }
 
   # Test environment only settings
   delta_website_local_dev_client_secret_arn = aws_secretsmanager_secret.delta_website_local_dev_client_secret.arn
   enable_http_internal_alb_listener         = true
+  mail_settings = {
+    smtp_host        = "mailhog.vpc.local"
+    smtp_port        = "1025"
+    from_name        = "DELTA System (Test)"
+    from_address     = "delta-test@datacollection.dluhc-dev.uk"
+    reply_to_name    = "DLUHC Digital Services"
+    reply_to_address = "no-reply@datacollection.dluhc-dev.uk"
+  }
 }

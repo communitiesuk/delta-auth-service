@@ -2,6 +2,9 @@ package uk.gov.communities.delta.auth.config
 
 import jakarta.mail.Authenticator
 import jakarta.mail.PasswordAuthentication
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.slf4j.spi.LoggingEventBuilder
 import java.util.*
 
@@ -15,9 +18,19 @@ class EmailConfig(
 ) {
     companion object {
         fun fromEnv(): EmailConfig {
+            val smtpUsername: String?
+            val smtpPassword: String?
             val props = Properties()
-            val smtpUsername = Env.getEnv("MAIL_SMTP_USERNAME")
-            val smtpPassword = Env.getEnv("MAIL_SMTP_PASSWORD")
+            val smtpUserJSON = Env.getEnv("MAIL_SMTP_USER")
+            val useAuth = smtpUserJSON != null
+            if (useAuth){
+                val smtpMailUser = Json.decodeFromString<MailSMTPUserBody>(smtpUserJSON!!)
+                smtpUsername = smtpMailUser.username
+                smtpPassword = smtpMailUser.password
+            } else {
+                smtpUsername = null
+                smtpPassword = null
+            }
             val authenticator: Authenticator = object : Authenticator() {
                 override fun getPasswordAuthentication(): PasswordAuthentication {
                     return PasswordAuthentication(smtpUsername ?: "", smtpPassword ?: "")
@@ -27,7 +40,6 @@ class EmailConfig(
                     return smtpUsername ?: "No value for MAIL_SMTP_USERNAME"
                 }
             }
-            val useAuth = smtpUsername != null
             props["mail.smtp.auth"] = useAuth
             props["mail.smtp.starttls.enable"] = useAuth
             props["mail.smtp.host"] = Env.getRequiredOrDevFallback("MAIL_SMTP_HOST", "localhost")
@@ -53,3 +65,9 @@ class EmailConfig(
             .log("Email config")
     }
 }
+
+@Serializable
+data class MailSMTPUserBody(
+    @SerialName("username") val username: String,
+    @SerialName("password") val password: String,
+)

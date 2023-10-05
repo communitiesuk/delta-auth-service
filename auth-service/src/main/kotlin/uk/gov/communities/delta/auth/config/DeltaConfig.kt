@@ -13,11 +13,11 @@ class DeltaConfig(
     companion object {
         fun fromEnv() = DeltaConfig(
             deltaWebsiteUrl = Env.getRequiredOrDevFallback("DELTA_WEBSITE_URL", "http://localhost:8080"),
-            rateLimit = Env.getRequiredOrDevFallback("AUTH_RATE_LIMIT", "10").toInt(),
+            rateLimit = Env.getRequiredOrDevFallback("AUTH_RATE_LIMIT", "100").toInt(),
             masterStoreBaseNoAuth = Env.getRequiredOrDevFallback(
                 "DELTA_MARKLOGIC_LDAP_AUTH_APP_SERVICE",
                 "http://localhost:8030/"
-            )
+            ),
         )
     }
 

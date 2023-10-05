@@ -59,6 +59,7 @@ variable "ldap_config" {
     LDAP_DELTA_USER_DN_FORMAT   = string
     LDAP_GROUP_DN_FORMAT        = string
     CA_S3_URL                   = string
+    LDAP_DOMAIN_REALM           = string
   })
 }
 
@@ -108,6 +109,17 @@ variable "delta_website_local_dev_client_secret_arn" {
   type        = string
   default     = null
   description = "Client secret for a client that redirects to localhost, for use only on the test environment"
+}
+
+variable "mail_settings" {
+  type = object({
+    smtp_host        = string
+    smtp_port        = string
+    from_name        = string
+    from_address     = string
+    reply_to_name    = string
+    reply_to_address = string
+  })
 }
 
 locals {
