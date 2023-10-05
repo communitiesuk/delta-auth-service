@@ -43,13 +43,13 @@ module "auth_service" {
   alarms_sns_topic_arn           = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
   internal_alb                   = data.terraform_remote_state.common_infra.outputs.auth_internal_alb
   //noinspection HILUnresolvedReference
-  external_alb                   = data.terraform_remote_state.common_infra.outputs.public_albs.auth
-  ml_secret_kms_key_arn          = data.terraform_remote_state.common_infra.outputs.deploy_user_kms_key_arn
+  external_alb          = data.terraform_remote_state.common_infra.outputs.public_albs.auth
+  ml_secret_kms_key_arn = data.terraform_remote_state.common_infra.outputs.deploy_user_kms_key_arn
   //noinspection HILUnresolvedReference
-  delta_hostname                 = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
-  bastion_security_group_id      = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
-  db_backup_retention_days       = 14
-  private_dns                    = data.terraform_remote_state.common_infra.outputs.private_dns
+  delta_hostname            = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
+  bastion_security_group_id = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
+  db_backup_retention_days  = 14
+  private_dns               = data.terraform_remote_state.common_infra.outputs.private_dns
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-production.s3.amazonaws.com/CASRVPRODUCTION/CASRVproduction.dluhcdata.local_CASRVproduction.crt"
