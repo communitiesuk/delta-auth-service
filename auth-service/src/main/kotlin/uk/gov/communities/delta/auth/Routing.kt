@@ -92,6 +92,9 @@ fun Route.deltaSetPasswordRoutes(deltaSetPasswordController: DeltaSetPasswordCon
     route("/success") {
         deltaSetPasswordController.setPasswordSuccessRoute(this)
     }
+    route("/expired") {
+        deltaSetPasswordController.setPasswordExpired(this)
+    }
     rateLimit(RateLimitName(setPasswordRateLimitName)) {
         deltaSetPasswordController.setPasswordFormRoutes(this)
     }

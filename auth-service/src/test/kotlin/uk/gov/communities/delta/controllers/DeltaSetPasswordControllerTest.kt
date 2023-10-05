@@ -1,3 +1,5 @@
+package uk.gov.communities.delta.controllers
+
 import io.ktor.client.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
@@ -27,6 +29,7 @@ import uk.gov.communities.delta.helper.testServiceClient
 import java.util.*
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DeltaSetPasswordControllerTest {
@@ -34,7 +37,7 @@ class DeltaSetPasswordControllerTest {
 
     @Test
     fun testSetPasswordPage() = testSuspend {
-        testClient.get("/set-password?userCN=user%21example.com&token=" + validToken)
+        testClient.get("/set-password?userCN=user%21example.com&token=$validToken")
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
                 assertFormPage(bodyAsText())
@@ -65,9 +68,9 @@ class DeltaSetPasswordControllerTest {
         coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
         testClient.get("/set-password?userCN=user%21example.com&token=expiredToken")
             .apply {
-                assertEquals(emailTemplate.captured, "not-yet-enabled-user")
                 assertEquals(HttpStatusCode.OK, status)
-                assertContains(bodyAsText(), "Your password link had expired.")
+                assertContains(bodyAsText(), "Your activation link had expired.")
+                assertFalse(bodyAsText().contains("Set password"))
             }
     }
 
@@ -88,7 +91,7 @@ class DeltaSetPasswordControllerTest {
             url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", validPassword)
-                append("confirmPassword", "Not" + validPassword)
+                append("confirmPassword", "Not$validPassword")
             }
         ).apply {
             coVerify(exactly = 0) { setPasswordTokenService.consumeToken(validToken, userCN) }
@@ -145,9 +148,27 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", validPassword)
             }
         ).apply {
-            assertEquals(emailTemplate.captured, "not-yet-enabled-user")
             assertEquals(HttpStatusCode.OK, status)
-            assertContains(bodyAsText(), "Your password link had expired.")
+            assertContains(bodyAsText(), "Your activation link had expired.")
+            assertFalse(bodyAsText().contains("Set password"))
+        }
+    }
+
+    @Test
+    fun testPostResendActivationEmail() = testSuspend {
+        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
+        testClient.submitForm(
+            url = "/set-password/expired",
+            formParameters = parameters {
+                append("userCN", userCN)
+                append("token", expiredToken)
+            }
+        ).apply {
+            coVerify(exactly = 1) { setPasswordTokenService.consumeToken(expiredToken, userCN) }
+            assertEquals(emailTemplate.captured, "not-yet-enabled-user")
+            coVerify(exactly = 1) { setPasswordTokenService.createToken(userCN) }
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(bodyAsText(), "Your registration is pending your email activation")
         }
     }
 
@@ -177,7 +198,7 @@ class DeltaSetPasswordControllerTest {
         } returns SetPasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
             setPasswordTokenService.validateToken(expiredToken, userCN)
-        } returns SetPasswordTokenService.ExpiredToken(userCN)
+        } returns SetPasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
             setPasswordTokenService.validateToken(invalidToken, userCN)
         } returns SetPasswordTokenService.NoSuchToken
@@ -189,7 +210,7 @@ class DeltaSetPasswordControllerTest {
         } returns SetPasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
             setPasswordTokenService.consumeToken(expiredToken, userCN)
-        } returns SetPasswordTokenService.ExpiredToken(userCN)
+        } returns SetPasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
             setPasswordTokenService.consumeToken(invalidToken, userCN)
         } returns SetPasswordTokenService.NoSuchToken
@@ -247,6 +268,9 @@ class DeltaSetPasswordControllerTest {
                     routing {
                         route("/set-password/success") {
                             controller.setPasswordSuccessRoute(this)
+                        }
+                        route("set-password/expired"){
+                            controller.setPasswordExpired(this)
                         }
                         route("/set-password") {
                             controller.setPasswordFormRoutes(this)

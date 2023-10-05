@@ -14,7 +14,7 @@ class SetPasswordTokenService(private val dbPool: DbPool, private val timeSource
 
     sealed class TokenResult
     class ValidToken(val token: String, val userCN: String) : TokenResult()
-    class ExpiredToken(val userCN: String) : TokenResult()
+    class ExpiredToken(val token: String, val userCN: String) : TokenResult()
     object NoSuchToken : TokenResult()
 
     companion object {
@@ -80,7 +80,7 @@ class SetPasswordTokenService(private val dbPool: DbPool, private val timeSource
                 logger.debug("No session found for token '{}' and userCN '{}'", token, userCN)
                 NoSuchToken
             } else if (tokenExpired(result.getTimestamp("created_at"))) {
-                ExpiredToken(userCN)
+                ExpiredToken(token, userCN)
             } else ValidToken(token, userCN)
         }
     }

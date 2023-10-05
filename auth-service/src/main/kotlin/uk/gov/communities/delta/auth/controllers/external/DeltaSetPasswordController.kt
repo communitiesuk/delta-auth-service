@@ -44,23 +44,39 @@ class DeltaSetPasswordController(
         }
     }
 
+    fun setPasswordExpired(route: Route) {
+        route.post {
+            setPasswordExpiredPost(call)
+        }
+    }
+
     private suspend fun setPasswordGet(call: ApplicationCall) {
         val userCN = call.request.queryParameters["userCN"].orEmpty()
         val token = call.request.queryParameters["token"].orEmpty()
-        when (setPasswordTokenService.validateToken(token, userCN)) {
+        when (val tokenResult = setPasswordTokenService.validateToken(token, userCN)) {
             is SetPasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException("set_password_no_token", "Set password token did not exist")
             }
 
             is SetPasswordTokenService.ExpiredToken -> {
-                sendNewSetPasswordLink(userCN)
-                call.respondExpiredTokenPage()
+                call.respondExpiredTokenPage(tokenResult)
             }
 
             is SetPasswordTokenService.ValidToken -> {
                 call.respondSetPasswordPage()
             }
         }
+    }
+
+    private suspend fun setPasswordExpiredPost(call: ApplicationCall) {
+        val formParameters = call.receiveParameters()
+        val userCN = formParameters["userCN"].orEmpty()
+        val token = formParameters["token"].orEmpty()
+        val tokenResult = setPasswordTokenService.consumeToken(token, userCN)
+        if (tokenResult is SetPasswordTokenService.ExpiredToken) {
+            sendNewSetPasswordLink(userCN)
+            call.respondNewEmailSentPage(userCN.replace("!", "@"))
+        } else throw Exception("tokenResult was $tokenResult when trying to send a new set password email")
     }
 
     private suspend fun setPasswordPost(call: ApplicationCall) {
@@ -124,7 +140,7 @@ class DeltaSetPasswordController(
     class SetPasswordException(
         errorCode: String,
         exceptionMessage: String,
-        userVisibleMessage: String = "Something went wrong, please click the link in your account activation email again",
+        userVisibleMessage: String = "Something went wrong, please click the link in your latest account activation email",
     ) : UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Set Password Error")
 
     private suspend fun ApplicationCall.respondToResult(
@@ -140,8 +156,7 @@ class DeltaSetPasswordController(
             }
 
             is SetPasswordTokenService.ExpiredToken -> {
-                sendNewSetPasswordLink(tokenResult.userCN)
-                this.respondExpiredTokenPage()
+                this.respondExpiredTokenPage(tokenResult)
             }
 
             is SetPasswordTokenService.ValidToken -> {
@@ -157,6 +172,16 @@ class DeltaSetPasswordController(
         }
     }
 
+    private suspend fun ApplicationCall.respondNewEmailSentPage(userEmail: String) =
+        respond(
+            ThymeleafContent(
+                "registration-success",
+                mapOf(
+                    "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                    "emailAddress" to userEmail,
+                )
+            )
+        )
 
     private suspend fun ApplicationCall.respondSuccessPage() =
         respond(ThymeleafContent("set-password-success", mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)))
@@ -176,10 +201,19 @@ class DeltaSetPasswordController(
         )
     }
 
-    private suspend fun ApplicationCall.respondExpiredTokenPage() =
-        respond(ThymeleafContent("expired-set-password", mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)))
+    private suspend fun ApplicationCall.respondExpiredTokenPage(tokenResult: SetPasswordTokenService.ExpiredToken) =
+        respond(
+            ThymeleafContent(
+                "expired-set-password",
+                mapOf(
+                    "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                    "userEmail" to tokenResult.userCN.replace("!", "@"),
+                    "userCN" to tokenResult.userCN,
+                    "token" to tokenResult.token,
+                )
+            )
+        )
 }
-
 
 fun getSetPasswordURL(token: String, userCN: String, authServiceUrl: String) =
     String.format(
