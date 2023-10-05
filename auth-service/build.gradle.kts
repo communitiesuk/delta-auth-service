@@ -1,9 +1,9 @@
-val ktorVersion = "2.3.3"
+val ktorVersion = "2.3.4"
 val kotlinVersion = "1.9.10"
 
 plugins {
     kotlin("jvm") version "1.9.10"
-    id("io.ktor.plugin") version "2.3.3"
+    id("io.ktor.plugin") version "2.3.4"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.10"
 }
 
@@ -56,7 +56,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.11.3")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.11.4")
 
     //Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
@@ -78,7 +78,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.13.7")
+    testImplementation("io.mockk:mockk:1.13.8")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
