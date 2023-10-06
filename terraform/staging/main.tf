@@ -42,11 +42,13 @@ module "auth_service" {
   cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
   alarms_sns_topic_arn           = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn
   internal_alb                   = data.terraform_remote_state.common_infra.outputs.auth_internal_alb
-  external_alb                   = data.terraform_remote_state.common_infra.outputs.public_albs.auth
-  ml_secret_kms_key_arn          = data.terraform_remote_state.common_infra.outputs.deploy_user_kms_key_arn
-  delta_hostname                 = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
-  bastion_security_group_id      = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
-  private_dns                    = data.terraform_remote_state.common_infra.outputs.private_dns
+  //noinspection HILUnresolvedReference
+  external_alb          = data.terraform_remote_state.common_infra.outputs.public_albs.auth
+  ml_secret_kms_key_arn = data.terraform_remote_state.common_infra.outputs.deploy_user_kms_key_arn
+  //noinspection HILUnresolvedReference
+  delta_hostname            = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
+  bastion_security_group_id = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
+  private_dns               = data.terraform_remote_state.common_infra.outputs.private_dns
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-staging.s3.amazonaws.com/CASRVSTAGING/CASRVstaging.dluhcdata.local_CASRVstaging.crt"
@@ -54,10 +56,19 @@ module "auth_service" {
     LDAP_SERVICE_USER_DN_FORMAT = "CN=%s,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
     LDAP_DELTA_USER_DN_FORMAT   = "CN=%s,CN=Datamart,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhcdata,DC=dluhcdata,DC=local"
+    LDAP_DOMAIN_REALM           = "dluhcdata.local"
   }
   ecs = {
     cpu           = 256
     memory        = 512
     desired_count = 1
+  }
+  mail_settings = {
+    smtp_host        = "email-smtp.eu-west-1.amazonaws.com"
+    smtp_port        = "465"
+    from_name        = "DELTA System (Staging)"
+    from_address     = "delta-staging@datacollection.test.levellingup.gov.uk"
+    reply_to_name    = "DLUHC Digital Services"
+    reply_to_address = "no-reply@levellingup.gov.uk"
   }
 }

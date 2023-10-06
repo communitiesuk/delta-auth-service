@@ -20,8 +20,11 @@ resource "aws_kms_alias" "auth_service" {
 data "aws_secretsmanager_secret" "active_directory_service_user" {
   name = "auth-service-ldap-user-password-${var.environment}"
 
+  //noinspection HCLUnknownBlockType
   lifecycle {
+    //noinspection HCLUnknownBlockType
     postcondition {
+      //noinspection HILUnresolvedReference
       condition     = self.kms_key_id == aws_kms_key.auth_service.arn
       error_message = "Secret must use the auth service KMS key"
     }
@@ -109,10 +112,17 @@ resource "aws_secretsmanager_secret_version" "cookie_mac_key" {
 data "aws_secretsmanager_secret" "sso_config" {
   name = "auth-service-sso-config-${var.environment}"
 
+  //noinspection HCLUnknownBlockType
   lifecycle {
+    //noinspection HCLUnknownBlockType
     postcondition {
+      //noinspection HILUnresolvedReference
       condition     = self.kms_key_id == aws_kms_key.auth_service.arn
       error_message = "Secret must use the auth service KMS key"
     }
   }
+}
+
+data "aws_secretsmanager_secret" "delta_ses_credentials" {
+  name = "tf-smtp-ses-user-delta-app-${var.environment}"
 }

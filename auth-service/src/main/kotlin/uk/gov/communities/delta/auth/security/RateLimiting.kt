@@ -9,29 +9,41 @@ import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.minutes
 
 const val loginRateLimitName = "protectLogin"
+const val registrationRateLimitName = "protectRegistration"
+const val setPasswordRateLimitName = "protectSetPassword"
 
-fun Application.configureRateLimiting(rateLimit: Int, rateLimitCounter: Counter) {
+fun Application.configureRateLimiting(
+    rateLimit: Int,
+    loginRateLimitCounter: Counter,
+    registrationRateLimitCounter: Counter,
+    setPasswordRateLimitCounter: Counter
+) {
     val logger = LoggerFactory.getLogger("Application.RateLimiting")
 
-    install(XForwardedHeaders) {
-        this.skipLastProxies(1)
-    }
-    install(RateLimit) {
-        // Currently only the login page is rate limited so a status 429 (Too many requests) sends the login page (with an error message)
-        register(RateLimitName(loginRateLimitName)) {
+    fun RateLimitConfig.setUpRateLimit(rateLimitName: String, pageName: String, counter: Counter) {
+        register(RateLimitName(rateLimitName)) {
             rateLimiter(limit = rateLimit, refillPeriod = 5.minutes)
             requestKey { applicationCall ->
                 val remoteHost = applicationCall.request.origin.remoteHost
-                logger.info("Request to login page from $remoteHost")
+                logger.info("Request to $pageName page from $remoteHost")
                 remoteHost
             }
             modifyResponse { applicationCall, state ->
                 if (state is RateLimiter.State.Exhausted) {
                     val remoteHost = applicationCall.request.origin.remoteHost
-                    rateLimitCounter.increment(1.0)
-                    logger.warn("Rate Limit reached for IP Address $remoteHost")
+                    counter.increment(1.0)
+                    logger.warn("$pageName page rate limit reached for IP Address $remoteHost")
                 }
             }
         }
+    }
+
+    install(XForwardedHeaders) {
+        this.skipLastProxies(1)
+    }
+    install(RateLimit) {
+        setUpRateLimit(loginRateLimitName, "Login", loginRateLimitCounter)
+        setUpRateLimit(registrationRateLimitName, "Registration form", registrationRateLimitCounter)
+        setUpRateLimit(setPasswordRateLimitName, "Set Password form", setPasswordRateLimitCounter)
     }
 }

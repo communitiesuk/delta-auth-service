@@ -14,6 +14,8 @@ import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
+import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -38,7 +40,9 @@ fun Application.configureRouting(injection: Injection) {
         externalRoutes(
             injection.authServiceConfig,
             injection.externalDeltaLoginController(),
-            injection.deltaOAuthLoginController()
+            injection.deltaOAuthLoginController(),
+            injection.externalDeltaUserRegisterController(),
+            injection.externalDeltaSetPasswordController(),
         )
     }
 }
@@ -53,21 +57,58 @@ fun Route.externalRoutes(
     serviceConfig: AuthServiceConfig,
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
+    deltaUserRegistrationController: DeltaUserRegistrationController,
+    deltaSetPasswordController: DeltaSetPasswordController
 ) {
     install(BrowserSecurityHeaders)
     staticResources("/static", "static") {
         cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
     }
+
+    val faviconBytes = javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes()
+
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
     get("/favicon.ico") {
         call.respondBytes(
-            javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes(),
+            faviconBytes,
             ContentType.Image.XIcon
         )
     }
 
+    route("/delta/register") {
+        deltaRegisterRoutes(deltaUserRegistrationController)
+    }
+
+    route("/delta/set-password") {
+        deltaSetPasswordRoutes(deltaSetPasswordController)
+    }
+
     route("/delta") {
         deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
+    }
+}
+
+fun Route.deltaSetPasswordRoutes(deltaSetPasswordController: DeltaSetPasswordController) {
+    route("/success") {
+        deltaSetPasswordController.setPasswordSuccessRoute(this)
+    }
+    route("/expired") {
+        deltaSetPasswordController.setPasswordExpired(this)
+    }
+    rateLimit(RateLimitName(setPasswordRateLimitName)) {
+        deltaSetPasswordController.setPasswordFormRoutes(this)
+    }
+}
+
+fun Route.deltaRegisterRoutes(
+    deltaUserRegistrationController: DeltaUserRegistrationController
+) {
+    route("/success") {
+        deltaUserRegistrationController.registerSuccessRoute(this)
+    }
+
+    rateLimit(RateLimitName(registrationRateLimitName)) {
+        deltaUserRegistrationController.registerFormRoutes(this)
     }
 }
 
@@ -99,7 +140,15 @@ fun Route.deltaLoginRoutes(
     }
 }
 
-fun oauthClientLoginRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/login"
+fun deltaRouteWithEmail(deltaUrl: String, ssoClientInternalId: String, email: String) =
+    deltaUrl + "/oauth2/authorization/delta-auth?sso-client=${ssoClientInternalId}&expected-email=${email.encodeURLParameter()}"
+
+fun oauthClientLoginRoute(ssoClientInternalId: String, email: String? = null) =
+    if (email == null)
+        "/delta/oauth/${ssoClientInternalId}/login"
+    else
+        "/delta/oauth/${ssoClientInternalId}/login?expected-email=${email.encodeURLParameter()}"
+
 fun oauthClientCallbackRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoClientInternalId}/callback"
 
 // "Internal" to the VPC, this is enforced by load balancer rules

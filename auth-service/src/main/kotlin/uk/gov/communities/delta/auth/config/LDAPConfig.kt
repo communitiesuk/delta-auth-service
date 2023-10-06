@@ -10,10 +10,11 @@ data class LDAPConfig(
     val serviceUserRequiredGroupCn: String,
     val authServiceUserCn: String,
     val authServiceUserPassword: String,
+    val domainRealm: String,
 ) {
     companion object {
         fun fromEnv(): LDAPConfig = LDAPConfig(
-            deltaLdapUrl = Env.getRequiredOrDevFallback("DELTA_LDAP_URL", "ldap://localhost:2389"),
+            deltaLdapUrl = Env.getRequiredOrDevFallback("DELTA_LDAP_URL", "ldaps://dluhctest.local:2636"),
             serviceUserDnFormat = Env.getRequiredOrDevFallback(
                 "LDAP_SERVICE_USER_DN_FORMAT",
                 "CN=%s,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
@@ -28,10 +29,11 @@ data class LDAPConfig(
             ),
             serviceUserRequiredGroupCn = "dluhc-service-users",
             authServiceUserCn = Env.getEnv("LDAP_AUTH_SERVICE_USER") ?: "auth-service.app",
-            authServiceUserPassword = Env.getRequired("LDAP_AUTH_SERVICE_USER_PASSWORD")
+            authServiceUserPassword = Env.getRequired("LDAP_AUTH_SERVICE_USER_PASSWORD"),
+            domainRealm = Env.getRequiredOrDevFallback("LDAP_DOMAIN_REALM", "dluhctest.local"),
         )
-
-        val VALID_USERNAME_REGEX = Regex("^[\\w-.!']+$")
+        val VALID_EMAIL_REGEX = Regex("^[\\w\\-+.']+@([\\w\\-']+\\.)+[\\w\\-]{2,4}$")
+        val VALID_USERNAME_REGEX = Regex("^[\\w\\-+.!']+$")
     }
 
     val authServiceUserDn = serviceUserDnFormat.format(authServiceUserCn)

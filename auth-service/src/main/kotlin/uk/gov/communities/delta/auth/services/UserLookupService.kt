@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.services
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import javax.naming.NameNotFoundException
 
 class UserLookupService(
     private val config: Configuration,
@@ -15,6 +16,15 @@ class UserLookupService(
         val bindUserDn: String,
         val bindUserPassword: String,
     )
+
+    suspend fun userExists(cn: String): Boolean {
+        return try {
+            lookupUserByCn(cn)
+            true
+        } catch (e: NameNotFoundException) {
+            false
+        }
+    }
 
     suspend fun lookupUserByCn(cn: String): LdapUser {
         logger.atInfo().addKeyValue("username", cn).log("Looking up user in AD")

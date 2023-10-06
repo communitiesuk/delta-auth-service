@@ -9,5 +9,6 @@ fun testLdapUser(
     email: String? = "email",
     deltaTOTPSecret: String? = null,
     name: String = "Test User",
+    firstName: String = "Test",
     accountEnabled: Boolean = true,
-) = LdapUser(dn, cn, memberOfCNs, email, deltaTOTPSecret, name, accountEnabled)
+) = LdapUser(dn, cn, memberOfCNs, email, deltaTOTPSecret, name, firstName, accountEnabled)

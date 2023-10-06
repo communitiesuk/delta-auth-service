@@ -41,11 +41,16 @@ fun Application.appModule() {
         injection.dbPool.eagerInit()
     }
 
-    configureRateLimiting(injection.deltaConfig.rateLimit, injection.rateLimitCounter)
+    configureRateLimiting(
+        injection.deltaConfig.rateLimit,
+        injection.loginRateLimitCounter,
+        injection.registrationRateLimitCounter,
+        injection.setPasswordRateLimitCounter
+    )
     configureSecurity(injection)
     configureMonitoring(injection.meterRegistry)
     configureSerialization()
     configureTemplating(developmentMode)
     configureRouting(injection)
-    configureStatusPages(injection.deltaConfig.deltaWebsiteUrl, injection.azureADSSOConfig)
+    configureStatusPages(injection.deltaConfig.deltaWebsiteUrl, injection.azureADSSOConfig, injection.deltaConfig)
 }

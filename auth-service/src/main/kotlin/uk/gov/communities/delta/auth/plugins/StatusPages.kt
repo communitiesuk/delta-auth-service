@@ -13,20 +13,52 @@ import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 
 private const val apiRoutePrefix = "/auth-internal/"
+private const val tooManyRequestsErrorMessage =
+    "Too many requests from your location, please try again in a few minutes."
 
-fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureADSSOConfig) {
+fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureADSSOConfig, deltaConfig: DeltaConfig) {
     val logger = LoggerFactory.getLogger("Delta.StatusPages")
     install(StatusPages) {
-        // Currently only the login page is rate limited so always renders the login page for status "TooManyRequests"
+        // Currently login page and registration pages are rate limited, if path not recognised defaults to login page for status "TooManyRequests"
         status(HttpStatusCode.TooManyRequests) { call, _ ->
             call.addSecurityHeaders()
-            try {
+            if (call.request.path().contains("/register"))
+                try {
+                    call.respond(
+                        ThymeleafContent(
+                            "register-user-form",
+                            mapOf(
+                                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                                "allErrors" to arrayListOf(arrayListOf(tooManyRequestsErrorMessage, "#")),
+                            )
+                        )
+                    )
+                } catch (e: Exception) {
+                    logger.error("Failed to render Delta registration form page after rate limit", e)
+                    call.respondText("Failed to render registration form page after reaching rate limit. Request id ${call.callId}")
+                }
+            else if (call.request.path().contains("/set-password"))
+                try {
+                    call.respond(
+                        ThymeleafContent(
+                            "set-password-form",
+                            mapOf(
+                                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                                "message" to tooManyRequestsErrorMessage,
+                            )
+                        )
+                    )
+                } catch (e: Exception) {
+                    logger.error("Failed to render Delta set password form page after rate limit", e)
+                    call.respondText("Failed to render set password form page after reaching rate limit. Request id ${call.callId}")
+                }
+            else try {
                 call.respond(
                     ThymeleafContent(
                         "delta-login",
                         mapOf(
-                            "deltaUrl" to DeltaConfig.fromEnv().deltaWebsiteUrl,
-                            "errorMessage" to "Too many requests from your location, please try again in a few minutes.",
+                            "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                            "errorMessage" to tooManyRequestsErrorMessage,
                             "ssoClients" to ssoConfig.ssoClients.filter { it.buttonText != null },
                         )
                     )

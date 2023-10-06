@@ -14,18 +14,13 @@ import kotlinx.serialization.json.Json
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AzureADSSOClient
-import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.ClientConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
-import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.LdapUser
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
-import uk.gov.communities.delta.auth.services.withAuthCode
+import uk.gov.communities.delta.auth.utils.emailToDomain
 import javax.naming.NameNotFoundException
 
 /*
@@ -35,10 +30,13 @@ class DeltaSSOLoginController(
     private val deltaConfig: DeltaConfig,
     private val clientConfig: ClientConfig,
     private val ssoConfig: AzureADSSOConfig,
+    private val authServiceConfig: AuthServiceConfig,
     private val ssoLoginStateService: SSOLoginSessionStateService,
     private val ldapLookupService: UserLookupService,
     private val authorizationCodeService: AuthorizationCodeService,
     private val microsoftGraphService: MicrosoftGraphService,
+    private val registrationService: RegistrationService,
+    private val organisationService: OrganisationService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -68,13 +66,27 @@ class DeltaSSOLoginController(
         val session = validateOAuthStateInSession(call)
 
         val principal = call.principal<OAuthAccessTokenResponse.OAuth2>()!!
-        val email = extractEmailFromTrustedJwt(principal.accessToken)
+        val email = parseTrustedAzureJwt(principal.accessToken).emailAddress
         checkEmailDomain(email, ssoClient)
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
-        val user = lookupUserInAd(email)
-            ?: return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/register?from_sso_client=${ssoClient.internalId}&email=${email.encodeURLParameter()}")
+        var user = lookupUserInAd(email)
+        if (user == null) {
+            if (!ssoClient.required) {
+                return call.respondRedirect(authServiceConfig.serviceUrl + "/register")
+            }
+            val registrationResult = registrationService.register(
+                parseTrustedAzureJwt(principal.accessToken),
+                organisationService.findAllByDomain(emailToDomain(email)),
+                ssoUser = true
+            )
+            if (registrationResult !is RegistrationService.SSOUserCreated) {
+                logger.error("Error creating SSO User, result was {}", registrationResult.toString())
+                throw Exception("Error creating SSO User")
+            }
+            user = lookupUserInAd(email)!!
+        }
 
         checkUserEnabled(user)
         checkUserHasEmail(user)
@@ -145,7 +157,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "user_disabled",
                 "User ${user.cn} is disabled in Active Directory, login blocked",
-                "Your Delta user account is disabled. Please contact the service desk"
+                "Your Delta user account is disabled. If you haven't used your account before please check for an activation email otherwise please contact the service desk"
             )
         }
     }
@@ -200,16 +212,16 @@ class DeltaSSOLoginController(
     }
 
     private fun checkDeltaUsersGroup(user: LdapUser) {
-        if (!user.memberOfCNs.contains(deltaConfig.requiredGroupCn)) {
+        if (!user.memberOfCNs.contains(deltaConfig.datamartDeltaUser)) {
             logger.error(
                 "User {} is not a member of required Delta group {}",
                 keyValue("username", user.cn),
-                deltaConfig.requiredGroupCn
+                deltaConfig.datamartDeltaUser
             )
             throw OAuthLoginException(
                 "not_delta_user",
-                "User ${user.cn} is not member of required Delta group ${deltaConfig.requiredGroupCn}",
-                "Your Delta user is misconfigured (not in ${deltaConfig.requiredGroupCn}). Please contact the Service Desk",
+                "User ${user.cn} is not member of required Delta group ${deltaConfig.datamartDeltaUser}",
+                "Your Delta user is misconfigured (not in ${deltaConfig.datamartDeltaUser}). Please contact the Service Desk",
             )
         }
     }
@@ -217,16 +229,25 @@ class DeltaSSOLoginController(
     @Serializable
     // TODO DT-572 Figure out whether unique_name is reliably the user's email address in DLUHC AD
     // Azure AD doesn't seem to validate emails at all so using the "email" claim doesn't seem ideal
-    data class JwtBody(@SerialName("unique_name") val uniqueName: String)
+    data class JwtBody(
+        @SerialName("unique_name") val uniqueName: String,
+        @SerialName("given_name") val givenName: String,
+        @SerialName("family_name") val familyName: String
+    )
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }
 
-    private fun extractEmailFromTrustedJwt(jwt: String): String {
+    private fun parseTrustedAzureJwt(jwt: String): Registration {
         try {
             val split = jwt.split('.')
             if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
             val jsonString = split[1].decodeBase64String()
-            return jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString).uniqueName
+            val json = jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString)
+            return Registration(
+                json.givenName,
+                json.familyName,
+                json.uniqueName.lowercase()
+            )
         } catch (e: Exception) {
             logger.error("Error parsing JWT '{}'", jwt)
             throw InvalidJwtException("Error parsing JWT", e)

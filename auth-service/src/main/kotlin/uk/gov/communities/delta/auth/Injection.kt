@@ -10,6 +10,8 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
+import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
+import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -32,6 +34,7 @@ class Injection(
     val databaseConfig: DatabaseConfig,
     val clientConfig: ClientConfig,
     val deltaConfig: DeltaConfig,
+    val emailConfig: EmailConfig,
     val azureADSSOConfig: AzureADSSOConfig,
     val authServiceConfig: AuthServiceConfig,
 ) {
@@ -47,6 +50,7 @@ class Injection(
                 DatabaseConfig.fromEnv(),
                 ClientConfig.fromEnv(deltaConfig),
                 deltaConfig,
+                EmailConfig.fromEnv(),
                 AzureADSSOConfig.fromEnv(),
                 AuthServiceConfig.fromEnv(),
             )
@@ -58,6 +62,7 @@ class Injection(
         ldapConfig.log(logger.atInfo())
         databaseConfig.log(logger.atInfo())
         deltaConfig.log(logger.atInfo())
+        emailConfig.log(logger.atInfo())
         clientConfig.log(logger.atInfo())
         azureADSSOConfig.log(logger.atInfo())
         authServiceConfig.log(logger.atInfo())
@@ -73,12 +78,7 @@ class Injection(
     }
 
     private val samlTokenService = SAMLTokenService()
-    private val ldapService = LdapService(
-        LdapService.Configuration(
-            ldapUrl = ldapConfig.deltaLdapUrl,
-            groupDnFormat = ldapConfig.groupDnFormat
-        )
-    )
+    private val ldapService = LdapService(ldapConfig)
     private val userLookupService = UserLookupService(
         UserLookupService.Configuration(
             ldapConfig.deltaUserDnFormat,
@@ -87,8 +87,26 @@ class Injection(
         ),
         ldapService
     )
+    private val emailService = EmailService(emailConfig)
+    private val userService = UserService(ldapService)
 
     val dbPool = DbPool(databaseConfig)
+
+    val setPasswordTokenService = SetPasswordTokenService(dbPool, TimeSource.System)
+    val organisationService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
+    val registrationService =
+        RegistrationService(
+            deltaConfig,
+            emailConfig,
+            ldapConfig,
+            authServiceConfig,
+            setPasswordTokenService,
+            emailService,
+            userService,
+            userLookupService,
+            groupService()
+        )
+
     val authorizationCodeService = AuthorizationCodeService(dbPool, TimeSource.System)
     val oauthSessionService = OAuthSessionService(dbPool, TimeSource.System)
     val ssoLoginStateService = SSOLoginSessionStateService()
@@ -109,8 +127,11 @@ class Injection(
             CloudWatchAsyncClient.create()
         )
     val failedLoginCounter: Counter = meterRegistry.counter("login.failedLogins")
-    val rateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
+    val loginRateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
     val successfulLoginCounter: Counter = meterRegistry.counter("login.successfulLogins")
+
+    val registrationRateLimitCounter: Counter = meterRegistry.counter("registration.rateLimitedRequests")
+    val setPasswordRateLimitCounter: Counter = meterRegistry.counter("setPassword.rateLimitedRequests")
 
     val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
     val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
@@ -146,6 +167,25 @@ class Injection(
         )
     }
 
+    fun externalDeltaUserRegisterController() = DeltaUserRegistrationController(
+        deltaConfig,
+        authServiceConfig,
+        azureADSSOConfig,
+        organisationService,
+        registrationService,
+    )
+
+    fun externalDeltaSetPasswordController() = DeltaSetPasswordController(
+        deltaConfig,
+        ldapConfig,
+        emailConfig,
+        authServiceConfig,
+        userService,
+        setPasswordTokenService,
+        userLookupService,
+        emailService
+    )
+
     fun internalOAuthTokenController() = OAuthTokenController(
         clientConfig.oauthClients,
         authorizationCodeService,
@@ -161,9 +201,14 @@ class Injection(
             deltaConfig,
             clientConfig,
             azureADSSOConfig,
+            authServiceConfig,
             ssoLoginStateService,
             userLookupService,
             authorizationCodeService,
-            microsoftGraphService
+            microsoftGraphService,
+            registrationService,
+            organisationService,
         )
+
+    fun groupService() = GroupService(ldapService, ldapConfig)
 }

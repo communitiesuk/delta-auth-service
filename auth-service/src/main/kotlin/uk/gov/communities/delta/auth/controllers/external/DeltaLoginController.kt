@@ -51,6 +51,9 @@ class DeltaLoginController(
         call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = client.clientId))
 
         if (params.useSSOClient != null) {
+            if (params.expectedEmail != null) {
+                call.respondRedirect(oauthClientLoginRoute(params.useSSOClient.internalId, params.expectedEmail))
+            }
             call.respondRedirect(oauthClientLoginRoute(params.useSSOClient.internalId))
         } else {
             call.respondLoginPage(client)
@@ -61,6 +64,7 @@ class DeltaLoginController(
         val client: DeltaLoginEnabledClient,
         val state: String,
         val useSSOClient: AzureADSSOClient?,
+        val expectedEmail: String?,
     )
 
     private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
@@ -83,7 +87,8 @@ class DeltaLoginController(
         }
         val ssoClient = request.queryParameters["sso-client"]
             ?.let { param -> ssoConfig.ssoClients.firstOrNull { it.internalId == param } }
-        return LoginQueryParams(client, state, ssoClient)
+        val expectedEmail = request.queryParameters["expected-email"]
+        return LoginQueryParams(client, state, ssoClient, expectedEmail)
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
@@ -128,7 +133,7 @@ class DeltaLoginController(
             it.required && formUsername.lowercase().endsWith(it.emailDomain)
         }
         if (ssoClientMatchingEmailDomain != null) {
-            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId))
+            return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId, formUsername))
         }
 
         val cn = formUsername.replace('@', '!')
@@ -215,12 +220,17 @@ class DeltaLoginController(
         }
     }
 
-    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.requiredGroupCn)
+    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.datamartDeltaUser)
 
     private fun ApplicationCall.checkOriginHeader() {
         val origin = request.headers["Origin"]
         if (origin != authServiceConfig.serviceUrl) {
-            logger.warn("Origin header check failure, expected '{}' got '{}' for user agent {}", authServiceConfig.serviceUrl, origin, request.headers["User-Agent"])
+            logger.warn(
+                "Origin header check failure, expected '{}' got '{}' for user agent {}",
+                authServiceConfig.serviceUrl,
+                origin,
+                request.headers["User-Agent"]
+            )
             throw InvalidOriginException("Origin header validation failed, expected '${authServiceConfig.serviceUrl}' got '$origin'")
         }
     }

@@ -35,7 +35,6 @@ import kotlin.test.assertTrue
 
 
 class DeltaLoginControllerTest {
-
     @Test
     fun testLoginPage() = testSuspend {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
@@ -99,7 +98,7 @@ class DeltaLoginControllerTest {
     @Test
     fun testLoginPostNoEmail() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(
-            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.requiredGroupCn), email = null)
+            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.datamartDeltaUser), email = null)
         )
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
@@ -119,9 +118,29 @@ class DeltaLoginControllerTest {
     }
 
     @Test
+    fun testLoginUserNotExisting() = testSuspend {
+        loginResult = IADLdapLoginService.InvalidUsernameOrPassword
+        testClient.submitForm(
+            url = "/login?response_type=code&client_id=delta-website&state=1234",
+            formParameters = parameters {
+                append("username", "user")
+                append("password", "pass")
+            }
+        ).apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(
+                bodyAsText(),
+                "Your username or password are incorrect. Please try again or reset your password. Five incorrect login attempts will lock your account for 30 minutes, you may have to try later."
+            )
+            verify(exactly = 1) { failedLoginCounter.increment(1.0) }
+            verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
+        }
+    }
+
+    @Test
     fun testLoginPostSuccess() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(
-            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.requiredGroupCn))
+            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
         )
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
@@ -157,15 +176,20 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSSODomainRedirects() = testSuspend {
+        val testUserEmail = "user@sso.domain"
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
-                append("username", "user@sso.domain")
+                append("username", testUserEmail)
                 append("password", "pass")
             }
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
-            assertEquals(oauthClientLoginRoute("dev"), headers["Location"], "Should redirect to OAuth route")
+            assertEquals(
+                oauthClientLoginRoute("dev", testUserEmail),
+                headers["Location"],
+                "Should redirect to OAuth route"
+            )
             verify(exactly = 0) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
         }

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <title>DLUHC DELTA: Set Your Password</title>
+    <style>
+        p {
+            font-family: calibri, serif;
+            font-size: 12pt;
+        }
+
+        p#disclaimer {
+            font-size: 10pt;
+        }
+    </style>
+</head>
+
+<body>
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="userFirstName" type="java.lang.String" */-->
+<!--/*@thymesVar id="setPasswordUrl" type="java.lang.String" */-->
+
+<p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
+
+<p>
+    You are receiving this email because you have tried to use an expired password setting link on <a
+        th:href="@{${deltaUrl}}">DELTA</a>, the online data collection and grants administration system
+    of the Department for Levelling Up, Housing and Communities (DLUHC).
+</p>
+
+<p>Please click on the link below to set your password and activate your account.</p>
+
+<p>
+    <a th:href="@{${setPasswordUrl}}">Activate your DELTA account</a>. <b>This link is only valid for 24 hours so
+    please activate your account now</b>.
+</p>
+
+<p>Please note that your username will be the email address to which this email has been sent.</p>
+
+<p>
+    Please note the DELTA User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
+    application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
+</p>
+<p>
+    If you have any questions or need help please email the DLUHC Service Desk on <a
+        href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a> or call
+    0203 829 0743.
+</p>
+<p>
+    Regards
+</p>
+<p>
+    <strong>DLUHC DELTA Administrator</strong>
+</p>
+<img src="https://delta.communities.gov.uk/public/images/DLUHC-logo.png" width="234" height="70" alt="DLUHC Logo"/>
+<p id="disclaimer">
+    This email and any files transmitted with it are private and intended solely for the use of the individual or entity
+    to which they are addressed. If you are not the intended recipient the E-mail and any files have been transmitted to
+    you in error and any copying, distribution or other use of the information contained in them is strictly prohibited.
+    Nothing in this E-mail message amounts to a contractual or other legal commitment on the part of the Government
+    unless confirmed by a communication signed on behalf of the Secretary of State. The Department's computer systems
+    may be monitored and communications carried on them recorded, to secure the effective operation of the system and
+    for other lawful purposes. Correspondents should note that all communications from Department for Levelling Up,
+    Housing and Communities may be automatically logged, monitored and/or recorded for lawful purposes.
+</p>
+</body>
+</html>

@@ -85,6 +85,38 @@ module "fargate" {
       name  = "SERVICE_URL"
       value = "https://${var.external_alb.primary_hostname}"
     },
+    {
+      name  = "DELTA_MARKLOGIC_LDAP_AUTH_APP_SERVICE"
+      value = "http://marklogic.vpc.local:8050"
+    },
+    {
+      name  = "MAIL_SMTP_HOST"
+      value = var.mail_settings.smtp_host
+    },
+    {
+      name  = "MAIL_SMTP_PORT"
+      value = var.mail_settings.smtp_port
+    },
+    {
+      name  = "FROM_EMAIL_ADDRESS"
+      value = var.mail_settings.from_address
+    },
+    {
+      name  = "FROM_EMAIL_NAME"
+      value = var.mail_settings.from_name
+    },
+    {
+      name  = "REPLY_TO_EMAIL_ADDRESS"
+      value = var.mail_settings.reply_to_address
+    },
+    {
+      name  = "REPLY_TO_EMAIL_NAME"
+      value = var.mail_settings.reply_to_name
+    },
+    {
+      name  = "LDAP_DOMAIN_REALM"
+      value = var.ldap_config.LDAP_DOMAIN_REALM
+    },
   ]
   secrets = [for s in [
     {
@@ -126,6 +158,10 @@ module "fargate" {
     var.delta_website_local_dev_client_secret_arn == null ? null : {
       name      = "CLIENT_SECRET_DELTA_WEBSITE_DEV"
       valueFrom = var.delta_website_local_dev_client_secret_arn
+    },
+    {
+      name      = "MAIL_SMTP_USER"
+      valueFrom = data.aws_secretsmanager_secret.delta_ses_credentials.arn
     },
   ] : s if s != null]
   secret_kms_key_arns = compact([aws_kms_key.auth_service.arn, var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])

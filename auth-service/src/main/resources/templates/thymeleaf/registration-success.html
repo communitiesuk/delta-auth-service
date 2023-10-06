@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" class="govuk-template " xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/template.html :: head (title='DELTA | Register')}">
+    <title>DELTA | Register</title>
+</head>
+
+<body class="govuk-template__body govuk-body">
+<a href="#main-content" class="govuk-skip-link" data-module="govuk-skip-link">Skip to main content</a>
+<header th:replace="~{fragments/template.html :: header}"></header>
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="emailAddress" type="java.lang.String" */-->
+
+<div class="govuk-width-container" id="registrationSuccessPage">
+    <main class="govuk-main-wrapper " id="main-content" role="main">
+        <h1 class="govuk-heading-xl">Registration pending</h1>
+        <div class="govuk-grid-row">
+            <div class="govuk-grid-column-two-thirds">
+                <div class="govuk-panel">
+                    <h1>
+                        Your registration is pending your email activation
+                    </h1>
+                </div>
+
+                <p class="govuk-body">An email has been sent to <a
+                        th:href="'mailto:' + ${emailAddress}" th:text="${emailAddress}">your email address</a>, the link
+                    in the email is only valid for 24 hours. Follow the instructions in the email to complete your
+                    registration. If you have not received an email after 15 minutes, contact the DLUHC Service Desk: <a
+                            class="govuk-link" href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a>
+                    or call 0203 829 0743.</p>
+            </div>
+        </div>
+    </main>
+</div>
+<footer th:replace="~{fragments/template.html :: footer (deltaUrl=${deltaUrl})}"></footer>
+</body>
+</html>
