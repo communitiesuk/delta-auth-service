@@ -119,6 +119,7 @@ variable "mail_settings" {
     from_address     = string
     reply_to_name    = string
     reply_to_address = string
+    smtp_secret_name = optional(string)
   })
 }
 

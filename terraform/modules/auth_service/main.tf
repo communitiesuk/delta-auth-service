@@ -87,7 +87,7 @@ module "fargate" {
     },
     {
       name  = "DELTA_MARKLOGIC_LDAP_AUTH_APP_SERVICE"
-      value = "http://marklogic.vpc.local:8050"
+      value = "http://marklogic.vpc.local:8050/"
     },
     {
       name  = "MAIL_SMTP_HOST"
@@ -159,9 +159,9 @@ module "fargate" {
       name      = "CLIENT_SECRET_DELTA_WEBSITE_DEV"
       valueFrom = var.delta_website_local_dev_client_secret_arn
     },
-    {
+    var.mail_settings.smtp_secret_name == null ? null : {
       name      = "MAIL_SMTP_USER"
-      valueFrom = data.aws_secretsmanager_secret.delta_ses_credentials.arn
+      valueFrom = data.aws_secretsmanager_secret.delta_ses_credentials[0].arn
     },
   ] : s if s != null]
   secret_kms_key_arns = compact([aws_kms_key.auth_service.arn, var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])

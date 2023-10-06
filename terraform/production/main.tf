@@ -71,5 +71,6 @@ module "auth_service" {
     from_address     = "delta@datacollection.levellingup.gov.uk"
     reply_to_name    = "DLUHC Digital Services"
     reply_to_address = "no-reply@levellingup.gov.uk"
+    smtp_secret_name = "tf-smtp-ses-user-delta-app-${local.environment}"
   }
 }

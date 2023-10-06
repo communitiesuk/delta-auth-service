@@ -124,5 +124,7 @@ data "aws_secretsmanager_secret" "sso_config" {
 }
 
 data "aws_secretsmanager_secret" "delta_ses_credentials" {
-  name = "tf-smtp-ses-user-delta-app-${var.environment}"
+  count = var.mail_settings.smtp_secret_name != null ? 1 : 0
+
+  name = var.mail_settings.smtp_secret_name
 }
