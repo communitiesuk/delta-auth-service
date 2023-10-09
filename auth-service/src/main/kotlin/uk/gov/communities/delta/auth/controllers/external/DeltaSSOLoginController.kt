@@ -66,7 +66,8 @@ class DeltaSSOLoginController(
         val session = validateOAuthStateInSession(call)
 
         val principal = call.principal<OAuthAccessTokenResponse.OAuth2>()!!
-        val email = parseTrustedAzureJwt(principal.accessToken).emailAddress
+        val jwt = parseTrustedAzureJwt(principal.accessToken)
+        val email = jwt.emailAddress
         checkEmailDomain(email, ssoClient)
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
@@ -74,10 +75,15 @@ class DeltaSSOLoginController(
         var user = lookupUserInAd(email)
         if (user == null) {
             if (!ssoClient.required) {
+                logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
                 return call.respondRedirect(authServiceConfig.serviceUrl + "/register")
             }
+            logger.info(
+                "SSO required user not found in AD, registering automatically using details from access token {}",
+                jwt
+            )
             val registrationResult = registrationService.register(
-                parseTrustedAzureJwt(principal.accessToken),
+                jwt,
                 organisationService.findAllByDomain(emailToDomain(email)),
                 ssoUser = true
             )
@@ -232,7 +238,7 @@ class DeltaSSOLoginController(
     data class JwtBody(
         @SerialName("unique_name") val uniqueName: String,
         @SerialName("given_name") val givenName: String,
-        @SerialName("family_name") val familyName: String
+        @SerialName("family_name") val familyName: String,
     )
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }

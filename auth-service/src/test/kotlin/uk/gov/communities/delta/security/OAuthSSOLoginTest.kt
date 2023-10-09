@@ -139,11 +139,12 @@ class OAuthSSOLoginTest {
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
-        val registration = Registration("Example", "User", "user@example.com")
         coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated
+
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
-                coVerify(exactly = 0) { registrationService.register(any(), organisations, true) }
+                val registration = Registration("Example", "User", "user@example.com")
+                coVerify(exactly = 0) { registrationService.register(registration, organisations, true) }
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals(serviceConfig.serviceUrl + "/register", headers["Location"])
             }
@@ -158,11 +159,12 @@ class OAuthSSOLoginTest {
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
-        val registration = Registration("Example", "User", "user@example.com")
         coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated
+
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
-                coVerify(exactly = 1) { registrationService.register(any(), organisations, true) }
+                val registration = Registration("Example", "User", "user@example.com")
+                coVerify(exactly = 1) { registrationService.register(registration, organisations, true) }
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             }
@@ -323,7 +325,6 @@ class OAuthSSOLoginTest {
             registrationService = mockk<RegistrationService>()
             organisationService = mockk<OrganisationService>()
             val loginPageController = DeltaLoginController(
-                serviceConfig,
                 listOf(serviceClient),
                 ssoConfig,
                 deltaConfig,

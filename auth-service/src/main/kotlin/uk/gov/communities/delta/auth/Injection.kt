@@ -157,7 +157,6 @@ class Injection(
             ldapService
         )
         return DeltaLoginController(
-            authServiceConfig,
             clientConfig.oauthClients,
             azureADSSOConfig,
             deltaConfig,

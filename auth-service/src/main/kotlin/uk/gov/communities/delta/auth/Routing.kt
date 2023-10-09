@@ -61,6 +61,7 @@ fun Route.externalRoutes(
     deltaSetPasswordController: DeltaSetPasswordController
 ) {
     install(BrowserSecurityHeaders)
+    install(originHeaderCheck(serviceConfig.serviceUrl))
     staticResources("/static", "static") {
         cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
     }
