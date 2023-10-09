@@ -58,7 +58,7 @@ class MemberOfToDeltaRolesMapperTest {
     fun testIgnoresInvalidOrganisationMapping() {
         val result = mapper().map(
             listOf(
-                "dclg", "data-providers-dclg", "data-providers", "user-invalid-group"
+                "dclg", "data-providers-dclg", "data-providers", "user-invalid-group", "data-providers-E1234"
             ).map { "datamart-delta-$it" }
         )
 
@@ -99,6 +99,31 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(emptyList(), result.accessGroups)
         assertEquals(listOf("dclg"), result.organisationIds)
+    }
+
+
+    @Test
+    fun testMultipleOrganisations() {
+        val result = mapper().map(
+            listOf(
+                "user-dclg", "user-E1234", "data-providers-dclg", "data-providers-E1234", "data-certifiers-E1234",
+                "data-certifiers", "data-providers", "access-group", "access-group-dclg", "access-group-E1234"
+            ).map { "datamart-delta-$it" }
+        )
+
+        assertEquals(
+            listOf(
+                MemberOfToDeltaRolesMapper.SystemRole("data-certifiers", listOf("E1234")),
+                MemberOfToDeltaRolesMapper.SystemRole("data-providers", listOf("dclg", "E1234")),
+            ), result.systemRoles
+        )
+        assertEquals(emptyList(), result.externalRoles)
+        assertEquals(
+            listOf(
+                MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg", "E1234"))
+            ), result.accessGroups
+        )
+        assertEquals(listOf("dclg", "E1234"), result.organisationIds)
     }
 
     private fun mapper() = MemberOfToDeltaRolesMapper("username", organisationIds, accessGroups)
