@@ -76,7 +76,7 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
                     json(Json { ignoreUnknownKeys = true })
                 }
                 install(HttpTimeout) {
-                    requestTimeoutMillis = 10.seconds.inWholeMilliseconds
+                    requestTimeoutMillis = 20.seconds.inWholeMilliseconds
                 }
                 defaultRequest { headers.append("Accept", "application/json") }
             }
