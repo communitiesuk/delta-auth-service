@@ -90,6 +90,8 @@ class Injection(
 
     val dbPool = DbPool(databaseConfig)
 
+    val userAuditTrailRepo = UserAuditTrailRepo()
+    val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
     val registrationSetPasswordTokenService = RegistrationSetPasswordTokenService(dbPool, TimeSource.System)
     val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
     val organisationService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
@@ -163,7 +165,7 @@ class Injection(
             adLoginService,
             authorizationCodeService,
             failedLoginCounter,
-            successfulLoginCounter
+            successfulLoginCounter,
         )
     }
 
