@@ -65,11 +65,12 @@ class OAuthTokenController(
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
 
             val samlToken = samlTokenService.samlTokenForSession(userSession.session, userSession.user)
-            logger.atInfo().withSession(userSession.session).log("Successful token request")
 
             val roles = memberOfToDeltaRolesMapperFactory(
                 userSession.user.cn, allOrganisations.await(), allAccessGroups.await()
             ).map(userSession.user.memberOfCNs)
+
+            logger.atInfo().withSession(userSession.session).log("Successful token request")
 
             call.respond(
                 AccessTokenResponse(
