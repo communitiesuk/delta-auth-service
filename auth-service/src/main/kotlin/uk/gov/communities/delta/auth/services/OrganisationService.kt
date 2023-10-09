@@ -22,8 +22,8 @@ class OrganisationSearchResponse(@SerialName("organisation-results") val organis
 @Serializable
 class Organisation(
     @SerialName("code") val code: String,
-    @SerialName("retirement-date") val retirementDate: String? = null,
     @SerialName("name") val name: String,
+    @SerialName("retirement-date") val retirementDate: String? = null,
 ) {
     val retired = retirementDate != null && LocalDate.parse(retirementDate.substring(IntRange(0, 9))) < LocalDate.now()
 }
