@@ -66,6 +66,10 @@ module "fargate" {
       value = "auth-service.app"
     },
     {
+      name  = "ACCESS_GROUP_CONTAINER_DN"
+      value = var.ldap_config.ACCESS_GROUP_CONTAINER_DN
+    },
+    {
       name  = "DATABASE_URL"
       value = "jdbc:postgresql://${aws_db_instance.auth_service.endpoint}/auth_service?ssl=true&sslmode=verify-full"
     },

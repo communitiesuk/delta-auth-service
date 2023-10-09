@@ -51,6 +51,7 @@ data class LDAPConfig(
             .addKeyValue("LDAP_DELTA_USER_DN_FORMAT", deltaUserDnFormat)
             .addKeyValue("LDAP_GROUP_DN_FORMAT", groupDnFormat)
             .addKeyValue("LDAP_AUTH_SERVICE_USER", authServiceUserCn)
+            .addKeyValue("ACCESS_GROUP_CONTAINER_DN", accessGroupContainerDn)
             .log("LDAP config")
     }
 }

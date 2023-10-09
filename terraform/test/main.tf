@@ -79,6 +79,7 @@ module "auth_service" {
     LDAP_DELTA_USER_DN_FORMAT   = "CN=%s,CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_DOMAIN_REALM           = "dluhctest.local"
+    ACCESS_GROUP_CONTAINER_DN   = "CN=datamart-delta,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
   }
 
   # Test environment only settings
