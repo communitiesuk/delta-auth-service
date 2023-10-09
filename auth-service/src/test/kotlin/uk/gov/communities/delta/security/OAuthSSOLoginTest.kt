@@ -30,6 +30,7 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
+import uk.gov.communities.delta.controllers.DeltaLoginControllerTest
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -285,6 +286,7 @@ class OAuthSSOLoginTest {
             listOf(ssoClient.requiredGroupId!!)
         }
         every { ssoConfig.ssoClients } answers { listOf(ssoClient) }
+        coEvery { DeltaLoginControllerTest.userAuditService.userFormLoginAudit(any(), any()) } returns Unit
     }
 
     private fun String.stateFromRedirectUrl() =
@@ -314,6 +316,7 @@ class OAuthSSOLoginTest {
         private lateinit var ssoLoginStateService: SSOLoginSessionStateService
         private lateinit var registrationService: RegistrationService
         private lateinit var organisationService: OrganisationService
+        private lateinit var  userAuditService: UserAuditService
 
         @BeforeClass
         @JvmStatic
@@ -324,6 +327,7 @@ class OAuthSSOLoginTest {
             ldapUserLookupServiceMock = mockk<UserLookupService>()
             registrationService = mockk<RegistrationService>()
             organisationService = mockk<OrganisationService>()
+            userAuditService = mockk<UserAuditService>()
             val loginPageController = DeltaLoginController(
                 listOf(serviceClient),
                 ssoConfig,
@@ -331,7 +335,8 @@ class OAuthSSOLoginTest {
                 mockk(),
                 authorizationCodeServiceMock,
                 counter("failedLoginNoopCounter"),
-                counter("successfulLoginNoopCounter")
+                counter("successfulLoginNoopCounter"),
+                userAuditService
             )
             val oauthController = DeltaSSOLoginController(
                 deltaConfig,
