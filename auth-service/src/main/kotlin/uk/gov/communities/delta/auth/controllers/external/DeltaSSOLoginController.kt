@@ -8,6 +8,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.util.*
+import io.micrometer.core.instrument.Counter
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -36,6 +37,7 @@ class DeltaSSOLoginController(
     private val microsoftGraphService: MicrosoftGraphService,
     private val registrationService: RegistrationService,
     private val organisationService: OrganisationService,
+    private val ssoLoginCounter: Counter,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -104,6 +106,7 @@ class DeltaSSOLoginController(
         )
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
+        ssoLoginCounter.increment()
         call.sessions.clear<LoginSessionCookie>()
         call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
     }

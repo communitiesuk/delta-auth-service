@@ -13,6 +13,7 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
+import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Metrics.counter
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
@@ -75,7 +76,8 @@ class OAuthSSOLoginTest {
             // Which should redirect us back to Delta with an Authorisation code
             assertEquals(HttpStatusCode.Found, status)
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
-            coVerify { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+            coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+            verify(exactly = 1) { loginCounter.increment() }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
     }
@@ -287,6 +289,7 @@ class OAuthSSOLoginTest {
         }
         every { ssoConfig.ssoClients } answers { listOf(ssoClient) }
         coEvery { DeltaLoginControllerTest.userAuditService.userFormLoginAudit(any(), any()) } returns Unit
+        every { loginCounter.increment() } just runs
     }
 
     private fun String.stateFromRedirectUrl() =
@@ -316,7 +319,8 @@ class OAuthSSOLoginTest {
         private lateinit var ssoLoginStateService: SSOLoginSessionStateService
         private lateinit var registrationService: RegistrationService
         private lateinit var organisationService: OrganisationService
-        private lateinit var  userAuditService: UserAuditService
+        private lateinit var userAuditService: UserAuditService
+        private lateinit var loginCounter: Counter
 
         @BeforeClass
         @JvmStatic
@@ -328,6 +332,7 @@ class OAuthSSOLoginTest {
             registrationService = mockk<RegistrationService>()
             organisationService = mockk<OrganisationService>()
             userAuditService = mockk<UserAuditService>()
+            loginCounter = mockk<Counter>()
             val loginPageController = DeltaLoginController(
                 listOf(serviceClient),
                 ssoConfig,
@@ -348,6 +353,7 @@ class OAuthSSOLoginTest {
                 microsoftGraphServiceMock,
                 registrationService,
                 organisationService,
+                loginCounter,
             )
             val oauthClientProviderLookupService = SSOOAuthClientProviderLookupService(
                 ssoConfig, ssoLoginStateService
