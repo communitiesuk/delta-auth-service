@@ -106,54 +106,47 @@ class RegistrationService(
     }
 
     fun sendRegistrationEmail(registrationResult: RegistrationResult) {
-        try {
-            when (registrationResult) {
-                is UserCreated -> {
-                    emailService.sendTemplateEmail(
-                        "new-user",
-                        getRegistrationEmailContacts(registrationResult.registration),
-                        "DLUHC DELTA - New User Account",
-                        mapOf(
-                            "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                            "userFirstName" to registrationResult.registration.firstName,
-                            "setPasswordUrl" to getSetPasswordURL(
-                                registrationResult.token,
-                                registrationResult.userCN,
-                                authServiceConfig.serviceUrl
-                            )
+        when (registrationResult) {
+            is UserCreated -> {
+                emailService.sendTemplateEmail(
+                    "new-user",
+                    getRegistrationEmailContacts(registrationResult.registration),
+                    "DLUHC DELTA - New User Account",
+                    mapOf(
+                        "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                        "userFirstName" to registrationResult.registration.firstName,
+                        "setPasswordUrl" to getSetPasswordURL(
+                            registrationResult.token,
+                            registrationResult.userCN,
+                            authServiceConfig.serviceUrl
                         )
                     )
-                }
-
-                is SSOUserCreated -> {
-                    // No email sent
-                }
-
-                is UserAlreadyExists -> {
-                    emailService.sendTemplateEmail(
-                        "already-a-user",
-                        getRegistrationEmailContacts(registrationResult.registration),
-                        "DLUHC DELTA - Account",
-                        mapOf(
-                            "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                            "userFirstName" to registrationResult.registration.firstName,
-                        )
-                    )
-                }
-
-                is RegistrationFailure -> {
-                    // No email needs to be sent if the registration fails
-                }
+                )
             }
-        } catch (e: Exception) {
-            logger.atError().log("Problem sending email", e)
-            throw EmailException(e)
-        }
 
+            is SSOUserCreated -> {
+                // No email sent
+            }
+
+            is UserAlreadyExists -> {
+                emailService.sendTemplateEmail(
+                    "already-a-user",
+                    getRegistrationEmailContacts(registrationResult.registration),
+                    "DLUHC DELTA - Account",
+                    mapOf(
+                        "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                        "userFirstName" to registrationResult.registration.firstName,
+                    )
+                )
+            }
+
+            is RegistrationFailure -> {
+                // No email needs to be sent if the registration fails
+            }
+        }
     }
 }
 
-class EmailException(val e: Exception) : Exception("Issue sending email")
 
 data class Registration(
     val firstName: String,
