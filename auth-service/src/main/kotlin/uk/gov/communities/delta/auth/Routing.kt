@@ -60,10 +60,10 @@ fun Route.externalRoutes(
     deltaUserRegistrationController: DeltaUserRegistrationController,
     deltaSetPasswordController: DeltaSetPasswordController
 ) {
-    install(BrowserSecurityHeaders)
-    install(originHeaderCheck(serviceConfig.serviceUrl))
     staticResources("/static", "static") {
         cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
+    }.apply {
+        install(BrowserSecurityHeaders)
     }
 
     val faviconBytes = javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes()
@@ -76,16 +76,21 @@ fun Route.externalRoutes(
         )
     }
 
-    route("/delta/register") {
-        deltaRegisterRoutes(deltaUserRegistrationController)
-    }
-
-    route("/delta/set-password") {
-        deltaSetPasswordRoutes(deltaSetPasswordController)
-    }
-
     route("/delta") {
-        deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
+        install(originHeaderCheck(serviceConfig.serviceUrl))
+        install(BrowserSecurityHeaders)
+
+        route("/register") {
+            deltaRegisterRoutes(deltaUserRegistrationController)
+        }
+
+        route("/set-password") {
+            deltaSetPasswordRoutes(deltaSetPasswordController)
+        }
+
+        route("/") {
+            deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
+        }
     }
 }
 
