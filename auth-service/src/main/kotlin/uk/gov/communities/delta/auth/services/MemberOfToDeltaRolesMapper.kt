@@ -170,4 +170,8 @@ val DELTA_SYSTEM_ROLES = hashSetOf(
     "stats-data-certifiers",
 )
 
+/*
+ * Name is copied from Delta, "External" in that it's managed by MarkLogic rather than Delta's Java layer.
+ * We should be able to get rid of this distinction at some point, but for now Delta expects it.
+ */
 val DELTA_EXTERNAL_ROLES = hashSetOf("section-151-officers")
