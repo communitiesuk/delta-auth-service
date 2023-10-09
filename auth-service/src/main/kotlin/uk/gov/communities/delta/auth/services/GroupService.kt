@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.services
 
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import javax.naming.NameNotFoundException
 import javax.naming.directory.*
 
 class GroupService(
@@ -21,13 +22,17 @@ class GroupService(
     }
 
     suspend fun groupExists(groupDn: String): Boolean {
-        val attributes = ldapService.useServiceUserBind {
-            it.getAttributes(
-                groupDn,
-                arrayOf("cn")
-            )
+        return try {
+            val attributes = ldapService.useServiceUserBind {
+                it.getAttributes(
+                        groupDn,
+                        arrayOf("cn")
+                )
+            }
+            attributes.get("cn") != null
+        } catch (e: NameNotFoundException) {
+            false
         }
-        return attributes.get("cn") != null
     }
 
     suspend fun addUserToGroup(adUser: UserService.ADUser, groupCN: String) {
