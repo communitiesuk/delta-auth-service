@@ -73,7 +73,7 @@ class RegistrationService(
     }
 
     private suspend fun addUserToOrganisations(adUser: UserService.ADUser, organisations: List<Organisation>) {
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to domain organisations")
+        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("Adding user to domain organisations")
         try {
             organisations.forEach {
                 if (!it.retired) {
@@ -82,13 +82,16 @@ class RegistrationService(
                         organisationUserGroup(it.code)
                     )
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
-                        .log("Added user to domain organisation with code {}", it.code)
+                            .log("Added user to domain organisation with code {}", it.code)
+                } else {
+                    logger.info("Organisation {} is retired, with retirement date: {}", it.code, it.retirementDate)
                 }
             }
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to domain organisations", e)
             throw e
         }
+        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to domain organisations")
     }
 
     private fun getRegistrationEmailContacts(registration: Registration): EmailContacts {

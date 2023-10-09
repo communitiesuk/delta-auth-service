@@ -12,6 +12,7 @@ import uk.gov.communities.delta.auth.services.GroupService
 import uk.gov.communities.delta.auth.services.LdapService
 import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.UserService
+import javax.naming.NameNotFoundException
 import javax.naming.directory.*
 import javax.naming.ldap.InitialLdapContext
 import kotlin.test.assertEquals
@@ -50,7 +51,7 @@ class GroupServiceTest {
 
     @Test
     fun testGroupDoesNotExist() = testSuspend {
-        coEvery { context.getAttributes("falseDN", arrayOf("cn")) } coAnswers { BasicAttributes() }
+        coEvery { context.getAttributes("falseDN", arrayOf("cn")) } throws NameNotFoundException("Does not exist")
         val groupExists = groupService.groupExists("falseDN")
         verify(exactly = 1) { context.getAttributes("falseDN", arrayOf("cn")) }
         assertFalse(groupExists)

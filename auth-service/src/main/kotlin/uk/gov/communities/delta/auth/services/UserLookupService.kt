@@ -29,13 +29,8 @@ class UserLookupService(
     suspend fun lookupUserByCn(cn: String): LdapUser {
         logger.atInfo().addKeyValue("username", cn).log("Looking up user in AD")
         val dn = config.userDnFormat.format(cn)
-        return withContext(Dispatchers.IO) {
-            val ctx = ldapService.bind(config.bindUserDn, config.bindUserPassword, poolConnection = true)
-            try {
-                ldapService.mapUserFromContext(ctx, dn)
-            } finally {
-                ctx.close()
-            }
+        return ldapService.useServiceUserBind {
+            ldapService.mapUserFromContext(it, dn)
         }
     }
 }
