@@ -17,8 +17,9 @@
             </providers>
         </encoder>
     </appender>
-    <!-- The Ktor OAuth plugin only logs errors, and it logs them at TRACE -->
+    <!-- These two only log errors, and log them at TRACE -->
     <logger name="io.ktor.auth.oauth" level="TRACE"/>
+    <logger name="io.ktor.client.plugins.HttpTimeout" level="TRACE"/>
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>

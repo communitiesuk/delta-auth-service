@@ -57,7 +57,12 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
         block: suspend () -> List<T>,
     ): List<T> {
         val startTime = System.currentTimeMillis()
-        val result = block()
+        val result = try {
+            block()
+        } catch (e: Exception) {
+            logger.error("Request failed after {}ms", System.currentTimeMillis() - startTime, e)
+            throw e
+        }
         logger.atInfo().addKeyValue("organisationCount", result.size)
             .addKeyValue("durationMs", System.currentTimeMillis() - startTime)
             .log(message, *logParams)
