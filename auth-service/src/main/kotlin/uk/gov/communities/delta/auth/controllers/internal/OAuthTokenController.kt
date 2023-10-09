@@ -7,6 +7,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -22,6 +24,9 @@ class OAuthTokenController(
     private val userLookupService: UserLookupService,
     private val samlTokenService: SAMLTokenService,
     private val oauthSessionService: OAuthSessionService,
+    private val accessGroupsService: AccessGroupsService,
+    private val organisationService: OrganisationService,
+    private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -54,17 +59,28 @@ class OAuthTokenController(
             )
         }
 
-        val samlToken = samlTokenService.samlTokenForSession(userSession.session, userSession.user)
-        logger.atInfo().withSession(userSession.session).log("Successful token request")
+        coroutineScope {
+            // Fetch the list of organisations and access groups while we generate the SAML token
+            val allOrganisations = async { organisationService.findAllNamesAndCodes().map { it.code } }
+            val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
 
-        call.respond(
-            AccessTokenResponse(
-                access_token = userSession.session.authToken,
-                delta_ldap_user = userSession.user,
-                saml_token = samlToken.token,
-                expires_at_epoch_second = samlToken.expiry.epochSecond
+            val samlToken = samlTokenService.samlTokenForSession(userSession.session, userSession.user)
+            logger.atInfo().withSession(userSession.session).log("Successful token request")
+
+            val roles = memberOfToDeltaRolesMapperFactory(
+                userSession.user.cn, allOrganisations.await(), allAccessGroups.await()
+            ).map(userSession.user.memberOfCNs)
+
+            call.respond(
+                AccessTokenResponse(
+                    access_token = userSession.session.authToken,
+                    delta_ldap_user = userSession.user,
+                    saml_token = samlToken.token,
+                    expires_at_epoch_second = samlToken.expiry.epochSecond,
+                    delta_user_roles = roles,
+                )
             )
-        )
+        }
     }
 
     private suspend fun exchangeAuthCodeForSession(code: String, client: DeltaLoginEnabledClient) =
@@ -82,6 +98,7 @@ class OAuthTokenController(
     data class AccessTokenResponse(
         val access_token: String,
         val delta_ldap_user: LdapUser,
+        val delta_user_roles: MemberOfToDeltaRolesMapper.Roles,
         val saml_token: String,
         val expires_at_epoch_second: Long,
         val token_type: String = "bearer",

@@ -22,12 +22,12 @@ class RegistrationServiceTest {
     private val orgCode = "E12345"
     private val userCN = "user!example.com"
     private val anotherOrgCode = orgCode + "2"
-    private val retiredOrganisation = Organisation(orgCode, "2023-09-30Z")
+    private val retiredOrganisation = Organisation(orgCode, "Test org", "2023-09-30Z")
 
     private val registrationService = RegistrationService(
         deltaConfig,
         EmailConfig.fromEnv(),
-        LDAPConfig("testInvalidUrl", "", "", "", "", "", "", ""),
+        LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
         authServiceConfig,
         setPasswordTokenService,
         emailService,
@@ -48,7 +48,7 @@ class RegistrationServiceTest {
     fun testRegisteringNewStandardUser() = testSuspend {
         val registrationResult = registrationService.register(
             Registration("Test", "User", "user@example.com"),
-            listOf(Organisation(orgCode)),
+            listOf(Organisation(orgCode, "Test org")),
         )
         coVerify(exactly = 1) { userService.createUser(any()) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers) }
@@ -63,7 +63,7 @@ class RegistrationServiceTest {
     fun testSSOUserRegistration() = testSuspend {
         val registrationResult = registrationService.register(
             Registration("Test", "User", "user@example.com"),
-            listOf(Organisation(orgCode)),
+            listOf(Organisation(orgCode, "Test org")),
             true
         )
         coVerify(exactly = 1) { userService.createUser(any()) }
@@ -80,7 +80,7 @@ class RegistrationServiceTest {
         coEvery { userLookupService.userExists(userCN) } returns true
         val registrationResult = registrationService.register(
             Registration("Test", "User", "user@example.com"),
-            listOf(Organisation(orgCode)),
+            listOf(Organisation(orgCode, "Test org")),
             true
         )
         assertTrue(registrationResult is RegistrationService.UserAlreadyExists)
@@ -93,7 +93,7 @@ class RegistrationServiceTest {
     fun testStandardUserInMultipleOrg() = testSuspend {
         val registrationResult = registrationService.register(
             Registration("Test", "User", "user@example.com"),
-            listOf(Organisation(orgCode), Organisation(anotherOrgCode)),
+            listOf(Organisation(orgCode, "Test org"), Organisation(anotherOrgCode, name = "Another org")),
         )
         coVerify(exactly = 1) { userService.createUser(any()) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers) }
@@ -109,7 +109,7 @@ class RegistrationServiceTest {
     fun testStandardUserInRetiredAndNotRetiredOrg() = testSuspend {
         val registrationResult = registrationService.register(
             Registration("Test", "User", "user@example.com"),
-            listOf(retiredOrganisation, Organisation(anotherOrgCode)),
+            listOf(retiredOrganisation, Organisation(anotherOrgCode, name = "Another org")),
         )
         coVerify(exactly = 1) { userService.createUser(any()) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers) }

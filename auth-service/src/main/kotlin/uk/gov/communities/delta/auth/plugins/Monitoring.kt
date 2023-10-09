@@ -26,7 +26,7 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
         callIdMdc("requestId")
         filter { it.request.path() != "/health" }
         mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.username }
-        mdc("IPAddress") { it.request.origin.remoteHost }
+        mdc("IPAddress") { it.request.origin.remoteAddress }
         disableDefaultColors()
     }
     install(CallId) {

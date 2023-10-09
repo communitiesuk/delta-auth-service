@@ -8,6 +8,8 @@ data class LDAPConfig(
     val deltaUserDnFormat: String,
     val groupDnFormat: String,
     val serviceUserRequiredGroupCn: String,
+    // Container with an empty group for each access group and system role
+    val accessGroupContainerDn: String,
     val authServiceUserCn: String,
     val authServiceUserPassword: String,
     val domainRealm: String,
@@ -28,6 +30,10 @@ data class LDAPConfig(
                 "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
             ),
             serviceUserRequiredGroupCn = "dluhc-service-users",
+            accessGroupContainerDn = Env.getRequiredOrDevFallback(
+                "ACCESS_GROUP_CONTAINER_DN",
+                "CN=datamart-delta,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
+            ),
             authServiceUserCn = Env.getEnv("LDAP_AUTH_SERVICE_USER") ?: "auth-service.app",
             authServiceUserPassword = Env.getRequired("LDAP_AUTH_SERVICE_USER_PASSWORD"),
             domainRealm = Env.getRequiredOrDevFallback("LDAP_DOMAIN_REALM", "dluhctest.local"),

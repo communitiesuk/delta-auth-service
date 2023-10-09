@@ -23,7 +23,7 @@ class GroupServiceTest {
     private val groupCN = "datamart-delta-group"
     private val groupDnFormat = "CN=%s"
     private val groupDN = String.format(groupDnFormat, groupCN)
-    private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", groupDnFormat, "", "", "", "")
+    private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", groupDnFormat, "", "", "", "", "")
     private val groupService = GroupService(ldapService, ldapConfig)
     private val container = slot<Attributes>()
     private val modificationItems = slot<Array<ModificationItem>>()

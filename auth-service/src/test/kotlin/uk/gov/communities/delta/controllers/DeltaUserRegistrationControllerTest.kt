@@ -194,7 +194,11 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationOfStandardUserInRetiredOrg() = testSuspend {
-        coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "2023-09-30Z"))
+        coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(
+            orgCode,
+            "Test org",
+            "2023-09-30Z"
+        ))
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
@@ -242,7 +246,7 @@ class DeltaUserRegistrationControllerTest {
     @Before
     fun resetMocks() {
         clearAllMocks()
-        coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode))
+        coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "Test org"))
         coEvery { userService.createUser(any()) } just runs
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
@@ -274,7 +278,7 @@ class DeltaUserRegistrationControllerTest {
             val registrationService = RegistrationService(
                 deltaConfig,
                 EmailConfig.fromEnv(),
-                LDAPConfig("testInvalidUrl", "", "", "", "", "", "", ""),
+                LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
                 authServiceConfig,
                 setPasswordTokenService,
                 emailService,
