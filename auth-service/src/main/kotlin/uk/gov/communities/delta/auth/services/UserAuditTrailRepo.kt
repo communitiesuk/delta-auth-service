@@ -46,7 +46,8 @@ class UserAuditTrailRepo {
     fun getAuditForUser(conn: Connection, userCn: String): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
             "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
-                    "FROM user_audit WHERE user_cn = ?"
+                    "FROM user_audit WHERE user_cn = ? " +
+                    "ORDER BY timestamp"
         )
         stmt.setString(1, userCn)
 
