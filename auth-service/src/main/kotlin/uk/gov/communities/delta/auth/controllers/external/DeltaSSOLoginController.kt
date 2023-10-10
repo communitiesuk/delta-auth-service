@@ -15,7 +15,10 @@ import kotlinx.serialization.json.Json
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.ClientConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
@@ -38,6 +41,7 @@ class DeltaSSOLoginController(
     private val registrationService: RegistrationService,
     private val organisationService: OrganisationService,
     private val ssoLoginCounter: Counter,
+    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -107,6 +111,7 @@ class DeltaSSOLoginController(
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         ssoLoginCounter.increment()
+        userAuditService.userSSOLoginAudit(authCode.userCn, ssoClient, jwt.azureObjectId!!, call)
         call.sessions.clear<LoginSessionCookie>()
         call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
     }
@@ -241,6 +246,7 @@ class DeltaSSOLoginController(
         @SerialName("unique_name") val uniqueName: String,
         @SerialName("given_name") val givenName: String,
         @SerialName("family_name") val familyName: String,
+        @SerialName("oid") val userObjectId: String,
     )
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }
@@ -254,7 +260,8 @@ class DeltaSSOLoginController(
             return Registration(
                 json.givenName,
                 json.familyName,
-                json.uniqueName.lowercase()
+                json.uniqueName.lowercase(),
+                json.userObjectId,
             )
         } catch (e: Exception) {
             logger.error("Error parsing JWT '{}'", jwt)

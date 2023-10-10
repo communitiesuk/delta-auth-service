@@ -7,13 +7,15 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.jetbrains.annotations.Blocking
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
 
 class UserAuditTrailRepo {
     enum class AuditAction(val action: String) {
-        FORM_LOGIN("form_login");
+        FORM_LOGIN("form_login"),
+        SSO_LOGIN("sso_login");
 
         companion object {
             fun fromActionString(s: String) = entries.first { it.action == s }
@@ -22,7 +24,22 @@ class UserAuditTrailRepo {
 
     @Blocking
     fun userFormLoginAudit(conn: Connection, userCn: String, call: ApplicationCall) {
-        insertAuditRow(conn, AuditAction.FORM_LOGIN, userCn, null, call.callId!!, null)
+        insertAuditRow<Unit>(conn, AuditAction.FORM_LOGIN, userCn, null, call.callId!!, null)
+    }
+
+    @Blocking
+    fun userSSOLoginAudit(
+        conn: Connection,
+        userCn: String,
+        ssoClient: AzureADSSOClient,
+        azureUserObjectId: String,
+        call: ApplicationCall,
+    ) {
+        insertAuditRow(
+            conn, AuditAction.SSO_LOGIN, userCn, null, call.callId!!, SSOLoginAuditData(
+                ssoClient.internalId, azureUserObjectId
+            )
+        )
     }
 
     @Blocking
@@ -46,13 +63,13 @@ class UserAuditTrailRepo {
     }
 
     @Blocking
-    private fun insertAuditRow(
+    private inline fun <reified T>insertAuditRow(
         conn: Connection,
         action: AuditAction,
         userCn: String,
         editingUserCn: String?,
         requestId: String,
-        actionData: Serializable?,
+        actionData: T?,
     ) {
         val stmt = conn.prepareStatement(
             "INSERT INTO user_audit (action, timestamp, user_cn, editing_user_cn, request_id, action_data) VALUES " +
@@ -62,7 +79,7 @@ class UserAuditTrailRepo {
         stmt.setString(2, userCn)
         stmt.setString(3, editingUserCn)
         stmt.setString(4, requestId)
-        stmt.setString(5, if (actionData == null) "{}" else Json.encodeToString(actionData))
+        stmt.setString(5, if (actionData == null) "{}" else Json.encodeToString<T>(actionData))
         stmt.executeUpdate()
     }
 
@@ -74,6 +91,9 @@ class UserAuditTrailRepo {
         val requestId: String,
         val actionData: JsonElement,
     )
+
+    @Serializable
+    private data class SSOLoginAuditData(val ssoClientId: String, val azureUserObjectId: String)
 }
 
 fun <T> ResultSet.map(m: (ResultSet) -> T): List<T> {

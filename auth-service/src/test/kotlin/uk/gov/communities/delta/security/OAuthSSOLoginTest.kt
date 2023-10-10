@@ -31,7 +31,6 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
-import uk.gov.communities.delta.controllers.DeltaLoginControllerTest
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -78,6 +77,9 @@ class OAuthSSOLoginTest {
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
             verify(exactly = 1) { loginCounter.increment() }
+            coVerify(exactly = 1) {
+                userAuditService.userSSOLoginAudit("cn", ssoClient, "abc-123", any())
+            }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
     }
@@ -166,7 +168,7 @@ class OAuthSSOLoginTest {
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
-                val registration = Registration("Example", "User", "user@example.com")
+                val registration = Registration("Example", "User", "user@example.com", "abc-123")
                 coVerify(exactly = 1) { registrationService.register(registration, organisations, true) }
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
@@ -288,7 +290,7 @@ class OAuthSSOLoginTest {
             listOf(ssoClient.requiredGroupId!!)
         }
         every { ssoConfig.ssoClients } answers { listOf(ssoClient) }
-        coEvery { DeltaLoginControllerTest.userAuditService.userFormLoginAudit(any(), any()) } returns Unit
+        coEvery { userAuditService.userSSOLoginAudit(any(), any(), any(), any()) } returns Unit
         every { loginCounter.increment() } just runs
     }
 
@@ -312,7 +314,7 @@ class OAuthSSOLoginTest {
         )
         private val ssoConfig = mockk<AzureADSSOConfig>()
         private val accessToken =
-            "header.${"{\"unique_name\": \"user@example.com\", \"given_name\": \"Example\", \"family_name\": \"User\"}".encodeBase64()}.trailer"
+            "header.${"{\"unique_name\": \"user@example.com\", \"given_name\": \"Example\", \"family_name\": \"User\", \"oid\": \"abc-123\"}".encodeBase64()}.trailer"
         private lateinit var ldapUserLookupServiceMock: UserLookupService
         private lateinit var authorizationCodeServiceMock: AuthorizationCodeService
         private lateinit var microsoftGraphServiceMock: MicrosoftGraphService
@@ -354,6 +356,7 @@ class OAuthSSOLoginTest {
                 registrationService,
                 organisationService,
                 loginCounter,
+                userAuditService,
             )
             val oauthClientProviderLookupService = SSOOAuthClientProviderLookupService(
                 ssoConfig, ssoLoginStateService

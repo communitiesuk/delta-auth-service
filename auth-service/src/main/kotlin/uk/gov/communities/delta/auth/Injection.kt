@@ -167,6 +167,7 @@ class Injection(
             authorizationCodeService,
             failedLoginCounter,
             successfulLoginCounter,
+            userAuditService,
         )
     }
 
@@ -241,6 +242,7 @@ class Injection(
             registrationService,
             organisationService,
             ssoLoginCounter,
+            userAuditService,
         )
 
     fun groupService() = GroupService(ldapService, ldapConfig)
