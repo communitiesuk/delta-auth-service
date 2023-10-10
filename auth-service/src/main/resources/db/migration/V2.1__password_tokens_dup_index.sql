@@ -1,0 +1,1 @@
+DROP INDEX set_password_token_user_cn;
