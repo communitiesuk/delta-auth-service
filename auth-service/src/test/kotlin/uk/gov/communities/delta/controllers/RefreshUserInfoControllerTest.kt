@@ -23,9 +23,7 @@ import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.OAuthSession
-import uk.gov.communities.delta.auth.services.OAuthSessionService
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -70,13 +68,15 @@ class RefreshUserInfoControllerTest {
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
         private val user = testLdapUser(cn = "user")
 
-        private val userLookupService = mockk<UserLookupService>()
-        private val samlTokenService = mockk<SAMLTokenService>()
-        private val oauthSessionService = mockk<OAuthSessionService>()
-
         @BeforeClass
         @JvmStatic
         fun setup() {
+            val userLookupService = mockk<UserLookupService>()
+            val samlTokenService = mockk<SAMLTokenService>()
+            val oauthSessionService = mockk<OAuthSessionService>()
+            val accessGroupsService = mockk<AccessGroupsService>()
+            val organisationService = mockk<OrganisationService>()
+
             coEvery { userLookupService.lookupUserByCn(session.userCn) } answers { user }
             every {
                 samlTokenService.generate(
@@ -86,10 +86,18 @@ class RefreshUserInfoControllerTest {
                     any()
                 )
             } answers { "SAML Token" }
+            coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
+            coEvery { organisationService.findAllNamesAndCodes() }.returns(listOf())
             coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
             coEvery { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
 
-            controller = RefreshUserInfoController(userLookupService, samlTokenService)
+            controller = RefreshUserInfoController(
+                userLookupService,
+                samlTokenService,
+                accessGroupsService,
+                organisationService,
+                ::MemberOfToDeltaRolesMapper
+            )
             testApp = TestApplication {
                 application {
                     configureSerialization()
