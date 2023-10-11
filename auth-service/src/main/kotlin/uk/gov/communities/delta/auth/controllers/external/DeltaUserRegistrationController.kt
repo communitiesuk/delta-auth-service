@@ -125,26 +125,27 @@ class DeltaUserRegistrationController(
             }
 
             val registration = Registration(firstName, lastName, emailAddress)
-            lateinit var registrationResult: RegistrationService.RegistrationResult
-            try {
-                registrationResult = registrationService.register(registration, organisations)
-                registrationService.sendRegistrationEmail(registrationResult)
-            } catch (e: EmailException) {
-                logger.error(
-                    "Error sending email after registration for first name: {}, last name: {}, email address: {}. Result of registration was {}",
-                    firstName,
-                    lastName,
-                    emailAddress,
-                    getResultTypeString(registrationResult),
-                    e
-                )
-                throw e.e
+            val registrationResult = try {
+                registrationService.register(registration, organisations)
             } catch (e: Exception) {
                 logger.error(
                     "Error registering user with  name: {} {}, email address: {}",
                     firstName,
                     lastName,
                     emailAddress,
+                    e
+                )
+                throw e
+            }
+            try {
+                registrationService.sendRegistrationEmail(registrationResult)
+            } catch (e: Exception) {
+                logger.error(
+                    "Error sending email after registration for first name: {}, last name: {}, email address: {}. Result of registration was {}",
+                    firstName,
+                    lastName,
+                    emailAddress,
+                    getResultTypeString(registrationResult),
                     e
                 )
                 throw e

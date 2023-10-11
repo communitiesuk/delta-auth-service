@@ -24,15 +24,15 @@ fun Application.configureRateLimiting(
         register(RateLimitName(rateLimitName)) {
             rateLimiter(limit = rateLimit, refillPeriod = 5.minutes)
             requestKey { applicationCall ->
-                val remoteHost = applicationCall.request.origin.remoteHost
-                logger.info("Request to $pageName page from $remoteHost")
-                remoteHost
+                val ipAddress = applicationCall.request.origin.remoteAddress
+                logger.info("Request to $pageName page from $ipAddress")
+                ipAddress
             }
             modifyResponse { applicationCall, state ->
                 if (state is RateLimiter.State.Exhausted) {
-                    val remoteHost = applicationCall.request.origin.remoteHost
+                    val ipAddress = applicationCall.request.origin.remoteAddress
                     counter.increment(1.0)
-                    logger.warn("$pageName page rate limit reached for IP Address $remoteHost")
+                    logger.warn("$pageName page rate limit reached for IP Address $ipAddress")
                 }
             }
         }
