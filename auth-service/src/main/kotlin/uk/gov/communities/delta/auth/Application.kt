@@ -45,7 +45,8 @@ fun Application.appModule() {
         injection.deltaConfig.rateLimit,
         injection.loginRateLimitCounter,
         injection.registrationRateLimitCounter,
-        injection.setPasswordRateLimitCounter
+        injection.setPasswordRateLimitCounter,
+        injection.resetPasswordRateLimitCounter,
     )
     configureSecurity(injection)
     configureMonitoring(injection.meterRegistry)

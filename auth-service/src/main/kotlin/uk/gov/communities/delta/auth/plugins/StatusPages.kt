@@ -41,7 +41,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                 try {
                     call.respond(
                         ThymeleafContent(
-                            "set-password-form",
+                            "password-form",
                             mapOf(
                                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                                 "message" to tooManyRequestsErrorMessage,

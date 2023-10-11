@@ -1,7 +1,5 @@
 package uk.gov.communities.delta.auth.services
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import javax.naming.NameNotFoundException
 
@@ -29,6 +27,11 @@ class UserLookupService(
     suspend fun lookupUserByCn(cn: String): LdapUser {
         logger.atInfo().addKeyValue("username", cn).log("Looking up user in AD")
         val dn = config.userDnFormat.format(cn)
+        return lookupUserByDN(dn)
+    }
+
+    suspend fun lookupUserByDN(dn: String): LdapUser {
+        logger.atInfo().addKeyValue("userDN", dn).log("Looking up user in AD")
         return ldapService.useServiceUserBind {
             ldapService.mapUserFromContext(it, dn)
         }

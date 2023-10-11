@@ -12,10 +12,7 @@ import io.ktor.util.*
 import kotlinx.serialization.Serializable
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.Env
-import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
-import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
-import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
-import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
+import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -43,6 +40,8 @@ fun Application.configureRouting(injection: Injection) {
             injection.deltaOAuthLoginController(),
             injection.externalDeltaUserRegisterController(),
             injection.externalDeltaSetPasswordController(),
+            injection.externalDeltaResetPasswordController(),
+            injection.externalDeltaForgotPasswordController(),
         )
     }
 }
@@ -58,7 +57,9 @@ fun Route.externalRoutes(
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
     deltaUserRegistrationController: DeltaUserRegistrationController,
-    deltaSetPasswordController: DeltaSetPasswordController
+    deltaSetPasswordController: DeltaSetPasswordController,
+    deltaResetPasswordController: DeltaResetPasswordController,
+    deltaForgotPasswordController: DeltaForgotPasswordController,
 ) {
     staticResources("/static", "static") {
         cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
@@ -88,7 +89,15 @@ fun Route.externalRoutes(
             deltaSetPasswordRoutes(deltaSetPasswordController)
         }
 
-        route("/") {
+        route("/delta/reset-password") {
+        deltaResetPasswordRoutes(deltaResetPasswordController)
+    }
+
+    route("/delta/forgot-password") {
+        deltaForgotPasswordRoutes(deltaForgotPasswordController)
+    }
+
+    route("/") {
             deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
         }
     }
@@ -104,6 +113,25 @@ fun Route.deltaSetPasswordRoutes(deltaSetPasswordController: DeltaSetPasswordCon
     rateLimit(RateLimitName(setPasswordRateLimitName)) {
         deltaSetPasswordController.setPasswordFormRoutes(this)
     }
+}
+
+fun Route.deltaResetPasswordRoutes(deltaResetPasswordController: DeltaResetPasswordController) {
+    route("/success") {
+        deltaResetPasswordController.resetPasswordSuccessRoute(this)
+    }
+    route("/expired") {
+        deltaResetPasswordController.resetPasswordExpired(this)
+    }
+    rateLimit(RateLimitName(resetPasswordRateLimitName)) {
+        deltaResetPasswordController.resetPasswordFormRoutes(this)
+    }
+}
+
+fun Route.deltaForgotPasswordRoutes(deltaForgotPasswordController: DeltaForgotPasswordController) {
+    route("/email-sent") {
+        deltaForgotPasswordController.forgotPasswordEmailSentRoute(this)
+    }
+    deltaForgotPasswordController.forgotPasswordFormRoutes(this)
 }
 
 fun Route.deltaRegisterRoutes(

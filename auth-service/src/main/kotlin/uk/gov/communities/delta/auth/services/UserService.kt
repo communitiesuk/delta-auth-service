@@ -3,11 +3,13 @@ package uk.gov.communities.delta.auth.services
 import com.google.common.base.Strings
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
 import java.io.UnsupportedEncodingException
 import javax.naming.directory.*
 
 class UserService(
     private val ldapService: LdapService,
+    private val userLookupService: UserLookupService,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -64,6 +66,29 @@ class UserService(
                 it.modifyAttributes(userDN, modificationItems)
                 logger.atInfo().addKeyValue("UserDN", userDN).log("Account enabled and password set")
             } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    suspend fun resetPassword(userDN: String, password: String) {
+        val modificationItems = arrayOf(
+            ModificationItem(DirContext.REPLACE_ATTRIBUTE, ADUser.getPasswordAttribute(password)),
+            // Unlock account if it is locked
+            ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("lockoutTime", "0")),
+        )
+        val accountEnabled = userLookupService.lookupUserByDN(userDN).accountEnabled
+        if (!accountEnabled) throw ResetPasswordException(
+            "disabled_user_on_password_reset",
+            "Trying to reset password for a disabled user $userDN",
+            "Your account is disabled, your password can not be reset. Please contact the service desk"
+        )
+        else ldapService.useServiceUserBind {
+            try {
+                it.modifyAttributes(userDN, modificationItems)
+                logger.atInfo().addKeyValue("userDN", userDN).log("Password reset")
+            } catch (e: Exception) {
+                logger.atError().addKeyValue("userDN", userDN).log("Error occurred on setting password", e)
                 throw e
             }
         }

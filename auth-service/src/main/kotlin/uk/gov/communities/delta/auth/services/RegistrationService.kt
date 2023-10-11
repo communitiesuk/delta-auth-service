@@ -12,7 +12,7 @@ class RegistrationService(
     private val emailConfig: EmailConfig,
     private val ldapConfig: LDAPConfig,
     private val authServiceConfig: AuthServiceConfig,
-    private val setPasswordTokenService: SetPasswordTokenService,
+    private val passwordTokenService: PasswordTokenService,
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
@@ -54,7 +54,7 @@ class RegistrationService(
         return if (ssoUser)
             SSOUserCreated
         else
-            UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
+            UserCreated(registration, passwordTokenService.createToken(adUser.cn, true), adUser.cn)
     }
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
@@ -135,7 +135,8 @@ class RegistrationService(
                     "DLUHC DELTA - Account",
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                        "userFirstName" to registrationResult.registration.firstName,
+                        "authServiceUrl" to authServiceConfig.serviceUrl,
+                            "userFirstName" to registrationResult.registration.firstName,
                     )
                 )
             }

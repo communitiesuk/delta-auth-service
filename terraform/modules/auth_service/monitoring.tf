@@ -77,3 +77,19 @@ resource "aws_cloudwatch_metric_alarm" "auth_set_password_rate_limit_reached" {
   alarm_actions     = [var.alarms_sns_topic_arn]
   ok_actions        = [var.alarms_sns_topic_arn]
 }
+
+resource "aws_cloudwatch_metric_alarm" "auth_reset_password_rate_limit_reached" {
+  alarm_name          = "auth-${var.environment}-reset-password-rate-limit-reached"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "resetPassword.rateLimitedRequests.count"
+  namespace           = local.auth_metrics_namespace
+  period              = 120
+  statistic           = "Sum"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+
+  alarm_description = "An IP address has reached the rate limit on the reset password page"
+  alarm_actions     = [var.alarms_sns_topic_arn]
+  ok_actions        = [var.alarms_sns_topic_arn]
+}

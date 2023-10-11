@@ -11,12 +11,14 @@ import kotlin.time.Duration.Companion.minutes
 const val loginRateLimitName = "protectLogin"
 const val registrationRateLimitName = "protectRegistration"
 const val setPasswordRateLimitName = "protectSetPassword"
+const val resetPasswordRateLimitName = "protectResetPassword"
 
 fun Application.configureRateLimiting(
     rateLimit: Int,
     loginRateLimitCounter: Counter,
     registrationRateLimitCounter: Counter,
-    setPasswordRateLimitCounter: Counter
+    setPasswordRateLimitCounter: Counter,
+    resetPasswordRateLimitCounter: Counter,
 ) {
     val logger = LoggerFactory.getLogger("Application.RateLimiting")
 
@@ -45,5 +47,6 @@ fun Application.configureRateLimiting(
         setUpRateLimit(loginRateLimitName, "Login", loginRateLimitCounter)
         setUpRateLimit(registrationRateLimitName, "Registration form", registrationRateLimitCounter)
         setUpRateLimit(setPasswordRateLimitName, "Set Password form", setPasswordRateLimitCounter)
+        setUpRateLimit(resetPasswordRateLimitName, "Reset Password form", resetPasswordRateLimitCounter)
     }
 }
