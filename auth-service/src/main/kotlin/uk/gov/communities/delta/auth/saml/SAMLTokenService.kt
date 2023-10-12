@@ -27,13 +27,13 @@ class SAMLTokenService {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
     fun generate(credential: BasicX509Credential, user: LdapUser, validFrom: Instant, validTo: Instant): String {
+        val startTime = System.currentTimeMillis()
         if (!initialised.get()) {
             // Lazily initialise the OpenSAML library as it takes a second or so to start
             initialiseOpenSaml()
         }
         return try {
             val roles = user.memberOfCNs.filter { it.startsWith("datamart-delta-") }
-            logger.debug("Generating SAML token for user {} with {} roles", user.cn, roles.size)
             val assertion = makeAssertionElement(user.cn, roles, validFrom, validTo)
 
             // This block of code reportedly comes from MarkLogic support, though we no longer have access to the original ticket
@@ -55,7 +55,10 @@ class SAMLTokenService {
             response.assertions.add(signedAssertion)
             // End build SAML response
             val token = marshalToString(response)
-            base64Encode(token)
+            val encodedToken = base64Encode(token)
+            logger.atInfo().addKeyValue("durationMs", System.currentTimeMillis() - startTime)
+                .log("Generated SAML token for user {} with {} roles", user.cn, roles.size)
+            encodedToken
         } catch (ex: Exception) {
             throw RuntimeException("Failed to generate SAML token", ex)
         }
