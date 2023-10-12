@@ -5,12 +5,17 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
 import uk.gov.communities.delta.auth.services.LdapService
 import uk.gov.communities.delta.auth.services.Registration
+import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.helper.testLdapUser
 import javax.naming.directory.Attributes
 import javax.naming.directory.DirContext
 import javax.naming.directory.ModificationItem
@@ -19,9 +24,19 @@ import kotlin.test.assertEquals
 
 class UserServiceTest {
     private val ldapService = mockk<LdapService>()
-    private val userService = UserService(ldapService)
     private val deltaUserDnFormat = "CN=%s"
     private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
+
+    //    private val userLookupService = UserLookupService(
+//        UserLookupService.Configuration(
+//            ldapConfig.deltaUserDnFormat,
+//            ldapConfig.authServiceUserDn,
+//            ldapConfig.authServiceUserPassword,
+//        ),
+//        ldapService
+//    )
+    private val userLookupService = mockk<UserLookupService>()
+    private val userService = UserService(ldapService, userLookupService)
     private val userEmail = "user@example.com"
     private val registration = Registration("Test", "User", userEmail)
     private val container = slot<Attributes>()
@@ -33,6 +48,8 @@ class UserServiceTest {
 
     @Before
     fun setupMocks() {
+        modificationItems.clear()
+        contextBlock.clear()
         coEvery { ldapService.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
         coEvery { context.createSubcontext(userDN, capture(container)) } coAnswers { nothing }
         coEvery { context.modifyAttributes(userDN, capture(modificationItems)) } coAnswers { nothing }
@@ -67,6 +84,30 @@ class UserServiceTest {
         assertEquals("512", modificationItems.captured[1].attribute.get())
         // User has a password set
         assert(modificationItems.captured[0].attribute.get() as ByteArray? != null)
+    }
+
+    @Test
+    fun testResetUserPassword() = testSuspend {
+        coEvery { userLookupService.lookupUserByDN(userDN) } returns testLdapUser(accountEnabled = true)
+        userService.resetPassword(userDN, "TestPassword")
+        verify(exactly = 1) { context.modifyAttributes(userDN, any()) }
+        // User is unlocked
+        assertEquals(DirContext.REPLACE_ATTRIBUTE, modificationItems.captured[1].modificationOp)
+        assertEquals("lockoutTime", modificationItems.captured[1].attribute.id)
+        assertEquals("0", modificationItems.captured[1].attribute.get())
+        // User has a password set
+        assert(modificationItems.captured[0].attribute.get() as ByteArray? != null)
+    }
+
+    @Test
+    fun testResetUserPasswordDisabledUser() = testSuspend {
+        coEvery { userLookupService.lookupUserByDN(userDN) } returns testLdapUser(accountEnabled = false)
+        Assert.assertThrows(ResetPasswordException::class.java) {
+            runBlocking {
+                userService.resetPassword(userDN, "TestPassword")
+            }
+        }
+        verify(exactly = 0) { context.modifyAttributes(userDN, any()) }
     }
 
     @Test

@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 class RegistrationServiceTest {
     private val deltaConfig = DeltaConfig.fromEnv()
     private val authServiceConfig = AuthServiceConfig("http://localhost", null)
-    private val setPasswordTokenService = mockk<SetPasswordTokenService>()
+    private val passwordTokenService = mockk<PasswordTokenService>()
     private val emailService = mockk<EmailService>()
     private val userService = mockk<UserService>()
     private val userLookupService = mockk<UserLookupService>()
@@ -29,7 +29,7 @@ class RegistrationServiceTest {
         EmailConfig.fromEnv(),
         LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
         authServiceConfig,
-        setPasswordTokenService,
+        passwordTokenService,
         emailService,
         userService,
         userLookupService,
@@ -41,7 +41,7 @@ class RegistrationServiceTest {
         coEvery { userLookupService.userExists(any()) } returns false
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
         coEvery { userService.createUser(any()) } just runs
-        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
+        coEvery { passwordTokenService.createToken(any(), true) } returns "token"
     }
 
     @Test
@@ -55,7 +55,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 1) { passwordTokenService.createToken(any(), true) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
@@ -71,7 +71,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { passwordTokenService.createToken(any(), true) }
         assertTrue(registrationResult is RegistrationService.SSOUserCreated)
     }
 
@@ -86,7 +86,7 @@ class RegistrationServiceTest {
         assertTrue(registrationResult is RegistrationService.UserAlreadyExists)
         coVerify(exactly = 0) { userService.createUser(any()) }
         coVerify(exactly = 0) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { passwordTokenService.createToken(any(), true) }
     }
 
     @Test
@@ -101,7 +101,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode)) }
         coVerify(exactly = 4) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 1) { passwordTokenService.createToken(any(), true) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
@@ -117,7 +117,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 0) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode)) }
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 1) { passwordTokenService.createToken(any(), true) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 

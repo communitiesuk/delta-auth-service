@@ -18,7 +18,8 @@ import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
+import uk.gov.communities.delta.auth.controllers.external.DeltaResetPasswordController
+import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.services.EmailService
 import uk.gov.communities.delta.auth.services.PasswordTokenService
@@ -32,12 +33,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class DeltaSetPasswordControllerTest {
+class DeltaResetPasswordControllerTest {
 
 
     @Test
-    fun testSetPasswordPage() = testSuspend {
-        testClient.get("/set-password?userCN=user%21example.com&token=$validToken")
+    fun testResetPasswordPage() = testSuspend {
+        testClient.get("/reset-password?userCN=user%21example.com&token=$validToken")
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
                 assertFormPage(bodyAsText())
@@ -45,8 +46,8 @@ class DeltaSetPasswordControllerTest {
     }
 
     @Test
-    fun testSetPasswordSuccessPage() = testSuspend {
-        testClient.get("/set-password/success")
+    fun testResetPasswordSuccessPage() = testSuspend {
+        testClient.get("/reset-password/success")
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
                 assertSuccessPage(bodyAsText())
@@ -55,130 +56,129 @@ class DeltaSetPasswordControllerTest {
 
 
     @Test
-    fun testSetPasswordPageNoParametersThrowsError() = testSuspend {
-        Assert.assertThrows(DeltaSetPasswordController.SetPasswordException::class.java) {
-            runBlocking { testClient.get("/set-password") }
+    fun testResetPasswordPageNoParametersThrowsError() = testSuspend {
+        Assert.assertThrows(ResetPasswordException::class.java) {
+            runBlocking { testClient.get("/reset-password") }
         }.apply {
-            assertEquals("set_password_no_token", errorCode)
+            assertEquals("reset_password_no_token", errorCode)
         }
     }
 
     @Test
-    fun testGetSetPasswordPageExpiredTokenSendsEmail() = testSuspend {
+    fun testGetResetPasswordPageExpiredToken() = testSuspend {
         coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
-        testClient.get("/set-password?userCN=user%21example.com&token=expiredToken")
+        testClient.get("/reset-password?userCN=user%21example.com&token=expiredToken")
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
-                assertContains(bodyAsText(), "Your activation link had expired.")
-                assertFalse(bodyAsText().contains("Set password"))
+                assertContains(bodyAsText(), "Your password reset link had expired.")
+                assertFalse(bodyAsText().contains("Reset password"))
             }
     }
 
     @Test
-    fun testSetPasswordSuccess() = testSuspend {
+    fun testResetPasswordSuccess() = testSuspend {
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 1) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 1) { userService.resetPassword(userDN, validPassword) }
             assertSuccessPageRedirect(status, headers)
         }
     }
 
     @Test
-    fun testSetPasswordValidationError() = testSuspend {
+    fun testResetPasswordValidationError() = testSuspend {
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", validPassword)
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
         }
     }
 
     @Test
-    fun testSetPasswordCommonPasswordError() = testSuspend {
+    fun testResetPasswordCommonPasswordError() = testSuspend {
         val badPassword = "qwerty123456"
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", badPassword)
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
-            assertContains(
-                bodyAsText(),
-                "Password must not be a commonly used password."
-            )
+            assertContains(bodyAsText(), "Password must not be a commonly used password.")
         }
     }
 
     @Test
-    fun testSetPasswordNameInPasswordError() = testSuspend {
+    fun testResetPasswordNameInPasswordError() = testSuspend {
         val badPassword = "userexample1"
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", badPassword)
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
-            assertContains(
-                bodyAsText(),
-                "Password must not contain any part(s) your username"
-            )
+            assertContains(bodyAsText(), "Password must not contain any part(s) your username")
         }
     }
 
     @Test
-    fun testPostSetPasswordExpiredToken() = testSuspend {
+    fun testPostResetPasswordExpiredToken() = testSuspend {
         coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + expiredToken,
+            url = "/reset-password?userCN=" + userCN.encodeURLParameter() + "&token=" + expiredToken,
             formParameters = parameters {
                 append("newPassword", validPassword)
                 append("confirmPassword", validPassword)
             }
         ).apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertContains(bodyAsText(), "Your activation link had expired.")
-            assertFalse(bodyAsText().contains("Set password"))
+            assertContains(bodyAsText(), "Your password reset link had expired.")
+            assertFalse(bodyAsText().contains("Reset password"))
+            coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
         }
     }
 
     @Test
-    fun testPostResendActivationEmail() = testSuspend {
+    fun testPostResendResetPasswordEmail() = testSuspend {
         coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
         testClient.submitForm(
-            url = "/set-password/expired",
+            url = "/reset-password/expired",
             formParameters = parameters {
                 append("userCN", userCN)
                 append("token", expiredToken)
             }
         ).apply {
-            coVerify(exactly = 1) { passwordTokenService.consumeToken(expiredToken, userCN, true) }
-            assertEquals(emailTemplate.captured, "not-yet-enabled-user")
-            coVerify(exactly = 1) { passwordTokenService.createToken(userCN, true) }
+            coVerify(exactly = 1) { passwordTokenService.consumeToken(expiredToken, userCN, false) }
+            assertEquals(emailTemplate.captured, "reset-password")
+            coVerify(exactly = 1) { passwordTokenService.createToken(userCN, false) }
             assertEquals(HttpStatusCode.OK, status)
-            assertContains(bodyAsText(), "Your registration is pending your email activation")
+            assertContains(bodyAsText(), "Your password reset link has been email to you")
         }
     }
 
     private fun assertSuccessPageRedirect(status: HttpStatusCode, headers: Headers) {
         assertEquals(HttpStatusCode.Found, status)
-        assertTrue("Should redirect to success page") { headers["Location"]!!.contains("/delta/set-password/success") }
+        assertTrue("Should redirect to success page") { headers["Location"]!!.contains("/delta/reset-password/success") }
     }
 
     private fun assertSuccessPage(bodyAsText: String) {
-        assertContains(bodyAsText, "Your password has been set and your registration is completed")
+        assertContains(bodyAsText, "Your password has been reset")
     }
 
     private fun assertFormPage(bodyAsText: String) {
@@ -194,32 +194,32 @@ class DeltaSetPasswordControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            passwordTokenService.validateToken(validToken, userCN, true)
+            passwordTokenService.validateToken(validToken, userCN, false)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            passwordTokenService.validateToken(expiredToken, userCN, true)
+            passwordTokenService.validateToken(expiredToken, userCN, false)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            passwordTokenService.validateToken(invalidToken, userCN, true)
+            passwordTokenService.validateToken(invalidToken, userCN, false)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.validateToken("", any(), true)
+            passwordTokenService.validateToken("", any(), false)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.consumeToken(validToken, userCN, true)
+            passwordTokenService.consumeToken(validToken, userCN, false)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            passwordTokenService.consumeToken(expiredToken, userCN, true)
+            passwordTokenService.consumeToken(expiredToken, userCN, false)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            passwordTokenService.consumeToken(invalidToken, userCN, true)
+            passwordTokenService.consumeToken(invalidToken, userCN, false)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.consumeToken("", any(), true)
+            passwordTokenService.consumeToken("", any(), false)
         } returns PasswordTokenService.NoSuchToken
         coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
-        coEvery { passwordTokenService.createToken(userCN, true) } returns "token"
-        coEvery { userService.setPassword(userDN, validPassword) } just runs
+        coEvery { passwordTokenService.createToken(userCN, false) } returns "token"
+        coEvery { userService.resetPassword(userDN, validPassword) } just runs
     }
 
     companion object {
@@ -252,7 +252,7 @@ class DeltaSetPasswordControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            val controller = DeltaSetPasswordController(
+            val controller = DeltaResetPasswordController(
                 deltaConfig,
                 ldapConfig,
                 emailConfig,
@@ -266,14 +266,14 @@ class DeltaSetPasswordControllerTest {
                 application {
                     configureTemplating(false)
                     routing {
-                        route("/set-password/success") {
-                            controller.setPasswordSuccessRoute(this)
+                        route("/reset-password/success") {
+                            controller.resetPasswordSuccessRoute(this)
                         }
-                        route("set-password/expired") {
-                            controller.setPasswordExpired(this)
+                        route("/reset-password/expired") {
+                            controller.resetPasswordExpired(this)
                         }
-                        route("/set-password") {
-                            controller.setPasswordFormRoutes(this)
+                        route("/reset-password") {
+                            controller.resetPasswordFormRoutes(this)
                         }
                     }
                 }

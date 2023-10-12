@@ -249,7 +249,7 @@ class DeltaUserRegistrationControllerTest {
         coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "Test org"))
         coEvery { userService.createUser(any()) } just runs
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
-        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
+        coEvery { passwordTokenService.createToken(any(), true) } returns "token"
         coEvery { emailService.sendTemplateEmail(any(), any(), any(), any()) } just runs
     }
 
@@ -259,7 +259,7 @@ class DeltaUserRegistrationControllerTest {
         private lateinit var testClient: HttpClient
         private val deltaConfig = DeltaConfig.fromEnv()
         private val organisationService = mockk<OrganisationService>()
-        private val setPasswordTokenService = mockk<SetPasswordTokenService>()
+        private val passwordTokenService = mockk<PasswordTokenService>()
         private val emailService = mockk<EmailService>()
         private val authServiceConfig = AuthServiceConfig("http://localhost", null)
         private val userService = mockk<UserService>()
@@ -280,7 +280,7 @@ class DeltaUserRegistrationControllerTest {
                 EmailConfig.fromEnv(),
                 LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
                 authServiceConfig,
-                setPasswordTokenService,
+                passwordTokenService,
                 emailService,
                 userService,
                 userLookupService,

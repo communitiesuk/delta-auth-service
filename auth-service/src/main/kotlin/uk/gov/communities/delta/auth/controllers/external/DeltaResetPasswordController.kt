@@ -110,7 +110,7 @@ class DeltaResetPasswordController(
         logger.atInfo().addKeyValue("userCN", userCN).addKeyValue("emailAddress", user.email)
             .log("Sending reset password link")
         emailService.sendTemplateEmail(
-            "password-reset",
+            "reset-password",
             EmailContacts(
                 user.email!!,
                 user.fullName,

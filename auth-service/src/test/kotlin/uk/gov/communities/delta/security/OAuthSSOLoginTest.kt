@@ -328,6 +328,7 @@ class OAuthSSOLoginTest {
                 listOf(serviceClient),
                 ssoConfig,
                 deltaConfig,
+                serviceConfig,
                 mockk(),
                 authorizationCodeServiceMock,
                 counter("failedLoginNoopCounter"),
@@ -377,7 +378,8 @@ class OAuthSSOLoginTest {
                         10,
                         counter("loginRateLimitingNoopCounter"),
                         counter("registrationRateLimitingNoopCounter"),
-                        counter("setPasswordRateLimitingNoopCounter")
+                        counter("setPasswordRateLimitingNoopCounter"),
+                        counter("resetPasswordRateLimitingNoopCounter"),
                     )
                     routing {
                         route("/delta") {
