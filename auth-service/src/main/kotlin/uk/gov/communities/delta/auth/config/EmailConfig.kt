@@ -43,6 +43,7 @@ class EmailConfig(
             }
             props["mail.smtp.auth"] = useAuth
             props["mail.smtp.starttls.enable"] = useAuth
+            if (useAuth) props["mail.smtp.socketFactory.class"] = "javax.net.ssl.SSLSocketFactory"
             props["mail.smtp.host"] = Env.getRequiredOrDevFallback("MAIL_SMTP_HOST", "localhost")
             props["mail.smtp.port"] = Env.getRequiredOrDevFallback("MAIL_SMTP_PORT", "25")
             props["mail.smtp.timeout"] = 10.seconds.inWholeMilliseconds
