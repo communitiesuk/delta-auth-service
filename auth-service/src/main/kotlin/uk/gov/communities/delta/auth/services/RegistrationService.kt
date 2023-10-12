@@ -105,7 +105,7 @@ class RegistrationService(
         )
     }
 
-    fun sendRegistrationEmail(registrationResult: RegistrationResult) {
+    suspend fun sendRegistrationEmail(registrationResult: RegistrationResult) {
         when (registrationResult) {
             is UserCreated -> {
                 emailService.sendTemplateEmail(

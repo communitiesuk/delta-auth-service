@@ -6,11 +6,11 @@ import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
-import io.ktor.server.request.*
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.config.MeterFilter
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
+import org.slf4j.Logger
 import org.slf4j.MDC
 import org.slf4j.event.Level
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -94,4 +94,26 @@ val addBearerSessionInfoToMDC = createRouteScopedPlugin("AddBearerSessionInfoToM
             proceed()
         }
     }
+}
+
+suspend fun <T> Logger.timed(
+    action: String,
+    logParams: (T) -> List<Pair<String, Any>> = { emptyList() },
+    block: suspend () -> T,
+): T {
+    val startTime = System.currentTimeMillis()
+    val result = try {
+        block()
+    } catch (e: Exception) {
+        this.atWarn()
+            .addKeyValue("durationMs", System.currentTimeMillis() - startTime)
+            .log("Timed action {} failed", action, e)
+        throw e
+    }
+    this.atInfo()
+        .addKeyValue("timedAction", action)
+        .addKeyValue("durationMs", System.currentTimeMillis() - startTime)
+        .apply { logParams(result).forEach { addKeyValue(it.first, it.second) } }
+        .log("Timed action {} complete", action)
+    return result
 }
