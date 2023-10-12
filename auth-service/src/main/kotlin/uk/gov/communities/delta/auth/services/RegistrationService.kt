@@ -132,7 +132,7 @@ class RegistrationService(
                 emailService.sendTemplateEmail(
                     "already-a-user",
                     getRegistrationEmailContacts(registrationResult.registration),
-                    "DLUHC DELTA - Account",
+                    "DLUHC DELTA - Existing Account",
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                         "userFirstName" to registrationResult.registration.firstName,
