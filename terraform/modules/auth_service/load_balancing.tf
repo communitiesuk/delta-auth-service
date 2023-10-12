@@ -25,6 +25,7 @@ resource "aws_lb_target_group" "internal" {
     path              = "/health"
     protocol          = "HTTPS"
     healthy_threshold = 2
+    timeout           = 10
   }
 
   lifecycle {
@@ -106,6 +107,7 @@ resource "aws_lb_target_group" "external" {
     path              = "/health"
     protocol          = "HTTPS"
     healthy_threshold = 2
+    timeout           = 10
   }
 
   lifecycle {
