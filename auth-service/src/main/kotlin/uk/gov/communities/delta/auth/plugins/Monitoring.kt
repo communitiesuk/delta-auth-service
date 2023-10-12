@@ -24,7 +24,8 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
     install(CallLogging) {
         level = Level.INFO
         callIdMdc("requestId")
-        filter { it.request.path() != "/health" }
+        // Temporarily enable call logging for health checks
+        //  filter { it.request.path() != "/health" }
         mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.username }
         mdc("IPAddress") { it.request.origin.remoteAddress }
         disableDefaultColors()

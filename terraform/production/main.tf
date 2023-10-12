@@ -61,8 +61,8 @@ module "auth_service" {
     ACCESS_GROUP_CONTAINER_DN   = "CN=datamart-delta,OU=Groups,OU=dluhcdata,DC=dluhcdata,DC=local"
   }
   ecs = {
-    cpu           = 1024
-    memory        = 2048
+    cpu           = 2048
+    memory        = 4096
     desired_count = 2
   }
   mail_settings = {
