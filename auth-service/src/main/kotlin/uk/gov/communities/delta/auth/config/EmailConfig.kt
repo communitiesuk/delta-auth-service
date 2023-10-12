@@ -24,7 +24,7 @@ class EmailConfig(
             val props = Properties()
             val smtpUserJSON = Env.getEnv("MAIL_SMTP_USER")
             val useAuth = smtpUserJSON != null
-            if (useAuth){
+            if (useAuth) {
                 val smtpMailUser = Json.decodeFromString<MailSMTPUserBody>(smtpUserJSON!!)
                 smtpUsername = smtpMailUser.username
                 smtpPassword = smtpMailUser.password

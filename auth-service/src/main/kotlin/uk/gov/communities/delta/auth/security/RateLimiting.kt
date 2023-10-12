@@ -16,7 +16,7 @@ fun Application.configureRateLimiting(
     rateLimit: Int,
     loginRateLimitCounter: Counter,
     registrationRateLimitCounter: Counter,
-    setPasswordRateLimitCounter: Counter
+    setPasswordRateLimitCounter: Counter,
 ) {
     val logger = LoggerFactory.getLogger("Application.RateLimiting")
 

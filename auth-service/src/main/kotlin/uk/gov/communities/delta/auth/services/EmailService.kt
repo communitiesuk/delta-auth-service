@@ -14,7 +14,7 @@ import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.plugins.makeTemplateResolver
-import uk.gov.communities.delta.auth.plugins.timed
+import uk.gov.communities.delta.auth.utils.timedSuspend
 import java.util.*
 
 
@@ -36,7 +36,7 @@ class EmailService(emailConfig: EmailConfig) {
         mappedValues: Map<String, String>,
     ) {
         withContext(Dispatchers.IO) {
-            logger.timed(
+            logger.timedSuspend(
                 "Send templated email",
                 { listOf(Pair("emailTemplate", template)) }
             ) {

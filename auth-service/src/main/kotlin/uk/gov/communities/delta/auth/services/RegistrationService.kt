@@ -34,7 +34,7 @@ class RegistrationService(
     suspend fun register(
         registration: Registration,
         organisations: List<Organisation>,
-        ssoUser: Boolean = false
+        ssoUser: Boolean = false,
     ): RegistrationResult {
         val adUser = UserService.ADUser(registration, ssoUser, ldapConfig)
         if (userLookupService.userExists(adUser.cn)) {
@@ -82,7 +82,7 @@ class RegistrationService(
                         organisationUserGroup(it.code)
                     )
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
-                            .log("Added user to domain organisation with code {}", it.code)
+                        .log("Added user to domain organisation with code {}", it.code)
                 } else {
                     logger.info("Organisation {} is retired, with retirement date: {}", it.code, it.retirementDate)
                 }
@@ -151,7 +151,7 @@ class RegistrationService(
 data class Registration(
     val firstName: String,
     val lastName: String,
-    val emailAddress: String
+    val emailAddress: String,
 )
 
 fun getResultTypeString(registrationResult: RegistrationService.RegistrationResult): String {

@@ -7,6 +7,7 @@ import org.flywaydb.core.Flyway
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DatabaseConfig
+import uk.gov.communities.delta.auth.utils.timed
 import java.sql.Connection
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
@@ -26,11 +27,13 @@ class DbPool(private val config: DatabaseConfig) : Closeable {
 
     @Blocking
     @OptIn(ExperimentalContracts::class)
-    inline fun <R> useConnection(block: (Connection) -> R): R {
+    fun <R> useConnectionBlocking(action: String, block: (Connection) -> R): R {
         contract {
             callsInPlace(block, InvocationKind.EXACTLY_ONCE)
         }
-        return connection().use(block)
+        return logger.timed(action) {
+            connection().use(block)
+        }
     }
 
     fun eagerInit() {

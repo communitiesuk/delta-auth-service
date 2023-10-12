@@ -158,7 +158,7 @@ class DeltaUserRegistrationController(
         firstNameErrors: ArrayList<String>,
         lastNameErrors: ArrayList<String>,
         emailAddressErrors: ArrayList<String>,
-        confirmEmailAddressErrors: ArrayList<String>
+        confirmEmailAddressErrors: ArrayList<String>,
     ): Boolean {
         return arrayOf(
             firstNameErrors,
@@ -203,7 +203,7 @@ class DeltaUserRegistrationController(
         firstNameErrors: ArrayList<String> = ArrayList(),
         lastNameErrors: ArrayList<String> = ArrayList(),
         emailAddressErrors: ArrayList<String> = ArrayList(),
-        confirmEmailAddressErrors: ArrayList<String> = ArrayList()
+        confirmEmailAddressErrors: ArrayList<String> = ArrayList(),
     ) {
         val errors = ArrayList<ArrayList<String>>()
         firstNameErrors.forEach { message ->

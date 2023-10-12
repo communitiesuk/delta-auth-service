@@ -13,7 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.plugins.timed
+import uk.gov.communities.delta.auth.utils.timedSuspend
 import java.time.LocalDate
 import kotlin.time.Duration.Companion.seconds
 
@@ -39,7 +39,7 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
     private val logger = LoggerFactory.getLogger(javaClass)
 
     suspend fun findAllByDomain(domain: String): List<Organisation> {
-        return logger.timed(
+        return logger.timedSuspend(
             "Fetch organisations for domain",
             { listOf(Pair("organisationCount", it.size), Pair("domain", domain)) }) {
             httpClient.get(deltaConfig.masterStoreBaseNoAuth + "organisation/search?domain=${domain.encodeURLParameter()}")
@@ -48,7 +48,7 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
     }
 
     suspend fun findAllNamesAndCodes(): List<OrganisationNameAndCode> {
-        return logger.timed(
+        return logger.timedSuspend(
             "Fetch all organisation names and codes",
             { listOf(Pair("organisationCount", it.size)) }) {
             httpClient.get(deltaConfig.masterStoreBaseNoAuth + "organisation/all-names-and-codes")

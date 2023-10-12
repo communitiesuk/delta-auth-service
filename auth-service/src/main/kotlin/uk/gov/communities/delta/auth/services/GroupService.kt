@@ -25,8 +25,8 @@ class GroupService(
         return try {
             val attributes = ldapService.useServiceUserBind {
                 it.getAttributes(
-                        groupDn,
-                        arrayOf("cn")
+                    groupDn,
+                    arrayOf("cn")
                 )
             }
             attributes.get("cn") != null

@@ -65,7 +65,7 @@ class SetPasswordTokenServiceTest {
     fun testLookupExpiredToken() = testSuspend {
         val token = service.createToken(userCN)
         withContext(Dispatchers.IO) {
-            testDbPool.useConnection {
+            testDbPool.useConnectionBlocking("Test expire token") {
                 val stmt = it.prepareStatement(
                     "UPDATE set_password_tokens SET created_at = ? WHERE user_cn = ? "
                 )
