@@ -7,10 +7,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.EmailConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.deltaRouteWithEmail
 import uk.gov.communities.delta.auth.services.*
 import javax.naming.NameNotFoundException
 
@@ -18,6 +16,7 @@ class DeltaForgotPasswordController(
     private val deltaConfig: DeltaConfig,
     private val emailConfig: EmailConfig,
     private val authServiceConfig: AuthServiceConfig,
+    private val ssoConfig: AzureADSSOConfig,
     private val passwordTokenService: PasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
@@ -49,6 +48,18 @@ class DeltaForgotPasswordController(
         else null
         if (message != null) return call.respondForgotPasswordPage(message, emailAddress)
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Forgot password request")
+
+        val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
+            it.required && emailAddress.lowercase().endsWith(it.emailDomain)
+        }
+        if (ssoClientMatchingEmailDomain != null)
+            return call.respondRedirect(
+                deltaRouteWithEmail(
+                    deltaConfig.deltaWebsiteUrl,
+                    ssoClientMatchingEmailDomain.internalId,
+                    emailAddress
+                )
+            )
 
         val userCN = emailAddress.replace("@", "!")
         try {

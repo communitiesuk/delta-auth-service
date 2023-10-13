@@ -12,17 +12,16 @@ import io.ktor.test.dispatcher.*
 import io.mockk.*
 import jakarta.mail.Authenticator
 import jakarta.mail.PasswordAuthentication
-import org.junit.*
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.EmailConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
+import org.junit.AfterClass
+import org.junit.Before
+import org.junit.BeforeClass
+import org.junit.Test
+import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaForgotPasswordController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.services.EmailService
 import uk.gov.communities.delta.auth.services.PasswordTokenService
 import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.util.*
@@ -80,7 +79,7 @@ class DeltaForgotPasswordControllerTest {
     fun testPostForgotPasswordPageNotSetPassword() = testSuspend {
         coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser(accountEnabled = false)
         coEvery { passwordTokenService.passwordNeverSetForUserCN(userCN) } returns true
-        coEvery { passwordTokenService.createToken(userCN, true)} returns "setPasswordToken"
+        coEvery { passwordTokenService.createToken(userCN, true) } returns "setPasswordToken"
         testClient.submitForm(
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", userEmail) }
@@ -103,6 +102,20 @@ class DeltaForgotPasswordControllerTest {
             assertEquals("no-user-account", emailTemplate.captured)
             assertEquals(HttpStatusCode.Found, status)
             assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/sent-email") }
+        }
+    }
+
+    @Test
+    fun testPostForgotPasswordPagesSSOUser() = testSuspend {
+        testClient.submitForm(
+            url = "/forgot-password",
+            formParameters = parameters { append("emailAddress", "user@sso-example.com") }
+        ).apply {
+            assertFalse(emailTemplate.isCaptured)
+            assertEquals(HttpStatusCode.Found, status)
+            assertTrue("Should redirect to delta") { headers["Location"]!!.contains(deltaConfig.deltaWebsiteUrl + "/oauth2/authorization/delta-auth") }
+            assertContains(headers["Location"]!!, "sso-client=ssoInternalIDTest")
+            assertContains(headers["Location"]!!, "expected-email=user%40sso-example.com")
         }
     }
 
@@ -150,6 +163,18 @@ class DeltaForgotPasswordControllerTest {
                 deltaConfig,
                 emailConfig,
                 authServiceConfig,
+                AzureADSSOConfig(
+                    listOf(
+                        AzureADSSOClient(
+                            "ssoInternalIDTest",
+                            "",
+                            "",
+                            "",
+                            "@sso-example.com",
+                            required = true
+                        )
+                    )
+                ),
                 passwordTokenService,
                 userLookupService,
                 emailService,

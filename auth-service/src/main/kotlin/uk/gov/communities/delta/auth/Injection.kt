@@ -200,6 +200,7 @@ class Injection(
         deltaConfig,
         emailConfig,
         authServiceConfig,
+        azureADSSOConfig,
         passwordTokenService,
         userLookupService,
         emailService
