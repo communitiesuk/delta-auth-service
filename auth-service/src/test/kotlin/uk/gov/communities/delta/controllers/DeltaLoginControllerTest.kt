@@ -17,7 +17,6 @@ import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
@@ -213,7 +212,6 @@ class DeltaLoginControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
         private val deltaConfig = DeltaConfig.fromEnv()
-        private val authServiceConfig = AuthServiceConfig("serviceUrl", null)
         val client = testServiceClient()
         val failedLoginCounter = mockk<Counter>()
         val successfulLoginCounter = mockk<Counter>()
@@ -226,7 +224,6 @@ class DeltaLoginControllerTest {
                 listOf(client),
                 AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain", required = true))),
                 deltaConfig,
-                authServiceConfig,
                 object : IADLdapLoginService {
                     override suspend fun ldapLogin(
                         username: String,

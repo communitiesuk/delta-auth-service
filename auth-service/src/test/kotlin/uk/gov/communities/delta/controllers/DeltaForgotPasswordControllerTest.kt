@@ -58,7 +58,7 @@ class DeltaForgotPasswordControllerTest {
         ).apply {
             assertEquals("reset-password", emailTemplate.captured)
             assertEquals(HttpStatusCode.Found, status)
-            assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/sent-email") }
+            assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
     }
 
@@ -88,7 +88,7 @@ class DeltaForgotPasswordControllerTest {
             assertEquals(HttpStatusCode.Found, status)
             coVerify(exactly = 1) { passwordTokenService.createToken(userCN, true) }
             coVerify(exactly = 0) { passwordTokenService.createToken(userCN, false) }
-            assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/sent-email") }
+            assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
     }
 
@@ -101,7 +101,7 @@ class DeltaForgotPasswordControllerTest {
         ).apply {
             assertEquals("no-user-account", emailTemplate.captured)
             assertEquals(HttpStatusCode.Found, status)
-            assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/sent-email") }
+            assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
     }
 

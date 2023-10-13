@@ -288,7 +288,6 @@ class DeltaUserRegistrationControllerTest {
             )
             val controller = DeltaUserRegistrationController(
                 deltaConfig,
-                authServiceConfig,
                 AzureADSSOConfig(
                     listOf(
                         AzureADSSOClient("required-client", "", "", "", "@sso.domain.uk", required = true),

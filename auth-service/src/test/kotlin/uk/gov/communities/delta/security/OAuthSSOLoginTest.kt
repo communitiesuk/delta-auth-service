@@ -146,7 +146,7 @@ class OAuthSSOLoginTest {
                 val registration = Registration("Example", "User", "user@example.com")
                 coVerify(exactly = 0) { registrationService.register(registration, organisations, true) }
                 assertEquals(HttpStatusCode.Found, status)
-                assertEquals(serviceConfig.serviceUrl + "/register", headers["Location"])
+                assertEquals("/delta/register", headers["Location"])
             }
     }
 
@@ -328,7 +328,6 @@ class OAuthSSOLoginTest {
                 listOf(serviceClient),
                 ssoConfig,
                 deltaConfig,
-                serviceConfig,
                 mockk(),
                 authorizationCodeServiceMock,
                 counter("failedLoginNoopCounter"),
@@ -338,7 +337,6 @@ class OAuthSSOLoginTest {
                 deltaConfig,
                 ClientConfig(listOf(serviceClient)),
                 ssoConfig,
-                serviceConfig,
                 ssoLoginStateService,
                 ldapUserLookupServiceMock,
                 authorizationCodeServiceMock,
