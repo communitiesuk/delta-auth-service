@@ -155,7 +155,7 @@ class DeltaSetPasswordController(
                     logger.atError().addKeyValue("UserDN", userDN).log("Error setting password for user with DN {}", e)
                     throw e
                 }
-                this.respondRedirect(authServiceConfig.serviceUrl + "/delta/set-password/success")
+                this.respondRedirect("/delta/set-password/success")
             }
         }
     }

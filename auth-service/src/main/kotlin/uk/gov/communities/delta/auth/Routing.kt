@@ -89,15 +89,15 @@ fun Route.externalRoutes(
             deltaSetPasswordRoutes(deltaSetPasswordController)
         }
 
-        route("/delta/reset-password") {
-        deltaResetPasswordRoutes(deltaResetPasswordController)
-    }
+        route("/reset-password") {
+            deltaResetPasswordRoutes(deltaResetPasswordController)
+        }
 
-    route("/delta/forgot-password") {
-        deltaForgotPasswordRoutes(deltaForgotPasswordController)
-    }
+        route("/forgot-password") {
+            deltaForgotPasswordRoutes(deltaForgotPasswordController)
+        }
 
-    route("/") {
+        route("/") {
             deltaLoginRoutes(serviceConfig, deltaLoginController, deltaSSOLoginController)
         }
     }

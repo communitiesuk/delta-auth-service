@@ -23,7 +23,6 @@ class DeltaLoginController(
     private val clients: List<DeltaLoginEnabledClient>,
     private val ssoConfig: AzureADSSOConfig,
     private val deltaConfig: DeltaConfig,
-    private val authServiceConfig: AuthServiceConfig,
     private val ldapService: IADLdapLoginService,
     private val authorizationCodeService: AuthorizationCodeService,
     private val failedLoginCounter: Counter,
@@ -199,12 +198,12 @@ class DeltaLoginController(
 
             is IADLdapLoginService.ExpiredPassword -> LoginError(
                 "Your password has expired. Please reset your password.",
-                authServiceConfig.serviceUrl + "/delta/forgot-password"
+                "/delta/forgot-password"
             )
 
             is IADLdapLoginService.PasswordNeedsReset -> LoginError(
                 "Your password has expired. Please reset your password.",
-                authServiceConfig.serviceUrl + "/delta/forgot-password"
+                "/delta/forgot-password"
             )
 
             is IADLdapLoginService.BadConnection -> LoginError(

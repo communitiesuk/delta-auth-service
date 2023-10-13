@@ -30,7 +30,6 @@ class DeltaSSOLoginController(
     private val deltaConfig: DeltaConfig,
     private val clientConfig: ClientConfig,
     private val ssoConfig: AzureADSSOConfig,
-    private val authServiceConfig: AuthServiceConfig,
     private val ssoLoginStateService: SSOLoginSessionStateService,
     private val ldapLookupService: UserLookupService,
     private val authorizationCodeService: AuthorizationCodeService,
@@ -76,7 +75,7 @@ class DeltaSSOLoginController(
         if (user == null) {
             if (!ssoClient.required) {
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
-                return call.respondRedirect(authServiceConfig.serviceUrl + "/register")
+                return call.respondRedirect("/delta/register")
             }
             logger.info(
                 "SSO required user not found in AD, registering automatically using details from access token {}",

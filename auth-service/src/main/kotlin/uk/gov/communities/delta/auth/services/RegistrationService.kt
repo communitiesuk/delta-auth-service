@@ -135,8 +135,7 @@ class RegistrationService(
                     "DLUHC DELTA - Account",
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                        "authServiceUrl" to authServiceConfig.serviceUrl,
-                            "userFirstName" to registrationResult.registration.firstName,
+                        "userFirstName" to registrationResult.registration.firstName,
                     )
                 )
             }

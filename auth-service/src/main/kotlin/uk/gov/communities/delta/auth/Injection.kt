@@ -158,7 +158,6 @@ class Injection(
             clientConfig.oauthClients,
             azureADSSOConfig,
             deltaConfig,
-            authServiceConfig,
             adLoginService,
             authorizationCodeService,
             failedLoginCounter,
@@ -168,7 +167,6 @@ class Injection(
 
     fun externalDeltaUserRegisterController() = DeltaUserRegistrationController(
         deltaConfig,
-        authServiceConfig,
         azureADSSOConfig,
         organisationService,
         registrationService,
@@ -224,7 +222,6 @@ class Injection(
             deltaConfig,
             clientConfig,
             azureADSSOConfig,
-            authServiceConfig,
             ssoLoginStateService,
             userLookupService,
             authorizationCodeService,

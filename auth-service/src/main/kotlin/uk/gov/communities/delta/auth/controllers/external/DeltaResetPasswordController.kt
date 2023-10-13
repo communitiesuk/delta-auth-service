@@ -109,6 +109,7 @@ class DeltaResetPasswordController(
         val user = userLookupService.lookupUserByCn(userCN)
         logger.atInfo().addKeyValue("userCN", userCN).addKeyValue("emailAddress", user.email)
             .log("Sending reset password link")
+        val token = passwordTokenService.createToken(userCN, false)
         emailService.sendTemplateEmail(
             "reset-password",
             EmailContacts(
@@ -124,7 +125,7 @@ class DeltaResetPasswordController(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
                 "resetPasswordUrl" to getResetPasswordURL(
-                    passwordTokenService.createToken(userCN, false),
+                    token,
                     userCN,
                     authServiceConfig.serviceUrl
                 )
@@ -164,7 +165,7 @@ class DeltaResetPasswordController(
                         .log("Error resetting password for user with DN {}", e)
                     throw e
                 }
-                this.respondRedirect(authServiceConfig.serviceUrl + "/delta/reset-password/success")
+                this.respondRedirect("/delta/reset-password/success")
             }
         }
     }

@@ -115,10 +115,7 @@ class DeltaForgotPasswordController(
                 emailConfig.replyToEmailName,
             ),
             "DLUHC DELTA - No User Account",
-            mapOf(
-                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "authServiceUrl" to authServiceConfig.serviceUrl,
-            )
+            mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)
         )
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent no-user-account email")
     }
@@ -155,7 +152,7 @@ class DeltaForgotPasswordController(
     }
 
     private suspend fun ApplicationCall.redirectSentEmailPage(emailAddress: String) =
-        respondRedirect(authServiceConfig.serviceUrl + "/delta/forgot-password/sent-email?emailAddress=$emailAddress")
+        respondRedirect("/delta/forgot-password/email-sent?emailAddress=$emailAddress")
 
     private suspend fun ApplicationCall.respondEmailSentPage(emailAddress: String) =
         respond(
