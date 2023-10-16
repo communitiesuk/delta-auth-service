@@ -12,7 +12,9 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
@@ -23,13 +25,12 @@ import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.OAuthSession
-import uk.gov.communities.delta.auth.services.OAuthSessionService
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 
 class RefreshUserInfoControllerTest {
@@ -46,6 +47,7 @@ class RefreshUserInfoControllerTest {
             val response = Json.parseToJsonElement(bodyAsText()).jsonObject
             assertEquals("SAML Token", response["saml_token"].toString().trim('"'))
             assertEquals("user", response["delta_ldap_user"]!!.jsonObject["cn"].toString().trim('"'))
+            assertEquals("dclg", response["delta_user_roles"]!!.jsonObject["organisationIds"]!!.jsonArray.single().jsonPrimitive.content)
         }
     }
 
@@ -68,15 +70,17 @@ class RefreshUserInfoControllerTest {
 
         private val client = testServiceClient()
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
-        private val user = testLdapUser(cn = "user")
-
-        private val userLookupService = mockk<UserLookupService>()
-        private val samlTokenService = mockk<SAMLTokenService>()
-        private val oauthSessionService = mockk<OAuthSessionService>()
+        private val user = testLdapUser(cn = "user", memberOfCNs = listOf("datamart-delta-user-dclg"))
 
         @BeforeClass
         @JvmStatic
         fun setup() {
+            val userLookupService = mockk<UserLookupService>()
+            val samlTokenService = mockk<SAMLTokenService>()
+            val oauthSessionService = mockk<OAuthSessionService>()
+            val accessGroupsService = mockk<AccessGroupsService>()
+            val organisationService = mockk<OrganisationService>()
+
             coEvery { userLookupService.lookupUserByCn(session.userCn) } answers { user }
             every {
                 samlTokenService.generate(
@@ -86,10 +90,18 @@ class RefreshUserInfoControllerTest {
                     any()
                 )
             } answers { "SAML Token" }
+            coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
+            coEvery { organisationService.findAllNamesAndCodes() }.returns(listOf(OrganisationNameAndCode("dclg", "The Department")))
             coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
             coEvery { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
 
-            controller = RefreshUserInfoController(userLookupService, samlTokenService)
+            controller = RefreshUserInfoController(
+                userLookupService,
+                samlTokenService,
+                accessGroupsService,
+                organisationService,
+                ::MemberOfToDeltaRolesMapper
+            )
             testApp = TestApplication {
                 application {
                     configureSerialization()

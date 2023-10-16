@@ -197,7 +197,13 @@ class Injection(
         ::MemberOfToDeltaRolesMapper
     )
 
-    fun refreshUserInfoController() = RefreshUserInfoController(userLookupService, samlTokenService)
+    fun refreshUserInfoController() = RefreshUserInfoController(
+        userLookupService,
+        samlTokenService,
+        accessGroupsService,
+        organisationService,
+        ::MemberOfToDeltaRolesMapper
+    )
 
     fun deltaOAuthLoginController() =
         DeltaSSOLoginController(
