@@ -6,7 +6,6 @@ import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
-import io.ktor.server.request.*
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.config.MeterFilter
 import kotlinx.coroutines.slf4j.MDCContext

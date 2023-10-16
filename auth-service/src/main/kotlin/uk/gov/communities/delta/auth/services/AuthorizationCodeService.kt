@@ -52,7 +52,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
 
     @Blocking
     private fun insert(authCode: AuthCode) {
-        dbPool.useConnection {
+        dbPool.useConnectionBlocking("Insert Auth Code") {
             val stmt = it.prepareStatement(
                 "INSERT INTO authorization_code (username, client_id, code_hash, created_at, trace_id) " +
                         "VALUES (?, ?, ?, ?, ?)"
@@ -75,7 +75,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
             logger.error("Auth code '{}' is not a valid base64 string", code, e)
             return null
         }
-        return dbPool.useConnection {
+        return dbPool.useConnectionBlocking("Consume auth code") {
             val stmt = it.prepareStatement(
                 "DELETE FROM authorization_code " +
                         "WHERE code_hash = ? AND client_id = ? RETURNING username, created_at, trace_id"
@@ -85,7 +85,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
             val resultSet = stmt.executeQuery()
             if (!resultSet.next()) {
                 logger.debug("Code not found '{}' for client '{}'", code, client.clientId)
-                return@useConnection null
+                return@useConnectionBlocking null
             }
             val authCode = AuthCode(
                 code = code,
@@ -95,7 +95,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
                 traceId = resultSet.getString("trace_id")
             )
             it.commit()
-            return@useConnection authCode
+            return@useConnectionBlocking authCode
         }
     }
 }

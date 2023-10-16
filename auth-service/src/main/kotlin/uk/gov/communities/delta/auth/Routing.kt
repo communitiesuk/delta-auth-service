@@ -58,7 +58,7 @@ fun Route.externalRoutes(
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
     deltaUserRegistrationController: DeltaUserRegistrationController,
-    deltaSetPasswordController: DeltaSetPasswordController
+    deltaSetPasswordController: DeltaSetPasswordController,
 ) {
     staticResources("/static", "static") {
         cacheControl { listOf(CacheControl.MaxAge(86400)) } // Currently set to 1 day
@@ -107,7 +107,7 @@ fun Route.deltaSetPasswordRoutes(deltaSetPasswordController: DeltaSetPasswordCon
 }
 
 fun Route.deltaRegisterRoutes(
-    deltaUserRegistrationController: DeltaUserRegistrationController
+    deltaUserRegistrationController: DeltaUserRegistrationController,
 ) {
     route("/success") {
         deltaUserRegistrationController.registerSuccessRoute(this)

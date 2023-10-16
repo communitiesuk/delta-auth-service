@@ -13,7 +13,7 @@ class DeleteOldDeltaSessions(private val db: DbPool) :
     // Tasks are run separately anyway
     @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun execute() {
-        db.useConnection {
+        db.useConnectionBlocking("DeleteOldDeltaSessions") {
             val stmt = it.prepareStatement(
                 "DELETE FROM delta_session WHERE created_at < ?"
             )

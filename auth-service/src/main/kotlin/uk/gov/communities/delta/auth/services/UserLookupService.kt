@@ -1,7 +1,5 @@
 package uk.gov.communities.delta.auth.services
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import javax.naming.NameNotFoundException
 

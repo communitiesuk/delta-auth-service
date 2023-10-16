@@ -20,6 +20,8 @@
     <!-- These two only log errors, and log them at TRACE -->
     <logger name="io.ktor.auth.oauth" level="TRACE"/>
     <logger name="io.ktor.client.plugins.HttpTimeout" level="TRACE"/>
+    <!-- Timeouts and socket errors are logged at debug -->
+    <logger name="Application" level="DEBUG"/>
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>

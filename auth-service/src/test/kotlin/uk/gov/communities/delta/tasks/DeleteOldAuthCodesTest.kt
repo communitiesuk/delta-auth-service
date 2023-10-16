@@ -30,7 +30,7 @@ class DeleteOldAuthCodesTest {
         authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-old-user", testServiceClient(), "old-trace")
         time = { Instant.now() }
 
-        testDbPool.useConnection {
+        testDbPool.useConnectionBlocking("test") {
             assertEquals(
                 1,
                 countOldAuthCodes()
@@ -39,7 +39,7 @@ class DeleteOldAuthCodesTest {
 
         underTest.execute()
 
-        testDbPool.useConnection {
+        testDbPool.useConnectionBlocking("test") {
             assertEquals(
                 0,
                 countOldAuthCodes()
@@ -49,7 +49,7 @@ class DeleteOldAuthCodesTest {
     }
 
     private fun countOldAuthCodes(): Int {
-        return testDbPool.useConnection {
+        return testDbPool.useConnectionBlocking("test") {
             val resultSet = it.createStatement()
                 .executeQuery("SELECT COUNT(*) FROM authorization_code WHERE username = 'DeleteOldAuthCodesTest-old-user'")
             resultSet.next()

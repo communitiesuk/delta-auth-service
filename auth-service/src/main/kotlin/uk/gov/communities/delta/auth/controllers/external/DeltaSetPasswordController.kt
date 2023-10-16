@@ -145,7 +145,7 @@ class DeltaSetPasswordController(
 
     private suspend fun ApplicationCall.respondToResult(
         tokenResult: SetPasswordTokenService.TokenResult,
-        newPassword: String
+        newPassword: String,
     ) {
         when (tokenResult) {
             is SetPasswordTokenService.NoSuchToken -> {
