@@ -131,7 +131,9 @@ fun Route.deltaForgotPasswordRoutes(deltaForgotPasswordController: DeltaForgotPa
     route("/email-sent") {
         deltaForgotPasswordController.forgotPasswordEmailSentRoute(this)
     }
-    deltaForgotPasswordController.forgotPasswordFormRoutes(this)
+    rateLimit(RateLimitName(forgotPasswordRateLimitName)) {
+        deltaForgotPasswordController.forgotPasswordFormRoutes(this)
+    }
 }
 
 fun Route.deltaRegisterRoutes(

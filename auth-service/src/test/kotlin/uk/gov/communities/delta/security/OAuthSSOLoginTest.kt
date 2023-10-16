@@ -378,6 +378,7 @@ class OAuthSSOLoginTest {
                         counter("registrationRateLimitingNoopCounter"),
                         counter("setPasswordRateLimitingNoopCounter"),
                         counter("resetPasswordRateLimitingNoopCounter"),
+                        counter("forgotPasswordRateLimitingNoopCounter"),
                     )
                     routing {
                         route("/delta") {

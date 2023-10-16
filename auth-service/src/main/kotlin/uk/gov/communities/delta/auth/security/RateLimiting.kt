@@ -12,6 +12,7 @@ const val loginRateLimitName = "protectLogin"
 const val registrationRateLimitName = "protectRegistration"
 const val setPasswordRateLimitName = "protectSetPassword"
 const val resetPasswordRateLimitName = "protectResetPassword"
+const val forgotPasswordRateLimitName = "protectForgotPassword"
 
 fun Application.configureRateLimiting(
     rateLimit: Int,
@@ -19,6 +20,7 @@ fun Application.configureRateLimiting(
     registrationRateLimitCounter: Counter,
     setPasswordRateLimitCounter: Counter,
     resetPasswordRateLimitCounter: Counter,
+    forgotPasswordRateLimitCounter: Counter,
 ) {
     val logger = LoggerFactory.getLogger("Application.RateLimiting")
 
@@ -48,5 +50,6 @@ fun Application.configureRateLimiting(
         setUpRateLimit(registrationRateLimitName, "Registration form", registrationRateLimitCounter)
         setUpRateLimit(setPasswordRateLimitName, "Set Password form", setPasswordRateLimitCounter)
         setUpRateLimit(resetPasswordRateLimitName, "Reset Password form", resetPasswordRateLimitCounter)
+        setUpRateLimit(forgotPasswordRateLimitName, "Forgot Password form", forgotPasswordRateLimitCounter)
     }
 }

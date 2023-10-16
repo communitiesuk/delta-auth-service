@@ -47,6 +47,7 @@ fun Application.appModule() {
         injection.registrationRateLimitCounter,
         injection.setPasswordRateLimitCounter,
         injection.resetPasswordRateLimitCounter,
+        injection.forgotPasswordRateLimitCounter,
     )
     configureSecurity(injection)
     configureMonitoring(injection.meterRegistry)

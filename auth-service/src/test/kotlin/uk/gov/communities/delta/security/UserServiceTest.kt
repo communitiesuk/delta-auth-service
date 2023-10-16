@@ -26,15 +26,6 @@ class UserServiceTest {
     private val ldapService = mockk<LdapService>()
     private val deltaUserDnFormat = "CN=%s"
     private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
-
-    //    private val userLookupService = UserLookupService(
-//        UserLookupService.Configuration(
-//            ldapConfig.deltaUserDnFormat,
-//            ldapConfig.authServiceUserDn,
-//            ldapConfig.authServiceUserPassword,
-//        ),
-//        ldapService
-//    )
     private val userLookupService = mockk<UserLookupService>()
     private val userService = UserService(ldapService, userLookupService)
     private val userEmail = "user@example.com"

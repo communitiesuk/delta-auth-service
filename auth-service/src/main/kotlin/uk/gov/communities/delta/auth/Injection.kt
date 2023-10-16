@@ -131,6 +131,7 @@ class Injection(
     val registrationRateLimitCounter: Counter = meterRegistry.counter("registration.rateLimitedRequests")
     val setPasswordRateLimitCounter: Counter = meterRegistry.counter("setPassword.rateLimitedRequests")
     val resetPasswordRateLimitCounter: Counter = meterRegistry.counter("resetPassword.rateLimitedRequests")
+    val forgotPasswordRateLimitCounter: Counter = meterRegistry.counter("forgotPassword.rateLimitedRequests")
 
     val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
     val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)

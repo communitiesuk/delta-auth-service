@@ -67,6 +67,21 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                     logger.error("Failed to render Delta reset password form page after rate limit", e)
                     call.respondText("Failed to render reset password form page after reaching rate limit. Request id ${call.callId}")
                 }
+            else if (call.request.path().contains("/forgot-password"))
+                try {
+                    call.respond(
+                        ThymeleafContent(
+                            "forgot-password",
+                            mapOf(
+                                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                                "message" to tooManyRequestsErrorMessage,
+                            )
+                        )
+                    )
+                } catch (e: Exception) {
+                    logger.error("Failed to render Delta forgot password form page after rate limit", e)
+                    call.respondText("Failed to render forgot password form page after reaching rate limit. Request id ${call.callId}")
+                }
             else try {
                 call.respond(
                     ThymeleafContent(
