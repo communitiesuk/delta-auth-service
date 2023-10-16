@@ -2,6 +2,7 @@ package uk.gov.communities.delta.service
 
 import uk.gov.communities.delta.auth.services.AccessGroup
 import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper
+import uk.gov.communities.delta.auth.services.OrganisationNameAndCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -17,7 +18,7 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(emptyList(), result.systemRoles)
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(emptyList(), result.accessGroups)
-        assertEquals(listOf("dclg"), result.organisationIds)
+        assertEquals(listOf(OrganisationNameAndCode("dclg", "The Department")), result.organisations)
     }
 
     @Test
@@ -28,7 +29,7 @@ class MemberOfToDeltaRolesMapperTest {
             )
         )
 
-        assertEquals(emptyList(), result.organisationIds)
+        assertEquals(emptyList(), result.organisations)
     }
 
     @Test
@@ -51,7 +52,7 @@ class MemberOfToDeltaRolesMapperTest {
             result.externalRoles
         )
         assertEquals(0, result.accessGroups.size)
-        assertEquals(listOf("dclg"), result.organisationIds)
+        assertEquals(listOf("dclg"), result.organisations.map { it.code })
     }
 
     @Test
@@ -65,7 +66,7 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(listOf(MemberOfToDeltaRolesMapper.SystemRole("data-providers", listOf())), result.systemRoles)
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(emptyList(), result.accessGroups)
-        assertEquals(emptyList(), result.organisationIds)
+        assertEquals(emptyList(), result.organisations)
     }
 
     @Test
@@ -84,7 +85,7 @@ class MemberOfToDeltaRolesMapperTest {
                 MemberOfToDeltaRolesMapper.AccessGroupRole("another-group", null, listOf()),
             ), result.accessGroups
         )
-        assertEquals(listOf("dclg"), result.organisationIds)
+        assertEquals(listOf("dclg"), result.organisations.map { it.code })
     }
 
     @Test
@@ -98,7 +99,7 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(emptyList(), result.systemRoles)
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(emptyList(), result.accessGroups)
-        assertEquals(listOf("dclg"), result.organisationIds)
+        assertEquals(listOf("dclg"), result.organisations.map { it.code })
     }
 
 
@@ -123,15 +124,15 @@ class MemberOfToDeltaRolesMapperTest {
                 MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg", "E1234"))
             ), result.accessGroups
         )
-        assertEquals(listOf("dclg", "E1234"), result.organisationIds)
+        assertEquals(listOf("dclg", "E1234"), result.organisations.map { it.code })
     }
 
-    private fun mapper() = MemberOfToDeltaRolesMapper("username", organisationIds, accessGroups)
+    private fun mapper() = MemberOfToDeltaRolesMapper("username", organisations, accessGroups)
 
     private val accessGroups = listOf(
         AccessGroup("access-group", "statistics", null, enableOnlineRegistration = false, enableInternalUser = false),
         AccessGroup("another-group", null, null, enableOnlineRegistration = false, enableInternalUser = false),
     )
 
-    private val organisationIds = listOf("E1234", "dclg")
+    private val organisations = listOf(OrganisationNameAndCode("E1234", "Test org 1"), OrganisationNameAndCode("dclg", "The Department"))
 }

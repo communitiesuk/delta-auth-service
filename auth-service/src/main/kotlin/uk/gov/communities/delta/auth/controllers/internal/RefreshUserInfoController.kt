@@ -30,7 +30,7 @@ class RefreshUserInfoController(
         val user = userLookupService.lookupUserByCn(session.userCn)
 
         coroutineScope {
-            val allOrganisations = async { organisationService.findAllNamesAndCodes().map { it.code } }
+            val allOrganisations = async { organisationService.findAllNamesAndCodes() }
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
 
             val samlToken = samlTokenService.samlTokenForSession(session, user)

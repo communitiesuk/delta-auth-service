@@ -30,7 +30,7 @@ class Organisation(
 }
 
 @Serializable
-class OrganisationNameAndCode(
+data class OrganisationNameAndCode(
     @SerialName("code") val code: String,
     @SerialName("name") val name: String,
 )
