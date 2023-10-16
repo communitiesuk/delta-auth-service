@@ -61,7 +61,7 @@ class OAuthTokenController(
 
         coroutineScope {
             // Fetch the list of organisations and access groups while we generate the SAML token
-            val allOrganisations = async { organisationService.findAllNamesAndCodes().map { it.code } }
+            val allOrganisations = async { organisationService.findAllNamesAndCodes() }
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
 
             val samlToken = samlTokenService.samlTokenForSession(userSession.session, userSession.user)

@@ -30,7 +30,6 @@ import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 
 class RefreshUserInfoControllerTest {
@@ -47,7 +46,10 @@ class RefreshUserInfoControllerTest {
             val response = Json.parseToJsonElement(bodyAsText()).jsonObject
             assertEquals("SAML Token", response["saml_token"].toString().trim('"'))
             assertEquals("user", response["delta_ldap_user"]!!.jsonObject["cn"].toString().trim('"'))
-            assertEquals("dclg", response["delta_user_roles"]!!.jsonObject["organisationIds"]!!.jsonArray.single().jsonPrimitive.content)
+            assertEquals(
+                "dclg",
+                response["delta_user_roles"]!!.jsonObject["organisations"]!!.jsonArray.single().jsonObject["code"]!!.jsonPrimitive.content
+            )
         }
     }
 
