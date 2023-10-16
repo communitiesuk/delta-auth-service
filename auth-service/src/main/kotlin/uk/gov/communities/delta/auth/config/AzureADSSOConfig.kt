@@ -14,6 +14,8 @@ data class AzureADSSOClient(
     // Only allows the SSO provider to log users in under this domain. Must include the "@" prefix.
     val emailDomain: String,
     // Force users with a matching email domain to use the SSO flow rather than username + password
+    // If SSO is required users cannot register normally or reset their password, an accounts will automatically be
+    // created when they first sign in.
     val required: Boolean = false,
     // Object ID of a group in Azure AD that all SSO users must be a member of to log in, or null to allow all users
     val requiredGroupId: String? = null,

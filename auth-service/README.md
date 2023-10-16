@@ -51,10 +51,11 @@ which allows us to use a standard OAuth client library in Delta.
 #### 1. Login Redirect
 
 Delta redirects unauthenticated users to the auth
-service `http://localhost:8088/delta/login?response_type=code&client_id=delta-website&state=1234` (
-use `client-id=delta-website-dev` for local dev).
+service `http://localhost:8088/delta/login?response_type=code&client_id=delta-website&state=1234`
+(use `client-id=delta-website-dev` for local dev).
 
-The user will be shown a login page and provide a username and password as a standard form submission.
+The user will be shown a login page and provide a username and password as a standard form submission,
+or with Single Sign On through Azure AD if configured.
 
 #### 2. Authorization code redirect
 
@@ -133,3 +134,18 @@ In hosted environments scheduled tasks are run using AWS EventBridge Scheduler,
 which invokes an ECS task with the RUN_TASK environment variable set, and the
 Docker [entrypoint script](./entrypoint.sh)
 will execute the task instead of the application.
+
+## Coroutines and Ktor
+
+Kotlin uses [Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) for parallel and asynchronous work,
+rather than an OS thread per-request that you might be familiar with from e.g. Spring Web.
+
+The Ktor framework uses the Default dispatcher for processing requests which only has one thread per CPU core.
+That means if a small number of requests are doing blocking IO that's it, nothing else can progress.
+It's therefore important that any blocking calls happen on another thread, there's an IO dispatcher for this, i.e.
+
+```kotlin
+withContext(Dispatchers.IO) {
+    // Blocking call, e.g. database query
+}
+```
