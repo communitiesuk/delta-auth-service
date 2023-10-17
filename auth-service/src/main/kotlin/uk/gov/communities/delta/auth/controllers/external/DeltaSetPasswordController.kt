@@ -22,7 +22,7 @@ class DeltaSetPasswordController(
     private val emailConfig: EmailConfig,
     private val authServiceConfig: AuthServiceConfig,
     private val userService: UserService,
-    private val passwordTokenService: PasswordTokenService,
+    private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
 ) {
@@ -53,7 +53,7 @@ class DeltaSetPasswordController(
     private suspend fun setPasswordGet(call: ApplicationCall) {
         val userCN = call.request.queryParameters["userCN"].orEmpty()
         val token = call.request.queryParameters["token"].orEmpty()
-        when (val tokenResult = passwordTokenService.validateToken(token, userCN, true)) {
+        when (val tokenResult = registrationSetPasswordTokenService.validateToken(token, userCN)) {
             is PasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException("set_password_no_token", "Set password token did not exist")
             }
@@ -72,7 +72,7 @@ class DeltaSetPasswordController(
         val formParameters = call.receiveParameters()
         val userCN = formParameters["userCN"].orEmpty()
         val token = formParameters["token"].orEmpty()
-        val tokenResult = passwordTokenService.consumeToken(token, userCN, true)
+        val tokenResult = registrationSetPasswordTokenService.consumeToken(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             sendNewSetPasswordLink(userCN)
             call.respondNewEmailSentPage(userCN.replace("!", "@"))
@@ -96,7 +96,7 @@ class DeltaSetPasswordController(
         val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, userCN)
 
         if (message != null) return call.respondSetPasswordPage(message)
-        val tokenResult = passwordTokenService.consumeToken(token, userCN, true)
+        val tokenResult = registrationSetPasswordTokenService.consumeToken(token, userCN)
         call.respondToResult(tokenResult, newPassword)
     }
 
@@ -117,7 +117,7 @@ class DeltaSetPasswordController(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
                 "setPasswordUrl" to getSetPasswordURL(
-                    passwordTokenService.createToken(userCN, true),
+                    registrationSetPasswordTokenService.createToken(userCN),
                     userCN,
                     authServiceConfig.serviceUrl
                 )

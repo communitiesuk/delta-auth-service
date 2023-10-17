@@ -21,10 +21,7 @@ import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaResetPasswordController
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.services.EmailService
-import uk.gov.communities.delta.auth.services.PasswordTokenService
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.util.*
@@ -81,7 +78,7 @@ class DeltaResetPasswordControllerTest {
             url = "/reset-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 1) { resetPasswordTokenService.consumeToken(validToken, userCN) }
             coVerify(exactly = 1) { userService.resetPassword(userDN, validPassword) }
             assertSuccessPageRedirect(status, headers)
         }
@@ -96,7 +93,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeToken(validToken, userCN) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
@@ -113,7 +110,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeToken(validToken, userCN) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not be a commonly used password.")
@@ -130,7 +127,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, false) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeToken(validToken, userCN) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not contain any part(s) your username")
@@ -164,9 +161,9 @@ class DeltaResetPasswordControllerTest {
                 append("token", expiredToken)
             }
         ).apply {
-            coVerify(exactly = 1) { passwordTokenService.consumeToken(expiredToken, userCN, false) }
+            coVerify(exactly = 1) { resetPasswordTokenService.consumeToken(expiredToken, userCN) }
             assertEquals(emailTemplate.captured, "reset-password")
-            coVerify(exactly = 1) { passwordTokenService.createToken(userCN, false) }
+            coVerify(exactly = 1) { resetPasswordTokenService.createToken(userCN) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your password reset link has been email to you")
         }
@@ -194,31 +191,31 @@ class DeltaResetPasswordControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            passwordTokenService.validateToken(validToken, userCN, false)
+            resetPasswordTokenService.validateToken(validToken, userCN)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            passwordTokenService.validateToken(expiredToken, userCN, false)
+            resetPasswordTokenService.validateToken(expiredToken, userCN)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            passwordTokenService.validateToken(invalidToken, userCN, false)
+            resetPasswordTokenService.validateToken(invalidToken, userCN)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.validateToken("", any(), false)
+            resetPasswordTokenService.validateToken("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.consumeToken(validToken, userCN, false)
+            resetPasswordTokenService.consumeToken(validToken, userCN)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            passwordTokenService.consumeToken(expiredToken, userCN, false)
+            resetPasswordTokenService.consumeToken(expiredToken, userCN)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            passwordTokenService.consumeToken(invalidToken, userCN, false)
+            resetPasswordTokenService.consumeToken(invalidToken, userCN)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.consumeToken("", any(), false)
+            resetPasswordTokenService.consumeToken("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
-        coEvery { passwordTokenService.createToken(userCN, false) } returns "token"
+        coEvery { resetPasswordTokenService.createToken(userCN) } returns "token"
         coEvery { userService.resetPassword(userDN, validPassword) } just runs
     }
 
@@ -242,7 +239,7 @@ class DeltaResetPasswordControllerTest {
         }
         private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "")
         private val authServiceConfig = AuthServiceConfig("http://localhost", null)
-        private val passwordTokenService = mockk<PasswordTokenService>()
+        private val resetPasswordTokenService = mockk<ResetPasswordTokenService>()
         private val emailService = mockk<EmailService>()
         private val userService = mockk<UserService>()
         private val userLookupService = mockk<UserLookupService>()
@@ -258,7 +255,7 @@ class DeltaResetPasswordControllerTest {
                 emailConfig,
                 authServiceConfig,
                 userService,
-                passwordTokenService,
+                resetPasswordTokenService,
                 userLookupService,
                 emailService
             )

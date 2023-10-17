@@ -90,7 +90,8 @@ class Injection(
 
     val dbPool = DbPool(databaseConfig)
 
-    val passwordTokenService = PasswordTokenService(dbPool, TimeSource.System)
+    val registrationSetPasswordTokenService = RegistrationSetPasswordTokenService(dbPool, TimeSource.System)
+    val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
     val organisationService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
     val registrationService =
         RegistrationService(
@@ -98,7 +99,7 @@ class Injection(
             emailConfig,
             ldapConfig,
             authServiceConfig,
-            passwordTokenService,
+            registrationSetPasswordTokenService,
             emailService,
             userService,
             userLookupService,
@@ -179,7 +180,7 @@ class Injection(
         emailConfig,
         authServiceConfig,
         userService,
-        passwordTokenService,
+        registrationSetPasswordTokenService,
         userLookupService,
         emailService
     )
@@ -190,7 +191,7 @@ class Injection(
         emailConfig,
         authServiceConfig,
         userService,
-        passwordTokenService,
+        resetPasswordTokenService,
         userLookupService,
         emailService
     )
@@ -200,7 +201,8 @@ class Injection(
         emailConfig,
         authServiceConfig,
         azureADSSOConfig,
-        passwordTokenService,
+        resetPasswordTokenService,
+        registrationSetPasswordTokenService,
         userLookupService,
         emailService
     )

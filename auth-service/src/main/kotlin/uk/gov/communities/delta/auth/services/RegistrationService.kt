@@ -12,7 +12,7 @@ class RegistrationService(
     private val emailConfig: EmailConfig,
     private val ldapConfig: LDAPConfig,
     private val authServiceConfig: AuthServiceConfig,
-    private val passwordTokenService: PasswordTokenService,
+    private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
@@ -54,7 +54,7 @@ class RegistrationService(
         return if (ssoUser)
             SSOUserCreated
         else
-            UserCreated(registration, passwordTokenService.createToken(adUser.cn, true), adUser.cn)
+            UserCreated(registration, registrationSetPasswordTokenService.createToken(adUser.cn), adUser.cn)
     }
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
@@ -82,7 +82,7 @@ class RegistrationService(
                         organisationUserGroup(it.code)
                     )
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
-                            .log("Added user to domain organisation with code {}", it.code)
+                        .log("Added user to domain organisation with code {}", it.code)
                 } else {
                     logger.info("Organisation {} is retired, with retirement date: {}", it.code, it.retirementDate)
                 }

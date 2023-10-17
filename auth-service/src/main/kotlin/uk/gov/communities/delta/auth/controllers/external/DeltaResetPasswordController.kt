@@ -22,7 +22,7 @@ class DeltaResetPasswordController(
     private val emailConfig: EmailConfig,
     private val authServiceConfig: AuthServiceConfig,
     private val userService: UserService,
-    private val passwordTokenService: PasswordTokenService,
+    private val resetPasswordTokenService: ResetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
 ) {
@@ -53,7 +53,7 @@ class DeltaResetPasswordController(
     private suspend fun resetPasswordGet(call: ApplicationCall) {
         val userCN = call.request.queryParameters["userCN"].orEmpty()
         val token = call.request.queryParameters["token"].orEmpty()
-        when (val tokenResult = passwordTokenService.validateToken(token, userCN, false)) {
+        when (val tokenResult = resetPasswordTokenService.validateToken(token, userCN)) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.error("Reset password get request with invalid token and/or userCN")
                 throw ResetPasswordException("reset_password_no_token", "Reset password token did not exist")
@@ -75,7 +75,7 @@ class DeltaResetPasswordController(
         val formParameters = call.receiveParameters()
         val userCN = formParameters["userCN"].orEmpty()
         val token = formParameters["token"].orEmpty()
-        val tokenResult = passwordTokenService.consumeToken(token, userCN, false)
+        val tokenResult = resetPasswordTokenService.consumeToken(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             logger.atInfo().addKeyValue("userCN", userCN).log("Sending new reset password link (after expiry)")
             sendNewResetPasswordLink(userCN)
@@ -101,7 +101,7 @@ class DeltaResetPasswordController(
 
         if (message != null) return call.respondResetPasswordPage(message)
         logger.atInfo().addKeyValue("userCN", userCN).log()
-        val tokenResult = passwordTokenService.consumeToken(token, userCN, false)
+        val tokenResult = resetPasswordTokenService.consumeToken(token, userCN)
         call.respondToResult(tokenResult, newPassword)
     }
 
@@ -109,7 +109,7 @@ class DeltaResetPasswordController(
         val user = userLookupService.lookupUserByCn(userCN)
         logger.atInfo().addKeyValue("userCN", userCN).addKeyValue("emailAddress", user.email)
             .log("Sending reset password link")
-        val token = passwordTokenService.createToken(userCN, false)
+        val token = resetPasswordTokenService.createToken(userCN)
         emailService.sendTemplateEmail(
             "reset-password",
             EmailContacts(

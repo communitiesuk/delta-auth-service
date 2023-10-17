@@ -20,10 +20,7 @@ import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.services.EmailService
-import uk.gov.communities.delta.auth.services.PasswordTokenService
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.util.*
@@ -80,7 +77,7 @@ class DeltaSetPasswordControllerTest {
             url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
             assertSuccessPageRedirect(status, headers)
         }
     }
@@ -94,7 +91,7 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
         }
@@ -110,7 +107,7 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
             assertFormPage(bodyAsText())
             assertContains(
                 bodyAsText(),
@@ -129,7 +126,7 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { passwordTokenService.consumeToken(validToken, userCN, true) }
+            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
             assertFormPage(bodyAsText())
             assertContains(
                 bodyAsText(),
@@ -164,9 +161,9 @@ class DeltaSetPasswordControllerTest {
                 append("token", expiredToken)
             }
         ).apply {
-            coVerify(exactly = 1) { passwordTokenService.consumeToken(expiredToken, userCN, true) }
+            coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeToken(expiredToken, userCN) }
             assertEquals(emailTemplate.captured, "not-yet-enabled-user")
-            coVerify(exactly = 1) { passwordTokenService.createToken(userCN, true) }
+            coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(userCN) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your registration is pending your email activation")
         }
@@ -194,31 +191,31 @@ class DeltaSetPasswordControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            passwordTokenService.validateToken(validToken, userCN, true)
+            registrationSetPasswordTokenService.validateToken(validToken, userCN)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            passwordTokenService.validateToken(expiredToken, userCN, true)
+            registrationSetPasswordTokenService.validateToken(expiredToken, userCN)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            passwordTokenService.validateToken(invalidToken, userCN, true)
+            registrationSetPasswordTokenService.validateToken(invalidToken, userCN)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.validateToken("", any(), true)
+            registrationSetPasswordTokenService.validateToken("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.consumeToken(validToken, userCN, true)
+            registrationSetPasswordTokenService.consumeToken(validToken, userCN)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            passwordTokenService.consumeToken(expiredToken, userCN, true)
+            registrationSetPasswordTokenService.consumeToken(expiredToken, userCN)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            passwordTokenService.consumeToken(invalidToken, userCN, true)
+            registrationSetPasswordTokenService.consumeToken(invalidToken, userCN)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            passwordTokenService.consumeToken("", any(), true)
+            registrationSetPasswordTokenService.consumeToken("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
-        coEvery { passwordTokenService.createToken(userCN, true) } returns "token"
+        coEvery { registrationSetPasswordTokenService.createToken(userCN) } returns "token"
         coEvery { userService.setPassword(userDN, validPassword) } just runs
     }
 
@@ -242,7 +239,7 @@ class DeltaSetPasswordControllerTest {
         }
         private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "")
         private val authServiceConfig = AuthServiceConfig("http://localhost", null)
-        private val passwordTokenService = mockk<PasswordTokenService>()
+        private val registrationSetPasswordTokenService = mockk<RegistrationSetPasswordTokenService>()
         private val emailService = mockk<EmailService>()
         private val userService = mockk<UserService>()
         private val userLookupService = mockk<UserLookupService>()
@@ -258,7 +255,7 @@ class DeltaSetPasswordControllerTest {
                 emailConfig,
                 authServiceConfig,
                 userService,
-                passwordTokenService,
+                registrationSetPasswordTokenService,
                 userLookupService,
                 emailService
             )

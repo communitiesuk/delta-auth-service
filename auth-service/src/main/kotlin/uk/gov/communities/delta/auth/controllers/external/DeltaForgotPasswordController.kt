@@ -17,7 +17,8 @@ class DeltaForgotPasswordController(
     private val emailConfig: EmailConfig,
     private val authServiceConfig: AuthServiceConfig,
     private val ssoConfig: AzureADSSOConfig,
-    private val passwordTokenService: PasswordTokenService,
+    private val resetPasswordTokenService: ResetPasswordTokenService,
+    private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
 ) {
@@ -64,7 +65,7 @@ class DeltaForgotPasswordController(
         val userCN = emailAddress.replace("@", "!")
         try {
             val user = userLookupService.lookupUserByCn(userCN)
-            if (!user.accountEnabled && passwordTokenService.passwordNeverSetForUserCN(userCN))
+            if (!user.accountEnabled && registrationSetPasswordTokenService.passwordNeverSetForUserCN(userCN))
                 sendSetPasswordLink(user.email!!, userCN, user.firstName, user.fullName)
             else sendForgotPasswordLink(user)
         } catch (e: NameNotFoundException) {
@@ -94,7 +95,7 @@ class DeltaForgotPasswordController(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
                 "resetPasswordUrl" to getResetPasswordURL(
-                    passwordTokenService.createToken(user.cn, false),
+                    resetPasswordTokenService.createToken(user.cn),
                     user.cn,
                     authServiceConfig.serviceUrl
                 )
@@ -141,7 +142,7 @@ class DeltaForgotPasswordController(
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "setPasswordUrl" to getSetPasswordURL(
-                    passwordTokenService.createToken(userCN, true),
+                    registrationSetPasswordTokenService.createToken(userCN),
                     userCN,
                     authServiceConfig.serviceUrl
                 ),
