@@ -72,7 +72,7 @@ class DeltaSetPasswordController(
         val formParameters = call.receiveParameters()
         val userCN = formParameters["userCN"].orEmpty()
         val token = formParameters["token"].orEmpty()
-        val tokenResult = registrationSetPasswordTokenService.consumeToken(token, userCN)
+        val tokenResult = registrationSetPasswordTokenService.consumeTokenIfValid(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             sendNewSetPasswordLink(userCN)
             call.respondNewEmailSentPage(userCN.replace("!", "@"))
@@ -96,7 +96,7 @@ class DeltaSetPasswordController(
         val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, userCN)
         if (message != null) return call.respondSetPasswordPage(message)
 
-        when (val tokenResult = registrationSetPasswordTokenService.consumeToken(token, userCN)) {
+        when (val tokenResult = registrationSetPasswordTokenService.consumeTokenIfValid(token, userCN)) {
             is PasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException(
                     "set_password_invalid_token",

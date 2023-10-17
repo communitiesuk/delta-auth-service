@@ -78,7 +78,7 @@ class DeltaResetPasswordControllerTest {
             url = "/reset-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { resetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             coVerify(exactly = 1) { userService.resetPassword(userDN, validPassword) }
             assertSuccessPageRedirect(status, headers)
         }
@@ -93,7 +93,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
@@ -110,7 +110,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not be a commonly used password.")
@@ -127,7 +127,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not contain any part(s) your username")
@@ -161,7 +161,7 @@ class DeltaResetPasswordControllerTest {
                 append("token", expiredToken)
             }
         ).apply {
-            coVerify(exactly = 1) { resetPasswordTokenService.consumeToken(expiredToken, userCN) }
+            coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(expiredToken, userCN) }
             assertEquals(emailTemplate.captured, "reset-password")
             coVerify(exactly = 1) { resetPasswordTokenService.createToken(userCN) }
             assertEquals(HttpStatusCode.OK, status)
@@ -203,16 +203,16 @@ class DeltaResetPasswordControllerTest {
             resetPasswordTokenService.validateToken("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            resetPasswordTokenService.consumeToken(validToken, userCN)
+            resetPasswordTokenService.consumeTokenIfValid(validToken, userCN)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            resetPasswordTokenService.consumeToken(expiredToken, userCN)
+            resetPasswordTokenService.consumeTokenIfValid(expiredToken, userCN)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            resetPasswordTokenService.consumeToken(invalidToken, userCN)
+            resetPasswordTokenService.consumeTokenIfValid(invalidToken, userCN)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            resetPasswordTokenService.consumeToken("", any())
+            resetPasswordTokenService.consumeTokenIfValid("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
         coEvery { resetPasswordTokenService.createToken(userCN) } returns "token"

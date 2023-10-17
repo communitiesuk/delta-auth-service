@@ -77,7 +77,7 @@ class DeltaSetPasswordControllerTest {
             url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             assertSuccessPageRedirect(status, headers)
         }
     }
@@ -91,7 +91,7 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
         }
@@ -107,7 +107,7 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             assertFormPage(bodyAsText())
             assertContains(
                 bodyAsText(),
@@ -126,7 +126,7 @@ class DeltaSetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeToken(validToken, userCN) }
+            coVerify(exactly = 0) { registrationSetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
             assertFormPage(bodyAsText())
             assertContains(
                 bodyAsText(),
@@ -161,7 +161,7 @@ class DeltaSetPasswordControllerTest {
                 append("token", expiredToken)
             }
         ).apply {
-            coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeToken(expiredToken, userCN) }
+            coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeTokenIfValid(expiredToken, userCN) }
             assertEquals(emailTemplate.captured, "not-yet-enabled-user")
             coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(userCN) }
             assertEquals(HttpStatusCode.OK, status)
@@ -203,16 +203,16 @@ class DeltaSetPasswordControllerTest {
             registrationSetPasswordTokenService.validateToken("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            registrationSetPasswordTokenService.consumeToken(validToken, userCN)
+            registrationSetPasswordTokenService.consumeTokenIfValid(validToken, userCN)
         } returns PasswordTokenService.ValidToken(validToken, userCN)
         coEvery {
-            registrationSetPasswordTokenService.consumeToken(expiredToken, userCN)
+            registrationSetPasswordTokenService.consumeTokenIfValid(expiredToken, userCN)
         } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
         coEvery {
-            registrationSetPasswordTokenService.consumeToken(invalidToken, userCN)
+            registrationSetPasswordTokenService.consumeTokenIfValid(invalidToken, userCN)
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            registrationSetPasswordTokenService.consumeToken("", any())
+            registrationSetPasswordTokenService.consumeTokenIfValid("", any())
         } returns PasswordTokenService.NoSuchToken
         coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
         coEvery { registrationSetPasswordTokenService.createToken(userCN) } returns "token"

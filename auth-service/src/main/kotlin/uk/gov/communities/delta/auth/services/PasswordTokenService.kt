@@ -82,23 +82,27 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
 
     suspend fun validateToken(token: String, userCN: String): TokenResult {
         return withContext(Dispatchers.IO) {
-            readToken(token, userCN, false)
+            readToken(token, userCN)
         }
     }
 
-    suspend fun consumeToken(token: String, userCN: String): TokenResult {
+    suspend fun consumeTokenIfValid(token: String, userCN: String): TokenResult {
         return withContext(Dispatchers.IO) {
-            readToken(token, userCN, true)
+            var tokenResult = readToken(token, userCN)
+            if (tokenResult is ValidToken) {
+                val tokenDeletedSuccessfully = deleteToken(token, userCN)
+                if (!tokenDeletedSuccessfully)
+                    tokenResult = NoSuchToken
+                logger.warn("Token not deleted successfully")
+            }
+            tokenResult
         }
     }
 
     @Blocking
-    private fun readToken(token: String, userCN: String, delete: Boolean): TokenResult {
+    private fun readToken(token: String, userCN: String): TokenResult {
         return dbPool.useConnectionBlocking("Read select password token") {
-            val stmt = if (delete) it.prepareStatement(
-                "DELETE FROM $tableName WHERE token = ? AND user_cn = ? " +
-                        "RETURNING user_cn, token, created_at",
-            ) else it.prepareStatement(
+            val stmt = it.prepareStatement(
                 "SELECT user_cn, token, created_at FROM $tableName " +
                         "WHERE token = ? AND user_cn = ?"
             )
@@ -114,6 +118,20 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
             } else ValidToken(token, userCN)
         }
     }
+    @Blocking
+    private fun deleteToken(token: String, userCN: String): Boolean {
+        return dbPool.useConnectionBlocking("Delete token") {
+            val stmt = it.prepareStatement(
+                "DELETE FROM $tableName WHERE token = ? AND user_cn = ?",
+            )
+            stmt.setBytes(1, hashBase64String(token))
+            stmt.setString(2, userCN)
+            val result = stmt.executeUpdate()
+            it.commit()
+            result == 1
+        }
+    }
+
 
     private fun tokenExpired(createdAt: Timestamp): Boolean {
         return createdAt.toInstant().plusSeconds(TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
