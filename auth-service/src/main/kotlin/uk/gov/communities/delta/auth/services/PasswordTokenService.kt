@@ -78,24 +78,24 @@ abstract class PasswordTokenService(private val tableName: String, private val d
 
     suspend fun validateToken(token: String, userCN: String): TokenResult {
         return withContext(Dispatchers.IO) {
-            readToken(token, userCN, false)
+            readToken(token, userCN)
         }
     }
 
-    suspend fun consumeToken(token: String, userCN: String): TokenResult {
+    suspend fun consumeTokenIfValid(token: String, userCN: String): TokenResult {
         return withContext(Dispatchers.IO) {
-            readToken(token, userCN, true)
+            val tokenResult = readToken(token, userCN)
+            if (tokenResult is ValidToken) {
+                deleteToken(token, userCN)
+            }
+            tokenResult
         }
     }
 
     @Blocking
-    private fun readToken(token: String, userCN: String, delete: Boolean): TokenResult {
+    private fun readToken(token: String, userCN: String): TokenResult {
         dbPool.useConnection {
-
-            val stmt = if (delete) it.prepareStatement(
-                "DELETE FROM $tableName WHERE token = ? AND user_cn = ? " +
-                        "RETURNING user_cn, token, created_at",
-            ) else it.prepareStatement(
+            val stmt = it.prepareStatement(
                 "SELECT user_cn, token, created_at FROM $tableName " +
                         "WHERE token = ? AND user_cn = ?"
             )
@@ -109,6 +109,19 @@ abstract class PasswordTokenService(private val tableName: String, private val d
             } else if (tokenExpired(result.getTimestamp("created_at"))) {
                 ExpiredToken(token, userCN)
             } else ValidToken(token, userCN)
+        }
+    }
+
+    @Blocking
+    private fun deleteToken(token: String, userCN: String) {
+        dbPool.useConnection {
+            val stmt = it.prepareStatement(
+                "DELETE FROM $tableName WHERE token = ? AND user_cn = ?",
+            )
+            stmt.setBytes(1, hashBase64String(token))
+            stmt.setString(2, userCN)
+            stmt.executeUpdate()
+            it.commit()
         }
     }
 

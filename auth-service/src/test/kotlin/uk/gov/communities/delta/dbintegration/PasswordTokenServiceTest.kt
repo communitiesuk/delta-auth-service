@@ -59,7 +59,7 @@ class PasswordTokenServiceTest {
     @Test
     fun testLookupForSetWithDelete() = testSuspend {
         val token = registrationSetPasswordTokenService.createToken(userCN)
-        var result = registrationSetPasswordTokenService.consumeToken(token, userCN)
+        var result = registrationSetPasswordTokenService.consumeTokenIfValid(token, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
         result = registrationSetPasswordTokenService.validateToken(token, userCN)
         assertTrue(result is PasswordTokenService.NoSuchToken)
@@ -68,7 +68,7 @@ class PasswordTokenServiceTest {
     @Test
     fun testLookupForResetWithDelete() = testSuspend {
         val token = resetPasswordTokenService.createToken(userCN)
-        var result = resetPasswordTokenService.consumeToken(token, userCN)
+        var result = resetPasswordTokenService.consumeTokenIfValid(token, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
         result = resetPasswordTokenService.validateToken(token, userCN)
         assertTrue(result is PasswordTokenService.NoSuchToken)
@@ -98,7 +98,7 @@ class PasswordTokenServiceTest {
         val replacementToken = registrationSetPasswordTokenService.createToken(userCN)
         var result = registrationSetPasswordTokenService.validateToken(originalToken, userCN)
         assertTrue(result is PasswordTokenService.NoSuchToken)
-        result = registrationSetPasswordTokenService.consumeToken(replacementToken, userCN)
+        result = registrationSetPasswordTokenService.consumeTokenIfValid(replacementToken, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
     }
 
@@ -108,7 +108,7 @@ class PasswordTokenServiceTest {
         val replacementToken = resetPasswordTokenService.createToken(userCN)
         var result = resetPasswordTokenService.validateToken(originalToken, userCN)
         assertTrue(result is PasswordTokenService.NoSuchToken)
-        result = resetPasswordTokenService.consumeToken(replacementToken, userCN)
+        result = resetPasswordTokenService.consumeTokenIfValid(replacementToken, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
     }
 
@@ -178,7 +178,7 @@ class PasswordTokenServiceTest {
         assertTrue(setTokenResult is PasswordTokenService.ValidToken)
         val setTokenAsResetTokenResult = resetPasswordTokenService.validateToken(setToken, userCN)
         assertEquals(PasswordTokenService.NoSuchToken, setTokenAsResetTokenResult)
-        val resetTokenResult = resetPasswordTokenService.consumeToken(resetToken, userCN)
+        val resetTokenResult = resetPasswordTokenService.consumeTokenIfValid(resetToken, userCN)
         assertTrue(resetTokenResult is PasswordTokenService.ValidToken)
         setTokenResult = registrationSetPasswordTokenService.validateToken(setToken, userCN)
         assertTrue(setTokenResult is PasswordTokenService.ValidToken)
