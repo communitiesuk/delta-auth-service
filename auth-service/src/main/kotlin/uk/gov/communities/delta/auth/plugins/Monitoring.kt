@@ -6,6 +6,7 @@ import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
+import io.ktor.server.request.*
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.config.MeterFilter
 import kotlinx.coroutines.slf4j.MDCContext
@@ -23,8 +24,7 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
     install(CallLogging) {
         level = Level.INFO
         callIdMdc("requestId")
-        // Temporarily enable call logging for health checks
-        //  filter { it.request.path() != "/health" }
+        filter { it.request.path() != "/health" }
         mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.username }
         mdc("IPAddress") { it.request.origin.remoteAddress }
         disableDefaultColors()
