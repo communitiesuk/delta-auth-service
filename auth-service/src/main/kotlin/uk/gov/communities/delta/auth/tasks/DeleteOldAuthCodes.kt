@@ -12,7 +12,7 @@ class DeleteOldAuthCodes(private val db: DbPool) : AuthServiceTask("DeleteOldAut
     // Tasks are run separately anyway
     @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun execute() {
-        db.useConnection {
+        db.useConnectionBlocking("DeleteOldAuthCodes") {
             val stmt = it.prepareStatement(
                 "DELETE FROM authorization_code WHERE created_at < ?"
             )

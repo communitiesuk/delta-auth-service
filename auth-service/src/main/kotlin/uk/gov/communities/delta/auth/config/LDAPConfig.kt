@@ -38,6 +38,7 @@ data class LDAPConfig(
             authServiceUserPassword = Env.getRequired("LDAP_AUTH_SERVICE_USER_PASSWORD"),
             domainRealm = Env.getRequiredOrDevFallback("LDAP_DOMAIN_REALM", "dluhctest.local"),
         )
+
         val VALID_EMAIL_REGEX = Regex("^[\\w\\-+.']+@([\\w\\-']+\\.)+[\\w\\-]{2,4}$")
         val VALID_USERNAME_REGEX = Regex("^[\\w\\-+.!']+$")
     }

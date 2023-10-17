@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.spi.LoggingEventBuilder
 import java.util.*
+import kotlin.time.Duration.Companion.seconds
 
 class EmailConfig(
     val emailProps: Properties,
@@ -23,7 +24,7 @@ class EmailConfig(
             val props = Properties()
             val smtpUserJSON = Env.getEnv("MAIL_SMTP_USER")
             val useAuth = smtpUserJSON != null
-            if (useAuth){
+            if (useAuth) {
                 val smtpMailUser = Json.decodeFromString<MailSMTPUserBody>(smtpUserJSON!!)
                 smtpUsername = smtpMailUser.username
                 smtpPassword = smtpMailUser.password
@@ -42,8 +43,12 @@ class EmailConfig(
             }
             props["mail.smtp.auth"] = useAuth
             props["mail.smtp.starttls.enable"] = useAuth
+            if (useAuth) props["mail.smtp.socketFactory.class"] = "javax.net.ssl.SSLSocketFactory"
             props["mail.smtp.host"] = Env.getRequiredOrDevFallback("MAIL_SMTP_HOST", "localhost")
             props["mail.smtp.port"] = Env.getRequiredOrDevFallback("MAIL_SMTP_PORT", "25")
+            props["mail.smtp.timeout"] = 10.seconds.inWholeMilliseconds
+            @Suppress("SpellCheckingInspection")
+            props["mail.smtp.connectiontimeout"] = 10.seconds.inWholeMilliseconds
             return EmailConfig(
                 emailProps = props,
                 emailAuthenticator = authenticator,

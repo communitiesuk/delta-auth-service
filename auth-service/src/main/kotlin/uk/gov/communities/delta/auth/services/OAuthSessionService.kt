@@ -59,7 +59,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
 
     @Blocking
     private fun insert(authCode: AuthCode, client: DeltaLoginEnabledClient, token: String, now: Instant): OAuthSession {
-        return dbPool.useConnection {
+        return dbPool.useConnectionBlocking("Insert delta_session") {
             val stmt = it.prepareStatement(
                 "INSERT INTO delta_session (username, client_id, auth_token_hash, created_at, trace_id) " +
                         "VALUES (?, ?, ?, ?, ?) RETURNING id"
@@ -86,7 +86,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
 
     @Blocking
     private fun select(authToken: String, client: DeltaLoginEnabledClient): OAuthSession? {
-        return dbPool.useConnection {
+        return dbPool.useConnectionBlocking("Read delta_session") {
             val stmt =
                 it.prepareStatement(
                     "SELECT id, username, client_id, created_at, trace_id " +

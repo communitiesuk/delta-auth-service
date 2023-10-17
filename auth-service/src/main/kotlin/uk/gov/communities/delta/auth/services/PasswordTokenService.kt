@@ -41,7 +41,7 @@ abstract class PasswordTokenService(private val tableName: String, private val d
     sealed class TokenResult
     class ValidToken(val token: String, val userCN: String) : TokenResult()
     class ExpiredToken(val token: String, val userCN: String) : TokenResult()
-    object NoSuchToken : TokenResult()
+    data object NoSuchToken : TokenResult()
 
     companion object {
         val TOKEN_VALID_DURATION_SECONDS = 12.hours.inWholeSeconds
@@ -59,7 +59,7 @@ abstract class PasswordTokenService(private val tableName: String, private val d
 
     @Blocking
     private fun insert(userCN: String, token: String, now: Instant) {
-        return dbPool.useConnection {
+        return dbPool.useConnectionBlocking("Insert set password token") {
             val nowTimestamp = Timestamp.from(now)
             val tokenBytes = hashBase64String(token)
             val stmt = it.prepareStatement(
@@ -90,8 +90,7 @@ abstract class PasswordTokenService(private val tableName: String, private val d
 
     @Blocking
     private fun readToken(token: String, userCN: String, delete: Boolean): TokenResult {
-        dbPool.useConnection {
-
+        return dbPool.useConnectionBlocking("Read select password token") {
             val stmt = if (delete) it.prepareStatement(
                 "DELETE FROM $tableName WHERE token = ? AND user_cn = ? " +
                         "RETURNING user_cn, token, created_at",
@@ -103,7 +102,7 @@ abstract class PasswordTokenService(private val tableName: String, private val d
             stmt.setString(2, userCN)
             val result = stmt.executeQuery()
             it.commit()
-            return if (!result.next()) {
+            return@useConnectionBlocking if (!result.next()) {
                 logger.debug("No session found for token '{}' and userCN '{}'", token, userCN)
                 NoSuchToken
             } else if (tokenExpired(result.getTimestamp("created_at"))) {

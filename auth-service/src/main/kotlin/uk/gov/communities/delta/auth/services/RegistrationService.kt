@@ -34,7 +34,7 @@ class RegistrationService(
     suspend fun register(
         registration: Registration,
         organisations: List<Organisation>,
-        ssoUser: Boolean = false
+        ssoUser: Boolean = false,
     ): RegistrationResult {
         val adUser = UserService.ADUser(registration, ssoUser, ldapConfig)
         if (userLookupService.userExists(adUser.cn)) {
@@ -105,7 +105,7 @@ class RegistrationService(
         )
     }
 
-    fun sendRegistrationEmail(registrationResult: RegistrationResult) {
+    suspend fun sendRegistrationEmail(registrationResult: RegistrationResult) {
         when (registrationResult) {
             is UserCreated -> {
                 emailService.sendTemplateEmail(
@@ -132,7 +132,7 @@ class RegistrationService(
                 emailService.sendTemplateEmail(
                     "already-a-user",
                     getRegistrationEmailContacts(registrationResult.registration),
-                    "DLUHC DELTA - Account",
+                    "DLUHC DELTA - Existing Account",
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                         "userFirstName" to registrationResult.registration.firstName,
@@ -151,7 +151,7 @@ class RegistrationService(
 data class Registration(
     val firstName: String,
     val lastName: String,
-    val emailAddress: String
+    val emailAddress: String,
 )
 
 fun getResultTypeString(registrationResult: RegistrationService.RegistrationResult): String {

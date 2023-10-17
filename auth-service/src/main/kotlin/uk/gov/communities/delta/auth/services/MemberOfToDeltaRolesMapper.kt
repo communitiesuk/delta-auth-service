@@ -5,13 +5,13 @@ import org.slf4j.LoggerFactory
 
 typealias MemberOfToDeltaRolesMapperFactory = (
     username: String,
-    allOrganisationIds: List<String>,
+    allOrganisations: List<OrganisationNameAndCode>,
     allAccessGroups: List<AccessGroup>,
 ) -> MemberOfToDeltaRolesMapper
 
 class MemberOfToDeltaRolesMapper(
     private val username: String,
-    allOrganisationIds: List<String>,
+    allOrganisations: List<OrganisationNameAndCode>,
     allAccessGroups: List<AccessGroup>,
 ) {
     companion object {
@@ -33,10 +33,12 @@ class MemberOfToDeltaRolesMapper(
         val systemRoles: List<SystemRole>,
         val externalRoles: List<ExternalRole>,
         val accessGroups: List<AccessGroupRole>,
-        val organisationIds: List<String>,
+        val organisations: List<OrganisationNameAndCode>,
     )
 
-    private val organisationIdSuffixes = allOrganisationIds.map { "-$it" }.sortedByDescending { it.length }.toList()
+    private val organisationIdSuffixes =
+        allOrganisations.map { "-${it.code}" }.sortedByDescending { it.length }.toList()
+    private val organisationsMap = allOrganisations.associateBy { it.code }
     private val allAccessGroupsMap = allAccessGroups.associateBy { it.name }
 
     fun map(memberOf: List<String>): Roles {
@@ -44,24 +46,26 @@ class MemberOfToDeltaRolesMapper(
             .mapNotNull(::removeDatamartDeltaPrefix)
             .mapNotNull(::parseToRoleAndOrg)
 
-        val organisationIds = roles.filter { it.role == "user" }.mapNotNull { it.orgId }.toHashSet()
+        val organisationIds = roles.filter { it.role == "user" }.mapNotNull { it.organisation?.code }.toHashSet()
         val roleOrgIdsMap = mapOf<RoleType, MutableMap<String, MutableList<String>>>(
             RoleType.SYSTEM to mutableMapOf(),
             RoleType.EXTERNAL to mutableMapOf(),
             RoleType.ACCESS_GROUP to mutableMapOf(),
         )
 
+        if (organisationIds.isEmpty()) logger.atWarn().addKeyValue("username", username).log("No organisations from AD")
+
         // Set the non-organisation specific roles first
-        for (role in roles.filter { it.orgId == null }) {
+        for (role in roles.filter { it.organisation == null }) {
             roleOrgIdsMap[role.type]!![role.role] = mutableListOf()
         }
 
         // Then go through the organisation specific ones and add the organisation ids to the role
         for (role in roles) {
-            if (role.orgId == null) continue
-            if (!organisationIds.contains(role.orgId)) {
+            if (role.organisation == null) continue
+            if (!organisationIds.contains(role.organisation.code)) {
                 logger.atWarn().addKeyValue("username", username).addKeyValue("group", role.originalGroup)
-                    .addKeyValue("role", role.role).addKeyValue("orgId", role.orgId)
+                    .addKeyValue("role", role.role).addKeyValue("orgId", role.organisation.code)
                     .log("User is member of datamart-delta-<role>-<orgId> group, but not part of the organisation, i.e. not a member of datamart-delta-user-<orgId> group, discarding group")
                 continue
             }
@@ -69,11 +73,11 @@ class MemberOfToDeltaRolesMapper(
             val orgListForRole = roleOrgIdsMap[role.type]!![role.role]
             if (orgListForRole == null) {
                 logger.atWarn().addKeyValue("username", username).addKeyValue("group", role.originalGroup)
-                    .addKeyValue("role", role.role).addKeyValue("orgId", role.orgId)
+                    .addKeyValue("role", role.role).addKeyValue("orgId", role.organisation.code)
                     .log("User is member of datamart-delta-<role>-<orgId> group, but not member of datamart-delta-<role> group, discarding group")
                 continue
             }
-            orgListForRole.add(role.orgId)
+            orgListForRole.add(role.organisation.code)
         }
 
         return Roles(
@@ -86,7 +90,7 @@ class MemberOfToDeltaRolesMapper(
                     it.value
                 )
             },
-            organisationIds.toList(),
+            organisationIds.map { organisationsMap[it]!! }
         )
     }
 
@@ -96,7 +100,12 @@ class MemberOfToDeltaRolesMapper(
         ACCESS_GROUP,
     }
 
-    private class ParsedRole(val role: String, val orgId: String?, val type: RoleType, val originalGroup: String)
+    private class ParsedRole(
+        val role: String,
+        val organisation: OrganisationNameAndCode?,
+        val type: RoleType,
+        val originalGroup: String,
+    )
 
 
     private fun removeDatamartDeltaPrefix(group: String): String? {
@@ -131,7 +140,7 @@ class MemberOfToDeltaRolesMapper(
                 .log("Ignoring group as unable to find matching system role or access group")
             null
         } else {
-            ParsedRole(roleStr, orgId, roleType, DATAMART_DELTA_PREFIX + groupWithoutPrefix)
+            ParsedRole(roleStr, organisationsMap[orgId], roleType, DATAMART_DELTA_PREFIX + groupWithoutPrefix)
         }
     }
 

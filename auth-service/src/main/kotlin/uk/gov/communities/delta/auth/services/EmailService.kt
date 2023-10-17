@@ -6,11 +6,15 @@ import jakarta.mail.Session
 import jakarta.mail.Transport
 import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.plugins.makeTemplateResolver
+import uk.gov.communities.delta.auth.utils.timedSuspend
 import java.util.*
 
 
@@ -21,11 +25,28 @@ class EmailService(emailConfig: EmailConfig) {
 
     init {
         val templateResolver = templateEngine.makeTemplateResolver()
-        templateResolver.prefix = templateResolver.prefix + "emails/"
+        templateResolver.prefix += "emails/"
         templateEngine.setTemplateResolver(templateResolver)
     }
 
-    fun sendTemplateEmail(
+    suspend fun sendTemplateEmail(
+        template: String,
+        emailContacts: EmailContacts,
+        subject: String,
+        mappedValues: Map<String, String>,
+    ) {
+        withContext(Dispatchers.IO) {
+            logger.timedSuspend(
+                "Send templated email",
+                { listOf(Pair("emailTemplate", template)) }
+            ) {
+                blockingSendEmail(template, emailContacts, subject, mappedValues)
+            }
+        }
+    }
+
+    @Blocking
+    private fun blockingSendEmail(
         template: String,
         emailContacts: EmailContacts,
         subject: String,
@@ -33,6 +54,11 @@ class EmailService(emailConfig: EmailConfig) {
     ) {
         val context = Context(Locale.getDefault(), mappedValues)
         val content = templateEngine.process(template, context)
+        logger.atInfo()
+            .addKeyValue("emailTemplate", template)
+            .addKeyValue("emailTo", emailContacts.getTo())
+            .addKeyValue("emailSubject", subject)
+            .log("Sending email")
         try {
             val msg: Message = MimeMessage(session)
             msg.setFrom(emailContacts.getFrom())

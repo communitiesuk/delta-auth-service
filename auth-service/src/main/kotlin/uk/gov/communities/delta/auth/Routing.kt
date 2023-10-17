@@ -137,7 +137,7 @@ fun Route.deltaForgotPasswordRoutes(deltaForgotPasswordController: DeltaForgotPa
 }
 
 fun Route.deltaRegisterRoutes(
-    deltaUserRegistrationController: DeltaUserRegistrationController
+    deltaUserRegistrationController: DeltaUserRegistrationController,
 ) {
     route("/success") {
         deltaUserRegistrationController.registerSuccessRoute(this)

@@ -120,7 +120,7 @@ class DeltaUserRegistrationControllerTest {
                 emailService.sendTemplateEmail(
                     "already-a-user",
                     any(),
-                    "DLUHC DELTA - Account",
+                    "DLUHC DELTA - Existing Account",
                     any()
                 )
             }
@@ -185,7 +185,7 @@ class DeltaUserRegistrationControllerTest {
                 emailService.sendTemplateEmail(
                     "already-a-user",
                     any(),
-                    "DLUHC DELTA - Account",
+                    "DLUHC DELTA - Existing Account",
                     any()
                 )
             }
