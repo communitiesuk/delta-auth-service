@@ -116,7 +116,7 @@ class PasswordTokenServiceTest {
     fun testLookupExpiredTokenForSet() = testSuspend {
         val token = registrationSetPasswordTokenService.createToken(userCN)
         withContext(Dispatchers.IO) {
-            testDbPool.useConnection {
+            testDbPool.useConnectionBlocking("Test make set password token expire") {
                 val stmt = it.prepareStatement(
                     "UPDATE set_password_tokens SET created_at = ? WHERE user_cn = ? "
                 )
@@ -139,7 +139,7 @@ class PasswordTokenServiceTest {
     fun testLookupExpiredTokenForReset() = testSuspend {
         val token = resetPasswordTokenService.createToken(userCN)
         withContext(Dispatchers.IO) {
-            testDbPool.useConnection {
+            testDbPool.useConnectionBlocking("Test make reset password token expire") {
                 val stmt = it.prepareStatement(
                     "UPDATE reset_password_tokens SET created_at = ? WHERE user_cn = ? "
                 )

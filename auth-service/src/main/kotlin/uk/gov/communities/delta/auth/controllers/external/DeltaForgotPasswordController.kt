@@ -103,7 +103,7 @@ class DeltaForgotPasswordController(
         )
     }
 
-    private fun sendNoUserEmail(emailAddress: String) {
+    private suspend fun sendNoUserEmail(emailAddress: String) {
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sending no-user-account email")
         emailService.sendTemplateEmail(
             "no-user-account",

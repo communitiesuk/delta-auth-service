@@ -18,7 +18,7 @@ class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource
 
     @Blocking
     private fun setPasswordTokenExistsForUserCN(userCN: String): Boolean {
-        dbPool.useConnection {
+        return dbPool.useConnectionBlocking("Check if set password token exists") {
             val stmt = it.prepareStatement(
                 "SELECT user_cn, token, created_at FROM set_password_tokens " +
                         "WHERE user_cn = ?"
@@ -28,7 +28,7 @@ class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource
             it.commit()
 
             // Returns true if there is a matching entry, false if not
-            return result.next()
+            result.next()
         }
     }
 }
@@ -59,7 +59,7 @@ abstract class PasswordTokenService(private val tableName: String, private val d
 
     @Blocking
     private fun insert(userCN: String, token: String, now: Instant) {
-        return dbPool.useConnectionBlocking("Insert set password token") {
+        return dbPool.useConnectionBlocking("Insert password token") {
             val nowTimestamp = Timestamp.from(now)
             val tokenBytes = hashBase64String(token)
             val stmt = it.prepareStatement(
