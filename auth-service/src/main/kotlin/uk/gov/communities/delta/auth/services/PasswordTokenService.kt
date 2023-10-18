@@ -9,7 +9,9 @@ import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
 
-class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource) : PasswordTokenService("set_password_tokens", dbPool, timeSource){
+class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource) :
+    PasswordTokenService(dbPool, timeSource) {
+    override val tableName: String = "set_password_tokens"
     suspend fun passwordNeverSetForUserCN(userCN: String): Boolean {
         return withContext(Dispatchers.IO) {
             setPasswordTokenExistsForUserCN(userCN)
@@ -20,12 +22,11 @@ class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource
     private fun setPasswordTokenExistsForUserCN(userCN: String): Boolean {
         return dbPool.useConnectionBlocking("Check if set password token exists") {
             val stmt = it.prepareStatement(
-                "SELECT user_cn, token, created_at FROM set_password_tokens " +
+                "SELECT user_cn, token, created_at FROM $tableName " +
                         "WHERE user_cn = ?"
             )
             stmt.setString(1, userCN)
             val result = stmt.executeQuery()
-            it.commit()
 
             // Returns true if there is a matching entry, false if not
             result.next()
@@ -33,10 +34,13 @@ class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource
     }
 }
 
-class ResetPasswordTokenService(dbPool: DbPool, timeSource: TimeSource) : PasswordTokenService("reset_password_tokens", dbPool, timeSource)
+class ResetPasswordTokenService(dbPool: DbPool, timeSource: TimeSource) : PasswordTokenService(dbPool, timeSource) {
+    override val tableName: String = "reset_password_tokens"
+}
 
-abstract class PasswordTokenService(private val tableName: String, private val dbPool: DbPool, private val timeSource: TimeSource) {
+abstract class PasswordTokenService(private val dbPool: DbPool, private val timeSource: TimeSource) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    protected abstract val tableName: String
 
     sealed class TokenResult
     class ValidToken(val token: String, val userCN: String) : TokenResult()

@@ -53,7 +53,9 @@ class DeltaForgotPasswordController(
         val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
             it.required && emailAddress.lowercase().endsWith(it.emailDomain)
         }
-        if (ssoClientMatchingEmailDomain != null)
+        if (ssoClientMatchingEmailDomain != null) {
+            logger.atInfo().addKeyValue("ssoClient", ssoClientMatchingEmailDomain.internalId)
+                .log("Forgot password email matches required SSO domain, redirecting")
             return call.respondRedirect(
                 deltaRouteWithEmail(
                     deltaConfig.deltaWebsiteUrl,
@@ -61,6 +63,7 @@ class DeltaForgotPasswordController(
                     emailAddress
                 )
             )
+        }
 
         val userCN = emailAddress.replace("@", "!")
         try {

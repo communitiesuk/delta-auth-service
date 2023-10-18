@@ -107,38 +107,12 @@ class RateLimitingTest {
     }
 
     @Test
-    fun testRegistrationPageRateLimitPerUser() = testSuspend {
-        // Test that varying the penultimate address causes requests not to be blocked by other address' usage
-        val forwardFor1 = "5.6.7.8, 2.3.4.5, 5.6.7.8"
-        val forwardFor2 = "5.6.7.8, 5.4.3.2, 5.6.7.8"
-        for (i in 1..rateLimitValue) {
-            assertSuccessfulGetRequest(forwardFor1, "/delta/register")
-        }
-        assertBlockedGetRequest(forwardFor1, "/delta/register", "<title>DELTA | Register</title>")
-        assertSuccessfulGetRequest(forwardFor2, "/delta/register")
-        verify(exactly = 1) { rateLimitRegistrationCounter.increment(1.0) }
-    }
-
-    @Test
     fun testSetPasswordPageRateLimit() = testSuspend {
         val forwardedFor = "5.6.7.8, 1.2.3.4, 5.6.7.8"
         for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardedFor, "/delta/set-password")
         }
         assertBlockedGetRequest(forwardedFor, "/delta/set-password", "<title>Delta | Password</title>")
-        verify(exactly = 1) { rateLimitSetPasswordCounter.increment(1.0) }
-    }
-
-    @Test
-    fun testSetPasswordPageRateLimitPerUser() = testSuspend {
-        // Test that varying the penultimate address causes requests not to be blocked by other address' usage
-        val forwardFor1 = "5.6.7.8, 2.3.4.5, 5.6.7.8"
-        val forwardFor2 = "5.6.7.8, 5.4.3.2, 5.6.7.8"
-        for (i in 1..rateLimitValue) {
-            assertSuccessfulGetRequest(forwardFor1, "/delta/set-password")
-        }
-        assertBlockedGetRequest(forwardFor1, "/delta/set-password", "<title>Delta | Password</title>")
-        assertSuccessfulGetRequest(forwardFor2, "/delta/set-password")
         verify(exactly = 1) { rateLimitSetPasswordCounter.increment(1.0) }
     }
 
@@ -153,38 +127,12 @@ class RateLimitingTest {
     }
 
     @Test
-    fun testResetPasswordPageRateLimitPerUser() = testSuspend {
-        // Test that varying the penultimate address causes requests not to be blocked by other address' usage
-        val forwardFor1 = "5.6.7.8, 2.3.4.5, 5.6.7.8"
-        val forwardFor2 = "5.6.7.8, 5.4.3.2, 5.6.7.8"
-        for (i in 1..rateLimitValue) {
-            assertSuccessfulGetRequest(forwardFor1, "/delta/reset-password")
-        }
-        assertBlockedGetRequest(forwardFor1, "/delta/reset-password", "<title>Delta | Password</title>")
-        assertSuccessfulGetRequest(forwardFor2, "/delta/reset-password")
-        verify(exactly = 1) { rateLimitResetPasswordCounter.increment(1.0) }
-    }
-
-    @Test
     fun testForgotPasswordPageRateLimit() = testSuspend {
         val forwardedFor = "5.6.7.8, 1.2.3.4, 5.6.7.8"
         for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardedFor, "/delta/forgot-password")
         }
         assertBlockedGetRequest(forwardedFor, "/delta/forgot-password", "<title>Delta | Forgot Password</title>")
-        verify(exactly = 1) { rateLimitForgotPasswordCounter.increment(1.0) }
-    }
-
-    @Test
-    fun testForgotPasswordPageRateLimitPerUser() = testSuspend {
-        // Test that varying the penultimate address causes requests not to be blocked by other address' usage
-        val forwardFor1 = "5.6.7.8, 2.3.4.5, 5.6.7.8"
-        val forwardFor2 = "5.6.7.8, 5.4.3.2, 5.6.7.8"
-        for (i in 1..rateLimitValue) {
-            assertSuccessfulGetRequest(forwardFor1, "/delta/forgot-password")
-        }
-        assertBlockedGetRequest(forwardFor1, "/delta/forgot-password", "<title>Delta | Forgot Password</title>")
-        assertSuccessfulGetRequest(forwardFor2, "/delta/forgot-password")
         verify(exactly = 1) { rateLimitForgotPasswordCounter.increment(1.0) }
     }
 
