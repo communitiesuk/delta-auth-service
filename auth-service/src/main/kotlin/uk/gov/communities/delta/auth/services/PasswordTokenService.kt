@@ -91,9 +91,10 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
             var tokenResult = readToken(token, userCN)
             if (tokenResult is ValidToken) {
                 val tokenDeletedSuccessfully = deleteToken(token, userCN)
-                if (!tokenDeletedSuccessfully)
+                if (!tokenDeletedSuccessfully) {
                     tokenResult = NoSuchToken
-                logger.warn("Token not deleted successfully")
+                    logger.warn("Token not deleted successfully")
+                }
             }
             tokenResult
         }
@@ -109,7 +110,6 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
             stmt.setBytes(1, hashBase64String(token))
             stmt.setString(2, userCN)
             val result = stmt.executeQuery()
-            it.commit()
             return@useConnectionBlocking if (!result.next()) {
                 logger.debug("No session found for token '{}' and userCN '{}'", token, userCN)
                 NoSuchToken
@@ -118,6 +118,7 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
             } else ValidToken(token, userCN)
         }
     }
+
     @Blocking
     private fun deleteToken(token: String, userCN: String): Boolean {
         return dbPool.useConnectionBlocking("Delete token") {
