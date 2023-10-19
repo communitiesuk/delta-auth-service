@@ -7,7 +7,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.deltaRouteWithEmail
@@ -17,7 +16,6 @@ import uk.gov.communities.delta.auth.utils.emailToDomain
 
 class DeltaUserRegistrationController(
     private val deltaConfig: DeltaConfig,
-    private val authServiceConfig: AuthServiceConfig,
     private val ssoConfig: AzureADSSOConfig,
     private val organisationService: OrganisationService,
     private val registrationService: RegistrationService,
@@ -193,7 +191,7 @@ class DeltaUserRegistrationController(
     }
 
     private suspend fun ApplicationCall.respondSuccessPage(emailAddress: String) =
-        respondRedirect(authServiceConfig.serviceUrl + "/delta/register/success?emailAddress=${emailAddress.encodeURLParameter()}")
+        respondRedirect("/delta/register/success?emailAddress=${emailAddress.encodeURLParameter()}")
 
     private suspend fun ApplicationCall.respondRegisterPage(
         firstName: String = "",

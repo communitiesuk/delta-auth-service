@@ -8,10 +8,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.slf4j.Logger
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
-import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
-import uk.gov.communities.delta.auth.controllers.external.DeltaSSOLoginController
-import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
-import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
+import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -88,12 +85,13 @@ class Injection(
         ldapService
     )
     private val emailService = EmailService(emailConfig)
-    private val userService = UserService(ldapService)
+    private val userService = UserService(ldapService, userLookupService)
     private val accessGroupsService = AccessGroupsService(ldapService, ldapConfig)
 
     val dbPool = DbPool(databaseConfig)
 
-    val setPasswordTokenService = SetPasswordTokenService(dbPool, TimeSource.System)
+    val registrationSetPasswordTokenService = RegistrationSetPasswordTokenService(dbPool, TimeSource.System)
+    val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
     val organisationService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
     val registrationService =
         RegistrationService(
@@ -101,7 +99,7 @@ class Injection(
             emailConfig,
             ldapConfig,
             authServiceConfig,
-            setPasswordTokenService,
+            registrationSetPasswordTokenService,
             emailService,
             userService,
             userLookupService,
@@ -133,6 +131,8 @@ class Injection(
 
     val registrationRateLimitCounter: Counter = meterRegistry.counter("registration.rateLimitedRequests")
     val setPasswordRateLimitCounter: Counter = meterRegistry.counter("setPassword.rateLimitedRequests")
+    val resetPasswordRateLimitCounter: Counter = meterRegistry.counter("resetPassword.rateLimitedRequests")
+    val forgotPasswordRateLimitCounter: Counter = meterRegistry.counter("forgotPassword.rateLimitedRequests")
 
     val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
     val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
@@ -169,7 +169,6 @@ class Injection(
 
     fun externalDeltaUserRegisterController() = DeltaUserRegistrationController(
         deltaConfig,
-        authServiceConfig,
         azureADSSOConfig,
         organisationService,
         registrationService,
@@ -181,7 +180,29 @@ class Injection(
         emailConfig,
         authServiceConfig,
         userService,
-        setPasswordTokenService,
+        registrationSetPasswordTokenService,
+        userLookupService,
+        emailService
+    )
+
+    fun externalDeltaResetPasswordController() = DeltaResetPasswordController(
+        deltaConfig,
+        ldapConfig,
+        emailConfig,
+        authServiceConfig,
+        userService,
+        resetPasswordTokenService,
+        userLookupService,
+        emailService
+    )
+
+    fun externalDeltaForgotPasswordController() = DeltaForgotPasswordController(
+        deltaConfig,
+        emailConfig,
+        authServiceConfig,
+        azureADSSOConfig,
+        resetPasswordTokenService,
+        registrationSetPasswordTokenService,
         userLookupService,
         emailService
     )
@@ -210,7 +231,6 @@ class Injection(
             deltaConfig,
             clientConfig,
             azureADSSOConfig,
-            authServiceConfig,
             ssoLoginStateService,
             userLookupService,
             authorizationCodeService,

@@ -194,11 +194,9 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationOfStandardUserInRetiredOrg() = testSuspend {
-        coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(
-            orgCode,
-            "Test org",
-            "2023-09-30Z"
-        ))
+        coEvery { organisationService.findAllByDomain(any()) } returns listOf(
+            Organisation(orgCode, "Test org", "2023-09-30Z")
+        )
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
@@ -249,7 +247,7 @@ class DeltaUserRegistrationControllerTest {
         coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "Test org"))
         coEvery { userService.createUser(any()) } just runs
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
-        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
+        coEvery { registrationSetPasswordTokenService.createToken(any()) } returns "token"
         coEvery { emailService.sendTemplateEmail(any(), any(), any(), any()) } just runs
     }
 
@@ -259,7 +257,7 @@ class DeltaUserRegistrationControllerTest {
         private lateinit var testClient: HttpClient
         private val deltaConfig = DeltaConfig.fromEnv()
         private val organisationService = mockk<OrganisationService>()
-        private val setPasswordTokenService = mockk<SetPasswordTokenService>()
+        private val registrationSetPasswordTokenService = mockk<RegistrationSetPasswordTokenService>()
         private val emailService = mockk<EmailService>()
         private val authServiceConfig = AuthServiceConfig("http://localhost", null)
         private val userService = mockk<UserService>()
@@ -280,7 +278,7 @@ class DeltaUserRegistrationControllerTest {
                 EmailConfig.fromEnv(),
                 LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
                 authServiceConfig,
-                setPasswordTokenService,
+                registrationSetPasswordTokenService,
                 emailService,
                 userService,
                 userLookupService,
@@ -288,7 +286,6 @@ class DeltaUserRegistrationControllerTest {
             )
             val controller = DeltaUserRegistrationController(
                 deltaConfig,
-                authServiceConfig,
                 AzureADSSOConfig(
                     listOf(
                         AzureADSSOClient("required-client", "", "", "", "@sso.domain.uk", required = true),

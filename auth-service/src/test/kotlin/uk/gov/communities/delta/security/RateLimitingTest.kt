@@ -23,10 +23,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.security.configureRateLimiting
-import uk.gov.communities.delta.auth.security.loginRateLimitName
-import uk.gov.communities.delta.auth.security.registrationRateLimitName
-import uk.gov.communities.delta.auth.security.setPasswordRateLimitName
+import uk.gov.communities.delta.auth.security.*
 import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -48,7 +45,7 @@ class RateLimitingTest {
     }
 
     // Assert that the correct page/error message is being passed to blocked requests
-    private suspend fun assertBlockedGetLoginRequest(forwardFor: String, url: String, assertionText: String) {
+    private suspend fun assertBlockedGetRequest(forwardFor: String, url: String, assertionText: String) {
         testClient.get(url) {
             headers {
                 append("X-Forwarded-For", forwardFor)
@@ -71,7 +68,7 @@ class RateLimitingTest {
                 "/delta/login?response_type=code&client_id=delta-website&state=1234"
             )
         }
-        assertBlockedGetLoginRequest(
+        assertBlockedGetRequest(
             forwardedFor,
             "/delta/login?response_type=code&client_id=delta-website&state=1234",
             "<title>DELTA | Sign in</title>"
@@ -90,7 +87,7 @@ class RateLimitingTest {
                 "/delta/login?response_type=code&client_id=delta-website&state=1234"
             )
         }
-        assertBlockedGetLoginRequest(
+        assertBlockedGetRequest(
             forwardFor1,
             "/delta/login?response_type=code&client_id=delta-website&state=1234",
             "<title>DELTA | Sign in</title>"
@@ -105,20 +102,7 @@ class RateLimitingTest {
         for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardedFor, "/delta/register")
         }
-        assertBlockedGetLoginRequest(forwardedFor, "/delta/register", "<title>DELTA | Register</title>")
-        verify(exactly = 1) { rateLimitRegistrationCounter.increment(1.0) }
-    }
-
-    @Test
-    fun testRegistrationPageRateLimitPerUser() = testSuspend {
-        // Test that varying the penultimate address causes requests not to be blocked by other address' usage
-        val forwardFor1 = "5.6.7.8, 2.3.4.5, 5.6.7.8"
-        val forwardFor2 = "5.6.7.8, 5.4.3.2, 5.6.7.8"
-        for (i in 1..rateLimitValue) {
-            assertSuccessfulGetRequest(forwardFor1, "/delta/register")
-        }
-        assertBlockedGetLoginRequest(forwardFor1, "/delta/register", "<title>DELTA | Register</title>")
-        assertSuccessfulGetRequest(forwardFor2, "/delta/register")
+        assertBlockedGetRequest(forwardedFor, "/delta/register", "<title>DELTA | Register</title>")
         verify(exactly = 1) { rateLimitRegistrationCounter.increment(1.0) }
     }
 
@@ -128,21 +112,28 @@ class RateLimitingTest {
         for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardedFor, "/delta/set-password")
         }
-        assertBlockedGetLoginRequest(forwardedFor, "/delta/set-password", "<title>Delta | Set password</title>")
+        assertBlockedGetRequest(forwardedFor, "/delta/set-password", "<title>Delta | Password</title>")
         verify(exactly = 1) { rateLimitSetPasswordCounter.increment(1.0) }
     }
 
     @Test
-    fun testSetPasswordPageRateLimitPerUser() = testSuspend {
-        // Test that varying the penultimate address causes requests not to be blocked by other address' usage
-        val forwardFor1 = "5.6.7.8, 2.3.4.5, 5.6.7.8"
-        val forwardFor2 = "5.6.7.8, 5.4.3.2, 5.6.7.8"
+    fun testResetPasswordPageRateLimit() = testSuspend {
+        val forwardedFor = "5.6.7.8, 1.2.3.4, 5.6.7.8"
         for (i in 1..rateLimitValue) {
-            assertSuccessfulGetRequest(forwardFor1, "/delta/set-password")
+            assertSuccessfulGetRequest(forwardedFor, "/delta/reset-password")
         }
-        assertBlockedGetLoginRequest(forwardFor1, "/delta/set-password", "<title>Delta | Set password</title>")
-        assertSuccessfulGetRequest(forwardFor2, "/delta/set-password")
-        verify(exactly = 1) { rateLimitSetPasswordCounter.increment(1.0) }
+        assertBlockedGetRequest(forwardedFor, "/delta/reset-password", "<title>Delta | Password</title>")
+        verify(exactly = 1) { rateLimitResetPasswordCounter.increment(1.0) }
+    }
+
+    @Test
+    fun testForgotPasswordPageRateLimit() = testSuspend {
+        val forwardedFor = "5.6.7.8, 1.2.3.4, 5.6.7.8"
+        for (i in 1..rateLimitValue) {
+            assertSuccessfulGetRequest(forwardedFor, "/delta/forgot-password")
+        }
+        assertBlockedGetRequest(forwardedFor, "/delta/forgot-password", "<title>Delta | Forgot Password</title>")
+        verify(exactly = 1) { rateLimitForgotPasswordCounter.increment(1.0) }
     }
 
     @Test
@@ -153,7 +144,7 @@ class RateLimitingTest {
         for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardFor1, "/delta/set-password")
         }
-        assertBlockedGetLoginRequest(forwardFor1, "/delta/set-password", "<title>Delta | Set password</title>")
+        assertBlockedGetRequest(forwardFor1, "/delta/set-password", "<title>Delta | Password</title>")
         assertSuccessfulGetRequest(forwardFor2, "/delta/set-password")
         assertSuccessfulGetRequest(forwardFor1, "delta/register")
         verify(exactly = 1) { rateLimitSetPasswordCounter.increment(1.0) }
@@ -165,6 +156,8 @@ class RateLimitingTest {
         every { rateLimitLoginCounter.increment(1.0) } returns Unit
         every { rateLimitRegistrationCounter.increment(1.0) } returns Unit
         every { rateLimitSetPasswordCounter.increment(1.0) } returns Unit
+        every { rateLimitResetPasswordCounter.increment(1.0) } returns Unit
+        every { rateLimitForgotPasswordCounter.increment(1.0) } returns Unit
     }
 
     companion object {
@@ -175,6 +168,8 @@ class RateLimitingTest {
         val rateLimitLoginCounter = mockk<Counter>()
         val rateLimitRegistrationCounter = mockk<Counter>()
         val rateLimitSetPasswordCounter = mockk<Counter>()
+        val rateLimitResetPasswordCounter = mockk<Counter>()
+        val rateLimitForgotPasswordCounter = mockk<Counter>()
 
         @BeforeClass
         @JvmStatic
@@ -194,7 +189,9 @@ class RateLimitingTest {
                         rateLimitValue,
                         rateLimitLoginCounter,
                         rateLimitRegistrationCounter,
-                        rateLimitSetPasswordCounter
+                        rateLimitSetPasswordCounter,
+                        rateLimitResetPasswordCounter,
+                        rateLimitForgotPasswordCounter,
                     )
                     configureStatusPages(
                         "test.url",
@@ -214,6 +211,16 @@ class RateLimitingTest {
                         }
                         rateLimit(RateLimitName(setPasswordRateLimitName)) {
                             route("/delta/set-password") {
+                                this.respondSuccess()
+                            }
+                        }
+                        rateLimit(RateLimitName(resetPasswordRateLimitName)) {
+                            route("/delta/reset-password") {
+                                this.respondSuccess()
+                            }
+                        }
+                        rateLimit(RateLimitName(forgotPasswordRateLimitName)) {
+                            route("/delta/forgot-password") {
                                 this.respondSuccess()
                             }
                         }

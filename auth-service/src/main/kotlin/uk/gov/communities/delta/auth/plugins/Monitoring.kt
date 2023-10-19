@@ -43,6 +43,8 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry) {
             .meterFilter(MeterFilter.acceptNameStartsWith("login."))
             .meterFilter(MeterFilter.acceptNameStartsWith("registration."))
             .meterFilter(MeterFilter.acceptNameStartsWith("setPassword."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("resetPassword."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("forgotPassword."))
             .meterFilter(MeterFilter.acceptNameStartsWith("tasks."))
             .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics
     }

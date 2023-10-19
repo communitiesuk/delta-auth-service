@@ -9,8 +9,38 @@ import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
 
-class SetPasswordTokenService(private val dbPool: DbPool, private val timeSource: TimeSource) {
+class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource) :
+    PasswordTokenService(dbPool, timeSource) {
+    override val tableName: String = "set_password_tokens"
+    suspend fun passwordNeverSetForUserCN(userCN: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            setPasswordTokenExistsForUserCN(userCN)
+        }
+    }
+
+    @Blocking
+    private fun setPasswordTokenExistsForUserCN(userCN: String): Boolean {
+        return dbPool.useConnectionBlocking("Check if set password token exists") {
+            val stmt = it.prepareStatement(
+                "SELECT user_cn, token, created_at FROM $tableName " +
+                        "WHERE user_cn = ?"
+            )
+            stmt.setString(1, userCN)
+            val result = stmt.executeQuery()
+
+            // Returns true if there is a matching entry, false if not
+            result.next()
+        }
+    }
+}
+
+class ResetPasswordTokenService(dbPool: DbPool, timeSource: TimeSource) : PasswordTokenService(dbPool, timeSource) {
+    override val tableName: String = "reset_password_tokens"
+}
+
+abstract class PasswordTokenService(private val dbPool: DbPool, private val timeSource: TimeSource) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    protected abstract val tableName: String
 
     sealed class TokenResult
     class ValidToken(val token: String, val userCN: String) : TokenResult()
@@ -33,11 +63,11 @@ class SetPasswordTokenService(private val dbPool: DbPool, private val timeSource
 
     @Blocking
     private fun insert(userCN: String, token: String, now: Instant) {
-        return dbPool.useConnectionBlocking("Insert set password token") {
+        return dbPool.useConnectionBlocking("Insert password token") {
             val nowTimestamp = Timestamp.from(now)
             val tokenBytes = hashBase64String(token)
             val stmt = it.prepareStatement(
-                "INSERT INTO set_password_tokens (user_cn, token, created_at) VALUES (?, ?, ?) " +
+                "INSERT INTO $tableName (user_cn, token, created_at) VALUES (?, ?, ?) " +
                         "ON CONFLICT (user_cn) DO UPDATE SET token = ?, created_at = ?"
             )
             stmt.setString(1, userCN)
@@ -66,10 +96,10 @@ class SetPasswordTokenService(private val dbPool: DbPool, private val timeSource
     private fun readToken(token: String, userCN: String, delete: Boolean): TokenResult {
         return dbPool.useConnectionBlocking("Read select password token") {
             val stmt = if (delete) it.prepareStatement(
-                "DELETE FROM set_password_tokens WHERE token = ? AND user_cn = ? " +
-                        "RETURNING user_cn, token, created_at"
+                "DELETE FROM $tableName WHERE token = ? AND user_cn = ? " +
+                        "RETURNING user_cn, token, created_at",
             ) else it.prepareStatement(
-                "SELECT user_cn, token, created_at FROM set_password_tokens " +
+                "SELECT user_cn, token, created_at FROM $tableName " +
                         "WHERE token = ? AND user_cn = ?"
             )
             stmt.setBytes(1, hashBase64String(token))

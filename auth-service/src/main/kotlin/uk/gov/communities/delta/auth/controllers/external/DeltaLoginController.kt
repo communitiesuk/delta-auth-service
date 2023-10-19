@@ -201,12 +201,12 @@ class DeltaLoginController(
 
             is IADLdapLoginService.ExpiredPassword -> LoginError(
                 "Your password has expired. Please reset your password.",
-                deltaConfig.deltaWebsiteUrl + "/forgot-password"
+                "/delta/forgot-password"
             )
 
             is IADLdapLoginService.PasswordNeedsReset -> LoginError(
                 "Your password has expired. Please reset your password.",
-                deltaConfig.deltaWebsiteUrl + "/forgot-password"
+                "/delta/forgot-password"
             )
 
             is IADLdapLoginService.BadConnection -> LoginError(

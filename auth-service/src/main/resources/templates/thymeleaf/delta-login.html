@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="govuk-template " xmlns:th="http://www.thymeleaf.org">
+<html class="govuk-template " lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head th:replace="~{fragments/template.html :: head (title='DELTA | Sign in')}">
     <title>DELTA | Sign in</title>
@@ -12,7 +12,7 @@
     document.body.className = ((document.body.className) ? document.body.className + ' js-enabled' : 'js-enabled');
 </script>
 -->
-<a href="#main-content" class="govuk-skip-link" data-module="govuk-skip-link">Skip to main content</a>
+<a class="govuk-skip-link" data-module="govuk-skip-link" href="#main-content">Skip to main content</a>
 <header th:replace="~{fragments/template.html :: header}"></header>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
@@ -25,8 +25,8 @@
 <div class="govuk-width-container ">
     <main class="govuk-main-wrapper " id="main-content" role="main">
         <h1 class="govuk-heading-xl">Sign in to DELTA</h1>
-        <div th:if="${not #strings.isEmpty(errorMessage)}" class="govuk-error-summary"
-             data-module="govuk-error-summary">
+        <div class="govuk-error-summary" data-module="govuk-error-summary"
+             th:if="${not #strings.isEmpty(errorMessage)}">
             <div role="alert">
                 <h2 class="govuk-error-summary__title">
                     There is a problem
@@ -34,7 +34,7 @@
                 <div class="govuk-error-summary__body">
                     <ul class="govuk-list govuk-error-summary__list">
                         <li>
-                            <a th:text="${errorMessage}" th:href="${errorLink}" href="#">Error message</a>
+                            <a href="#" th:href="${errorLink}" th:text="${errorMessage}">Error message</a>
                         </li>
                     </ul>
                 </div>
@@ -47,18 +47,19 @@
                         <label class="govuk-label" for="username">
                             Username
                         </label>
-                        <input th:value="${username}" class="govuk-input govuk-!-width-two-thirds" id="username"
-                               name="username" type="text" autocomplete="username" autofocus>
+                        <input autocomplete="username" autofocus class="govuk-input govuk-!-width-two-thirds"
+                               id="username" name="username" th:value="${username}" type="text">
                     </div>
                     <div class="govuk-form-group">
                         <label class="govuk-label" for="password">
                             Password
                         </label>
-                        <input th:value="${password}" class="govuk-input govuk-!-width-two-thirds" id="password"
-                               name="password" type="password" autocomplete="current-password">
+                        <input autocomplete="current-password" class="govuk-input govuk-!-width-two-thirds"
+                               id="password"
+                               name="password" th:value="${password}" type="password">
                     </div>
                     <p>
-                        You can <a th:href="${deltaUrl} + '/forgot-password'">reset your password here</a>
+                        You can <a href="/delta/forgot-password">reset your password here</a>
                     </p>
                     <button class="govuk-button" data-module="govuk-button" type="submit">
                         Sign in to DELTA
@@ -68,17 +69,15 @@
 
             <div class="govuk-grid-column-one-third">
                 <h2 class="govuk-heading-m">Not a user?</h2>
-                <a th:href="'/delta/register'" role="button" draggable="false"
-                   class="govuk-button govuk-button--secondary">
+                <a class="govuk-button govuk-button--secondary" draggable="false" href="/delta/register"
+                   role="button">
                     Create DELTA account
                 </a>
                 <div th:if="${ssoClients.size() > 0}">
                     <h2 class="govuk-heading-m">DLUHC users</h2>
-                    <a th:each="ssoClient: ${ssoClients}"
-                       th:href="'/delta/oauth/' + ${ssoClient.internalId} + '/login'"
-                       th:text="${ssoClient.buttonText}"
-                       href="/delta/oauth/login" role="button" draggable="false"
-                       class="govuk-button govuk-button--secondary">
+                    <a class="govuk-button govuk-button--secondary" draggable="false" href="/delta/oauth/login"
+                       role="button" th:each="ssoClient: ${ssoClients}"
+                       th:href="'/delta/oauth/' + ${ssoClient.internalId} + '/login'" th:text="${ssoClient.buttonText}">
                         Single Sign On
                     </a>
                 </div>
