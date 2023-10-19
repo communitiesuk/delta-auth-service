@@ -75,7 +75,7 @@ class DeltaResetPasswordController(
         val formParameters = call.receiveParameters()
         val userCN = formParameters["userCN"].orEmpty()
         val token = formParameters["token"].orEmpty()
-        val tokenResult = resetPasswordTokenService.consumeToken(token, userCN)
+        val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             logger.atInfo().addKeyValue("userCN", userCN).log("Sending new reset password link (after expiry)")
             sendNewResetPasswordLink(userCN)
@@ -102,7 +102,7 @@ class DeltaResetPasswordController(
         if (message != null) return call.respondResetPasswordPage(message)
         logger.atInfo().addKeyValue("userCN", userCN).log("Reset password post")
 
-        when (val tokenResult = resetPasswordTokenService.consumeToken(token, userCN)) {
+        when (val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, userCN)) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.error("Token did not exist on resetting password")
                 throw ResetPasswordException(
