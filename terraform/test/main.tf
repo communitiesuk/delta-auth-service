@@ -74,7 +74,7 @@ module "auth_service" {
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-test.s3.amazonaws.com/CASRVTEST/CASRVtest.dluhctest.local_CASRVtest.crt"
-    DELTA_LDAP_URL              = "ldap://dluhctest.local:389" // Change back to "ldap://dluhctest.local:636" when CA server fixed
+    DELTA_LDAP_URL              = "ldaps://dluhctest.local:636"
     LDAP_SERVICE_USER_DN_FORMAT = "CN=%s,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_DELTA_USER_DN_FORMAT   = "CN=%s,CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
