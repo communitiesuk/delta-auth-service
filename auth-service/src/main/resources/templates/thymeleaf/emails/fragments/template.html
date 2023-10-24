@@ -3,7 +3,7 @@
 
 <head th:fragment="email-head (title)">
     <meta charset="utf-8"/>
-    <title>${title}</title>
+    <title th:text="${title}"></title>
     <style>
         p {
             font-family: calibri, serif;
