@@ -209,7 +209,7 @@ class DeltaResetPasswordController(
 class ResetPasswordException(
     errorCode: String,
     exceptionMessage: String,
-    userVisibleMessage: String = "Something went wrong, please click the link in your latest password reset email or request a new one.",
+    userVisibleMessage: String = "Something went wrong, please click the link in your latest password reset email or request a new one",
 ) : UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Reset Password Error")
 
 fun getResetPasswordURL(token: String, userCN: String, authServiceUrl: String) =
