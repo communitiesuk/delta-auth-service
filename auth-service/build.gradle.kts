@@ -1,10 +1,10 @@
-val ktorVersion = "2.3.4"
-val kotlinVersion = "1.9.10"
+val ktorVersion = "2.3.6"
+val kotlinVersion = "1.9.20"
 
 plugins {
-    kotlin("jvm") version "1.9.10"
-    id("io.ktor.plugin") version "2.3.4"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.10"
+    kotlin("jvm") version "1.9.20"
+    id("io.ktor.plugin") version "2.3.6"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.20"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -56,7 +56,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.11.4")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.0")
 
     //Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
@@ -72,8 +72,8 @@ dependencies {
 
     // Database
     implementation("org.postgresql:postgresql:42.6.0")
-    implementation("com.zaxxer:HikariCP:5.0.1") // Connection pool
-    implementation("org.flywaydb:flyway-core:9.21.2") // Migrations
+    implementation("com.zaxxer:HikariCP:5.1.0") // Connection pool
+    implementation("org.flywaydb:flyway-core:9.22.3") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
