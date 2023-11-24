@@ -19,10 +19,7 @@ import org.junit.Test
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaForgotPasswordController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.services.EmailService
-import uk.gov.communities.delta.auth.services.RegistrationSetPasswordTokenService
-import uk.gov.communities.delta.auth.services.ResetPasswordTokenService
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.util.*
@@ -52,13 +49,14 @@ class DeltaForgotPasswordControllerTest {
 
     @Test
     fun testPostForgotPasswordPage() = testSuspend {
-        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
+        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser(cn = userCN)
         testClient.submitForm(
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", userEmail) }
         ).apply {
             assertEquals("reset-password", emailTemplate.captured)
             assertEquals(HttpStatusCode.Found, status)
+            coVerify(exactly = 1) { userAuditService.userForgotPasswordAudit(userCN, any()) }
             assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
     }
@@ -78,7 +76,7 @@ class DeltaForgotPasswordControllerTest {
 
     @Test
     fun testPostForgotPasswordPageNotSetPassword() = testSuspend {
-        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser(accountEnabled = false)
+        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser(cn = userCN, accountEnabled = false)
         coEvery { registrationSetPasswordTokenService.passwordNeverSetForUserCN(userCN) } returns true
         coEvery { registrationSetPasswordTokenService.createToken(userCN) } returns "setPasswordToken"
         testClient.submitForm(
@@ -89,6 +87,7 @@ class DeltaForgotPasswordControllerTest {
             assertEquals(HttpStatusCode.Found, status)
             coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(userCN) }
             coVerify(exactly = 0) { resetPasswordTokenService.createToken(userCN) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(userCN, any()) }
             assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
     }
@@ -156,6 +155,7 @@ class DeltaForgotPasswordControllerTest {
         private val emailService = mockk<EmailService>()
         private val userLookupService = mockk<UserLookupService>()
         private var emailTemplate = slot<String>()
+        private val userAuditService = mockk<UserAuditService>(relaxed = true)
 
 
         @BeforeClass
@@ -181,6 +181,7 @@ class DeltaForgotPasswordControllerTest {
                 registrationSetPasswordTokenService,
                 userLookupService,
                 emailService,
+                userAuditService,
             )
             testApp = TestApplication {
                 application {

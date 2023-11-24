@@ -208,7 +208,8 @@ class Injection(
         resetPasswordTokenService,
         registrationSetPasswordTokenService,
         userLookupService,
-        emailService
+        emailService,
+        userAuditService,
     )
 
     fun internalOAuthTokenController() = OAuthTokenController(
