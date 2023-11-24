@@ -3,7 +3,7 @@ package uk.gov.communities.delta.auth.security
 import io.ktor.server.auth.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.repositories.LdapUser
 
 @Serializable
 data class DeltaLdapPrincipal(

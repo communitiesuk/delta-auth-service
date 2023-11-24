@@ -1,7 +1,7 @@
 package uk.gov.communities.delta.dbintegration
 
 import uk.gov.communities.delta.auth.config.DatabaseConfig
-import uk.gov.communities.delta.auth.services.DbPool
+import uk.gov.communities.delta.auth.repositories.DbPool
 import java.sql.DriverManager
 
 val testDbPool: DbPool by lazy {

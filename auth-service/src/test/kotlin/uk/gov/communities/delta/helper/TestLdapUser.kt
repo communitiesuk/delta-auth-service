@@ -1,6 +1,6 @@
 package uk.gov.communities.delta.helper
 
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.repositories.LdapUser
 
 fun testLdapUser(
     dn: String = "dn",

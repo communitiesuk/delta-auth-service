@@ -9,6 +9,7 @@ import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.deltaRouteWithEmail
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import javax.naming.NameNotFoundException
 

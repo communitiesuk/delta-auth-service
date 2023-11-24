@@ -12,6 +12,9 @@ import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
+import uk.gov.communities.delta.auth.repositories.DbPool
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService

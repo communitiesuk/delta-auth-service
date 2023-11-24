@@ -4,6 +4,7 @@ import com.google.common.base.Strings
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
+import uk.gov.communities.delta.auth.utils.randomBase64
 import java.io.UnsupportedEncodingException
 import javax.naming.directory.*
 

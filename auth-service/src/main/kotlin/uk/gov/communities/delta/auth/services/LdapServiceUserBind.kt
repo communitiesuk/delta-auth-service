@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.Blocking
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.repositories.LdapRepository
 import javax.naming.directory.Attributes
 import javax.naming.directory.SearchControls
 import javax.naming.ldap.Control

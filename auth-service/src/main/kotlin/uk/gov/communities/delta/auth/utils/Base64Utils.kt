@@ -1,4 +1,4 @@
-package uk.gov.communities.delta.auth.services
+package uk.gov.communities.delta.auth.utils
 
 import java.security.MessageDigest
 import java.security.SecureRandom

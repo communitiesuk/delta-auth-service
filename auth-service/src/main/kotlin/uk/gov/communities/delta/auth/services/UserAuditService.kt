@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.repositories.DbPool
+import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 
 class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, private val dbPool: DbPool) {
     suspend fun getAuditForUser(userCn: String): List<UserAuditTrailRepo.UserAuditRow> {

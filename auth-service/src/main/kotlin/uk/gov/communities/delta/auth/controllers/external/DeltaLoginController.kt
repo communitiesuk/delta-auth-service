@@ -18,7 +18,7 @@ import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.services.withAuthCode
 

@@ -5,8 +5,8 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.services.LdapRepository
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import javax.naming.AuthenticationException
 import javax.naming.CommunicationException
 import javax.naming.NamingException

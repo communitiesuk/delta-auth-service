@@ -7,7 +7,7 @@ import io.mockk.verify
 import org.junit.Before
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
-import uk.gov.communities.delta.auth.services.LdapRepository
+import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.helper.testLdapUser
 import javax.naming.ldap.InitialLdapContext
 import kotlin.test.Test

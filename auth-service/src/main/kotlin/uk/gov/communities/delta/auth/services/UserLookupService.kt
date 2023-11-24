@@ -1,6 +1,8 @@
 package uk.gov.communities.delta.auth.services
 
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import javax.naming.NameNotFoundException
 
 class UserLookupService(
