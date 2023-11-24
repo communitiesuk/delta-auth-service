@@ -181,6 +181,7 @@ class Injection(
         azureADSSOConfig,
         organisationService,
         registrationService,
+        userAuditService,
     )
 
     fun externalDeltaSetPasswordController() = DeltaSetPasswordController(

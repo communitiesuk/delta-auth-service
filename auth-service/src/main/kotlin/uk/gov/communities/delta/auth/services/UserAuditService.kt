@@ -44,6 +44,15 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
 
     val setPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD)
 
+    val userSelfRegisterAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SELF_REGISTER)
+
+    suspend fun ssoUserCreatedAudit(userCn: String, azureUserObjectId: String, ssoClient: AzureADSSOClient, call: ApplicationCall) {
+        insertAuditRow(
+            UserAuditTrailRepo.AuditAction.SSO_USER_CREATED, userCn, null, call.callId!!,
+            Json.encodeToString(SSOLoginAuditData(ssoClient.internalId, azureUserObjectId))
+        )
+    }
+
     private fun insertSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall) -> Unit {
         return { userCn: String, call: ApplicationCall ->
             insertAuditRow(auditAction, userCn, null, call.callId!!, "{}")

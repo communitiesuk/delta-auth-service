@@ -97,6 +97,7 @@ class DeltaSSOLoginController(
                 logger.error("Error creating SSO User, result was {}", registrationResult.toString())
                 throw Exception("Error creating SSO User")
             }
+            userAuditService.ssoUserCreatedAudit(registrationResult.userCN, jwt.azureObjectId!!, ssoClient, call)
             user = lookupUserInAd(email)!!
         }
 
