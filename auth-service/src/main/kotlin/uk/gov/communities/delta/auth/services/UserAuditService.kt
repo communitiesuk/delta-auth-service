@@ -20,12 +20,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         }
     }
 
-    suspend fun userFormLoginAudit(userCn: String, call: ApplicationCall) {
-        insertAuditRow(
-            UserAuditTrailRepo.AuditAction.FORM_LOGIN,
-            userCn, null, call.callId!!, "{}"
-        )
-    }
+    val userFormLoginAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORM_LOGIN)
 
     suspend fun userSSOLoginAudit(
         userCn: String,
@@ -41,24 +36,16 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         )
     }
 
-    suspend fun userForgotPasswordAudit(
-        userCn: String,
-        call: ApplicationCall,
-    ) {
-        insertAuditRow(
-            UserAuditTrailRepo.AuditAction.FORGOT_PASSWORD_EMAIL,
-            userCn, null, call.callId!!, "{}"
-        )
-    }
+    val userForgotPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORGOT_PASSWORD_EMAIL)
 
-    suspend fun setPasswordEmailAudit(
-        userCn: String,
-        call: ApplicationCall,
-    ) {
-        insertAuditRow(
-            UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL,
-            userCn, null, call.callId!!, "{}"
-        )
+    val setPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
+
+    val resetPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD)
+
+    private fun insertSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall) -> Unit {
+        return { userCn: String, call: ApplicationCall ->
+            insertAuditRow(auditAction, userCn, null, call.callId!!, "{}")
+        }
     }
 
     private suspend fun insertAuditRow(
