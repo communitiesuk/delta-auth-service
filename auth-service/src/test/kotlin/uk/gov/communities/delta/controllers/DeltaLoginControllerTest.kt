@@ -28,6 +28,7 @@ import uk.gov.communities.delta.auth.plugins.originHeaderCheck
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthCode
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
+import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -75,6 +76,7 @@ class DeltaLoginControllerTest {
             assertContains(bodyAsText(), "Your account has been disabled")
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -94,6 +96,7 @@ class DeltaLoginControllerTest {
             assertContains(bodyAsText(), "Your account exists but is not set up to access Delta.")
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -116,6 +119,7 @@ class DeltaLoginControllerTest {
             )
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -136,6 +140,7 @@ class DeltaLoginControllerTest {
             )
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -157,6 +162,7 @@ class DeltaLoginControllerTest {
             }
             verify(exactly = 0) { failedLoginCounter.increment(1.0) }
             verify(exactly = 1) { successfulLoginCounter.increment(1.0) }
+            coVerify(exactly = 1) { userAuditService.userFormLoginAudit("username", any()) }
         }
     }
 
@@ -202,6 +208,7 @@ class DeltaLoginControllerTest {
         clearAllMocks()
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit
+        coEvery { userAuditService.userFormLoginAudit(any(), any()) } returns Unit
         coEvery { authorizationCodeService.generateAndStore(any(), any(), any()) } answers {
             AuthCode("test-auth-code", "user", client, Instant.now(), "trace")
         }
@@ -216,6 +223,7 @@ class DeltaLoginControllerTest {
         val failedLoginCounter = mockk<Counter>()
         val successfulLoginCounter = mockk<Counter>()
         val authorizationCodeService = mockk<AuthorizationCodeService>()
+        val userAuditService = mockk<UserAuditService>()
 
         @BeforeClass
         @JvmStatic
@@ -234,7 +242,8 @@ class DeltaLoginControllerTest {
                 },
                 authorizationCodeService,
                 failedLoginCounter,
-                successfulLoginCounter
+                successfulLoginCounter,
+                userAuditService
             )
             testApp = TestApplication {
                 install(CallId) { generate(4) }

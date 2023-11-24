@@ -19,6 +19,7 @@ import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.services.withAuthCode
 
 
@@ -30,6 +31,7 @@ class DeltaLoginController(
     private val authorizationCodeService: AuthorizationCodeService,
     private val failedLoginCounter: Counter,
     private val successfulLoginCounter: Counter,
+    private val userAuditService: UserAuditService
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
@@ -184,6 +186,7 @@ class DeltaLoginController(
                 )
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")
+                userAuditService.userFormLoginAudit(loginResult.user.cn, call)
                 successfulLoginCounter.increment(1.0)
                 call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${queryParams.state.encodeURLParameter()}")
             }

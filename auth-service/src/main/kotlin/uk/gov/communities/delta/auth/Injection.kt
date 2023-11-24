@@ -90,6 +90,8 @@ class Injection(
 
     val dbPool = DbPool(databaseConfig)
 
+    val userAuditTrailRepo = UserAuditTrailRepo()
+    val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
     val registrationSetPasswordTokenService = RegistrationSetPasswordTokenService(dbPool, TimeSource.System)
     val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
     val organisationService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
@@ -128,6 +130,7 @@ class Injection(
     val failedLoginCounter: Counter = meterRegistry.counter("login.failedLogins")
     val loginRateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
     val successfulLoginCounter: Counter = meterRegistry.counter("login.successfulLogins")
+    val ssoLoginCounter: Counter = meterRegistry.counter("login.ssoLogins")
 
     val registrationRateLimitCounter: Counter = meterRegistry.counter("registration.rateLimitedRequests")
     val setPasswordRateLimitCounter: Counter = meterRegistry.counter("setPassword.rateLimitedRequests")
@@ -163,7 +166,8 @@ class Injection(
             adLoginService,
             authorizationCodeService,
             failedLoginCounter,
-            successfulLoginCounter
+            successfulLoginCounter,
+            userAuditService,
         )
     }
 
@@ -237,6 +241,8 @@ class Injection(
             microsoftGraphService,
             registrationService,
             organisationService,
+            ssoLoginCounter,
+            userAuditService,
         )
 
     fun groupService() = GroupService(ldapService, ldapConfig)

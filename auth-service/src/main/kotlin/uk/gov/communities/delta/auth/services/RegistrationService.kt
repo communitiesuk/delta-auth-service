@@ -152,6 +152,7 @@ data class Registration(
     val firstName: String,
     val lastName: String,
     val emailAddress: String,
+    val azureObjectId: String? = null,
 )
 
 fun getResultTypeString(registrationResult: RegistrationService.RegistrationResult): String {
