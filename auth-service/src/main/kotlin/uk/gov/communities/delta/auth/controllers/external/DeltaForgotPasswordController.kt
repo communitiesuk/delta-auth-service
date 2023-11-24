@@ -21,6 +21,7 @@ class DeltaForgotPasswordController(
     private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
+    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
@@ -69,8 +70,8 @@ class DeltaForgotPasswordController(
         try {
             val user = userLookupService.lookupUserByCn(userCN)
             if (!user.accountEnabled && registrationSetPasswordTokenService.passwordNeverSetForUserCN(userCN))
-                sendSetPasswordLink(user.email!!, userCN, user.firstName, user.fullName)
-            else sendForgotPasswordLink(user)
+                sendSetPasswordLink(user.email!!, userCN, user.firstName, user.fullName, call)
+            else sendForgotPasswordLink(user, call)
         } catch (e: NameNotFoundException) {
             sendNoUserEmail(emailAddress)
         } catch (e: Exception) {
@@ -81,8 +82,10 @@ class DeltaForgotPasswordController(
         call.redirectSentEmailPage(emailAddress)
     }
 
-    private suspend fun sendForgotPasswordLink(user: LdapUser) {
+    private suspend fun sendForgotPasswordLink(user: LdapUser, call: ApplicationCall) {
         logger.atInfo().addKeyValue("emailAddress", user.email).log("Sending reset-password email")
+        val resetPasswordToken = resetPasswordTokenService.createToken(user.cn)
+        userAuditService.userForgotPasswordAudit(user.cn, call)
         emailService.sendTemplateEmail(
             "reset-password",
             EmailContacts(
@@ -98,7 +101,7 @@ class DeltaForgotPasswordController(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
                 "resetPasswordUrl" to getResetPasswordURL(
-                    resetPasswordTokenService.createToken(user.cn),
+                    resetPasswordToken,
                     user.cn,
                     authServiceConfig.serviceUrl
                 )
@@ -128,9 +131,12 @@ class DeltaForgotPasswordController(
         emailAddress: String,
         userCN: String,
         userFirstName: String,
-        userFullName: String
+        userFullName: String,
+        call: ApplicationCall,
     ) {
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sending password-never-set email")
+        val setPasswordToken = registrationSetPasswordTokenService.createToken(userCN)
+        userAuditService.setPasswordEmailAudit(userCN, call)
         emailService.sendTemplateEmail(
             "password-never-set",
             EmailContacts(
@@ -145,7 +151,7 @@ class DeltaForgotPasswordController(
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "setPasswordUrl" to getSetPasswordURL(
-                    registrationSetPasswordTokenService.createToken(userCN),
+                    setPasswordToken,
                     userCN,
                     authServiceConfig.serviceUrl
                 ),

@@ -1,3 +1,5 @@
+@file:Suppress("SqlSourceToSinkFlow", "SqlResolve")
+
 package uk.gov.communities.delta.auth.services
 
 import kotlinx.coroutines.Dispatchers

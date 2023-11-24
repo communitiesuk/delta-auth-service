@@ -39,6 +39,26 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         )
     }
 
+    suspend fun userForgotPasswordAudit(
+        userCn: String,
+        call: ApplicationCall,
+    ) {
+        insertAuditRow(
+            UserAuditTrailRepo.AuditAction.FORGOT_PASSWORD_EMAIL,
+            userCn, null, call.callId!!, "{}"
+        )
+    }
+
+    suspend fun setPasswordEmailAudit(
+        userCn: String,
+        call: ApplicationCall,
+    ) {
+        insertAuditRow(
+            UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL,
+            userCn, null, call.callId!!, "{}"
+        )
+    }
+
     private suspend fun insertAuditRow(
         action: UserAuditTrailRepo.AuditAction,
         userCn: String,
