@@ -6,7 +6,7 @@ import javax.naming.NameNotFoundException
 import javax.naming.directory.*
 
 class GroupService(
-    private val ldapService: LdapService,
+    private val ldapServiceUserBind: LdapServiceUserBind,
     private val ldapConfig: LDAPConfig,
 ) {
 
@@ -23,7 +23,7 @@ class GroupService(
 
     suspend fun groupExists(groupDn: String): Boolean {
         return try {
-            val attributes = ldapService.useServiceUserBind {
+            val attributes = ldapServiceUserBind.useServiceUserBind {
                 it.getAttributes(
                     groupDn,
                     arrayOf("cn")
@@ -41,7 +41,7 @@ class GroupService(
         if (!groupExists(groupDN)) {
             createGroup(groupCN)
         }
-        ldapService.useServiceUserBind {
+        ldapServiceUserBind.useServiceUserBind {
             val member = BasicAttribute("member", adUser.dn)
             val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
             it.modifyAttributes(groupDN, modificationItems)
@@ -53,7 +53,7 @@ class GroupService(
         val container: Attributes = BasicAttributes()
         container.put(adGroup.objectClasses)
         container.put(BasicAttribute("cn", adGroup.cn))
-        ldapService.useServiceUserBind {
+        ldapServiceUserBind.useServiceUserBind {
             it.createSubcontext(adGroup.dn, container)
             logger.info("Group with dn {} created on active directory", adGroup.dn)
         }

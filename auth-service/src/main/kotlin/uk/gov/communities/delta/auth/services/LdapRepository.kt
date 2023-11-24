@@ -1,7 +1,5 @@
 package uk.gov.communities.delta.auth.services
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
@@ -12,16 +10,9 @@ import javax.naming.Context
 import javax.naming.NamingException
 import javax.naming.directory.Attributes
 import javax.naming.directory.InitialDirContext
-import javax.naming.directory.SearchControls
-import javax.naming.ldap.Control
 import javax.naming.ldap.InitialLdapContext
-import javax.naming.ldap.PagedResultsControl
-import javax.naming.ldap.PagedResultsResponseControl
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
-class LdapService(
+class LdapRepository(
     private val ldapConfig: LDAPConfig,
 ) {
 
@@ -50,21 +41,6 @@ class LdapService(
         } catch (e: NamingException) {
             logger.debug("LDAP bind failed for user $userDn", e)
             throw e
-        }
-    }
-
-    @OptIn(ExperimentalContracts::class)
-    suspend fun <R> useServiceUserBind(block: (InitialLdapContext) -> R): R {
-        contract {
-            callsInPlace(block, InvocationKind.AT_MOST_ONCE)
-        }
-        return withContext(Dispatchers.IO) {
-            val ctx = bind(ldapConfig.authServiceUserDn, ldapConfig.authServiceUserPassword, poolConnection = true)
-            try {
-                block(ctx)
-            } finally {
-                ctx.close()
-            }
         }
     }
 
@@ -175,29 +151,3 @@ data class LdapUser(
 )
 
 class InvalidLdapUserException(message: String) : Exception(message)
-
-@Blocking
-fun <T> InitialLdapContext.searchPaged(
-    dn: String, filter: String, searchControls: SearchControls,
-    pageSize: Int, mapper: (Attributes) -> T?,
-): List<T> {
-    val accumulatedResults = mutableListOf<T>()
-    var pagedResultsCookie: ByteArray?
-    requestControls = arrayOf(
-        PagedResultsControl(pageSize, Control.CRITICAL)
-    )
-
-    do {
-        val searchResult = search(dn, filter, searchControls)
-
-        do {
-            searchResult.next().attributes.let(mapper)?.let { accumulatedResults.add(it) }
-        } while (searchResult.hasMore())
-
-        pagedResultsCookie = responseControls?.filterIsInstance(PagedResultsResponseControl::class.java)
-            ?.firstOrNull()?.cookie
-        requestControls = arrayOf(PagedResultsControl(pageSize, pagedResultsCookie, Control.CRITICAL))
-    } while (pagedResultsCookie != null)
-
-    return accumulatedResults
-}

@@ -8,7 +8,7 @@ import java.io.UnsupportedEncodingException
 import javax.naming.directory.*
 
 class UserService(
-    private val ldapService: LdapService,
+    private val ldapServiceUserBind: LdapServiceUserBind,
     private val userLookupService: UserLookupService,
 ) {
 
@@ -40,7 +40,7 @@ class UserService(
         if (enabled && adUser.password == null) {
             throw Exception("Trying to create user with no password")
         } else {
-            ldapService.useServiceUserBind {
+            ldapServiceUserBind.useServiceUserBind {
                 try {
                     it.createSubcontext(adUser.dn, container)
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
@@ -61,7 +61,7 @@ class UserService(
                 BasicAttribute("userAccountControl", ADUser.accountFlags(true))
             )
         )
-        ldapService.useServiceUserBind {
+        ldapServiceUserBind.useServiceUserBind {
             try {
                 it.modifyAttributes(userDN, modificationItems)
                 logger.atInfo().addKeyValue("UserDN", userDN).log("Account enabled and password set")
@@ -83,7 +83,7 @@ class UserService(
             "Trying to reset password for a disabled user $userDN",
             "Your account is disabled, your password can not be reset. Please contact the service desk"
         )
-        else ldapService.useServiceUserBind {
+        else ldapServiceUserBind.useServiceUserBind {
             try {
                 it.modifyAttributes(userDN, modificationItems)
                 logger.atInfo().addKeyValue("userDN", userDN).log("Password reset")

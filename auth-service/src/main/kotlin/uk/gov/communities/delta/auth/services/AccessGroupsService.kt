@@ -19,7 +19,7 @@ data class AccessGroup(
 )
 
 
-class AccessGroupsService(private val ldapService: LdapService, val config: LDAPConfig) {
+class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, val config: LDAPConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -29,7 +29,7 @@ class AccessGroupsService(private val ldapService: LdapService, val config: LDAP
     suspend fun getAllAccessGroups(): List<AccessGroup> {
         val startTime = System.currentTimeMillis()
 
-        return ldapService.useServiceUserBind { ctx ->
+        return ldapServiceUserBind.useServiceUserBind { ctx ->
             val accessGroups =
                 ctx.searchPaged(config.accessGroupContainerDn, "(objectClass=group)", searchControls(), PAGE_SIZE) {
                     val cn = it.get("cn").get() as String

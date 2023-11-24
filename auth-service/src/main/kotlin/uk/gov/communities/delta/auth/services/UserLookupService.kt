@@ -5,7 +5,8 @@ import javax.naming.NameNotFoundException
 
 class UserLookupService(
     private val config: Configuration,
-    private val ldapService: LdapService,
+    private val ldapServiceUserBind: LdapServiceUserBind,
+    private val ldapRepository: LdapRepository,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -32,8 +33,8 @@ class UserLookupService(
 
     suspend fun lookupUserByDN(dn: String): LdapUser {
         logger.atInfo().addKeyValue("userDN", dn).log("Looking up user in AD")
-        return ldapService.useServiceUserBind {
-            ldapService.mapUserFromContext(it, dn)
+        return ldapServiceUserBind.useServiceUserBind {
+            ldapRepository.mapUserFromContext(it, dn)
         }
     }
 }
