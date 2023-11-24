@@ -191,7 +191,8 @@ class Injection(
         userService,
         registrationSetPasswordTokenService,
         userLookupService,
-        emailService
+        emailService,
+        userAuditService,
     )
 
     fun externalDeltaResetPasswordController() = DeltaResetPasswordController(

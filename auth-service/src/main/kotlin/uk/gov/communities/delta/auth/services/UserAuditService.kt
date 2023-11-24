@@ -42,6 +42,8 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
 
     val resetPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD)
 
+    val setPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD)
+
     private fun insertSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall) -> Unit {
         return { userCn: String, call: ApplicationCall ->
             insertAuditRow(auditAction, userCn, null, call.callId!!, "{}")

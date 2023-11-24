@@ -14,6 +14,7 @@ class UserAuditTrailRepo {
         FORGOT_PASSWORD_EMAIL("forgot_password_email"),
         SET_PASSWORD_EMAIL("set_password_email"),
         RESET_PASSWORD("reset_password"),
+        SET_PASSWORD("set_password"),
         ;
 
         companion object {
