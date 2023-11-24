@@ -38,29 +38,3 @@ class LdapServiceUserBind(
         }
     }
 }
-
-@Blocking
-fun <T> InitialLdapContext.searchPaged(
-    dn: String, filter: String, searchControls: SearchControls,
-    pageSize: Int, mapper: (Attributes) -> T?,
-): List<T> {
-    val accumulatedResults = mutableListOf<T>()
-    var pagedResultsCookie: ByteArray?
-    requestControls = arrayOf(
-        PagedResultsControl(pageSize, Control.CRITICAL)
-    )
-
-    do {
-        val searchResult = search(dn, filter, searchControls)
-
-        do {
-            searchResult.next().attributes.let(mapper)?.let { accumulatedResults.add(it) }
-        } while (searchResult.hasMore())
-
-        pagedResultsCookie = responseControls?.filterIsInstance(PagedResultsResponseControl::class.java)
-            ?.firstOrNull()?.cookie
-        requestControls = arrayOf(PagedResultsControl(pageSize, pagedResultsCookie, Control.CRITICAL))
-    } while (pagedResultsCookie != null)
-
-    return accumulatedResults
-}

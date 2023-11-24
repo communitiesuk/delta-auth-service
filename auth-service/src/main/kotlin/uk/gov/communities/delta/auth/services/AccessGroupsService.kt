@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.repositories.searchPaged
 import javax.naming.directory.Attributes
 import javax.naming.directory.SearchControls
 import kotlin.time.Duration.Companion.seconds

@@ -10,7 +10,11 @@ import javax.naming.Context
 import javax.naming.NamingException
 import javax.naming.directory.Attributes
 import javax.naming.directory.InitialDirContext
+import javax.naming.directory.SearchControls
+import javax.naming.ldap.Control
 import javax.naming.ldap.InitialLdapContext
+import javax.naming.ldap.PagedResultsControl
+import javax.naming.ldap.PagedResultsResponseControl
 
 class LdapRepository(
     private val ldapConfig: LDAPConfig,
@@ -151,3 +155,29 @@ data class LdapUser(
 )
 
 class InvalidLdapUserException(message: String) : Exception(message)
+
+@Blocking
+fun <T> InitialLdapContext.searchPaged(
+    dn: String, filter: String, searchControls: SearchControls,
+    pageSize: Int, mapper: (Attributes) -> T?,
+): List<T> {
+    val accumulatedResults = mutableListOf<T>()
+    var pagedResultsCookie: ByteArray?
+    requestControls = arrayOf(
+        PagedResultsControl(pageSize, Control.CRITICAL)
+    )
+
+    do {
+        val searchResult = search(dn, filter, searchControls)
+
+        do {
+            searchResult.next().attributes.let(mapper)?.let { accumulatedResults.add(it) }
+        } while (searchResult.hasMore())
+
+        pagedResultsCookie = responseControls?.filterIsInstance(PagedResultsResponseControl::class.java)
+            ?.firstOrNull()?.cookie
+        requestControls = arrayOf(PagedResultsControl(pageSize, pagedResultsCookie, Control.CRITICAL))
+    } while (pagedResultsCookie != null)
+
+    return accumulatedResults
+}
