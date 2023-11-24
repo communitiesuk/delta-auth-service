@@ -76,7 +76,7 @@ class OAuthSSOLoginTest {
             assertEquals(HttpStatusCode.Found, status)
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
-            verify(exactly = 1) { loginCounter.increment() }
+            verify(exactly = 1) { ssoLoginCounter.increment() }
             coVerify(exactly = 1) {
                 userAuditService.userSSOLoginAudit("cn", ssoClient, "abc-123", any())
             }
@@ -291,7 +291,7 @@ class OAuthSSOLoginTest {
         }
         every { ssoConfig.ssoClients } answers { listOf(ssoClient) }
         coEvery { userAuditService.userSSOLoginAudit(any(), any(), any(), any()) } returns Unit
-        every { loginCounter.increment() } just runs
+        every { ssoLoginCounter.increment() } just runs
     }
 
     private fun String.stateFromRedirectUrl() =
@@ -322,7 +322,7 @@ class OAuthSSOLoginTest {
         private lateinit var registrationService: RegistrationService
         private lateinit var organisationService: OrganisationService
         private lateinit var userAuditService: UserAuditService
-        private lateinit var loginCounter: Counter
+        private lateinit var ssoLoginCounter: Counter
 
         @BeforeClass
         @JvmStatic
@@ -334,7 +334,7 @@ class OAuthSSOLoginTest {
             registrationService = mockk<RegistrationService>()
             organisationService = mockk<OrganisationService>()
             userAuditService = mockk<UserAuditService>()
-            loginCounter = mockk<Counter>()
+            ssoLoginCounter = mockk<Counter>()
             val loginPageController = DeltaLoginController(
                 listOf(serviceClient),
                 ssoConfig,
@@ -355,7 +355,7 @@ class OAuthSSOLoginTest {
                 microsoftGraphServiceMock,
                 registrationService,
                 organisationService,
-                loginCounter,
+                ssoLoginCounter,
                 userAuditService,
             )
             val oauthClientProviderLookupService = SSOOAuthClientProviderLookupService(
