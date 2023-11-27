@@ -76,7 +76,7 @@
                 <div th:if="${ssoClients.size() > 0}">
                     <h2 class="govuk-heading-m">DLUHC users</h2>
                     <a class="govuk-button govuk-button--secondary" draggable="false" href="/delta/oauth/login"
-                       role="button" th:each="ssoClient: ${ssoClients}"
+                       role="button" style="margin-right: 1.5em" th:each="ssoClient: ${ssoClients}"
                        th:href="'/delta/oauth/' + ${ssoClient.internalId} + '/login'" th:text="${ssoClient.buttonText}">
                         Single Sign On
                     </a>
