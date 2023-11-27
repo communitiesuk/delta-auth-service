@@ -20,7 +20,7 @@ class RegistrationService(
 ) {
     sealed class RegistrationResult
     class UserCreated(val registration: Registration, val token: String, val userCN: String) : RegistrationResult()
-    object SSOUserCreated : RegistrationResult()
+    class SSOUserCreated(val userCN: String) : RegistrationResult()
     class UserAlreadyExists(val registration: Registration) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
@@ -52,7 +52,7 @@ class RegistrationService(
 
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
         return if (ssoUser)
-            SSOUserCreated
+            SSOUserCreated(adUser.cn)
         else
             UserCreated(registration, registrationSetPasswordTokenService.createToken(adUser.cn), adUser.cn)
     }

@@ -25,6 +25,7 @@ class DeltaSetPasswordController(
     private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
+    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
     private val passwordChecker = PasswordChecker()
@@ -74,7 +75,7 @@ class DeltaSetPasswordController(
         val token = formParameters["token"].orEmpty()
         val tokenResult = registrationSetPasswordTokenService.consumeTokenIfValid(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
-            sendNewSetPasswordLink(userCN)
+            sendNewSetPasswordLink(userCN, call)
             call.respondNewEmailSentPage(userCN.replace("!", "@"))
         } else throw Exception("tokenResult was $tokenResult when trying to send a new set password email")
     }
@@ -116,13 +117,16 @@ class DeltaSetPasswordController(
                     logger.atError().addKeyValue("UserDN", userDN).log("Error setting password for user", e)
                     throw e
                 }
+                userAuditService.setPasswordAudit(userCN, call)
                 call.respondRedirect("/delta/set-password/success")
             }
         }
     }
 
-    private suspend fun sendNewSetPasswordLink(userCN: String) {
+    private suspend fun sendNewSetPasswordLink(userCN: String, call: ApplicationCall) {
         val user = userLookupService.lookupUserByCn(userCN)
+        val setPasswordToken = registrationSetPasswordTokenService.createToken(userCN)
+        userAuditService.setPasswordEmailAudit(userCN, call)
         emailService.sendTemplateEmail(
             "not-yet-enabled-user",
             EmailContacts(
@@ -138,7 +142,7 @@ class DeltaSetPasswordController(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
                 "setPasswordUrl" to getSetPasswordURL(
-                    registrationSetPasswordTokenService.createToken(userCN),
+                    setPasswordToken,
                     userCN,
                     authServiceConfig.serviceUrl
                 )

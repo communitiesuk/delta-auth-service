@@ -78,6 +78,7 @@ class DeltaSetPasswordControllerTest {
             formParameters = correctFormParameters()
         ).apply {
             coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
+            coVerify(exactly = 1) { userAuditService.setPasswordAudit(userCN, any()) }
             assertSuccessPageRedirect(status, headers)
         }
     }
@@ -164,6 +165,7 @@ class DeltaSetPasswordControllerTest {
             coVerify(exactly = 1) { registrationSetPasswordTokenService.consumeTokenIfValid(expiredToken, userCN) }
             assertEquals(emailTemplate.captured, "not-yet-enabled-user")
             coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(userCN) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(userCN, any()) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your registration is pending your email activation")
         }
@@ -244,6 +246,7 @@ class DeltaSetPasswordControllerTest {
         private val userService = mockk<UserService>()
         private val userLookupService = mockk<UserLookupService>()
         private var emailTemplate = slot<String>()
+        private val userAuditService = mockk<UserAuditService>(relaxed = true)
 
 
         @BeforeClass
@@ -257,7 +260,8 @@ class DeltaSetPasswordControllerTest {
                 userService,
                 registrationSetPasswordTokenService,
                 userLookupService,
-                emailService
+                emailService,
+                userAuditService,
             )
             testApp = TestApplication {
                 application {

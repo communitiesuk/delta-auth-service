@@ -25,6 +25,7 @@ class DeltaResetPasswordController(
     private val resetPasswordTokenService: ResetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
+    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
     private val passwordChecker = PasswordChecker()
@@ -78,7 +79,7 @@ class DeltaResetPasswordController(
         val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             logger.atInfo().addKeyValue("userCN", userCN).log("Sending new reset password link (after expiry)")
-            sendNewResetPasswordLink(userCN)
+            sendNewResetPasswordLink(userCN, call)
             call.respondNewEmailSentPage(userCN.replace("!", "@"))
         } else throw Exception("tokenResult was $tokenResult when trying to send a new reset password email")
     }
@@ -128,16 +129,18 @@ class DeltaResetPasswordController(
                         .log("Error resetting password for user", e)
                     throw e
                 }
+                userAuditService.resetPasswordAudit(userCN, call)
                 call.respondRedirect("/delta/reset-password/success")
             }
         }
     }
 
-    private suspend fun sendNewResetPasswordLink(userCN: String) {
+    private suspend fun sendNewResetPasswordLink(userCN: String, call: ApplicationCall) {
         val user = userLookupService.lookupUserByCn(userCN)
         logger.atInfo().addKeyValue("userCN", userCN).addKeyValue("emailAddress", user.email)
             .log("Sending reset password link")
         val token = resetPasswordTokenService.createToken(userCN)
+        userAuditService.userForgotPasswordAudit(userCN, call)
         emailService.sendTemplateEmail(
             "reset-password",
             EmailContacts(

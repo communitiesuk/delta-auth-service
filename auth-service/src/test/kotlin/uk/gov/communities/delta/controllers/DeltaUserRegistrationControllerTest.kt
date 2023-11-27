@@ -42,12 +42,14 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationForNewStandardUser() = testSuspend {
+        coEvery { userAuditService.userSelfRegisterAudit(cnStart + standardDomain, any()) } returns Unit
         coEvery { userLookupService.userExists(cnStart + standardDomain) } returns false
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + standardDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any()) }
+            coVerify(exactly = 1) { userAuditService.userSelfRegisterAudit(cnStart + standardDomain, any()) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
@@ -151,12 +153,14 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationOfNewNotRequiredSSOUser() = testSuspend {
+        coEvery { userAuditService.userSelfRegisterAudit(cnStart + notRequiredDomain, any()) } just runs
         coEvery { userLookupService.userExists(cnStart + notRequiredDomain) } returns false
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any()) }
+            coVerify(exactly = 1) { userAuditService.userSelfRegisterAudit(cnStart + notRequiredDomain, any()) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
@@ -263,6 +267,7 @@ class DeltaUserRegistrationControllerTest {
         private val userService = mockk<UserService>()
         private val userLookupService = mockk<UserLookupService>()
         private val groupService = mockk<GroupService>()
+        private val userAuditService = mockk<UserAuditService>()
         const val emailStart = "user@"
         const val cnStart = "user!"
         const val standardDomain = "not.sso.domain.uk"
@@ -300,7 +305,8 @@ class DeltaUserRegistrationControllerTest {
                     )
                 ),
                 organisationService,
-                registrationService
+                registrationService,
+                userAuditService,
             )
             testApp = TestApplication {
                 application {

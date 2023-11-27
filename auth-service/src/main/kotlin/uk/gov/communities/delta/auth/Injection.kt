@@ -181,6 +181,7 @@ class Injection(
         azureADSSOConfig,
         organisationService,
         registrationService,
+        userAuditService,
     )
 
     fun externalDeltaSetPasswordController() = DeltaSetPasswordController(
@@ -191,7 +192,8 @@ class Injection(
         userService,
         registrationSetPasswordTokenService,
         userLookupService,
-        emailService
+        emailService,
+        userAuditService,
     )
 
     fun externalDeltaResetPasswordController() = DeltaResetPasswordController(
@@ -202,7 +204,8 @@ class Injection(
         userService,
         resetPasswordTokenService,
         userLookupService,
-        emailService
+        emailService,
+        userAuditService,
     )
 
     fun externalDeltaForgotPasswordController() = DeltaForgotPasswordController(
