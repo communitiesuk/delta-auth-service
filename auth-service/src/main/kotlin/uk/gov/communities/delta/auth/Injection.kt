@@ -9,6 +9,7 @@ import org.slf4j.Logger
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.*
+import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -92,6 +93,7 @@ class Injection(
     private val emailService = EmailService(emailConfig)
     private val userService = UserService(ldapServiceUserBind, userLookupService)
     private val accessGroupsService = AccessGroupsService(ldapServiceUserBind, ldapConfig)
+    private val groupService = GroupService(ldapServiceUserBind, ldapConfig)
 
     val dbPool = DbPool(databaseConfig)
 
@@ -110,7 +112,7 @@ class Injection(
             emailService,
             userService,
             userLookupService,
-            groupService()
+            groupService,
         )
 
     val authorizationCodeService = AuthorizationCodeService(dbPool, TimeSource.System)
@@ -254,5 +256,8 @@ class Injection(
             userAuditService,
         )
 
-    fun groupService() = GroupService(ldapServiceUserBind, ldapConfig)
+    fun fetchUserAuditController() = FetchUserAuditController(
+        userLookupService,
+        userAuditService,
+    )
 }

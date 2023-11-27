@@ -51,8 +51,8 @@ which allows us to use a standard OAuth client library in Delta.
 #### 1. Login Redirect
 
 Delta redirects unauthenticated users to the auth
-service `http://localhost:8088/delta/login?response_type=code&client_id=delta-website&state=1234`
-(use `client-id=delta-website-dev` for local dev).
+service `http://localhost:8088/delta/login?response_type=code&client_id=delta-website-dev&state=1234`
+(use `client-id=delta-website` for non-dev environments).
 
 The user will be shown a login page and provide a username and password as a standard form submission,
 or with Single Sign On through Azure AD if configured.
@@ -70,7 +70,7 @@ Note that the code is only valid for a short time.
 
 ```sh
 curl -X POST 'http://localhost:8088/auth-internal/token' \
-  -d "code=4321&client_id=delta-website&client_secret=dev-delta-website-client-secret"
+  -d "code=4321&client_id=delta-website-dev&client_secret=dev-delta-website-client-secret"
 ```
 
 The auth service will respond with an access token and information about the user.
@@ -103,10 +103,20 @@ the `/auth-internal/bearer/user-info` endpoint.
 ```sh
 curl 'http://localhost:8088/auth-internal/bearer/user-info' \
   --header 'Authorization: Bearer ABC123' \
-  --header 'Delta-Client: delta-website:dev-delta-website-client-secret'
+  --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret'
 ```
 
 The response is similar to above, though the access token is not repeated.
+
+### Other endpoints that accept bearer tokens
+
+#### Get user audit trail
+
+```sh
+curl 'http://localhost:8088/auth-internal/bearer/user-audit?cn=delta.admin' \
+  --header 'Authorization: Bearer ABC123' \
+  --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret'
+```
 
 ## GOV.UK Frontend
 
