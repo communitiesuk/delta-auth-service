@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.deltaRouteWithEmail
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import javax.naming.NameNotFoundException
 
 class DeltaForgotPasswordController(
@@ -23,6 +24,7 @@ class DeltaForgotPasswordController(
     private val emailService: EmailService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
+    private val emailAddressChecker = EmailAddressChecker()
 
     fun forgotPasswordFormRoutes(route: Route) {
         route.post {
@@ -45,7 +47,7 @@ class DeltaForgotPasswordController(
         val emailAddress = formParameters["emailAddress"].orEmpty()
 
         val message = if (Strings.isNullOrEmpty(emailAddress)) "An email address is required."
-        else if (!LDAPConfig.VALID_EMAIL_REGEX.matches(emailAddress)) "Must be a valid email address"
+        else if (!emailAddressChecker.hasValidFormat(emailAddress)) "Must be a valid email address"
         else null
         if (message != null) return call.respondForgotPasswordPage(message, emailAddress)
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Forgot password request")
