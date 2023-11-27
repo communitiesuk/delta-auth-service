@@ -11,7 +11,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.services.UserAuditService
-import uk.gov.communities.delta.auth.services.UserAuditTrailRepo
+import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

@@ -9,7 +9,7 @@ import org.junit.Before
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.services.GroupService
-import uk.gov.communities.delta.auth.services.LdapService
+import uk.gov.communities.delta.auth.services.LdapServiceUserBind
 import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.UserService
 import javax.naming.NameNotFoundException
@@ -20,12 +20,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GroupServiceTest {
-    private val ldapService = mockk<LdapService>()
+    private val ldapServiceUserBind = mockk<LdapServiceUserBind>()
     private val groupCN = "datamart-delta-group"
     private val groupDnFormat = "CN=%s"
     private val groupDN = String.format(groupDnFormat, groupCN)
     private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", groupDnFormat, "", "", "", "", "")
-    private val groupService = GroupService(ldapService, ldapConfig)
+    private val groupService = GroupService(ldapServiceUserBind, ldapConfig)
     private val container = slot<Attributes>()
     private val modificationItems = slot<Array<ModificationItem>>()
     private val context = mockk<InitialLdapContext>()
@@ -36,7 +36,7 @@ class GroupServiceTest {
     @Before
     fun setupMocks() {
         attributes.put(BasicAttribute("cn", groupCN))
-        coEvery { ldapService.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
+        coEvery { ldapServiceUserBind.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
         coEvery { context.createSubcontext(groupDN, capture(container)) } coAnswers { nothing }
         coEvery { context.modifyAttributes(groupDN, capture(modificationItems)) } coAnswers { nothing }
     }

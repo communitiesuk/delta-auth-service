@@ -11,7 +11,7 @@ import org.junit.Before
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
-import uk.gov.communities.delta.auth.services.LdapService
+import uk.gov.communities.delta.auth.services.LdapServiceUserBind
 import uk.gov.communities.delta.auth.services.Registration
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.UserService
@@ -23,11 +23,11 @@ import javax.naming.ldap.InitialLdapContext
 import kotlin.test.assertEquals
 
 class UserServiceTest {
-    private val ldapService = mockk<LdapService>()
+    private val ldapServiceUserBind = mockk<LdapServiceUserBind>()
     private val deltaUserDnFormat = "CN=%s"
     private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
     private val userLookupService = mockk<UserLookupService>()
-    private val userService = UserService(ldapService, userLookupService)
+    private val userService = UserService(ldapServiceUserBind, userLookupService)
     private val userEmail = "user@example.com"
     private val registration = Registration("Test", "User", userEmail)
     private val container = slot<Attributes>()
@@ -41,7 +41,7 @@ class UserServiceTest {
     fun setupMocks() {
         modificationItems.clear()
         contextBlock.clear()
-        coEvery { ldapService.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
+        coEvery { ldapServiceUserBind.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
         coEvery { context.createSubcontext(userDN, capture(container)) } coAnswers { nothing }
         coEvery { context.modifyAttributes(userDN, capture(modificationItems)) } coAnswers { nothing }
     }

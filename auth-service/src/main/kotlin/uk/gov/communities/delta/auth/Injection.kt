@@ -12,6 +12,9 @@ import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
+import uk.gov.communities.delta.auth.repositories.DbPool
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
@@ -75,18 +78,20 @@ class Injection(
     }
 
     private val samlTokenService = SAMLTokenService()
-    private val ldapService = LdapService(ldapConfig)
+    private val ldapRepository = LdapRepository(ldapConfig)
+    private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
     private val userLookupService = UserLookupService(
         UserLookupService.Configuration(
             ldapConfig.deltaUserDnFormat,
             ldapConfig.authServiceUserDn,
             ldapConfig.authServiceUserPassword,
         ),
-        ldapService
+        ldapServiceUserBind,
+        ldapRepository,
     )
     private val emailService = EmailService(emailConfig)
-    private val userService = UserService(ldapService, userLookupService)
-    private val accessGroupsService = AccessGroupsService(ldapService, ldapConfig)
+    private val userService = UserService(ldapServiceUserBind, userLookupService)
+    private val accessGroupsService = AccessGroupsService(ldapServiceUserBind, ldapConfig)
 
     val dbPool = DbPool(databaseConfig)
 
@@ -147,7 +152,7 @@ class Injection(
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
             ADLdapLoginService.Configuration(ldapConfig.serviceUserDnFormat),
-            ldapService
+            ldapRepository
         )
         return LdapAuthenticationService(adLoginService, ldapConfig.serviceUserRequiredGroupCn)
     }
@@ -157,7 +162,7 @@ class Injection(
     fun externalDeltaLoginController(): DeltaLoginController {
         val adLoginService = ADLdapLoginService(
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
-            ldapService
+            ldapRepository
         )
         return DeltaLoginController(
             clientConfig.oauthClients,
@@ -246,5 +251,5 @@ class Injection(
             userAuditService,
         )
 
-    fun groupService() = GroupService(ldapService, ldapConfig)
+    fun groupService() = GroupService(ldapServiceUserBind, ldapConfig)
 }

@@ -1,4 +1,4 @@
-package uk.gov.communities.delta.auth.services
+package uk.gov.communities.delta.auth.repositories
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement

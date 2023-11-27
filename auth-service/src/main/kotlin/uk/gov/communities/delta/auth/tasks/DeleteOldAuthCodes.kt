@@ -1,7 +1,7 @@
 package uk.gov.communities.delta.auth.tasks
 
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.services.DbPool
+import uk.gov.communities.delta.auth.repositories.DbPool
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.temporal.ChronoUnit

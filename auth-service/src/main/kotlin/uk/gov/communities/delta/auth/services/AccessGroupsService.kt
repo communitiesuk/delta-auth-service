@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.repositories.searchPaged
 import javax.naming.directory.Attributes
 import javax.naming.directory.SearchControls
 import kotlin.time.Duration.Companion.seconds
@@ -19,7 +20,7 @@ data class AccessGroup(
 )
 
 
-class AccessGroupsService(private val ldapService: LdapService, val config: LDAPConfig) {
+class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, val config: LDAPConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -29,7 +30,7 @@ class AccessGroupsService(private val ldapService: LdapService, val config: LDAP
     suspend fun getAllAccessGroups(): List<AccessGroup> {
         val startTime = System.currentTimeMillis()
 
-        return ldapService.useServiceUserBind { ctx ->
+        return ldapServiceUserBind.useServiceUserBind { ctx ->
             val accessGroups =
                 ctx.searchPaged(config.accessGroupContainerDn, "(objectClass=group)", searchControls(), PAGE_SIZE) {
                     val cn = it.get("cn").get() as String

@@ -10,7 +10,7 @@ import org.opensaml.saml.saml2.core.*
 import org.opensaml.saml.saml2.core.impl.*
 import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.utils.timed
 import java.io.StringWriter
 import java.nio.charset.StandardCharsets

@@ -6,7 +6,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.utils.TimeSource
+import uk.gov.communities.delta.auth.utils.hashBase64String
+import uk.gov.communities.delta.auth.utils.randomBase64
 import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours

@@ -5,8 +5,8 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.services.LdapService
-import uk.gov.communities.delta.auth.services.LdapUser
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import javax.naming.AuthenticationException
 import javax.naming.CommunicationException
 import javax.naming.NamingException
@@ -42,7 +42,7 @@ interface IADLdapLoginService {
 
 class ADLdapLoginService(
     private val config: Configuration,
-    private val ldapService: LdapService,
+    private val ldapRepository: LdapRepository,
 ) : IADLdapLoginService {
     data class Configuration(val userDnFormat: String)
 
@@ -74,8 +74,8 @@ class ADLdapLoginService(
     private fun ldapBind(userDn: String, password: String): IADLdapLoginService.LdapLoginResult {
         var context: InitialDirContext? = null
         return try {
-            context = ldapService.bind(userDn, password)
-            val user = ldapService.mapUserFromContext(context, userDn)
+            context = ldapRepository.bind(userDn, password)
+            val user = ldapRepository.mapUserFromContext(context, userDn)
             if (!user.accountEnabled) throw Exception("Logged in user '${user.cn}' is disabled, this should never happen")
             IADLdapLoginService.LdapLoginSuccess(user)
         } catch (e: NamingException) {

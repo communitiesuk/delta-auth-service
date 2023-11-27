@@ -1,4 +1,4 @@
-package uk.gov.communities.delta.auth.services
+package uk.gov.communities.delta.auth.repositories
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource

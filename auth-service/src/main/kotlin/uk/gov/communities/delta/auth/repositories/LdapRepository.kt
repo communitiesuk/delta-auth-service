@@ -1,7 +1,5 @@
-package uk.gov.communities.delta.auth.services
+package uk.gov.communities.delta.auth.repositories
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
@@ -17,11 +15,8 @@ import javax.naming.ldap.Control
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.ldap.PagedResultsControl
 import javax.naming.ldap.PagedResultsResponseControl
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
-class LdapService(
+class LdapRepository(
     private val ldapConfig: LDAPConfig,
 ) {
 
@@ -50,21 +45,6 @@ class LdapService(
         } catch (e: NamingException) {
             logger.debug("LDAP bind failed for user $userDn", e)
             throw e
-        }
-    }
-
-    @OptIn(ExperimentalContracts::class)
-    suspend fun <R> useServiceUserBind(block: (InitialLdapContext) -> R): R {
-        contract {
-            callsInPlace(block, InvocationKind.AT_MOST_ONCE)
-        }
-        return withContext(Dispatchers.IO) {
-            val ctx = bind(ldapConfig.authServiceUserDn, ldapConfig.authServiceUserPassword, poolConnection = true)
-            try {
-                block(ctx)
-            } finally {
-                ctx.close()
-            }
         }
     }
 

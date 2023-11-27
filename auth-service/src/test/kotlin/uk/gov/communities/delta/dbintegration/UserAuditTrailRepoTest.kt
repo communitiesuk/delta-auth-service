@@ -4,7 +4,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.services.UserAuditTrailRepo
+import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
