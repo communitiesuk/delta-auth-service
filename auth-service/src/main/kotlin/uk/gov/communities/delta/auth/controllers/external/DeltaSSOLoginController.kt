@@ -25,6 +25,7 @@ import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
+import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import uk.gov.communities.delta.auth.utils.emailToDomain
 import javax.naming.NameNotFoundException
 
@@ -45,6 +46,7 @@ class DeltaSSOLoginController(
     private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val emailAddressChecker = EmailAddressChecker()
 
     fun route(route: Route) {
         route.get("/login") {
@@ -188,6 +190,14 @@ class DeltaSSOLoginController(
     }
 
     private fun checkEmailDomain(email: String, ssoClient: AzureADSSOClient) {
+        if (!emailAddressChecker.hasValidFormat(email)) {
+            logger.error("SSO user has invalid email '{}'", email)
+            throw OAuthLoginException(
+                "invalid_email_address",
+                "Invalid email address '$email'",
+                "Single Sign On is misconfigured for your user (invalid email address). Please contact the service desk"
+            )
+        }
         if (!email.endsWith(ssoClient.emailDomain)) {
             throw OAuthLoginException(
                 "invalid_email_domain",
@@ -242,7 +252,6 @@ class DeltaSSOLoginController(
     }
 
     @Serializable
-    // TODO DT-572 Figure out whether unique_name is reliably the user's email address in DLUHC AD
     // Azure AD doesn't seem to validate emails at all so using the "email" claim doesn't seem ideal
     data class JwtBody(
         @SerialName("unique_name") val uniqueName: String,
