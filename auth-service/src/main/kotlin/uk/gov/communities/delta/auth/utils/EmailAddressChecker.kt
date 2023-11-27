@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.utils
 
+import jakarta.mail.internet.InternetAddress
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.services.Organisation
 import java.util.*
@@ -9,6 +10,14 @@ class EmailAddressChecker {
 
     fun hasValidFormat(email: String): Boolean {
         if (email.count { it == '@' } != 1) return false
+
+        try {
+            // Otherwise jakarta.mail will throw an exception later when we attempt to send an email
+            InternetAddress(email).validate()
+        } catch (e: Exception) {
+            return false
+        }
+
         val cn = email.replace("@", "!")
         return LDAPConfig.VALID_EMAIL_REGEX.matches(email) && LDAPConfig.VALID_USERNAME_REGEX.matches(cn)
     }
