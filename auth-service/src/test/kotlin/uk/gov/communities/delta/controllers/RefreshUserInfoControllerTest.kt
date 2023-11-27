@@ -19,6 +19,7 @@ import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.bearerTokenRoutes
+import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
@@ -120,7 +121,7 @@ class RefreshUserInfoControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(controller)
+                        bearerTokenRoutes(controller, mockk<FetchUserAuditController>(relaxed = true))
                     }
                 }
             }

@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.services
 
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.LDAPConfig.Companion.DATAMART_DELTA_PREFIX
 
 typealias MemberOfToDeltaRolesMapperFactory = (
     username: String,
@@ -15,7 +16,6 @@ class MemberOfToDeltaRolesMapper(
     allAccessGroups: List<AccessGroup>,
 ) {
     companion object {
-        const val DATAMART_DELTA_PREFIX = "datamart-delta-"
         private val logger = LoggerFactory.getLogger(MemberOfToDeltaRolesMapper::class.java)
     }
 

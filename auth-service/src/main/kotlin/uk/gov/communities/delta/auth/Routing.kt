@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.*
+import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -192,13 +193,14 @@ fun Route.internalRoutes(injection: Injection) {
     val generateSAMLTokenController = injection.generateSAMLTokenController()
     val oauthTokenController = injection.internalOAuthTokenController()
     val refreshUserInfoController = injection.refreshUserInfoController()
+    val fetchUserAuditController = injection.fetchUserAuditController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController)
 
         oauthTokenRoute(oauthTokenController)
 
-        bearerTokenRoutes(refreshUserInfoController)
+        bearerTokenRoutes(refreshUserInfoController, fetchUserAuditController)
     }
 }
 
@@ -208,13 +210,16 @@ fun Route.oauthTokenRoute(oauthTokenController: OAuthTokenController) {
     }
 }
 
-fun Route.bearerTokenRoutes(refreshUserInfoController: RefreshUserInfoController) {
+fun Route.bearerTokenRoutes(refreshUserInfoController: RefreshUserInfoController, fetchUserAuditController: FetchUserAuditController) {
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
             install(addClientIdToMDC)
             install(addBearerSessionInfoToMDC)
             route("/bearer/user-info") {
                 refreshUserInfoController.route(this)
+            }
+            route("/bearer/user-audit") {
+                fetchUserAuditController.route(this)
             }
         }
     }
