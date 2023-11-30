@@ -1,7 +1,8 @@
 package uk.gov.communities.delta.auth.repositories
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.jetbrains.annotations.Blocking
 import java.sql.Connection
 import java.sql.ResultSet
@@ -25,13 +26,18 @@ class UserAuditTrailRepo {
     }
 
     @Blocking
-    fun getAuditForUser(conn: Connection, userCn: String): List<UserAuditRow> {
+    fun getAuditForUser(conn: Connection, userCn: String, limitOffset: Pair<Int, Int>? = null): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
             "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
                     "FROM user_audit WHERE user_cn = ? " +
-                    "ORDER BY timestamp"
+                    "ORDER BY timestamp DESC " +
+                    if (limitOffset != null) "LIMIT ? OFFSET ?" else ""
         )
         stmt.setString(1, userCn)
+        if (limitOffset != null) {
+            stmt.setInt(2, limitOffset.first)
+            stmt.setInt(3, limitOffset.second)
+        }
 
         return stmt.executeQuery().map {
             UserAuditRow(
@@ -40,7 +46,7 @@ class UserAuditTrailRepo {
                 it.getString("user_cn"),
                 it.getString("editing_user_cn"),
                 it.getString("request_id"),
-                Json.parseToJsonElement(it.getString("action_data")),
+                Json.parseToJsonElement(it.getString("action_data")).jsonObject,
             )
         }
     }
@@ -72,7 +78,7 @@ class UserAuditTrailRepo {
         val userCn: String,
         val editingUserCn: String?,
         val requestId: String,
-        val actionData: JsonElement,
+        val actionData: JsonObject,
     )
 }
 

@@ -116,12 +116,23 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             )
             call.respondStatusPage(errorPage, deltaWebsiteUrl)
         }
-        exception(HttpNotFoundException::class) { call, ex ->
+        exception(HttpNotFound404PageException::class) { call, ex ->
             logger.error("StatusPages NotFoundException", ex)
             call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl)
         }
+        exception(ApiError::class) { call, ex ->
+            logger.error("StatusPages API Error {}", keyValue("errorCode", ex.errorCode), ex)
+            call.apiErrorResponse(ex)
+        }
     }
 }
+
+open class ApiError(
+    val statusCode: HttpStatusCode,
+    val errorCode: String,
+    val errorDescription: String,
+    val userVisibleMessage: String? = null,
+) : Exception("$errorCode ($statusCode) $errorDescription")
 
 open class UserVisibleServerError(
     val errorCode: String,
@@ -131,7 +142,7 @@ open class UserVisibleServerError(
 ) :
     Exception("$errorCode $exceptionMessage")
 
-class HttpNotFoundException(message: String) : Exception(message)
+class HttpNotFound404PageException(message: String) : Exception(message)
 
 private val statusErrorPageDefinitions = mapOf(
     HttpStatusCode.NotFound to StatusErrorPageDefinition(
@@ -160,7 +171,19 @@ private suspend fun ApplicationCall.respondStatusPage(statusError: StatusErrorPa
 }
 
 private suspend fun ApplicationCall.apiErrorResponse(statusError: StatusErrorPageDefinition) {
-    respond(statusError.statusCode, mapOf("error" to statusError.jsonError))
+    respond(statusError.statusCode, mapOf(
+        "error" to statusError.jsonError,
+        "error_description" to "User visible error ${statusError.userErrorPageTitle}",
+        "user_visible_error" to statusError.userErrorPageMessage,
+    ))
+}
+
+private suspend fun ApplicationCall.apiErrorResponse(apiError: ApiError) {
+    respond(apiError.statusCode, mapOf(
+        "error" to apiError.errorCode,
+        "error_description" to apiError.errorDescription,
+        "user_visible_error" to apiError.userVisibleMessage,
+    ))
 }
 
 private suspend fun ApplicationCall.userFacingErrorResponse(
