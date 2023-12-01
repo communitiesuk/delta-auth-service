@@ -19,7 +19,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.plugins.HttpNotFoundException
+import uk.gov.communities.delta.auth.plugins.HttpNotFound404PageException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
@@ -137,10 +137,10 @@ class DeltaSSOLoginController(
     }
 
     private fun getSSOClient(call: ApplicationCall): AzureADSSOClient {
-        if (!call.parameters.contains("ssoClientId")) throw HttpNotFoundException("No SSO Client id")
+        if (!call.parameters.contains("ssoClientId")) throw HttpNotFound404PageException("No SSO Client id")
         val ssoClientId = call.parameters["ssoClientId"]!!
         return ssoConfig.ssoClients.firstOrNull { it.internalId == ssoClientId }
-            ?: throw HttpNotFoundException("No OAuth client found for id $ssoClientId")
+            ?: throw HttpNotFound404PageException("No OAuth client found for id $ssoClientId")
     }
 
     private fun validateOAuthStateInSession(call: ApplicationCall): LoginSessionCookie {

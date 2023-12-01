@@ -10,8 +10,10 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.junit.AfterClass
+import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.bearerTokenRoutes
@@ -44,7 +46,7 @@ class FetchUserAuditControllerTest {
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            val response = Json.parseToJsonElement(bodyAsText()).jsonArray
+            val response = Json.parseToJsonElement(bodyAsText()).jsonObject["userAudit"]!!.jsonArray
             assertEquals(1, response.size)
             assertEquals(
                 UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL.action,
@@ -66,14 +68,16 @@ class FetchUserAuditControllerTest {
     }
 
     @Test
-    fun testUserCannotReadAdminAudit() = testSuspend {
-        testClient.get("/bearer/user-audit?cn=admin") {
-            headers {
-                append("Authorization", "Bearer ${userSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+    fun testUserCannotReadAdminAudit() {
+        Assert.assertThrows(FetchUserAuditController.AccessDeniedError::class.java) {
+            runBlocking {
+                testClient.get("/bearer/user-audit?cn=admin") {
+                    headers {
+                        append("Authorization", "Bearer ${userSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                }
             }
-        }.apply {
-            assertEquals(HttpStatusCode.Forbidden, status)
         }
     }
 
@@ -87,9 +91,30 @@ class FetchUserAuditControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals(
-                "[{\"action\":\"sso_login\",\"timestamp\":\"1970-01-01T00:00:01Z\",\"userCN\":\"admin\"," +
+                "{\"userAudit\":[{\"action\":\"sso_login\",\"timestamp\":\"1970-01-01T00:00:01Z\",\"userCN\":\"admin\"," +
                         "\"editingUserCN\":null,\"requestId\":\"adminRequestId\"," +
-                        "\"actionData\":{\"azureObjectId\":\"oid\"}}]",
+                        "\"actionData\":{\"azureObjectId\":\"oid\"}}]}",
+                bodyAsText()
+            )
+        }
+    }
+
+    @Test
+    fun testCSVDownload() = testSuspend {
+        testClient.get("/bearer/user-audit/csv?cn=admin") {
+            headers {
+                append("Authorization", "Bearer ${adminSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                set("Accept", "application/csv")
+            }
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertEquals(
+                """
+                    action,timestamp,userCN,editingUserCN,requestId,azureObjectId
+                    sso_login,1970-01-01T00:00:01Z,admin,,adminRequestId,oid
+                    
+                """.trimIndent(),
                 bodyAsText()
             )
         }

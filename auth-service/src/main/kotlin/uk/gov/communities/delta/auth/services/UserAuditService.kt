@@ -12,10 +12,15 @@ import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 
 class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, private val dbPool: DbPool) {
-    suspend fun getAuditForUser(userCn: String): List<UserAuditTrailRepo.UserAuditRow> {
+    suspend fun getAuditForUser(userCn: String) = getAudit(userCn, null)
+
+    suspend fun getAuditForUserPaged(userCn: String, page: Int, pageSize: Int) =
+        getAudit(userCn, Pair(pageSize, (page - 1) * pageSize))
+
+    private suspend fun getAudit(userCn: String, limitOffset: Pair<Int, Int>?): List<UserAuditTrailRepo.UserAuditRow> {
         return withContext(Dispatchers.IO) {
             dbPool.useConnectionBlocking("user_audit_read") {
-                userAuditTrailRepo.getAuditForUser(it, userCn)
+                userAuditTrailRepo.getAuditForUser(it, userCn, limitOffset)
             }
         }
     }
