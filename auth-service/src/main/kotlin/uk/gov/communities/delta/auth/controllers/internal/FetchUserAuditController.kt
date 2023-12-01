@@ -35,7 +35,7 @@ class FetchUserAuditController(
         val session = principal<OAuthSession>()!!
         val page = parameters["page"]?.toInt()
         val audit = getUserAudit(session, parameters.getOrFail("cn"), page)
-        return respond(audit.map {
+        return respond(mapOf("userAudit" to audit.map {
             JsonObject(
                 mapOf(
                     "action" to JsonPrimitive(it.action.action),
@@ -46,7 +46,7 @@ class FetchUserAuditController(
                     "actionData" to it.actionData,
                 )
             )
-        })
+        }))
     }
 
     private suspend fun ApplicationCall.getUserAuditCSV() {
