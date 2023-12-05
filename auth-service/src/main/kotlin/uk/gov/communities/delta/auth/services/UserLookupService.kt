@@ -28,7 +28,6 @@ class UserLookupService(
     }
 
     suspend fun lookupUserByCn(cn: String): LdapUser {
-        logger.atInfo().addKeyValue("username", cn).log("Looking up user in AD")
         val dn = config.userDnFormat.format(cn)
         return lookupUserByDN(dn)
     }
