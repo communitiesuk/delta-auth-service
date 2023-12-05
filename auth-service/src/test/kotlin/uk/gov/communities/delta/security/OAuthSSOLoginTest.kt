@@ -267,6 +267,36 @@ class OAuthSSOLoginTest {
         }
     }
 
+    @Test
+    fun `Callback maps email domain from jwt`() = testSuspend {
+        coEvery {
+            microsoftGraphServiceMock.checkCurrentUserGroups(
+                emailMappingAccessToken,
+                listOf(emailMappingSSOClient.requiredGroupId!!, emailMappingSSOClient.requiredAdminGroupId!!)
+            )
+        } answers { listOf(emailMappingSSOClient.requiredGroupId!!) }
+        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!email-domain.com") } answers {
+            testLdapUser(cn = "user!email-domain.com", email = "user@email-domain.com", memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
+        }
+        coEvery { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()) } answers {
+            AuthCode("code", "user!email-domain.com", serviceClient, Instant.MIN, "trace")
+        }
+
+        val loginState = runBlocking {
+            val client = testClient()
+            client.get("/delta/login?response_type=code&client_id=delta-website&state=delta-state")
+            val state = client.get("/delta/oauth/mapping-test/login").headers["Location"]!!.stateFromRedirectUrl()
+            val cookie = client.cookies("http://localhost/")[0]
+            LoginState(cookie, state)
+        }
+        testClient(loginState.cookie).get("/delta/oauth/mapping-test/callback?code=auth-code&state=${loginState.state}")
+            .apply {
+                assertEquals(HttpStatusCode.Found, status)
+                assertEquals(headers["Location"], "https://delta/login/oauth2/redirect?code=code&state=delta-state")
+                coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()) }
+            }
+    }
+
     private fun testClient(cookie: Cookie? = null) = testApp.createClient {
         install(HttpCookies) {
             if (cookie != null) {
@@ -293,7 +323,7 @@ class OAuthSSOLoginTest {
         } answers {
             listOf(ssoClient.requiredGroupId!!)
         }
-        every { ssoConfig.ssoClients } answers { listOf(ssoClient) }
+        every { ssoConfig.ssoClients } answers { listOf(ssoClient, emailMappingSSOClient) }
         coEvery { userAuditService.userSSOLoginAudit(any(), any(), any(), any()) } returns Unit
         every { ssoLoginCounter.increment() } just runs
     }
@@ -316,9 +346,22 @@ class OAuthSSOLoginTest {
             requiredGroupId = "required-group-id",
             requiredAdminGroupId = "required-admin-group-id",
         )
+        private val emailMappingSSOClient = AzureADSSOClient(
+            "mapping-test",
+            "mapping-tenant-id",
+            "mapping-sso-client-id",
+            "mapping-sso-client-secret",
+            "@email-domain.com",
+            convertFromEmailDomain = "@azure-domain.com",
+            buttonText = "Test SSO",
+            requiredGroupId = "required-group-id",
+            requiredAdminGroupId = "required-admin-group-id",
+        )
         private val ssoConfig = mockk<AzureADSSOConfig>()
         private val accessToken =
             "header.${"{\"unique_name\": \"user@example.com\", \"given_name\": \"Example\", \"family_name\": \"User\", \"oid\": \"abc-123\"}".encodeBase64()}.trailer"
+        private val emailMappingAccessToken =
+            "header.${"{\"unique_name\": \"user@azure-domain.com\", \"given_name\": \"Example\", \"family_name\": \"User\", \"oid\": \"abc-321\"}".encodeBase64()}.trailer"
         private lateinit var ldapUserLookupServiceMock: UserLookupService
         private lateinit var authorizationCodeServiceMock: AuthorizationCodeService
         private lateinit var microsoftGraphServiceMock: MicrosoftGraphService
@@ -365,19 +408,25 @@ class OAuthSSOLoginTest {
             val oauthClientProviderLookupService = SSOOAuthClientProviderLookupService(
                 ssoConfig, ssoLoginStateService
             )
-            val mockOAuthTokenRequestHttpEngine = MockEngine {
-                respond(
-                    content = ByteReadChannel(
-                        """{
-                                "access_token": $accessToken,
+            val mockOAuthTokenRequestHttpEngine = MockEngine.create {
+                addHandler { request ->
+                    respond(
+                        content = ByteReadChannel(
+                            """{
+                                "access_token": ${
+                                if (request.url.toString()
+                                        .contains(emailMappingSSOClient.azTenantId)
+                                ) emailMappingAccessToken else accessToken
+                            },
                                 "token_type": "Bearer",
                                 "expires_in": 3599,
                                 "scope": "Some.Scope"
                             }"""
-                    ),
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
+                        ),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
             }
             testApp = TestApplication {
                 install(CallId) { generate(4) }
