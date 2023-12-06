@@ -279,7 +279,7 @@ class DeltaSSOLoginController(
             val split = jwt.split('.')
             if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
             val jsonString = split[1].decodeBase64String()
-            logger.info("QQ JWT Body {}", jsonString)
+            logger.debug("JWT Body {}", jsonString)
             return jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString)
         } catch (e: Exception) {
             logger.error("Error parsing JWT '{}'", jwt)
