@@ -151,7 +151,7 @@ class OAuthSSOLoginTest {
                 val registration = Registration("Example", "User", "user@example.com")
                 coVerify(exactly = 0) { registrationService.register(registration, organisations, true) }
                 assertEquals(HttpStatusCode.Found, status)
-                assertEquals("/delta/register", headers["Location"])
+                assertEquals("/delta/register?sso_email=user%40example.com", headers["Location"])
             }
     }
 

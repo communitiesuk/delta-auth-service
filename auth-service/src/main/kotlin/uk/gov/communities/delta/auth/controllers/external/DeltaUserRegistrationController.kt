@@ -48,6 +48,15 @@ class DeltaUserRegistrationController(
     }
 
     private suspend fun registerGet(call: ApplicationCall) {
+        val ssoEmail = call.parameters["sso_email"]
+        if (!ssoEmail.isNullOrEmpty()) {
+            call.respondRegisterPage(
+                emailAddress = ssoEmail,
+                confirmEmailAddress = ssoEmail,
+                otherErrors = listOf("No Delta account found with email $ssoEmail. Please register below, or contact the service desk if you already have an account with a different email."),
+                errorSummary = "Account not found",
+            )
+        }
         call.respondRegisterPage()
     }
 
@@ -202,23 +211,25 @@ class DeltaUserRegistrationController(
         lastName: String = "",
         emailAddress: String = "",
         confirmEmailAddress: String = "",
-        firstNameErrors: ArrayList<String> = ArrayList(),
-        lastNameErrors: ArrayList<String> = ArrayList(),
-        emailAddressErrors: ArrayList<String> = ArrayList(),
-        confirmEmailAddressErrors: ArrayList<String> = ArrayList(),
+        firstNameErrors: List<String> = emptyList(),
+        lastNameErrors: List<String> = emptyList(),
+        emailAddressErrors: List<String> = emptyList(),
+        confirmEmailAddressErrors: List<String> = emptyList(),
+        otherErrors: List<String> = emptyList(),
+        errorSummary: String = "There is a problem",
     ) {
-        val errors = ArrayList<ArrayList<String>>()
+        val errors = otherErrors.map { Pair(it, "#") }.toMutableList()
         firstNameErrors.forEach { message ->
-            errors.add(arrayListOf(message, "#firstName"))
+            errors.add(Pair(message, "#firstName"))
         }
         lastNameErrors.forEach { message ->
-            errors.add(arrayListOf(message, "#lastName"))
+            errors.add(Pair(message, "#lastName"))
         }
         emailAddressErrors.forEach { message ->
-            errors.add(arrayListOf(message, "#emailAddress"))
+            errors.add(Pair(message, "#emailAddress"))
         }
         confirmEmailAddressErrors.forEach { message ->
-            errors.add(arrayListOf(message, "#confirmEmailAddress"))
+            errors.add(Pair(message, "#confirmEmailAddress"))
         }
         respond(
             ThymeleafContent(
@@ -234,6 +245,7 @@ class DeltaUserRegistrationController(
                     "emailAddress" to emailAddress,
                     "confirmEmailErrorMessages" to confirmEmailAddressErrors,
                     "confirmEmailAddress" to confirmEmailAddress,
+                    "errorSummary" to errorSummary,
                 )
             )
         )
