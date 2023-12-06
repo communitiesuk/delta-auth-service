@@ -29,7 +29,8 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                             "register-user-form",
                             mapOf(
                                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                                "allErrors" to arrayListOf(arrayListOf(tooManyRequestsErrorMessage, "#")),
+                                "allErrors" to arrayListOf(Pair(tooManyRequestsErrorMessage, "#")),
+                                "errorSummary" to "Rate limit reached",
                             )
                         )
                     )
