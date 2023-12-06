@@ -75,8 +75,7 @@ class DeltaSSOLoginController(
 
         val principal = call.principal<OAuthAccessTokenResponse.OAuth2>()!!
         val jwt = parseTrustedAzureJwt(principal.accessToken)
-        val email = jwt.emailAddress
-        checkEmailDomain(email, ssoClient)
+        val email = emailFromJwt(jwt, ssoClient)
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
@@ -86,12 +85,13 @@ class DeltaSSOLoginController(
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
                 return call.respondRedirect("/delta/register")
             }
+            val registration = Registration(jwt.givenName, jwt.familyName, email, jwt.userObjectId)
             logger.info(
                 "SSO required user not found in AD, registering automatically using details from access token {}",
-                jwt
+                registration,
             )
             val registrationResult = registrationService.register(
-                jwt,
+                registration,
                 organisationService.findAllByDomain(emailToDomain(email)),
                 ssoUser = true
             )
@@ -99,7 +99,12 @@ class DeltaSSOLoginController(
                 logger.error("Error creating SSO User, result was {}", registrationResult.toString())
                 throw Exception("Error creating SSO User")
             }
-            userAuditService.ssoUserCreatedAudit(registrationResult.userCN, jwt.azureObjectId!!, ssoClient, call)
+            userAuditService.ssoUserCreatedAudit(
+                registrationResult.userCN,
+                registration.azureObjectId!!,
+                ssoClient,
+                call
+            )
             user = lookupUserInAd(email)!!
         }
 
@@ -115,7 +120,7 @@ class DeltaSSOLoginController(
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         ssoLoginCounter.increment()
-        userAuditService.userSSOLoginAudit(authCode.userCn, ssoClient, jwt.azureObjectId!!, call)
+        userAuditService.userSSOLoginAudit(authCode.userCn, ssoClient, jwt.userObjectId, call)
         call.sessions.clear<LoginSessionCookie>()
         call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
     }
@@ -189,7 +194,8 @@ class DeltaSSOLoginController(
         }
     }
 
-    private fun checkEmailDomain(email: String, ssoClient: AzureADSSOClient) {
+    private fun emailFromJwt(jwt: JwtBody, ssoClient: AzureADSSOClient): String {
+        val email = jwt.uniqueName.lowercase()
         if (!emailAddressChecker.hasValidFormat(email)) {
             logger.error("SSO user has invalid email '{}'", email)
             throw OAuthLoginException(
@@ -198,12 +204,18 @@ class DeltaSSOLoginController(
                 "Single Sign On is misconfigured for your user (invalid email address). Please contact the service desk"
             )
         }
-        if (!email.endsWith(ssoClient.emailDomain)) {
-            throw OAuthLoginException(
-                "invalid_email_domain",
-                "Expected email for SSO client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was '$email'",
-                "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk"
-            )
+        return when {
+            email.endsWith(ssoClient.emailDomain) -> email
+            ssoClient.convertFromEmailDomain != null && email.endsWith(ssoClient.convertFromEmailDomain) -> {
+                email.replace(ssoClient.convertFromEmailDomain, ssoClient.emailDomain)
+            }
+
+            else ->
+                throw OAuthLoginException(
+                    "invalid_email_domain",
+                    "Expected email for SSO client ${ssoClient.internalId} to end with ${ssoClient.emailDomain}, but was '$email'",
+                    "Single Sign On is misconfigured for your user (unexpected email domain). Please contact the service desk"
+                )
         }
     }
 
@@ -262,19 +274,13 @@ class DeltaSSOLoginController(
 
     private val jsonIgnoreUnknown = Json { ignoreUnknownKeys = true }
 
-    private fun parseTrustedAzureJwt(jwt: String): Registration {
+    private fun parseTrustedAzureJwt(jwt: String): JwtBody {
         try {
             val split = jwt.split('.')
             if (split.size != 3) throw InvalidJwtException("Invalid JWT, expected 3 components got ${split.size}}")
             val jsonString = split[1].decodeBase64String()
             logger.info("QQ JWT Body {}", jsonString)
-            val json = jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString)
-            return Registration(
-                json.givenName,
-                json.familyName,
-                json.uniqueName.lowercase(),
-                json.userObjectId,
-            )
+            return jsonIgnoreUnknown.decodeFromString<JwtBody>(jsonString)
         } catch (e: Exception) {
             logger.error("Error parsing JWT '{}'", jwt)
             throw InvalidJwtException("Error parsing JWT", e)
