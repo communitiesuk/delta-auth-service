@@ -92,7 +92,7 @@ class MemberOfToDeltaRolesMapperTest {
     fun testIgnoresInvalidAccessGroups() {
         val result = mapper().map(
             listOf(
-                "user-dclg", "invalid-group", "invalid-group-dclg"
+                "user-dclg", "invalid-group", "invalid-group-dclg", "delegate-access-group"
             ).map { "datamart-delta-$it" }
         )
 

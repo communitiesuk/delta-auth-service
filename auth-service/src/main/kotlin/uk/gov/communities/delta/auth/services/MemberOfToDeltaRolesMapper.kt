@@ -98,6 +98,7 @@ class MemberOfToDeltaRolesMapper(
         SYSTEM,
         EXTERNAL,
         ACCESS_GROUP,
+        DELEGATE,
     }
 
     private class ParsedRole(
@@ -133,19 +134,30 @@ class MemberOfToDeltaRolesMapper(
             if (orgId == null) groupWithoutPrefix
             else groupWithoutPrefix.substring(0, groupWithoutPrefix.length - (orgId.length + 1))
 
-        val roleType = determineRoleType(roleStr)
-        return if (roleType == null) {
-            logger.atWarn().addKeyValue("username", username).addKeyValue("role", roleStr)
-                .addKeyValue("orgId", orgId).addKeyValue("group", DATAMART_DELTA_PREFIX + groupWithoutPrefix)
-                .log("Ignoring group as unable to find matching system role or access group")
-            null
-        } else {
-            ParsedRole(roleStr, organisationsMap[orgId], roleType, DATAMART_DELTA_PREFIX + groupWithoutPrefix)
+        return when (val roleType = determineRoleType(roleStr)) {
+            null -> {
+                logger.atWarn().addKeyValue("username", username).addKeyValue("role", roleStr)
+                    .addKeyValue("orgId", orgId).addKeyValue("group", DATAMART_DELTA_PREFIX + groupWithoutPrefix)
+                    .log("Ignoring group as unable to find matching system role or access group")
+                null
+            }
+
+            RoleType.DELEGATE -> {
+                // Dataset admins are supposed to be able to be given delegated access to manage access groups,
+                // but this isn't implemented in Delta
+                logger.atDebug().addKeyValue("username", username).addKeyValue("role", roleStr)
+                    .addKeyValue("orgId", orgId).addKeyValue("group", DATAMART_DELTA_PREFIX + groupWithoutPrefix)
+                    .log("Ignoring delegate group")
+                null
+            }
+
+            else -> ParsedRole(roleStr, organisationsMap[orgId], roleType, DATAMART_DELTA_PREFIX + groupWithoutPrefix)
         }
     }
 
     private fun determineRoleType(role: String): RoleType? {
-        return if (DELTA_SYSTEM_ROLES.contains(role)) RoleType.SYSTEM
+        return if (role.startsWith("delegate-")) RoleType.DELEGATE
+        else if (DELTA_SYSTEM_ROLES.contains(role)) RoleType.SYSTEM
         else if (DELTA_EXTERNAL_ROLES.contains(role)) RoleType.EXTERNAL
         else if (allAccessGroupsMap.contains(role)) RoleType.ACCESS_GROUP
         else null
