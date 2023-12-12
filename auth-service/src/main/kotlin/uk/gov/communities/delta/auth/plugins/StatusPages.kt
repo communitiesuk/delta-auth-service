@@ -106,7 +106,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             }
         }
         exception(UserVisibleServerError::class) { call, ex ->
-            logger.error("StatusPages user visible error {}", keyValue("errorCode", ex.errorCode), ex)
+            logger.warn("StatusPages user visible error {}", keyValue("errorCode", ex.errorCode), ex)
             val errorPage = StatusErrorPageDefinition(
                 HttpStatusCode.InternalServerError,
                 "user_visible_server_error",

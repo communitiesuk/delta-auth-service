@@ -56,7 +56,7 @@ class DeltaResetPasswordController(
         val token = call.request.queryParameters["token"].orEmpty()
         when (val tokenResult = resetPasswordTokenService.validateToken(token, userCN)) {
             is PasswordTokenService.NoSuchToken -> {
-                logger.error("Reset password get request with invalid token and/or userCN")
+                logger.warn("Reset password get request with invalid token and/or userCN")
                 throw ResetPasswordException("reset_password_no_token", "Reset password token did not exist")
             }
 
