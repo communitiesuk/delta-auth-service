@@ -61,7 +61,7 @@ class SSOOAuthClientProviderLookupService(
             extraAuthParameters = if (expectedEmail != null) listOf(
                 Pair("login_hint", expectedEmail)
             ) else listOf(
-                Pair("domain_hint", ssoClient.convertFromEmailDomain ?: ssoClient.emailDomain)
+                Pair("domain_hint", ssoClient.convertFromEmailDomain?.substring(1) ?: ssoClient.emailDomain.substring(1))
             )
         )
 }
