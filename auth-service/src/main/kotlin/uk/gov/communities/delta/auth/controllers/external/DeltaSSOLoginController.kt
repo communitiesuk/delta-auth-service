@@ -83,7 +83,7 @@ class DeltaSSOLoginController(
         if (user == null) {
             if (!ssoClient.required) {
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
-                return call.respondRedirect("/delta/register?sso_email=${email.encodeURLParameter()}")
+                return call.respondRedirect("/delta/register?fromSSOEmail=${email.encodeURLParameter()}")
             }
             val registration = Registration(jwt.givenName, jwt.familyName, email, jwt.userObjectId)
             logger.info(

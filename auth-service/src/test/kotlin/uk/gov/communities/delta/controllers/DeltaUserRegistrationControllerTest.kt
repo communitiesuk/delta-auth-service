@@ -34,7 +34,7 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegisterPageFromSSO() = testSuspend {
-        testClient.get("/register?sso_email=user@example.com").apply {
+        testClient.get("/register?fromSSOEmail=${"user@example.com".encodeURLParameter()}").apply {
             assertFormPage(bodyAsText(), status)
             assertTrue(bodyAsText().contains("No Delta account found with email user@example.com"))
         }

@@ -48,7 +48,7 @@ class DeltaUserRegistrationController(
     }
 
     private suspend fun registerGet(call: ApplicationCall) {
-        val ssoEmail = call.parameters["sso_email"]
+        val ssoEmail = call.parameters["fromSSOEmail"]
         if (!ssoEmail.isNullOrEmpty()) {
             call.respondRegisterPage(
                 emailAddress = ssoEmail,
