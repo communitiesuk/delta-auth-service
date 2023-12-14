@@ -63,10 +63,11 @@ class DeltaUserRegistrationControllerTest {
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
             assertSuccessPageRedirect(status, headers, emailStart + standardDomain)
             coVerify(exactly = 1) {
-                emailService.sendTemplateEmail(
-                    "new-user",
+                emailService.sendSetPasswordEmail(
+                    "Test",
+                    "token",
+                    cnStart + standardDomain,
                     any(),
-                    "DLUHC DELTA - New User Account",
                     any()
                 )
             }
@@ -126,14 +127,7 @@ class DeltaUserRegistrationControllerTest {
         ).apply {
             coVerify(exactly = 0) { userService.createUser(any()) }
             assertSuccessPageRedirect(status, headers, emailStart + standardDomain)
-            coVerify(exactly = 1) {
-                emailService.sendTemplateEmail(
-                    "already-a-user",
-                    any(),
-                    "DLUHC DELTA - Existing Account",
-                    any()
-                )
-            }
+            coVerify(exactly = 1) { emailService.sendAlreadyAUserEmail(any(), any(), any()) }
         }
     }
 
@@ -174,10 +168,11 @@ class DeltaUserRegistrationControllerTest {
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
             assertSuccessPageRedirect(status, headers, emailStart + notRequiredDomain)
             coVerify(exactly = 1) {
-                emailService.sendTemplateEmail(
-                    "new-user",
+                emailService.sendSetPasswordEmail(
+                    "Test",
+                    "token",
+                    cnStart + notRequiredDomain,
                     any(),
-                    "DLUHC DELTA - New User Account",
                     any()
                 )
             }
@@ -193,14 +188,7 @@ class DeltaUserRegistrationControllerTest {
         ).apply {
             coVerify(exactly = 0) { userService.createUser(any()) }
             assertSuccessPageRedirect(status, headers, emailStart + notRequiredDomain)
-            coVerify(exactly = 1) {
-                emailService.sendTemplateEmail(
-                    "already-a-user",
-                    any(),
-                    "DLUHC DELTA - Existing Account",
-                    any()
-                )
-            }
+            coVerify(exactly = 1) { emailService.sendAlreadyAUserEmail("Test", cnStart + notRequiredDomain, any()) }
         }
     }
 
@@ -214,7 +202,7 @@ class DeltaUserRegistrationControllerTest {
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
             coVerify(exactly = 0) { userService.createUser(any()) }
-            coVerify(exactly = 0) { emailService.sendTemplateEmail(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
             assertFormPage(bodyAsText(), status)
             assertContains(bodyAsText(), "Email address domain not recognised")
         }
@@ -259,8 +247,9 @@ class DeltaUserRegistrationControllerTest {
         coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "Test org"))
         coEvery { userService.createUser(any()) } just runs
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
-        coEvery { registrationSetPasswordTokenService.createToken(any()) } returns "token"
-        coEvery { emailService.sendTemplateEmail(any(), any(), any(), any()) } just runs
+        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
+        coEvery { emailService.sendAlreadyAUserEmail(any(), any(), any()) } just runs
+        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any()) } just runs
     }
 
     companion object {
@@ -269,7 +258,7 @@ class DeltaUserRegistrationControllerTest {
         private lateinit var testClient: HttpClient
         private val deltaConfig = DeltaConfig.fromEnv()
         private val organisationService = mockk<OrganisationService>()
-        private val registrationSetPasswordTokenService = mockk<RegistrationSetPasswordTokenService>()
+        private val setPasswordTokenService = mockk<SetPasswordTokenService>()
         private val emailService = mockk<EmailService>()
         private val authServiceConfig = AuthServiceConfig("http://localhost", null)
         private val userService = mockk<UserService>()
@@ -290,8 +279,7 @@ class DeltaUserRegistrationControllerTest {
                 deltaConfig,
                 EmailConfig.fromEnv(),
                 LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
-                authServiceConfig,
-                registrationSetPasswordTokenService,
+                setPasswordTokenService,
                 emailService,
                 userService,
                 userLookupService,

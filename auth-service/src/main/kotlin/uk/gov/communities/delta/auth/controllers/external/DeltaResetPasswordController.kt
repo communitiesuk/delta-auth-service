@@ -79,7 +79,11 @@ class DeltaResetPasswordController(
         val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             logger.atInfo().addKeyValue("userCN", userCN).log("Sending new reset password link (after expiry)")
-            sendNewResetPasswordLink(userCN, call)
+            emailService.sendResetPasswordEmail(
+                userLookupService.lookupUserByCn(userCN),
+                resetPasswordTokenService.createToken(userCN),
+                call
+            )
             call.respondNewEmailSentPage(userCN.replace("!", "@"))
         } else throw Exception("tokenResult was $tokenResult when trying to send a new reset password email")
     }
@@ -135,36 +139,6 @@ class DeltaResetPasswordController(
         }
     }
 
-    private suspend fun sendNewResetPasswordLink(userCN: String, call: ApplicationCall) {
-        val user = userLookupService.lookupUserByCn(userCN)
-        logger.atInfo().addKeyValue("userCN", userCN).addKeyValue("emailAddress", user.email)
-            .log("Sending reset password link")
-        val token = resetPasswordTokenService.createToken(userCN)
-        userAuditService.userForgotPasswordAudit(userCN, call)
-        emailService.sendTemplateEmail(
-            "reset-password",
-            EmailContacts(
-                user.email!!,
-                user.fullName,
-                emailConfig.fromEmailAddress,
-                emailConfig.fromEmailName,
-                emailConfig.replyToEmailAddress,
-                emailConfig.replyToEmailName,
-            ),
-            "DLUHC DELTA - Reset Your Password",
-            mapOf(
-                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "userFirstName" to user.firstName,
-                "resetPasswordUrl" to getResetPasswordURL(
-                    token,
-                    userCN,
-                    authServiceConfig.serviceUrl
-                )
-            )
-        )
-        logger.atInfo().addKeyValue("userCN", userCN).addKeyValue("emailAddress", user.email)
-            .log("Sent reset password link")
-    }
 
     private suspend fun ApplicationCall.respondNewEmailSentPage(userEmail: String) =
         respond(

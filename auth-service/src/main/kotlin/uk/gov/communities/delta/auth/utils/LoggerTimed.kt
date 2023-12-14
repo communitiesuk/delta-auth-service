@@ -1,8 +1,10 @@
 package uk.gov.communities.delta.auth.utils
 
+import org.jetbrains.annotations.Blocking
 import org.slf4j.Logger
 
 @Suppress("DuplicatedCode")
+@Blocking
 fun <T> Logger.timed(
     action: String,
     logParams: (T) -> List<Pair<String, Any>> = { emptyList() },

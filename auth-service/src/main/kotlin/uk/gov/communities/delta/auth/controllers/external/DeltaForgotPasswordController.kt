@@ -7,23 +7,24 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.deltaWebsiteLoginRoute
-import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.EmailService
+import uk.gov.communities.delta.auth.services.ResetPasswordTokenService
+import uk.gov.communities.delta.auth.services.SetPasswordTokenService
+import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import javax.naming.NameNotFoundException
 
 class DeltaForgotPasswordController(
     private val deltaConfig: DeltaConfig,
-    private val emailConfig: EmailConfig,
-    private val authServiceConfig: AuthServiceConfig,
     private val ssoConfig: AzureADSSOConfig,
     private val resetPasswordTokenService: ResetPasswordTokenService,
-    private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
+    private val setPasswordTokenService: SetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
-    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
     private val emailAddressChecker = EmailAddressChecker()
@@ -70,99 +71,20 @@ class DeltaForgotPasswordController(
             )
         }
 
-        val userCN = emailAddress.replace("@", "!")
+        val userCN = LDAPConfig.emailToCN(emailAddress)
         try {
             val user = userLookupService.lookupUserByCn(userCN)
-            if (!user.accountEnabled && registrationSetPasswordTokenService.passwordNeverSetForUserCN(userCN))
-                sendSetPasswordLink(user.email!!, userCN, user.firstName, user.fullName, call)
-            else sendForgotPasswordLink(user, call)
+            if (!user.accountEnabled && setPasswordTokenService.passwordNeverSetForUserCN(userCN))
+                emailService.sendPasswordNeverSetEmail(user, setPasswordTokenService.createToken(user.cn), call)
+            else emailService.sendResetPasswordEmail(user, resetPasswordTokenService.createToken(user.cn), call)
         } catch (e: NameNotFoundException) {
-            sendNoUserEmail(emailAddress)
+            emailService.sendNoUserEmail(emailAddress)
         } catch (e: Exception) {
             logger.atError().addKeyValue("emailAddress", emailAddress)
                 .log("Unexpected error occurred when sending a forgot password link")
             throw e
         }
         call.redirectSentEmailPage(emailAddress)
-    }
-
-    private suspend fun sendForgotPasswordLink(user: LdapUser, call: ApplicationCall) {
-        logger.atInfo().addKeyValue("emailAddress", user.email).log("Sending reset-password email")
-        val resetPasswordToken = resetPasswordTokenService.createToken(user.cn)
-        userAuditService.userForgotPasswordAudit(user.cn, call)
-        emailService.sendTemplateEmail(
-            "reset-password",
-            EmailContacts(
-                user.email!!,
-                user.fullName,
-                emailConfig.fromEmailAddress,
-                emailConfig.fromEmailName,
-                emailConfig.replyToEmailAddress,
-                emailConfig.replyToEmailName,
-            ),
-            "DLUHC DELTA - Reset Your Password",
-            mapOf(
-                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "userFirstName" to user.firstName,
-                "resetPasswordUrl" to getResetPasswordURL(
-                    resetPasswordToken,
-                    user.cn,
-                    authServiceConfig.serviceUrl
-                )
-            )
-        )
-    }
-
-    private suspend fun sendNoUserEmail(emailAddress: String) {
-        logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sending no-user-account email")
-        emailService.sendTemplateEmail(
-            "no-user-account",
-            EmailContacts(
-                emailAddress,
-                emailAddress,
-                emailConfig.fromEmailAddress,
-                emailConfig.fromEmailName,
-                emailConfig.replyToEmailAddress,
-                emailConfig.replyToEmailName,
-            ),
-            "DLUHC DELTA - No User Account",
-            mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)
-        )
-        logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent no-user-account email")
-    }
-
-    private suspend fun sendSetPasswordLink(
-        emailAddress: String,
-        userCN: String,
-        userFirstName: String,
-        userFullName: String,
-        call: ApplicationCall,
-    ) {
-        logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sending password-never-set email")
-        val setPasswordToken = registrationSetPasswordTokenService.createToken(userCN)
-        userAuditService.setPasswordEmailAudit(userCN, call)
-        emailService.sendTemplateEmail(
-            "password-never-set",
-            EmailContacts(
-                emailAddress,
-                userFullName,
-                emailConfig.fromEmailAddress,
-                emailConfig.fromEmailName,
-                emailConfig.replyToEmailAddress,
-                emailConfig.replyToEmailName,
-            ),
-            "DLUHC DELTA - Set Password",
-            mapOf(
-                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "setPasswordUrl" to getSetPasswordURL(
-                    setPasswordToken,
-                    userCN,
-                    authServiceConfig.serviceUrl
-                ),
-                "userFirstName" to userFirstName,
-            )
-        )
-        logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent password-never-set email")
     }
 
     private suspend fun ApplicationCall.redirectSentEmailPage(emailAddress: String) =

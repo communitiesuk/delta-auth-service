@@ -41,7 +41,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         )
     }
 
-    val userForgotPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORGOT_PASSWORD_EMAIL)
+    val resetPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
 
     val setPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
 
@@ -51,7 +51,12 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
 
     val userSelfRegisterAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SELF_REGISTER)
 
-    suspend fun ssoUserCreatedAudit(userCn: String, azureUserObjectId: String, ssoClient: AzureADSSOClient, call: ApplicationCall) {
+    suspend fun ssoUserCreatedAudit(
+        userCn: String,
+        azureUserObjectId: String,
+        ssoClient: AzureADSSOClient,
+        call: ApplicationCall,
+    ) {
         insertAuditRow(
             UserAuditTrailRepo.AuditAction.SSO_USER_CREATED, userCn, null, call.callId!!,
             Json.encodeToString(SSOLoginAuditData(ssoClient.internalId, azureUserObjectId))

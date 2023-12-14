@@ -10,23 +10,24 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
-import jakarta.mail.Authenticator
-import jakarta.mail.PasswordAuthentication
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaForgotPasswordController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.EmailService
+import uk.gov.communities.delta.auth.services.ResetPasswordTokenService
+import uk.gov.communities.delta.auth.services.SetPasswordTokenService
+import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
-import java.util.*
 import javax.naming.NameNotFoundException
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DeltaForgotPasswordControllerTest {
@@ -54,9 +55,8 @@ class DeltaForgotPasswordControllerTest {
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", userEmail) }
         ).apply {
-            assertEquals("reset-password", emailTemplate.captured)
+            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), any()) }
             assertEquals(HttpStatusCode.Found, status)
-            coVerify(exactly = 1) { userAuditService.userForgotPasswordAudit(userCN, any()) }
             assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
     }
@@ -67,7 +67,6 @@ class DeltaForgotPasswordControllerTest {
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", "this is not an email address") }
         ).apply {
-            assertFalse(emailTemplate.isCaptured)
             assertEquals(HttpStatusCode.OK, status)
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Must be a valid email address")
@@ -77,17 +76,16 @@ class DeltaForgotPasswordControllerTest {
     @Test
     fun testPostForgotPasswordPageNotSetPassword() = testSuspend {
         coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser(cn = userCN, accountEnabled = false)
-        coEvery { registrationSetPasswordTokenService.passwordNeverSetForUserCN(userCN) } returns true
-        coEvery { registrationSetPasswordTokenService.createToken(userCN) } returns "setPasswordToken"
+        coEvery { setPasswordTokenService.passwordNeverSetForUserCN(userCN) } returns true
+        coEvery { setPasswordTokenService.createToken(userCN) } returns "setPasswordToken"
         testClient.submitForm(
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", userEmail) }
         ).apply {
-            assertEquals("password-never-set", emailTemplate.captured)
+            coVerify(exactly = 1) { emailService.sendPasswordNeverSetEmail(any(), any(), any()) }
             assertEquals(HttpStatusCode.Found, status)
-            coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(userCN) }
+            coVerify(exactly = 1) { setPasswordTokenService.createToken(userCN) }
             coVerify(exactly = 0) { resetPasswordTokenService.createToken(userCN) }
-            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(userCN, any()) }
             assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
     }
@@ -99,7 +97,7 @@ class DeltaForgotPasswordControllerTest {
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", userEmail) }
         ).apply {
-            assertEquals("no-user-account", emailTemplate.captured)
+            coVerify(exactly = 1) { emailService.sendNoUserEmail(userEmail) }
             assertEquals(HttpStatusCode.Found, status)
             assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
@@ -111,7 +109,6 @@ class DeltaForgotPasswordControllerTest {
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", "user@sso-example.com") }
         ).apply {
-            assertFalse(emailTemplate.isCaptured)
             assertEquals(HttpStatusCode.Found, status)
             assertTrue("Should redirect to delta") { headers["Location"]!!.contains(deltaConfig.deltaWebsiteUrl + "/oauth2/authorization/delta-auth") }
             assertContains(headers["Location"]!!, "sso-client=ssoInternalIDTest")
@@ -131,9 +128,10 @@ class DeltaForgotPasswordControllerTest {
     @Before
     fun resetMocks() {
         clearAllMocks()
-        emailTemplate.clear()
         coEvery { resetPasswordTokenService.createToken(any()) } returns "token"
-        coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
+        coEvery { emailService.sendNoUserEmail(any()) } just runs
+        coEvery { emailService.sendResetPasswordEmail(any(), any(), any()) } just runs
+        coEvery { emailService.sendPasswordNeverSetEmail(any(), any(), any()) } just runs
     }
 
     companion object {
@@ -143,19 +141,10 @@ class DeltaForgotPasswordControllerTest {
         private const val userCN = "user!example.com"
         private const val userEmail = "user@example.com"
         private val deltaConfig = DeltaConfig.fromEnv()
-        private val authenticator: Authenticator = object : Authenticator() {
-            override fun getPasswordAuthentication(): PasswordAuthentication {
-                return PasswordAuthentication("", "")
-            }
-        }
-        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "")
-        private val authServiceConfig = AuthServiceConfig("http://localhost", null)
         private val resetPasswordTokenService = mockk<ResetPasswordTokenService>()
-        private val registrationSetPasswordTokenService = mockk<RegistrationSetPasswordTokenService>()
+        private val setPasswordTokenService = mockk<SetPasswordTokenService>()
         private val emailService = mockk<EmailService>()
         private val userLookupService = mockk<UserLookupService>()
-        private var emailTemplate = slot<String>()
-        private val userAuditService = mockk<UserAuditService>(relaxed = true)
 
 
         @BeforeClass
@@ -163,8 +152,6 @@ class DeltaForgotPasswordControllerTest {
         fun setup() {
             val controller = DeltaForgotPasswordController(
                 deltaConfig,
-                emailConfig,
-                authServiceConfig,
                 AzureADSSOConfig(
                     listOf(
                         AzureADSSOClient(
@@ -178,10 +165,9 @@ class DeltaForgotPasswordControllerTest {
                     )
                 ),
                 resetPasswordTokenService,
-                registrationSetPasswordTokenService,
+                setPasswordTokenService,
                 userLookupService,
                 emailService,
-                userAuditService,
             )
             testApp = TestApplication {
                 application {
