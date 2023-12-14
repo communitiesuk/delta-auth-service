@@ -1,7 +1,6 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.application.*
-import io.ktor.server.auth.*
 import jakarta.mail.Address
 import jakarta.mail.internet.InternetAddress
 import kotlinx.coroutines.Dispatchers
@@ -58,7 +57,12 @@ class EmailService(
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent already-a-user email")
     }
 
-    suspend fun sendSetPasswordEmail(user: LdapUser, token: String, triggeringAdminSession: OAuthSession?, call: ApplicationCall) {
+    suspend fun sendSetPasswordEmail(
+        user: LdapUser,
+        token: String,
+        triggeringAdminSession: OAuthSession?,
+        call: ApplicationCall
+    ) {
         sendSetPasswordEmail(
             user.firstName,
             token,
