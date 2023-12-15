@@ -11,6 +11,7 @@ import io.ktor.server.sessions.*
 import io.ktor.util.*
 import kotlinx.serialization.Serializable
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
@@ -37,6 +38,7 @@ fun Application.configureRouting(injection: Injection) {
         internalRoutes(injection)
         externalRoutes(
             injection.authServiceConfig,
+            injection.deltaConfig,
             injection.externalDeltaLoginController(),
             injection.deltaOAuthLoginController(),
             injection.externalDeltaUserRegisterController(),
@@ -55,6 +57,7 @@ fun Route.healthcheckRoute() {
 
 fun Route.externalRoutes(
     serviceConfig: AuthServiceConfig,
+    deltaConfig: DeltaConfig,
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
     deltaUserRegistrationController: DeltaUserRegistrationController,
@@ -79,7 +82,7 @@ fun Route.externalRoutes(
     }
 
     route("/delta") {
-        install(originHeaderCheck(serviceConfig.serviceUrl))
+        install(originHeaderCheck(serviceConfig.serviceUrl, deltaConfig))
         install(BrowserSecurityHeaders)
 
         route("/register") {
