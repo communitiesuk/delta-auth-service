@@ -8,6 +8,7 @@ import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 
@@ -31,16 +32,24 @@ class AdminEmailController(
         if (!userHasPermissionToTriggerEmails(callingUser)) return call.respondUnauthorised(receivingUser)
 
         if (receivingUser.accountEnabled) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("User already enabled")
-            return call.respondText("User is already enabled", status = HttpStatusCode.ExpectationFailed)
+            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
+                .log("User already enabled on activation email request")
+            throw ApiError(
+                HttpStatusCode.ExpectationFailed,
+                "already_enabled",
+                "User already enabled on activation email request",
+                "User already enabled"
+            )
         }
 
         if (isRequiredSSOUser(receivingUser)) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
                 .log("Trying to send activation email to SSO User")
-            return call.respondText(
-                "SSO user - account is automatically activated, can be enabled using the Enable Access button",
-                status = HttpStatusCode.ExpectationFailed
+            throw ApiError(
+                HttpStatusCode.ExpectationFailed,
+                "no_emails_to_sso_users",
+                "Trying to send activation email to SSO User",
+                "SSO user - account is automatically activated, can be enabled using the Enable Access button"
             )
         }
 
@@ -48,8 +57,13 @@ class AdminEmailController(
             val token = setPasswordTokenService.createToken(receivingUser.cn)
             emailService.sendSetPasswordEmail(receivingUser, token, call)
         } catch (e: Exception) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send email")
-            return call.respondText("Failed to send email", status = HttpStatusCode.ExpectationFailed)
+            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send activation email")
+            throw ApiError(
+                HttpStatusCode.ExpectationFailed,
+                "email_failure",
+                "Failed to send activation email",
+                "Failed to send activation email"
+            )
         }
         logger.atInfo().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("New activation email sent")
         return call.respondText("New activation email sent")
@@ -62,15 +76,22 @@ class AdminEmailController(
 
         if (!receivingUser.accountEnabled) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("User not enabled")
-            return call.respondText("User not enabled", status = HttpStatusCode.ExpectationFailed)
+            throw ApiError(
+                HttpStatusCode.ExpectationFailed,
+                "not_enabled",
+                "User not enabled on reset password email request",
+                "User not enabled"
+            )
         }
 
         if (isRequiredSSOUser(receivingUser)) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
                 .log("Trying to send reset password to SSO User")
-            return call.respondText(
-                "SSO user - account doesn't have a password",
-                status = HttpStatusCode.ExpectationFailed
+            throw ApiError(
+                HttpStatusCode.ExpectationFailed,
+                "no_emails_to_sso_users",
+                "Trying to send reset password email to SSO User",
+                "SSO user - account doesn't have a password"
             )
         }
 
@@ -79,7 +100,12 @@ class AdminEmailController(
             emailService.sendResetPasswordEmail(receivingUser, token, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send email")
-            return call.respondText("Failed to send email", status = HttpStatusCode.ExpectationFailed)
+            throw ApiError(
+                HttpStatusCode.ExpectationFailed,
+                "email_failure",
+                "Failed to send reset password email",
+                "Failed to send reset password email"
+            )
         }
         logger.atInfo().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Reset password email sent")
         return call.respondText("Reset password email sent")
@@ -108,16 +134,15 @@ class AdminEmailController(
         }
     }
 
-    private suspend fun ApplicationCall.respondUnauthorised(receivingUser: LdapUser) {
+    private fun ApplicationCall.respondUnauthorised(receivingUser: LdapUser) {
         logger.atWarn().withSession(this.principal<OAuthSession>()!!)
             .addKeyValue("userCNToSendEmailTo", receivingUser.cn)
             .log("User does not have permission to trigger password emails for {}", receivingUser.cn)
-        respond(
+        throw ApiError(
             HttpStatusCode.Forbidden,
-            mapOf(
-                "error" to "forbidden",
-                "error_description" to "User does not have permission to trigger password emails for '$receivingUser.cn'"
-            )
+            "forbidden",
+            "User does not have permission to trigger password emails",
+            "You do not have permission to trigger password emails"
         )
     }
 }

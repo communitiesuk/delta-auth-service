@@ -8,15 +8,14 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
-import org.junit.AfterClass
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
+import kotlinx.coroutines.runBlocking
+import org.junit.*
 import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
@@ -46,47 +45,59 @@ class AdminEmailControllerTest {
 
     @Test
     fun testAdminSendActivationEmailEnabledUser() = testSuspend {
-        testClient.post("/bearer/email/activation") {
-            headers {
-                append("Authorization", "Bearer ${adminSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/email/activation") {
+                    headers {
+                        append("Authorization", "Bearer ${adminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    parameter("userEmail", enabledReceivingUserEmail)
+                }
             }
-            parameter("userEmail", enabledReceivingUserEmail)
         }.apply {
-            assertEquals(HttpStatusCode.ExpectationFailed, status)
-            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
-            coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+            assertEquals("already_enabled", errorCode)
         }
+        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
     }
 
     @Test
     fun testAdminSendActivationEmailAsNotAdmin() = testSuspend {
-        testClient.post("/bearer/email/activation") {
-            headers {
-                append("Authorization", "Bearer ${userSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/email/activation") {
+                    headers {
+                        append("Authorization", "Bearer ${userSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    parameter("userEmail", disabledReceivingUserEmail)
+                }
             }
-            parameter("userEmail", disabledReceivingUserEmail)
         }.apply {
-            assertEquals(HttpStatusCode.Forbidden, status)
-            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
-            coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+            assertEquals("forbidden", errorCode)
         }
+        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
     }
 
     @Test
     fun testAdminSendActivationEmailSSOUser() = testSuspend {
-        testClient.post("/bearer/email/activation") {
-            headers {
-                append("Authorization", "Bearer ${adminSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/email/activation") {
+                    headers {
+                        append("Authorization", "Bearer ${adminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    parameter("userEmail", disabledReceivingSSOUserEmail)
+                }
             }
-            parameter("userEmail", disabledReceivingSSOUserEmail)
         }.apply {
-            assertEquals(HttpStatusCode.ExpectationFailed, status)
-            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
-            coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+            assertEquals("no_emails_to_sso_users", errorCode)
         }
+        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
     }
 
     @Test
@@ -106,47 +117,59 @@ class AdminEmailControllerTest {
 
     @Test
     fun testAdminSendResetPasswordEmailDisabledUser() = testSuspend {
-        testClient.post("/bearer/email/reset-password") {
-            headers {
-                append("Authorization", "Bearer ${adminSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/email/reset-password") {
+                    headers {
+                        append("Authorization", "Bearer ${adminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    parameter("userEmail", disabledReceivingUserEmail)
+                }
             }
-            parameter("userEmail", disabledReceivingUserEmail)
         }.apply {
-            assertEquals(HttpStatusCode.ExpectationFailed, status)
-            coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any()) }
-            coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
+            assertEquals("not_enabled", errorCode)
         }
+        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any()) }
+        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
     }
 
     @Test
     fun testAdminSendResetPasswordEmailNotAdmin() = testSuspend {
-        testClient.post("/bearer/email/reset-password") {
-            headers {
-                append("Authorization", "Bearer ${userSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/email/reset-password") {
+                    headers {
+                        append("Authorization", "Bearer ${userSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    parameter("userEmail", enabledReceivingUserEmail)
+                }
             }
-            parameter("userEmail", enabledReceivingUserEmail)
         }.apply {
-            assertEquals(HttpStatusCode.Forbidden, status)
-            coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any()) }
-            coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
+            assertEquals("forbidden", errorCode)
         }
+        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any()) }
+        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
     }
 
     @Test
     fun testAdminSendResetPasswordEmailSSOUser() = testSuspend {
-        testClient.post("/bearer/email/reset-password") {
-            headers {
-                append("Authorization", "Bearer ${adminSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/email/reset-password") {
+                    headers {
+                        append("Authorization", "Bearer ${adminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    parameter("userEmail", enabledReceivingSSOUserEmail)
+                }
             }
-            parameter("userEmail", enabledReceivingSSOUserEmail)
         }.apply {
-            assertEquals(HttpStatusCode.ExpectationFailed, status)
-            coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any()) }
-            coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
+            assertEquals("no_emails_to_sso_users", errorCode)
         }
+        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any()) }
+        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
     }
 
     @Before
