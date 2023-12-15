@@ -78,7 +78,7 @@ fun AuthenticationConfig.azureAdSingleSignOn(
     oauthHttpClient: HttpClient,
     ssoOAuthClientProviderLookupService: SSOOAuthClientProviderLookupService,
 ) {
-    val logger = LoggerFactory.getLogger("Application.SSO")
+    val logger = LoggerFactory.getLogger("uk.gov.communities.delta.auth.sso")
     oauth(SSO_AZURE_AD_OAUTH_CLIENT) {
         urlProvider = { "${authServiceConfig.serviceUrl}${oauthClientCallbackRoute(parameters["ssoClientId"]!!)}" }
         providerLookup = lookup@{
