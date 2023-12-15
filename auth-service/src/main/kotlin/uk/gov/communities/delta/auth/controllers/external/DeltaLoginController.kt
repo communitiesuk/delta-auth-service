@@ -21,6 +21,7 @@ import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.services.withAuthCode
+import kotlin.time.Duration.Companion.hours
 
 
 class DeltaLoginController(
@@ -50,6 +51,11 @@ class DeltaLoginController(
             logger.info("Invalid parameters for login request, redirecting back to Delta")
             return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
         }
+        if (params.timestamp?.let { it < (System.currentTimeMillis() / 1000) - 1.hours.inWholeSeconds } == true) {
+            logger.info("Expired login request, redirecting back to Delta")
+            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=invalid_state&trace=${call.callId!!.encodeURLParameter()}&error_reason=expired_timestamp")
+        }
+
         val client = params.client
         logger.info("Creating login session cookie for client {}", client.clientId)
         call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = client.clientId))
@@ -69,12 +75,14 @@ class DeltaLoginController(
         val state: String,
         val useSSOClient: AzureADSSOClient?,
         val expectedEmail: String?,
+        val timestamp: Long?,
     )
 
     private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
         val responseType = request.queryParameters["response_type"]
         val clientId = request.queryParameters["client_id"]
         val state = request.queryParameters["state"]
+        val timestamp = request.queryParameters["ts"] // Unix timestamp to detect stale login pages
 
         if (responseType != "code") {
             logger.warn("Invalid query param response_type, expected 'code'")
@@ -92,7 +100,7 @@ class DeltaLoginController(
         val ssoClient = request.queryParameters["sso-client"]
             ?.let { param -> ssoConfig.ssoClients.firstOrNull { it.internalId == param } }
         val expectedEmail = request.queryParameters["expected-email"]
-        return LoginQueryParams(client, state, ssoClient, expectedEmail)
+        return LoginQueryParams(client, state, ssoClient, expectedEmail, timestamp?.toLongOrNull())
     }
 
     private suspend fun ApplicationCall.respondLoginPage(
