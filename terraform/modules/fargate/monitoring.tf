@@ -57,7 +57,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_host_high_alb" {
   statistic           = "Maximum"
   threshold           = 0
 
-  alarm_description         = "There is at least one unhealthy host"
+  alarm_description         = "There is at least one unhealthy host in ${aws_ecs_cluster.main.name}"
   alarm_actions             = [var.alarms_sns_topic_arn]
   ok_actions                = [var.alarms_sns_topic_arn]
   insufficient_data_actions = [var.alarms_sns_topic_arn]
@@ -80,7 +80,11 @@ resource "aws_cloudwatch_metric_alarm" "healthy_host_low_alb" {
   statistic           = "Minimum"
   threshold           = var.desired_count
 
-  alarm_description  = "There are fewer healthy hosts than expected"
+  alarm_description  = <<EOF
+There are fewer healthy ECS tasks than expected in the ${aws_ecs_cluster.main.name} cluster.
+Investigate the application logs (${aws_cloudwatch_log_group.ecs_logs.name}).
+If the unhealthy tasks are not replaced check the Elastic Container Service console to see what is preventing new tasks from starting.
+  EOF
   alarm_actions      = [var.alarms_sns_topic_arn]
   ok_actions         = [var.alarms_sns_topic_arn]
   treat_missing_data = "breaching"
