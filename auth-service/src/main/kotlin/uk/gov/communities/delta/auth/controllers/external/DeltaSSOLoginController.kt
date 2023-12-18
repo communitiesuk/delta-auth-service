@@ -232,8 +232,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_azure_group",
                 "User ${user.cn} not in required Azure group ${ssoClient.requiredGroupId}",
-                // TODO DT-572 Process for adding users to group in DLUHC Azure AD
-                "To use Single Sign On you must be added to the Delta SSO Users group in ${ssoClient.internalId.uppercase()} before you can use this service. Please contact the Service Desk"
+                "This account (${user.cn.replace('!', '@')}) is not configured for Single Sign On for Delta (not in required Azure AD users group ${ssoClient.requiredGroupId}). Please contact the Service Desk"
             )
         }
 
@@ -242,8 +241,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_admin_group",
                 "User ${user.cn} is admin in Delta (member of ${adminGroups.joinToString(", ")}, but not member of required admin group ${ssoClient.requiredAdminGroupId}",
-                // TODO DT-572 Process for adding users to group in DLUHC Azure AD
-                "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()}. Please contact the Service Desk"
+                "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()} (${ssoClient.requiredAdminGroupId}). Please contact the Service Desk"
             )
         }
     }
