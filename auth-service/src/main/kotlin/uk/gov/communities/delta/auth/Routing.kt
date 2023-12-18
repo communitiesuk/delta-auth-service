@@ -177,8 +177,12 @@ fun Route.deltaLoginRoutes(
     }
 }
 
-fun deltaRouteWithEmail(deltaUrl: String, ssoClientInternalId: String, email: String) =
-    deltaUrl + "/oauth2/authorization/delta-auth?sso-client=${ssoClientInternalId}&expected-email=${email.encodeURLParameter()}"
+fun deltaWebsiteLoginRoute(deltaUrl: String, ssoClientInternalId: String?, email: String?, redirectReason: String?): String {
+    return "$deltaUrl/oauth2/authorization/delta-auth" +
+            mapOf("sso-client" to ssoClientInternalId, "expected-email" to email, "reason" to redirectReason)
+                .mapNotNull { if (it.value != null) "${it.key}=${it.value!!.encodeURLParameter()}" else null }
+                .joinToString(prefix = "?", separator = "&")
+}
 
 fun oauthClientLoginRoute(ssoClientInternalId: String, email: String? = null) =
     if (email == null)

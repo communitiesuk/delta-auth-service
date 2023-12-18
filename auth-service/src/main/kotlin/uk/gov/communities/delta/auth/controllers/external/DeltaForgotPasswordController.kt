@@ -8,7 +8,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.*
-import uk.gov.communities.delta.auth.deltaRouteWithEmail
+import uk.gov.communities.delta.auth.deltaWebsiteLoginRoute
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
@@ -61,10 +61,11 @@ class DeltaForgotPasswordController(
             logger.atInfo().addKeyValue("ssoClient", ssoClientMatchingEmailDomain.internalId)
                 .log("Forgot password email matches required SSO domain, redirecting")
             return call.respondRedirect(
-                deltaRouteWithEmail(
+                deltaWebsiteLoginRoute(
                     deltaConfig.deltaWebsiteUrl,
                     ssoClientMatchingEmailDomain.internalId,
-                    emailAddress
+                    emailAddress,
+                    "sso_forgot_password",
                 )
             )
         }

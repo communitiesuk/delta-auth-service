@@ -45,18 +45,22 @@ class DeltaLoginController(
         }
     }
 
+    // If the user lands on the login page with a stale state parameter we redirect them back to Delta to get a fresh one
+    private val loginPageValidDuration = 1.hours
+
     private suspend fun loginGet(call: ApplicationCall) {
         val params = call.getLoginQueryParams()
         if (params == null) {
             logger.info("Invalid parameters for login request, redirecting back to Delta")
             return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
         }
-        if (params.timestamp?.let { it < (System.currentTimeMillis() / 1000) - 1.hours.inWholeSeconds } == true) {
+        val client = params.client
+
+        if (params.timestamp?.let { it < (System.currentTimeMillis() / 1000) - loginPageValidDuration.inWholeSeconds } == true) {
             logger.info("Expired login request, redirecting back to Delta")
-            return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=invalid_state&trace=${call.callId!!.encodeURLParameter()}&error_reason=expired_timestamp")
+            return call.respondRedirect(client.websiteLoginRoute(params.useSSOClient?.internalId, params.expectedEmail, "state_timeout"))
         }
 
-        val client = params.client
         logger.info("Creating login session cookie for client {}", client.clientId)
         call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = client.clientId))
 

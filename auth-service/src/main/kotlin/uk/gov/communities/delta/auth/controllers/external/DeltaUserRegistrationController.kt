@@ -9,7 +9,7 @@ import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.deltaRouteWithEmail
+import uk.gov.communities.delta.auth.deltaWebsiteLoginRoute
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import uk.gov.communities.delta.auth.utils.emailToDomain
@@ -124,10 +124,11 @@ class DeltaUserRegistrationController(
             }
             if (ssoClientMatchingEmailDomain != null) {
                 return call.respondRedirect(
-                    deltaRouteWithEmail(
+                    deltaWebsiteLoginRoute(
                         deltaConfig.deltaWebsiteUrl,
                         ssoClientMatchingEmailDomain.internalId,
-                        emailAddress
+                        emailAddress,
+                        "sso_register",
                     )
                 )
             }

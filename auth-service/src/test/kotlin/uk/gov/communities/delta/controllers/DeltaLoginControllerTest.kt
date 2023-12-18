@@ -72,7 +72,7 @@ class DeltaLoginControllerTest {
         }
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234&ts=${now - 2.hours.inWholeSeconds}").apply {
             assertEquals(HttpStatusCode.Found, status)
-            headers["Location"]!!.startsWith(deltaConfig.deltaWebsiteUrl + "/login?error=invalid_state")
+            assertTrue(headers["Location"]!!.startsWith(client.deltaWebsiteUrl + "/oauth2/authorization/delta-auth"))
         }
     }
 
