@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.config
 
 import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.spi.LoggingEventBuilder
+import uk.gov.communities.delta.auth.deltaWebsiteLoginRoute
 
 open class Client(val clientId: String, val clientSecret: String, val samlCredential: BasicX509Credential) {
     override fun toString(): String {
@@ -18,6 +19,9 @@ class DeltaLoginEnabledClient(
     override fun toString(): String {
         return "Client($clientId, deltaWebsiteUrl=$deltaWebsiteUrl)"
     }
+
+    fun websiteLoginRoute(ssoClientInternalId: String?, email: String?, redirectReason: String?): String =
+        deltaWebsiteLoginRoute(deltaWebsiteUrl, ssoClientInternalId, email, redirectReason)
 }
 
 class ClientConfig(val clients: List<Client>) {

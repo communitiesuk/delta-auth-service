@@ -21,6 +21,7 @@ import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.services.withAuthCode
+import kotlin.time.Duration.Companion.hours
 
 
 class DeltaLoginController(
@@ -44,6 +45,9 @@ class DeltaLoginController(
         }
     }
 
+    // If the user lands on the login page with a stale state parameter we redirect them back to Delta to get a fresh one
+    private val loginPageValidDuration = 1.hours
+
     private suspend fun loginGet(call: ApplicationCall) {
         val params = call.getLoginQueryParams()
         if (params == null) {
@@ -51,6 +55,12 @@ class DeltaLoginController(
             return call.respondRedirect(deltaConfig.deltaWebsiteUrl + "/login?error=delta_invalid_params&trace=${call.callId!!.encodeURLParameter()}")
         }
         val client = params.client
+
+        if (params.timestamp?.let { it < (System.currentTimeMillis() / 1000) - loginPageValidDuration.inWholeSeconds } == true) {
+            logger.info("Expired login request, redirecting back to Delta")
+            return call.respondRedirect(client.websiteLoginRoute(params.useSSOClient?.internalId, params.expectedEmail, "state_timeout"))
+        }
+
         logger.info("Creating login session cookie for client {}", client.clientId)
         call.sessions.set(LoginSessionCookie(deltaState = params.state, clientId = client.clientId))
 
@@ -69,12 +79,14 @@ class DeltaLoginController(
         val state: String,
         val useSSOClient: AzureADSSOClient?,
         val expectedEmail: String?,
+        val timestamp: Long?,
     )
 
     private fun ApplicationCall.getLoginQueryParams(): LoginQueryParams? {
         val responseType = request.queryParameters["response_type"]
         val clientId = request.queryParameters["client_id"]
         val state = request.queryParameters["state"]
+        val timestamp = request.queryParameters["ts"] // Unix timestamp to detect stale login pages
 
         if (responseType != "code") {
             logger.warn("Invalid query param response_type, expected 'code'")
@@ -92,7 +104,7 @@ class DeltaLoginController(
         val ssoClient = request.queryParameters["sso-client"]
             ?.let { param -> ssoConfig.ssoClients.firstOrNull { it.internalId == param } }
         val expectedEmail = request.queryParameters["expected-email"]
-        return LoginQueryParams(client, state, ssoClient, expectedEmail)
+        return LoginQueryParams(client, state, ssoClient, expectedEmail, timestamp?.toLongOrNull())
     }
 
     private suspend fun ApplicationCall.respondLoginPage(

@@ -35,6 +35,7 @@ import java.time.Instant
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.hours
 
 
 class DeltaLoginControllerTest {
@@ -59,6 +60,19 @@ class DeltaLoginControllerTest {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234&sso-client=dev").apply {
             assertEquals(HttpStatusCode.Found, status)
             assertEquals(oauthClientLoginRoute("dev"), headers["Location"], "Should redirect to OAuth route")
+        }
+    }
+
+    @Test
+    fun testLoginPageWithOldTimestampRedirectsToDelta() = testSuspend {
+        val now = System.currentTimeMillis() / 1000
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234&ts=${now}").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(bodyAsText(), "Sign in to DELTA")
+        }
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234&ts=${now - 2.hours.inWholeSeconds}").apply {
+            assertEquals(HttpStatusCode.Found, status)
+            assertTrue(headers["Location"]!!.startsWith(client.deltaWebsiteUrl + "/oauth2/authorization/delta-auth"))
         }
     }
 
