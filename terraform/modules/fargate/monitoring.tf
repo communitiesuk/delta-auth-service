@@ -81,7 +81,7 @@ resource "aws_cloudwatch_metric_alarm" "healthy_host_low_alb" {
   threshold           = var.desired_count
 
   alarm_description  = <<EOF
-There are fewer healthy ECS tasks than expected in the ${aws_ecs_cluster.main.name} cluster.
+There are fewer healthy ECS tasks than expected in the ${aws_ecs_cluster.main.name} cluster according to the load balancer's health check.
 Investigate the application logs (${aws_cloudwatch_log_group.ecs_logs.name}).
 If the unhealthy tasks are not replaced check the Elastic Container Service console to see what is preventing new tasks from starting.
   EOF

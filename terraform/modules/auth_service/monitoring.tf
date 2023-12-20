@@ -43,7 +43,7 @@ resource "aws_cloudwatch_metric_alarm" "success_rate_high_login" {
   treat_missing_data  = "notBreaching"
 
   alarm_description = <<EOF
-There are more failed logins than expected.
+There are more successful logins than expected.
 This is probably just more people than usual logging into Delta.
 Review the ${aws_cloudwatch_dashboard.main.dashboard_name} dashboard.
 Escalate if there's any evidence of an attack e.g. a small number of IP addresses trying to log in as lots of different users.
@@ -144,7 +144,7 @@ resource "aws_cloudwatch_metric_alarm" "auth_forgot_password_rate_limit_reached"
   treat_missing_data  = "notBreaching"
 
   alarm_description = <<EOF
-An IP address has reached the rate limit on the reset password page
+An IP address has reached the rate limit on the forgot password page
 This is almost certainly a frustrated user repeatedly retrying or with a browser stuck in a loop, but could be someone trying to brute force the page.
 Review the ${module.fargate.log_group_name} log group.
   EOF
