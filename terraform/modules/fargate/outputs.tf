@@ -18,3 +18,7 @@ output "latest_task_definition_arn" {
 output "execution_role_arn" {
   value = aws_iam_role.ecs_image_runner_role.arn
 }
+
+output "log_group_name" {
+  value = aws_cloudwatch_log_group.ecs_logs.name
+}
