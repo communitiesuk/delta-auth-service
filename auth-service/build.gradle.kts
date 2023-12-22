@@ -1,10 +1,10 @@
-val ktorVersion = "2.3.6"
-val kotlinVersion = "1.9.20"
+val ktorVersion = "2.3.7"
+val kotlinVersion = "1.9.22"
 
 plugins {
     kotlin("jvm") version "1.9.20"
-    id("io.ktor.plugin") version "2.3.6"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.20"
+    id("io.ktor.plugin") version "2.3.7"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.21"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -56,13 +56,13 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.0")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.1")
 
     //Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.4.11")
+    implementation("ch.qos.logback:logback-classic:1.4.14")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.3")
 
@@ -71,7 +71,7 @@ dependencies {
     implementation("org.opensaml:opensaml-saml-impl:4.0.1")
 
     // Database
-    implementation("org.postgresql:postgresql:42.6.0")
+    implementation("org.postgresql:postgresql:42.7.1")
     implementation("com.zaxxer:HikariCP:5.1.0") // Connection pool
     implementation("org.flywaydb:flyway-core:9.22.3") // Migrations
 
