@@ -1,5 +1,7 @@
 package uk.gov.communities.delta.service
 
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
 import jakarta.mail.Authenticator
@@ -12,6 +14,7 @@ import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.repositories.EmailRepository
 import uk.gov.communities.delta.auth.services.EmailContacts
 import uk.gov.communities.delta.auth.services.EmailService
+import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.helper.testLdapUser
 import java.util.*
@@ -56,12 +59,30 @@ class EmailServiceTest {
     }
 
     @Test
-    fun testSendSetPasswordEmail() = testSuspend {
-        emailService.sendSetPasswordEmail(testLdapUser(email = "test@user.com"), "token", mockk()).apply {
+    fun testSendSelfSetPasswordEmail() = testSuspend {
+        emailService.sendSetPasswordEmail(testLdapUser(email = "test@user.com"), "token", false, mockk()).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("new-user", any(), any(), any())
             }
             coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(testLdapUser().cn, any()) }
+        }
+    }
+
+    @Test
+    fun testSendAdminSetPasswordEmail() = testSuspend {
+        val call = mockk<ApplicationCall>()
+        coEvery { call.principal<OAuthSession>()!!.userCn } returns "adminUserCn"
+        emailService.sendSetPasswordEmail(testLdapUser(email = "test@user.com"), "token", true, call).apply {
+            verify(exactly = 1) {
+                emailRepository.sendEmail("new-user", any(), any(), any())
+            }
+            coVerify(exactly = 1) {
+                userAuditService.adminResendActivationEmailAudit(
+                    testLdapUser().cn,
+                    "adminUserCn",
+                    any()
+                )
+            }
         }
     }
 
@@ -96,14 +117,31 @@ class EmailServiceTest {
     }
 
     @Test
-    fun testSendResetPasswordEmail() = testSuspend {
-        emailService.sendResetPasswordEmail(testLdapUser(email = "test@user.com"), "token", mockk()).apply {
+    fun testSendSelfResetPasswordEmail() = testSuspend {
+        emailService.sendResetPasswordEmail(testLdapUser(email = "test@user.com"), "token", false, mockk()).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("reset-password", any(), any(), any())
             }
             coVerify(exactly = 1) { userAuditService.resetPasswordEmailAudit(testLdapUser().cn, any()) }
         }
+    }
 
+    @Test
+    fun testSendAdminResetPasswordEmail() = testSuspend {
+        val call = mockk<ApplicationCall>()
+        coEvery { call.principal<OAuthSession>()!!.userCn } returns "adminUserCn"
+        emailService.sendResetPasswordEmail(testLdapUser(email = "test@user.com"), "token", true, call).apply {
+            verify(exactly = 1) {
+                emailRepository.sendEmail("reset-password", any(), any(), any())
+            }
+            coVerify(exactly = 1) {
+                userAuditService.adminResetPasswordEmailAudit(
+                    testLdapUser().cn,
+                    "adminUserCn",
+                    any()
+                )
+            }
+        }
     }
 
     @Before
@@ -112,5 +150,7 @@ class EmailServiceTest {
         every { emailRepository.sendEmail(any(), any(), any(), any()) } just runs
         coEvery { userAuditService.setPasswordEmailAudit(any(), any()) } just runs
         coEvery { userAuditService.resetPasswordEmailAudit(any(), any()) } just runs
+        coEvery { userAuditService.adminResendActivationEmailAudit(any(), any(), any()) } just runs
+        coEvery { userAuditService.adminResetPasswordEmailAudit(any(), any(), any()) } just runs
     }
 }

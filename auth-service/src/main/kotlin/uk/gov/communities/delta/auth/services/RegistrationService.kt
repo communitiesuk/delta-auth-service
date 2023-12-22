@@ -107,6 +107,7 @@ class RegistrationService(
                     registrationResult.registration.firstName,
                     registrationResult.token,
                     registrationResult.userCN,
+                    false,
                     getRegistrationEmailContacts(registrationResult.registration),
                     call,
                 )

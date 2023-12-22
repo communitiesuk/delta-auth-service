@@ -76,7 +76,7 @@ class DeltaForgotPasswordController(
             val user = userLookupService.lookupUserByCn(userCN)
             if (!user.accountEnabled && setPasswordTokenService.passwordNeverSetForUserCN(userCN))
                 emailService.sendPasswordNeverSetEmail(user, setPasswordTokenService.createToken(user.cn), call)
-            else emailService.sendResetPasswordEmail(user, resetPasswordTokenService.createToken(user.cn), call)
+            else emailService.sendResetPasswordEmail(user, resetPasswordTokenService.createToken(user.cn), false, call)
         } catch (e: NameNotFoundException) {
             emailService.sendNoUserEmail(emailAddress)
         } catch (e: Exception) {

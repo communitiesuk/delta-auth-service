@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import jakarta.mail.Address
 import jakarta.mail.internet.InternetAddress
 import kotlinx.coroutines.Dispatchers
@@ -57,11 +58,12 @@ class EmailService(
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent already-a-user email")
     }
 
-    suspend fun sendSetPasswordEmail(user: LdapUser, token: String, call: ApplicationCall) {
+    suspend fun sendSetPasswordEmail(user: LdapUser, token: String, triggeredByAdmin: Boolean, call: ApplicationCall) {
         sendSetPasswordEmail(
             user.firstName,
             token,
             user.cn,
+            triggeredByAdmin,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call
         )
@@ -71,6 +73,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
+        triggeredByAdmin: Boolean,
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -88,7 +91,12 @@ class EmailService(
                 )
             )
         )
-        userAuditService.setPasswordEmailAudit(userCN, call)
+        if (triggeredByAdmin) userAuditService.adminResendActivationEmailAudit(
+            userCN,
+            call.principal<OAuthSession>()!!.userCn,
+            call
+        )
+        else userAuditService.setPasswordEmailAudit(userCN, call)
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent new-user email")
     }
 
@@ -177,11 +185,17 @@ class EmailService(
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent password-never-set email")
     }
 
-    suspend fun sendResetPasswordEmail(user: LdapUser, token: String, call: ApplicationCall) {
+    suspend fun sendResetPasswordEmail(
+        user: LdapUser,
+        token: String,
+        triggeredByAdmin: Boolean,
+        call: ApplicationCall
+    ) {
         sendResetPasswordEmail(
             user.firstName,
             token,
             user.cn,
+            triggeredByAdmin,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call,
         )
@@ -191,6 +205,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
+        triggeredByAdmin: Boolean,
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -208,7 +223,13 @@ class EmailService(
                 )
             )
         )
-        userAuditService.resetPasswordEmailAudit(userCN, call)
+        if (triggeredByAdmin) userAuditService.adminResetPasswordEmailAudit(
+            userCN,
+            call.principal<OAuthSession>()!!.userCn,
+            call
+        )
+        else userAuditService.resetPasswordEmailAudit(userCN, call)
+
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
     }
 }

@@ -67,6 +67,7 @@ class DeltaUserRegistrationControllerTest {
                     "Test",
                     "token",
                     cnStart + standardDomain,
+                    false,
                     any(),
                     any()
                 )
@@ -172,6 +173,7 @@ class DeltaUserRegistrationControllerTest {
                     "Test",
                     "token",
                     cnStart + notRequiredDomain,
+                    false,
                     any(),
                     any()
                 )
@@ -202,7 +204,7 @@ class DeltaUserRegistrationControllerTest {
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
             coVerify(exactly = 0) { userService.createUser(any()) }
-            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any()) }
+            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any()) }
             assertFormPage(bodyAsText(), status)
             assertContains(bodyAsText(), "Email address domain not recognised")
         }
@@ -249,7 +251,7 @@ class DeltaUserRegistrationControllerTest {
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
         coEvery { emailService.sendAlreadyAUserEmail(any(), any(), any()) } just runs
-        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any()) } just runs
+        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), false, any(), any()) } just runs
     }
 
     companion object {

@@ -82,6 +82,7 @@ class DeltaResetPasswordController(
             emailService.sendResetPasswordEmail(
                 userLookupService.lookupUserByCn(userCN),
                 resetPasswordTokenService.createToken(userCN),
+                false,
                 call
             )
             call.respondNewEmailSentPage(userCN.replace("!", "@"))
