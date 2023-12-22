@@ -153,7 +153,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           "x" : 14,
           "type" : "log",
           "properties" : {
-            "query" : "SOURCE '${module.fargate.log_group_name}' | filter message = 'Login failed' | stats count() as login_count by IPAddress | limit 9",
+            "query" : "SOURCE '${module.fargate.log_group_name}' | filter message = 'Login failed' | stats count() as login_count by IPAddress | sort login_count desc | limit 9",
             "region" : data.aws_region.current.name,
             "stacked" : false,
             "title" : "Failed logins by IP address",
