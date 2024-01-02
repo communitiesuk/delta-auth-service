@@ -17,6 +17,7 @@ import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.bearerTokenRoutes
+import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
@@ -192,7 +193,11 @@ class FetchUserAuditControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(mockk<RefreshUserInfoController>(relaxed = true), controller)
+                        bearerTokenRoutes(
+                            mockk<RefreshUserInfoController>(relaxed = true),
+                            mockk<AdminEmailController>(relaxed = true),
+                            controller
+                        )
                     }
                 }
             }

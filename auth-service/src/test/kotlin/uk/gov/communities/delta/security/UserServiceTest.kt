@@ -34,14 +34,16 @@ class UserServiceTest {
     private val modificationItems = slot<Array<ModificationItem>>()
     private val context = mockk<InitialLdapContext>()
     private val contextBlock = slot<(InitialLdapContext) -> Unit>()
-    private val userCN = userEmail.replace("@", "!")
+    private val userCN = LDAPConfig.emailToCN(userEmail)
     private val userDN = String.format(deltaUserDnFormat, userCN)
 
     @Before
     fun setupMocks() {
         modificationItems.clear()
         contextBlock.clear()
-        coEvery { ldapServiceUserBind.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
+        coEvery { ldapServiceUserBind.useServiceUserBind(capture(contextBlock)) } coAnswers {
+            contextBlock.captured(context)
+        }
         coEvery { context.createSubcontext(userDN, capture(container)) } coAnswers { nothing }
         coEvery { context.modifyAttributes(userDN, capture(modificationItems)) } coAnswers { nothing }
     }

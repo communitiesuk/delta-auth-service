@@ -1,94 +1,249 @@
 package uk.gov.communities.delta.auth.services
 
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import jakarta.mail.Address
-import jakarta.mail.Message
-import jakarta.mail.Session
-import jakarta.mail.Transport
 import jakarta.mail.internet.InternetAddress
-import jakarta.mail.internet.MimeMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
-import org.thymeleaf.TemplateEngine
-import org.thymeleaf.context.Context
+import uk.gov.communities.delta.auth.config.AuthServiceConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
-import uk.gov.communities.delta.auth.plugins.makeTemplateResolver
-import uk.gov.communities.delta.auth.utils.timedSuspend
-import java.util.*
+import uk.gov.communities.delta.auth.controllers.external.getResetPasswordURL
+import uk.gov.communities.delta.auth.controllers.external.getSetPasswordURL
+import uk.gov.communities.delta.auth.repositories.EmailRepository
+import uk.gov.communities.delta.auth.repositories.LdapUser
+import uk.gov.communities.delta.auth.utils.timed
 
-
-class EmailService(emailConfig: EmailConfig) {
+class EmailService(
+    private val emailConfig: EmailConfig,
+    private val deltaConfig: DeltaConfig,
+    private val authServiceConfig: AuthServiceConfig,
+    private val userAuditService: UserAuditService,
+    private val emailRepository: EmailRepository,
+) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private var session: Session = Session.getInstance(emailConfig.emailProps, emailConfig.emailAuthenticator)
-    private var templateEngine: TemplateEngine = TemplateEngine()
 
-    init {
-        val templateResolver = templateEngine.makeTemplateResolver()
-        templateResolver.prefix += "emails/"
-        templateEngine.setTemplateResolver(templateResolver)
-    }
-
-    suspend fun sendTemplateEmail(
+    private suspend fun sendTemplateEmail(
         template: String,
         emailContacts: EmailContacts,
         subject: String,
         mappedValues: Map<String, String>,
     ) {
         withContext(Dispatchers.IO) {
-            logger.timedSuspend(
+            logger.timed(
                 "Send templated email",
                 { listOf(Pair("emailTemplate", template)) }
             ) {
-                blockingSendEmail(template, emailContacts, subject, mappedValues)
+                emailRepository.sendEmail(template, emailContacts, subject, mappedValues)
             }
         }
     }
 
-    @Blocking
-    private fun blockingSendEmail(
-        template: String,
-        emailContacts: EmailContacts,
-        subject: String,
-        mappedValues: Map<String, String>,
+    suspend fun sendAlreadyAUserEmail(
+        firstName: String,
+        userCN: String,
+        contacts: EmailContacts,
     ) {
-        val context = Context(Locale.getDefault(), mappedValues)
-        val content = templateEngine.process(template, context)
-        logger.atInfo()
-            .addKeyValue("emailTemplate", template)
-            .addKeyValue("emailTo", emailContacts.getTo())
-            .addKeyValue("emailSubject", subject)
-            .log("Sending email")
-        try {
-            val msg: Message = MimeMessage(session)
-            msg.setFrom(emailContacts.getFrom())
-            msg.replyTo = arrayOf(
-                emailContacts.getReplyTo()
+        sendTemplateEmail(
+            "already-a-user",
+            contacts,
+            "DLUHC DELTA - Existing Account",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "userFirstName" to firstName,
             )
-            msg.setRecipients(
-                Message.RecipientType.TO, arrayOf(
-                    emailContacts.getTo()
+        )
+        logger.atInfo().addKeyValue("userCN", userCN).log("Sent already-a-user email")
+    }
+
+    suspend fun sendSetPasswordEmail(user: LdapUser, token: String, triggeringAdminSession: OAuthSession?, call: ApplicationCall) {
+        sendSetPasswordEmail(
+            user.firstName,
+            token,
+            user.cn,
+            triggeringAdminSession,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
+            call
+        )
+    }
+
+    suspend fun sendSetPasswordEmail(
+        firstName: String,
+        token: String,
+        userCN: String,
+        triggeringAdminSession: OAuthSession?,
+        contacts: EmailContacts,
+        call: ApplicationCall,
+    ) {
+        sendTemplateEmail(
+            "new-user",
+            contacts,
+            "DLUHC DELTA - New User Account",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "userFirstName" to firstName,
+                "setPasswordUrl" to getSetPasswordURL(
+                    token,
+                    userCN,
+                    authServiceConfig.serviceUrl
                 )
             )
-            msg.subject = subject
-            msg.setText(content)
-            msg.setHeader("Content-Type", "text/html")
-            Transport.send(msg)
-        } catch (e: Exception) {
-            logger.error("Failed to sendTemplateEmail", e)
-            throw e
-        }
+        )
+        if (triggeringAdminSession != null) userAuditService.adminResendActivationEmailAudit(
+            userCN,
+            triggeringAdminSession.userCn,
+            call
+        )
+        else userAuditService.setPasswordEmailAudit(userCN, call)
+        logger.atInfo().addKeyValue("userCN", userCN).log("Sent new-user email")
+    }
+
+    suspend fun sendNoUserEmail(emailAddress: String) {
+        logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sending no-user-account email")
+        sendTemplateEmail(
+            "no-user-account",
+            EmailContacts(
+                emailAddress,
+                emailAddress,
+                emailConfig
+            ),
+            "DLUHC DELTA - No User Account",
+            mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)
+        )
+        logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent no-user-account email")
+    }
+
+    suspend fun sendNotYetEnabledEmail(user: LdapUser, token: String, call: ApplicationCall) {
+        sendNotYetEnabledEmail(
+            user.firstName,
+            token,
+            user.cn,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
+            call,
+        )
+    }
+
+    private suspend fun sendNotYetEnabledEmail(
+        firstName: String,
+        token: String,
+        userCN: String,
+        contacts: EmailContacts,
+        call: ApplicationCall,
+    ) {
+        sendTemplateEmail(
+            "not-yet-enabled-user",
+            contacts,
+            "DLUHC DELTA - Set Your Password",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "userFirstName" to firstName,
+                "setPasswordUrl" to getSetPasswordURL(
+                    token,
+                    userCN,
+                    authServiceConfig.serviceUrl
+                )
+            )
+        )
+        userAuditService.setPasswordEmailAudit(userCN, call)
+        logger.atInfo().addKeyValue("userCN", userCN).log("Sent not-yet-enabled-user email")
+    }
+
+    suspend fun sendPasswordNeverSetEmail(user: LdapUser, token: String, call: ApplicationCall) {
+        sendPasswordNeverSetEmail(
+            user.firstName,
+            token,
+            user.cn,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
+            call,
+        )
+    }
+
+    private suspend fun sendPasswordNeverSetEmail(
+        firstName: String,
+        token: String,
+        userCN: String,
+        contacts: EmailContacts,
+        call: ApplicationCall,
+    ) {
+        sendTemplateEmail(
+            "password-never-set",
+            contacts,
+            "DLUHC DELTA - Set Password",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "setPasswordUrl" to getSetPasswordURL(
+                    token,
+                    userCN,
+                    authServiceConfig.serviceUrl
+                ),
+                "userFirstName" to firstName,
+            )
+        )
+        userAuditService.setPasswordEmailAudit(userCN, call)
+        logger.atInfo().addKeyValue("userCN", userCN).log("Sent password-never-set email")
+    }
+
+    suspend fun sendResetPasswordEmail(
+        user: LdapUser,
+        token: String,
+        triggeringAdminSession: OAuthSession?,
+        call: ApplicationCall
+    ) {
+        sendResetPasswordEmail(
+            user.firstName,
+            token,
+            user.cn,
+            triggeringAdminSession,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
+            call,
+        )
+    }
+
+    private suspend fun sendResetPasswordEmail(
+        firstName: String,
+        token: String,
+        userCN: String,
+        triggeringAdminSession: OAuthSession?,
+        contacts: EmailContacts,
+        call: ApplicationCall,
+    ) {
+        sendTemplateEmail(
+            "reset-password",
+            contacts,
+            "DLUHC DELTA - Reset Your Password",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "userFirstName" to firstName,
+                "resetPasswordUrl" to getResetPasswordURL(
+                    token,
+                    userCN,
+                    authServiceConfig.serviceUrl
+                )
+            )
+        )
+        if (triggeringAdminSession != null) userAuditService.adminResetPasswordEmailAudit(
+            userCN,
+            triggeringAdminSession.userCn,
+            call
+        )
+        else userAuditService.resetPasswordEmailAudit(userCN, call)
+
+        logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
     }
 }
 
 class EmailContacts(
     private val toEmail: String,
     private val toName: String,
-    private val fromEmail: String,
-    private val fromName: String,
-    private val replyToEmail: String,
-    private val replyToName: String,
+    emailConfig: EmailConfig,
 ) {
+    private val fromEmail: String = emailConfig.fromEmailAddress
+    private val fromName: String = emailConfig.fromEmailName
+    private val replyToEmail: String = emailConfig.replyToEmailAddress
+    private val replyToName: String = emailConfig.replyToEmailName
+
     fun getTo(): Address {
         return InternetAddress(toEmail, toName, "UTF-8")
     }

@@ -18,7 +18,7 @@ class EmailAddressChecker {
             return false
         }
 
-        val cn = email.replace("@", "!")
+        val cn = LDAPConfig.emailToCN(email)
         return LDAPConfig.VALID_EMAIL_REGEX.matches(email) && LDAPConfig.VALID_USERNAME_REGEX.matches(cn)
     }
 

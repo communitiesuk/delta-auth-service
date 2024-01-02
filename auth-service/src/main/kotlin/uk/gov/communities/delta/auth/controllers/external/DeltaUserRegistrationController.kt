@@ -150,7 +150,7 @@ class DeltaUserRegistrationController(
                 userAuditService.userSelfRegisterAudit(registrationResult.userCN, call)
             }
             try {
-                registrationService.sendRegistrationEmail(registrationResult)
+                registrationService.sendRegistrationEmail(registrationResult, call)
             } catch (e: Exception) {
                 logger.error(
                     "Error sending email after registration for first name: {}, last name: {}, email address: {}. Result of registration was {}",

@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 class RegistrationServiceTest {
     private val deltaConfig = DeltaConfig.fromEnv()
     private val authServiceConfig = AuthServiceConfig("http://localhost", null)
-    private val registrationSetPasswordTokenService = mockk<RegistrationSetPasswordTokenService>()
+    private val setPasswordTokenService = mockk<SetPasswordTokenService>()
     private val emailService = mockk<EmailService>()
     private val userService = mockk<UserService>()
     private val userLookupService = mockk<UserLookupService>()
@@ -28,8 +28,7 @@ class RegistrationServiceTest {
         deltaConfig,
         EmailConfig.fromEnv(),
         LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
-        authServiceConfig,
-        registrationSetPasswordTokenService,
+        setPasswordTokenService,
         emailService,
         userService,
         userLookupService,
@@ -41,7 +40,7 @@ class RegistrationServiceTest {
         coEvery { userLookupService.userExists(any()) } returns false
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
         coEvery { userService.createUser(any()) } just runs
-        coEvery { registrationSetPasswordTokenService.createToken(any()) } returns "token"
+        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
     }
 
     @Test
@@ -55,7 +54,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
@@ -71,7 +70,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 0) { registrationSetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.SSOUserCreated)
     }
 
@@ -86,7 +85,7 @@ class RegistrationServiceTest {
         assertTrue(registrationResult is RegistrationService.UserAlreadyExists)
         coVerify(exactly = 0) { userService.createUser(any()) }
         coVerify(exactly = 0) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 0) { registrationSetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
     }
 
     @Test
@@ -101,7 +100,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode)) }
         coVerify(exactly = 4) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
@@ -117,7 +116,7 @@ class RegistrationServiceTest {
         coVerify(exactly = 0) { groupService.addUserToGroup(any(), groupName(orgCode)) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode)) }
         coVerify(exactly = 3) { groupService.addUserToGroup(any(), any()) }
-        coVerify(exactly = 1) { registrationSetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
