@@ -163,7 +163,7 @@ class DeltaResetPasswordControllerTest {
             }
         ).apply {
             coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(expiredToken, userCN) }
-            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), false, any()) }
+            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), null, any()) }
             coVerify(exactly = 1) { resetPasswordTokenService.createToken(userCN) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your password reset link has been email to you")
@@ -217,7 +217,7 @@ class DeltaResetPasswordControllerTest {
         } returns PasswordTokenService.NoSuchToken
         coEvery { resetPasswordTokenService.createToken(userCN) } returns "token"
         coEvery { userService.resetPassword(userDN, validPassword) } just runs
-        coEvery { emailService.sendResetPasswordEmail(any(), any(), false, any()) } just runs
+        coEvery { emailService.sendResetPasswordEmail(any(), any(), null, any()) } just runs
     }
 
     companion object {

@@ -58,12 +58,12 @@ class EmailService(
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent already-a-user email")
     }
 
-    suspend fun sendSetPasswordEmail(user: LdapUser, token: String, triggeredByAdmin: Boolean, call: ApplicationCall) {
+    suspend fun sendSetPasswordEmail(user: LdapUser, token: String, triggeringAdminSession: OAuthSession?, call: ApplicationCall) {
         sendSetPasswordEmail(
             user.firstName,
             token,
             user.cn,
-            triggeredByAdmin,
+            triggeringAdminSession,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call
         )
@@ -73,7 +73,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
-        triggeredByAdmin: Boolean,
+        triggeringAdminSession: OAuthSession?,
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -91,9 +91,9 @@ class EmailService(
                 )
             )
         )
-        if (triggeredByAdmin) userAuditService.adminResendActivationEmailAudit(
+        if (triggeringAdminSession != null) userAuditService.adminResendActivationEmailAudit(
             userCN,
-            call.principal<OAuthSession>()!!.userCn,
+            triggeringAdminSession.userCn,
             call
         )
         else userAuditService.setPasswordEmailAudit(userCN, call)
@@ -188,14 +188,14 @@ class EmailService(
     suspend fun sendResetPasswordEmail(
         user: LdapUser,
         token: String,
-        triggeredByAdmin: Boolean,
+        triggeringAdminSession: OAuthSession?,
         call: ApplicationCall
     ) {
         sendResetPasswordEmail(
             user.firstName,
             token,
             user.cn,
-            triggeredByAdmin,
+            triggeringAdminSession,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call,
         )
@@ -205,7 +205,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
-        triggeredByAdmin: Boolean,
+        triggeringAdminSession: OAuthSession?,
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -223,9 +223,9 @@ class EmailService(
                 )
             )
         )
-        if (triggeredByAdmin) userAuditService.adminResetPasswordEmailAudit(
+        if (triggeringAdminSession != null) userAuditService.adminResetPasswordEmailAudit(
             userCN,
-            call.principal<OAuthSession>()!!.userCn,
+            triggeringAdminSession.userCn,
             call
         )
         else userAuditService.resetPasswordEmailAudit(userCN, call)

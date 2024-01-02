@@ -55,7 +55,7 @@ class DeltaForgotPasswordControllerTest {
             url = "/forgot-password",
             formParameters = parameters { append("emailAddress", userEmail) }
         ).apply {
-            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), false, any()) }
+            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), null, any()) }
             assertEquals(HttpStatusCode.Found, status)
             assertTrue("Should redirect to email sent page") { headers["Location"]!!.contains("/delta/forgot-password/email-sent") }
         }
@@ -130,7 +130,7 @@ class DeltaForgotPasswordControllerTest {
         clearAllMocks()
         coEvery { resetPasswordTokenService.createToken(any()) } returns "token"
         coEvery { emailService.sendNoUserEmail(any()) } just runs
-        coEvery { emailService.sendResetPasswordEmail(any(), any(), false, any()) } just runs
+        coEvery { emailService.sendResetPasswordEmail(any(), any(), null, any()) } just runs
         coEvery { emailService.sendPasswordNeverSetEmail(any(), any(), any()) } just runs
     }
 

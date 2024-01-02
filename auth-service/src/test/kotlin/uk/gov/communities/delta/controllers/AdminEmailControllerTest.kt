@@ -38,7 +38,7 @@ class AdminEmailControllerTest {
             parameter("userEmail", disabledReceivingUserEmail)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { emailService.sendSetPasswordEmail(disabledReceivingUser, any(), true, any()) }
+            coVerify(exactly = 1) { emailService.sendSetPasswordEmail(disabledReceivingUser, any(), adminSession, any()) }
             coVerify(exactly = 1) { setPasswordTokenService.createToken(disabledReceivingUser.cn) }
         }
     }
@@ -110,7 +110,7 @@ class AdminEmailControllerTest {
             parameter("userEmail", enabledReceivingUserEmail)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", true, any()) }
+            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", adminSession, any()) }
             coVerify(exactly = 1) { resetPasswordTokenService.createToken(any()) }
         }
     }
@@ -191,8 +191,8 @@ class AdminEmailControllerTest {
         coEvery { userLookupService.lookupUserByCn(disabledReceivingSSOUser.cn) } returns disabledReceivingSSOUser
         coEvery { resetPasswordTokenService.createToken(any()) } returns "token"
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
-        coEvery { emailService.sendSetPasswordEmail(disabledReceivingUser, "token", true, any()) } just runs
-        coEvery { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", true, any()) } just runs
+        coEvery { emailService.sendSetPasswordEmail(disabledReceivingUser, "token", adminSession, any()) } just runs
+        coEvery { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", adminSession, any()) } just runs
     }
 
     companion object {

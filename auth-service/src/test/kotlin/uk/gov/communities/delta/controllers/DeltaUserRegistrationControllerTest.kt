@@ -67,7 +67,7 @@ class DeltaUserRegistrationControllerTest {
                     "Test",
                     "token",
                     cnStart + standardDomain,
-                    false,
+                    null,
                     any(),
                     any()
                 )
@@ -173,7 +173,7 @@ class DeltaUserRegistrationControllerTest {
                     "Test",
                     "token",
                     cnStart + notRequiredDomain,
-                    false,
+                    null,
                     any(),
                     any()
                 )
@@ -251,7 +251,7 @@ class DeltaUserRegistrationControllerTest {
         coEvery { groupService.addUserToGroup(any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
         coEvery { emailService.sendAlreadyAUserEmail(any(), any(), any()) } just runs
-        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), false, any(), any()) } just runs
+        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), null, any(), any()) } just runs
     }
 
     companion object {

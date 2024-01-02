@@ -60,7 +60,7 @@ class EmailServiceTest {
 
     @Test
     fun testSendSelfSetPasswordEmail() = testSuspend {
-        emailService.sendSetPasswordEmail(testLdapUser(email = "test@user.com"), "token", false, mockk()).apply {
+        emailService.sendSetPasswordEmail(testLdapUser(email = "test@user.com"), "token", null, mockk()).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("new-user", any(), any(), any())
             }
@@ -71,8 +71,10 @@ class EmailServiceTest {
     @Test
     fun testSendAdminSetPasswordEmail() = testSuspend {
         val call = mockk<ApplicationCall>()
-        coEvery { call.principal<OAuthSession>()!!.userCn } returns "adminUserCn"
-        emailService.sendSetPasswordEmail(testLdapUser(email = "test@user.com"), "token", true, call).apply {
+        val adminSession = mockk<OAuthSession>()
+        coEvery { call.principal<OAuthSession>() } returns adminSession
+        coEvery { adminSession.userCn } returns "adminUserCn"
+        emailService.sendSetPasswordEmail(testLdapUser(email = "test@user.com"), "token", adminSession, call).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("new-user", any(), any(), any())
             }
@@ -118,7 +120,7 @@ class EmailServiceTest {
 
     @Test
     fun testSendSelfResetPasswordEmail() = testSuspend {
-        emailService.sendResetPasswordEmail(testLdapUser(email = "test@user.com"), "token", false, mockk()).apply {
+        emailService.sendResetPasswordEmail(testLdapUser(email = "test@user.com"), "token", null, mockk()).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("reset-password", any(), any(), any())
             }
@@ -129,8 +131,10 @@ class EmailServiceTest {
     @Test
     fun testSendAdminResetPasswordEmail() = testSuspend {
         val call = mockk<ApplicationCall>()
-        coEvery { call.principal<OAuthSession>()!!.userCn } returns "adminUserCn"
-        emailService.sendResetPasswordEmail(testLdapUser(email = "test@user.com"), "token", true, call).apply {
+        val adminSession = mockk<OAuthSession>()
+        coEvery { call.principal<OAuthSession>() } returns adminSession
+        coEvery { adminSession.userCn } returns "adminUserCn"
+        emailService.sendResetPasswordEmail(testLdapUser(email = "test@user.com"), "token", adminSession, call).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("reset-password", any(), any(), any())
             }

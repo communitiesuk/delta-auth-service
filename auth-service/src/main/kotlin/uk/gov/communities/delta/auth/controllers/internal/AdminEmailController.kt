@@ -55,7 +55,7 @@ class AdminEmailController(
 
         try {
             val token = setPasswordTokenService.createToken(receivingUser.cn)
-            emailService.sendSetPasswordEmail(receivingUser, token, true, call)
+            emailService.sendSetPasswordEmail(receivingUser, token, call.principal<OAuthSession>()!!, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send activation email")
             throw ApiError(
@@ -97,7 +97,7 @@ class AdminEmailController(
 
         try {
             val token = resetPasswordTokenService.createToken(receivingUser.cn)
-            emailService.sendResetPasswordEmail(receivingUser, token, true, call)
+            emailService.sendResetPasswordEmail(receivingUser, token, call.principal<OAuthSession>()!!, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send email")
             throw ApiError(
