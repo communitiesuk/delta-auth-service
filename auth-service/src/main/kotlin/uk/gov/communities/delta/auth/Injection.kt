@@ -267,4 +267,16 @@ class Injection(
         userLookupService,
         userAuditService,
     )
+
+    fun adminUserCreationController() = AdminUserCreationController(
+        ldapConfig,
+        deltaConfig,
+        azureADSSOConfig,
+        emailConfig,
+        userLookupService,
+        userService,
+        groupService,
+        emailService,
+        setPasswordTokenService,
+    )
 }

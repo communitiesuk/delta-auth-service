@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.services
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
@@ -31,10 +32,16 @@ class UserService(
         container.put(BasicAttribute("sn", adUser.sn))
         container.put(BasicAttribute("givenName", adUser.givenName))
         container.put(BasicAttribute("mail", adUser.mail))
-        container.put(BasicAttribute("st", adUser.st))
+        container.put(BasicAttribute("st", adUser.notificationStatus))
         container.put(BasicAttribute("userAccountControl", adUser.userAccountControl))
-        if (adUser.password != null) container.put(ADUser.getPasswordAttribute(adUser.password!!))
+
         if (adUser.comment != null) container.put(BasicAttribute("comment", adUser.comment))
+        if (adUser.telephone != null) container.put(BasicAttribute("telephoneNumber", adUser.telephone))
+        if (adUser.mobile != null) container.put(BasicAttribute("mobile", adUser.mobile))
+        if (adUser.reasonForAccess != null) container.put(BasicAttribute("description", adUser.reasonForAccess))
+        if (adUser.position != null) container.put(BasicAttribute("title", adUser.position))
+
+        if (adUser.password != null) container.put(ADUser.getPasswordAttribute(adUser.password!!))
 
         val enabled = adUser.userAccountControl == ADUser.accountFlags(true)
         if (enabled && adUser.password == null) {
@@ -94,18 +101,75 @@ class UserService(
         }
     }
 
-    class ADUser(registration: Registration, ssoUser: Boolean, private val ldapConfig: LDAPConfig) {
-        var cn: String = LDAPConfig.emailToCN(registration.emailAddress)
-        var givenName: String = registration.firstName
-        var sn: String = registration.lastName
-        var mail: String = registration.emailAddress
-        var userAccountControl: String = accountFlags(ssoUser)
-        var dn: String = cnToDN(cn)
-        var userPrincipalName: String = cnToPrincipalName(cn)
-        var st: String = "active"
-        var objClasses = objClasses()
-        var password = if (ssoUser) randomBase64(18) else null
-        var comment = if (ssoUser) "Created via SSO" else null
+    class ADUser {
+        var ldapConfig: LDAPConfig
+            private set
+        var cn: String
+            private set
+        var givenName: String
+            private set
+        var sn: String
+            private set
+        var mail: String
+            private set
+        var userAccountControl: String
+            private set
+        var dn: String
+            private set
+        var userPrincipalName: String
+            private set
+        var notificationStatus: String
+            private set
+        var password: String? = null
+            private set
+        var comment: String? = null
+            private set
+        var telephone: String? = null
+            private set
+        var mobile: String? = null
+            private set
+        var reasonForAccess: String? = null
+            private set
+        var position: String? = null
+            private set
+        var objClasses: Attribute = objClasses()
+
+        constructor(ldapConfig: LDAPConfig, registration: Registration, ssoUser: Boolean) {
+            this.ldapConfig = ldapConfig
+            this.cn = LDAPConfig.emailToCN(registration.emailAddress)
+            this.givenName = registration.firstName
+            this.sn = registration.lastName
+            this.mail = registration.emailAddress
+            this.userAccountControl = accountFlags(ssoUser)
+            this.dn = cnToDN(cn)
+            this.userPrincipalName = cnToPrincipalName(cn)
+            this.notificationStatus = "active"
+            this.password = if (ssoUser) randomBase64(18) else null
+            this.comment = if (ssoUser) "Created via SSO" else null
+        }
+
+        constructor(
+            ldapConfig: LDAPConfig,
+            deltaUserDetails: DeltaUserDetails,
+            ssoUser: Boolean,
+        ) {
+            this.ldapConfig = ldapConfig
+            this.cn = LDAPConfig.emailToCN(deltaUserDetails.email)
+            this.givenName = deltaUserDetails.firstName
+            this.sn = deltaUserDetails.lastName
+            this.mail = deltaUserDetails.email
+            this.userAccountControl = accountFlags(ssoUser)
+            this.dn = cnToDN(cn)
+            this.userPrincipalName = cnToPrincipalName(cn)
+            this.notificationStatus = "active"
+            this.password = if (ssoUser) randomBase64(18) else null
+            this.comment = if (deltaUserDetails.comment.isNullOrEmpty()) null else deltaUserDetails.comment
+            this.telephone = if (deltaUserDetails.telephone.isNullOrEmpty()) null else deltaUserDetails.telephone
+            this.mobile = if (deltaUserDetails.mobile.isNullOrEmpty()) null else deltaUserDetails.mobile
+            this.reasonForAccess =
+                if (deltaUserDetails.reasonForAccess.isNullOrEmpty()) null else deltaUserDetails.reasonForAccess
+            this.position = if (deltaUserDetails.position.isNullOrEmpty()) null else deltaUserDetails.position
+        }
 
         private fun objClasses(): Attribute {
             val objClasses: Attribute = BasicAttribute("objectClass")
@@ -122,6 +186,10 @@ class UserService(
 
         private fun cnToPrincipalName(cn: String): String {
             return String.format("%s@%s", cn, ldapConfig.domainRealm)
+        }
+
+        fun getDisplayName(): String {
+            return this.givenName + this.sn
         }
 
         companion object {
@@ -148,4 +216,24 @@ class UserService(
             }
         }
     }
+
+    data class DeltaUserDetails(
+        @JsonProperty("id") val id: String,
+        @JsonProperty("enabled") val enabled: Boolean,
+        @JsonProperty("email") val email: String,
+        @JsonProperty("lastName") val lastName: String,
+        @JsonProperty("firstName") val firstName: String,
+        @JsonProperty("telephone") val telephone: String?,
+        @JsonProperty("mobile") val mobile: String?,
+        @JsonProperty("position") val position: String?,
+        @JsonProperty("reasonForAccess") val reasonForAccess: String?,
+        @JsonProperty("accessGroups") val accessGroups: Array<String>,
+        @JsonProperty("accessGroupDelegates") val accessGroupDelegates: Array<String>,
+        @JsonProperty("accessGroupOrganisations") val accessGroupOrganisations: Map<String, Array<String>>,
+        @JsonProperty("roles") val roles: Array<String>,
+        @JsonProperty("externalRoles") val externalRoles: Array<String>,
+        @JsonProperty("organisations") val organisations: Array<String>,
+        @JsonProperty("comment") val comment: String?,
+        @JsonProperty("classificationType") val classificationType: String?,
+    )
 }

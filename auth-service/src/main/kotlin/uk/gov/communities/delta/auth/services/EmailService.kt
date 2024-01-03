@@ -95,7 +95,7 @@ class EmailService(
                 )
             )
         )
-        if (triggeringAdminSession != null) userAuditService.adminResendActivationEmailAudit(
+        if (triggeringAdminSession != null) userAuditService.adminSetPasswordEmailAudit(
             userCN,
             triggeringAdminSession.userCn,
             call

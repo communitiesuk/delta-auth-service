@@ -50,7 +50,7 @@ class UserServiceTest {
 
     @Test
     fun testSuccessfulCreateStandardUser() = testSuspend {
-        userService.createUser(UserService.ADUser(registration, false, ldapConfig))
+        userService.createUser(UserService.ADUser(ldapConfig, registration, false))
         verify(exactly = 1) { context.createSubcontext(userDN, any()) }
         // User has normal and disabled account
         assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
@@ -60,7 +60,7 @@ class UserServiceTest {
 
     @Test
     fun testSuccessfulCreateSSOUser() = testSuspend {
-        userService.createUser(UserService.ADUser(registration, true, ldapConfig))
+        userService.createUser(UserService.ADUser(ldapConfig, registration, true))
         verify(exactly = 1) { context.createSubcontext(userDN, any()) }
         // User has normal and enabled account
         assertEquals<String>("512", container.captured.get("userAccountControl").get() as String)
@@ -105,7 +105,7 @@ class UserServiceTest {
 
     @Test
     fun testPasswordCreation() = testSuspend {
-        val adUser = UserService.ADUser(registration, true, ldapConfig)
+        val adUser = UserService.ADUser(ldapConfig, registration, true)
         assertEquals(18 * 8 / 6, adUser.password!!.length)
     }
 }

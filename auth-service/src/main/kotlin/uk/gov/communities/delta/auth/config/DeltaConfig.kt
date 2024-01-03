@@ -7,8 +7,9 @@ class DeltaConfig(
     val rateLimit: Int,
     val masterStoreBaseNoAuth: String,
 ) {
-    val datamartDeltaUser = "datamart-delta-user"
-    val datamartDeltaReportUsers = "datamart-delta-report-users"
+    val datamartDelta = "datamart-delta-"
+    val datamartDeltaUser = datamartDelta + "user"
+    val datamartDeltaReportUsers = datamartDelta + "report-users"
 
     companion object {
         fun fromEnv() = DeltaConfig(

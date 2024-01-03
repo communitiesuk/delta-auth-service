@@ -47,7 +47,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
 
     val setPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
 
-    val adminResendActivationEmailAudit = insertAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
+    val adminSetPasswordEmailAudit = insertAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
 
     val resetPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD)
 
@@ -87,7 +87,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         encodedActionData: String,
     ) {
         withContext(Dispatchers.IO) {
-            dbPool.useConnectionBlocking("audit_sso_login") {
+            dbPool.useConnectionBlocking("Auditing $action") {
                 userAuditTrailRepo.insertAuditRow(
                     it, action, userCn, editingUserCn, requestId, encodedActionData
                 )

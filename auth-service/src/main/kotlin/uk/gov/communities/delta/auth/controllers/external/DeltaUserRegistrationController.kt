@@ -147,7 +147,7 @@ class DeltaUserRegistrationController(
                 throw e
             }
             if (registrationResult is RegistrationService.UserCreated) {
-                userAuditService.userSelfRegisterAudit(registrationResult.userCN, call)
+                userAuditService.userSelfRegisterAudit(registrationResult.user.cn, call)
             }
             try {
                 registrationService.sendRegistrationEmail(registrationResult, call)
@@ -187,7 +187,7 @@ class DeltaUserRegistrationController(
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
         return when (registrationResult) {
             is RegistrationService.UserCreated -> {
-                respondSuccessPage(registrationResult.registration.emailAddress)
+                respondSuccessPage(registrationResult.user.mail)
             }
 
             is RegistrationService.SSOUserCreated -> {
@@ -195,7 +195,7 @@ class DeltaUserRegistrationController(
             }
 
             is RegistrationService.UserAlreadyExists -> {
-                respondSuccessPage(registrationResult.registration.emailAddress)
+                respondSuccessPage(registrationResult.user.mail)
             }
 
             is RegistrationService.RegistrationFailure -> {

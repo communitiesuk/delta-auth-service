@@ -144,7 +144,7 @@ class OAuthSSOLoginTest {
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
-        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated(userCN)
+        coEvery { registrationService.register(any<Registration>(), any(), true) } returns RegistrationService.SSOUserCreated(userCN)
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
@@ -165,7 +165,7 @@ class OAuthSSOLoginTest {
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
-        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated(userCN)
+        coEvery { registrationService.register(any<Registration>(), any(), true) } returns RegistrationService.SSOUserCreated(userCN)
         coEvery { userAuditService.ssoUserCreatedAudit(userCN, "abc-123", requiredSsoClient, any()) } returns Unit
 
 
@@ -173,7 +173,14 @@ class OAuthSSOLoginTest {
             .apply {
                 val registration = Registration("Example", "User", "user@example.com", "abc-123")
                 coVerify(exactly = 1) { registrationService.register(registration, organisations, true) }
-                coVerify(exactly = 1) { userAuditService.ssoUserCreatedAudit(userCN, "abc-123", requiredSsoClient, any()) }
+                coVerify(exactly = 1) {
+                    userAuditService.ssoUserCreatedAudit(
+                        userCN,
+                        "abc-123",
+                        requiredSsoClient,
+                        any()
+                    )
+                }
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             }
@@ -276,9 +283,19 @@ class OAuthSSOLoginTest {
             )
         } answers { listOf(emailMappingSSOClient.requiredGroupId!!) }
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!email-domain.com") } answers {
-            testLdapUser(cn = "user!email-domain.com", email = "user@email-domain.com", memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
+            testLdapUser(
+                cn = "user!email-domain.com",
+                email = "user@email-domain.com",
+                memberOfCNs = listOf(deltaConfig.datamartDeltaUser)
+            )
         }
-        coEvery { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()) } answers {
+        coEvery {
+            authorizationCodeServiceMock.generateAndStore(
+                "user!email-domain.com",
+                serviceClient,
+                any()
+            )
+        } answers {
             AuthCode("code", "user!email-domain.com", serviceClient, Instant.MIN, "trace")
         }
 
@@ -293,7 +310,13 @@ class OAuthSSOLoginTest {
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals(headers["Location"], "https://delta/login/oauth2/redirect?code=code&state=delta-state")
-                coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()) }
+                coVerify(exactly = 1) {
+                    authorizationCodeServiceMock.generateAndStore(
+                        "user!email-domain.com",
+                        serviceClient,
+                        any()
+                    )
+                }
             }
     }
 

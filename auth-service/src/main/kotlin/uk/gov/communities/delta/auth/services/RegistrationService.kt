@@ -17,9 +17,9 @@ class RegistrationService(
     private val groupService: GroupService,
 ) {
     sealed class RegistrationResult
-    class UserCreated(val registration: Registration, val token: String, val userCN: String) : RegistrationResult()
+    class UserCreated(val user: UserService.ADUser, val token: String) : RegistrationResult()
     class SSOUserCreated(val userCN: String) : RegistrationResult()
-    class UserAlreadyExists(val registration: Registration, val userCN: String) : RegistrationResult()
+    class UserAlreadyExists(val user: UserService.ADUser) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
     // Previously users could be datamart users but not delta users, at migration we only transferred over users who
@@ -34,10 +34,19 @@ class RegistrationService(
         organisations: List<Organisation>,
         ssoUser: Boolean = false,
     ): RegistrationResult {
-        val adUser = UserService.ADUser(registration, ssoUser, ldapConfig)
+        val adUser = UserService.ADUser(ldapConfig, registration, ssoUser)
+        return register(adUser, organisations, ssoUser)
+    }
+
+    suspend fun register(
+        adUser: UserService.ADUser,
+        organisations: List<Organisation>,
+        ssoUser: Boolean = false,
+    ): RegistrationResult {
+
         if (userLookupService.userExists(adUser.cn)) {
             logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
-            return UserAlreadyExists(registration, adUser.cn)
+            return UserAlreadyExists(adUser)
         }
         try {
             userService.createUser(adUser)
@@ -52,7 +61,7 @@ class RegistrationService(
         return if (ssoUser)
             SSOUserCreated(adUser.cn)
         else
-            UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
+            UserCreated(adUser, setPasswordTokenService.createToken(adUser.cn))
     }
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
@@ -92,10 +101,10 @@ class RegistrationService(
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to domain organisations")
     }
 
-    private fun getRegistrationEmailContacts(registration: Registration): EmailContacts {
+    private fun getRegistrationEmailContacts(adUser: UserService.ADUser): EmailContacts {
         return EmailContacts(
-            registration.emailAddress,
-            registration.firstName + " " + registration.lastName,
+            adUser.mail,
+            adUser.getDisplayName(),
             emailConfig
         )
     }
@@ -104,11 +113,11 @@ class RegistrationService(
         when (registrationResult) {
             is UserCreated -> {
                 emailService.sendSetPasswordEmail(
-                    registrationResult.registration.firstName,
+                    registrationResult.user.givenName,
                     registrationResult.token,
-                    registrationResult.userCN,
+                    registrationResult.user.cn,
                     null,
-                    getRegistrationEmailContacts(registrationResult.registration),
+                    getRegistrationEmailContacts(registrationResult.user),
                     call,
                 )
             }
@@ -119,9 +128,9 @@ class RegistrationService(
 
             is UserAlreadyExists -> {
                 emailService.sendAlreadyAUserEmail(
-                    registrationResult.registration.firstName,
-                    registrationResult.userCN,
-                    getRegistrationEmailContacts(registrationResult.registration),
+                    registrationResult.user.givenName,
+                    registrationResult.user.cn,
+                    getRegistrationEmailContacts(registrationResult.user),
                 )
             }
 
