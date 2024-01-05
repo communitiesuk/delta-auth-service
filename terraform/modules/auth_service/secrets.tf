@@ -10,6 +10,10 @@ data "aws_secretsmanager_secret" "saml_certificate" {
 resource "aws_kms_key" "auth_service" {
   description         = "auth-service-${var.environment}"
   enable_key_rotation = true
+
+  tags = {
+    "terraform-plan-read" = true
+  }
 }
 
 resource "aws_kms_alias" "auth_service" {
