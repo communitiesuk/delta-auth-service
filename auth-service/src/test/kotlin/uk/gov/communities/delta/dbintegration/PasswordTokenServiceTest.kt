@@ -6,8 +6,8 @@ import kotlinx.coroutines.withContext
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.services.PasswordTokenService
-import uk.gov.communities.delta.auth.services.RegistrationSetPasswordTokenService
 import uk.gov.communities.delta.auth.services.ResetPasswordTokenService
+import uk.gov.communities.delta.auth.services.SetPasswordTokenService
 import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.helper.testServiceClient
 import java.sql.Timestamp
@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
 class PasswordTokenServiceTest {
     @Test
     fun testLookupInvalidTokenOnSetFails() = testSuspend {
-        val result = registrationSetPasswordTokenService.validateToken("invalidToken", userCN)
+        val result = setPasswordTokenService.validateToken("invalidToken", userCN)
         assertTrue(result is PasswordTokenService.NoSuchToken)
     }
 
@@ -30,22 +30,22 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testLookupWrongUserOnSetFails() = testSuspend {
-        val token = registrationSetPasswordTokenService.createToken(userCN)
-        val result = registrationSetPasswordTokenService.validateToken(token, "not$userCN")
+        val token = setPasswordTokenService.createToken(userCN)
+        val result = setPasswordTokenService.validateToken(token, "not$userCN")
         assertTrue(result is PasswordTokenService.NoSuchToken)
     }
 
     @Test
     fun testLookupWrongUserOnResetFails() = testSuspend {
-        val token = registrationSetPasswordTokenService.createToken(userCN)
+        val token = setPasswordTokenService.createToken(userCN)
         val result = resetPasswordTokenService.validateToken(token, "not$userCN")
         assertTrue(result is PasswordTokenService.NoSuchToken)
     }
 
     @Test
     fun testLookupCorrectUserForSetWithoutDelete() = testSuspend {
-        val token = registrationSetPasswordTokenService.createToken(userCN)
-        val result = registrationSetPasswordTokenService.validateToken(token, userCN)
+        val token = setPasswordTokenService.createToken(userCN)
+        val result = setPasswordTokenService.validateToken(token, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
     }
 
@@ -58,10 +58,10 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testLookupForSetWithDelete() = testSuspend {
-        val token = registrationSetPasswordTokenService.createToken(userCN)
-        var result = registrationSetPasswordTokenService.consumeTokenIfValid(token, userCN)
+        val token = setPasswordTokenService.createToken(userCN)
+        var result = setPasswordTokenService.consumeTokenIfValid(token, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
-        result = registrationSetPasswordTokenService.validateToken(token, userCN)
+        result = setPasswordTokenService.validateToken(token, userCN)
         assertTrue(result is PasswordTokenService.NoSuchToken)
     }
 
@@ -76,10 +76,10 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testLookupForSetWithoutDelete() = testSuspend {
-        val token = registrationSetPasswordTokenService.createToken(userCN)
-        var result = registrationSetPasswordTokenService.validateToken(token, userCN)
+        val token = setPasswordTokenService.createToken(userCN)
+        var result = setPasswordTokenService.validateToken(token, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
-        result = registrationSetPasswordTokenService.validateToken(token, userCN)
+        result = setPasswordTokenService.validateToken(token, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
     }
 
@@ -94,11 +94,11 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testOnlyOneTokenPerUserForSet() = testSuspend {
-        val originalToken = registrationSetPasswordTokenService.createToken(userCN)
-        val replacementToken = registrationSetPasswordTokenService.createToken(userCN)
-        var result = registrationSetPasswordTokenService.validateToken(originalToken, userCN)
+        val originalToken = setPasswordTokenService.createToken(userCN)
+        val replacementToken = setPasswordTokenService.createToken(userCN)
+        var result = setPasswordTokenService.validateToken(originalToken, userCN)
         assertTrue(result is PasswordTokenService.NoSuchToken)
-        result = registrationSetPasswordTokenService.consumeTokenIfValid(replacementToken, userCN)
+        result = setPasswordTokenService.consumeTokenIfValid(replacementToken, userCN)
         assertTrue(result is PasswordTokenService.ValidToken)
     }
 
@@ -114,7 +114,7 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testLookupExpiredTokenForSet() = testSuspend {
-        val token = registrationSetPasswordTokenService.createToken(userCN)
+        val token = setPasswordTokenService.createToken(userCN)
         withContext(Dispatchers.IO) {
             testDbPool.useConnectionBlocking("Test make set password token expire") {
                 val stmt = it.prepareStatement(
@@ -131,7 +131,7 @@ class PasswordTokenServiceTest {
                 it.commit()
             }
         }
-        val result = registrationSetPasswordTokenService.validateToken(token, userCN)
+        val result = setPasswordTokenService.validateToken(token, userCN)
         assertTrue(result is PasswordTokenService.ExpiredToken)
     }
 
@@ -160,7 +160,7 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testTokenCreationForSet() = testSuspend {
-        val token = registrationSetPasswordTokenService.createToken(userCN)
+        val token = setPasswordTokenService.createToken(userCN)
         assertEquals(PasswordTokenService.TOKEN_LENGTH_BYTES * 8 / 6, token.length)
     }
 
@@ -172,41 +172,41 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testTablesAreIndependent() = testSuspend {
-        val setToken = registrationSetPasswordTokenService.createToken(userCN)
+        val setToken = setPasswordTokenService.createToken(userCN)
         val resetToken = resetPasswordTokenService.createToken(userCN)
-        var setTokenResult = registrationSetPasswordTokenService.validateToken(setToken, userCN)
+        var setTokenResult = setPasswordTokenService.validateToken(setToken, userCN)
         assertTrue(setTokenResult is PasswordTokenService.ValidToken)
         val setTokenAsResetTokenResult = resetPasswordTokenService.validateToken(setToken, userCN)
         assertEquals(PasswordTokenService.NoSuchToken, setTokenAsResetTokenResult)
         val resetTokenResult = resetPasswordTokenService.consumeTokenIfValid(resetToken, userCN)
         assertTrue(resetTokenResult is PasswordTokenService.ValidToken)
-        setTokenResult = registrationSetPasswordTokenService.validateToken(setToken, userCN)
+        setTokenResult = setPasswordTokenService.validateToken(setToken, userCN)
         assertTrue(setTokenResult is PasswordTokenService.ValidToken)
     }
 
     @Test
     fun testPasswordNeverSetChecksForSetPasswordToken() = testSuspend {
         val otherUserCN = "other" + userCN
-        var passwordSet = registrationSetPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
+        var passwordSet = setPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
         assertFalse(passwordSet)
         resetPasswordTokenService.createToken(otherUserCN)
-        passwordSet = registrationSetPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
+        passwordSet = setPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
         assertFalse(passwordSet)
-        registrationSetPasswordTokenService.createToken(otherUserCN)
-        passwordSet = registrationSetPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
+        setPasswordTokenService.createToken(otherUserCN)
+        passwordSet = setPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
         assertTrue(passwordSet)
     }
 
     companion object {
         private val userCN = "user!example.com"
-        lateinit var registrationSetPasswordTokenService: RegistrationSetPasswordTokenService
+        lateinit var setPasswordTokenService: SetPasswordTokenService
         lateinit var resetPasswordTokenService: ResetPasswordTokenService
         val client = testServiceClient()
 
         @BeforeClass
         @JvmStatic
         fun setup() {
-            registrationSetPasswordTokenService = RegistrationSetPasswordTokenService(testDbPool, TimeSource.System)
+            setPasswordTokenService = SetPasswordTokenService(testDbPool, TimeSource.System)
             resetPasswordTokenService = ResetPasswordTokenService(testDbPool, TimeSource.System)
         }
     }

@@ -14,15 +14,16 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.micrometer.core.instrument.Counter
 import io.mockk.*
-import kotlinx.coroutines.runBlocking
-import org.junit.*
+import org.junit.AfterClass
+import org.junit.Before
+import org.junit.BeforeClass
+import org.junit.Test
 import uk.gov.communities.delta.auth.LoginSessionCookie
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaLoginController
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
-import uk.gov.communities.delta.auth.plugins.InvalidOriginException
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.plugins.originHeaderCheck
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
@@ -183,16 +184,15 @@ class DeltaLoginControllerTest {
     @Test
     fun testLoginPostChecksOriginHeader() = testSuspend {
         val client = testApp.createClient { followRedirects = false }
-        Assert.assertThrows(InvalidOriginException::class.java) {
-            runBlocking {
-                client.submitForm(
-                    url = "/login?response_type=code&client_id=delta-website&state=1234",
-                    formParameters = parameters {
-                        append("username", "user")
-                        append("password", "pass")
-                    }
-                )
+        client.submitForm(
+            url = "/login?response_type=code&client_id=delta-website&state=1234",
+            formParameters = parameters {
+                append("username", "user")
+                append("password", "pass")
             }
+        ).apply {
+            assertEquals(HttpStatusCode.BadRequest, status)
+            assertContains(bodyAsText(), "Origin header check failed.")
         }
     }
 
@@ -268,7 +268,7 @@ class DeltaLoginControllerTest {
                     configureTemplating(false)
                     routing {
                         route("/login") {
-                            install(originHeaderCheck("http://localhost"))
+                            install(originHeaderCheck("http://localhost", deltaConfig))
                             controller.loginRoutes(this)
                         }
                     }

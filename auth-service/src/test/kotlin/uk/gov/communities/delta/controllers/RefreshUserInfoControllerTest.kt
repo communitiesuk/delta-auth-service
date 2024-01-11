@@ -8,9 +8,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
+import io.mockk.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -19,6 +17,7 @@ import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.bearerTokenRoutes
+import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
@@ -83,6 +82,7 @@ class RefreshUserInfoControllerTest {
             val oauthSessionService = mockk<OAuthSessionService>()
             val accessGroupsService = mockk<AccessGroupsService>()
             val organisationService = mockk<OrganisationService>()
+            val adminEmailController = mockk<AdminEmailController>()
 
             coEvery { userLookupService.lookupUserByCn(session.userCn) } answers { user }
             every {
@@ -94,9 +94,12 @@ class RefreshUserInfoControllerTest {
                 )
             } answers { "SAML Token" }
             coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
-            coEvery { organisationService.findAllNamesAndCodes() }.returns(listOf(OrganisationNameAndCode("dclg", "The Department")))
+            coEvery { organisationService.findAllNamesAndCodes() }.returns(
+                listOf(OrganisationNameAndCode("dclg", "The Department"))
+            )
             coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
             coEvery { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
+            coEvery { adminEmailController.route(any()) } just runs
 
             controller = RefreshUserInfoController(
                 userLookupService,
@@ -121,7 +124,11 @@ class RefreshUserInfoControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(controller, mockk<FetchUserAuditController>(relaxed = true))
+                        bearerTokenRoutes(
+                            controller,
+                            adminEmailController,
+                            mockk<FetchUserAuditController>(relaxed = true),
+                        )
                     }
                 }
             }

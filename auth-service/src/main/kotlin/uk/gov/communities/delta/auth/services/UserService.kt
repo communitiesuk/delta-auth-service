@@ -1,6 +1,5 @@
 package uk.gov.communities.delta.auth.services
 
-import com.google.common.base.Strings
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
@@ -96,7 +95,7 @@ class UserService(
     }
 
     class ADUser(registration: Registration, ssoUser: Boolean, private val ldapConfig: LDAPConfig) {
-        var cn: String = emailToCN(registration.emailAddress)
+        var cn: String = LDAPConfig.emailToCN(registration.emailAddress)
         var givenName: String = registration.firstName
         var sn: String = registration.lastName
         var mail: String = registration.emailAddress
@@ -115,10 +114,6 @@ class UserService(
             objClasses.add("person")
             objClasses.add("top")
             return objClasses
-        }
-
-        private fun emailToCN(email: String): String {
-            return Strings.nullToEmpty(email).replace("@", "!")
         }
 
         private fun cnToDN(cn: String): String {

@@ -12,7 +12,7 @@ class UserAuditTrailRepo {
     enum class AuditAction(val action: String) {
         FORM_LOGIN("form_login"),
         SSO_LOGIN("sso_login"),
-        FORGOT_PASSWORD_EMAIL("forgot_password_email"),
+        RESET_PASSWORD_EMAIL("reset_password_email"),
         SET_PASSWORD_EMAIL("set_password_email"),
         RESET_PASSWORD("reset_password"),
         SET_PASSWORD("set_password"),

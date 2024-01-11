@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.config
 
+import com.google.common.base.Strings
 import org.slf4j.spi.LoggingEventBuilder
 
 data class LDAPConfig(
@@ -42,6 +43,10 @@ data class LDAPConfig(
         val VALID_EMAIL_REGEX = Regex("^[\\w\\-+.']+@([\\w\\-']+\\.)+[\\w\\-]{2,4}$")
         val VALID_USERNAME_REGEX = Regex("^[\\w\\-+.!']+$")
         const val DATAMART_DELTA_PREFIX = "datamart-delta-"
+
+        fun emailToCN(email: String): String {
+            return Strings.nullToEmpty(email).replace("@", "!")
+        }
     }
 
     val authServiceUserDn = serviceUserDnFormat.format(authServiceUserCn)

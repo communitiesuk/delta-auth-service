@@ -14,7 +14,10 @@ import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
 
-class RegistrationSetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource) :
+// Set Password tokens are used for users where their account needs enabling upon password being set:
+//  - first time users
+//  - accounts that had been disabled (via email sent by an admin)
+class SetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource) :
     PasswordTokenService(dbPool, timeSource) {
     override val tableName: String = "set_password_tokens"
     suspend fun passwordNeverSetForUserCN(userCN: String): Boolean {

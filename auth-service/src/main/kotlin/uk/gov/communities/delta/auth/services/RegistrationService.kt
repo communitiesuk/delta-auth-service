@@ -1,18 +1,16 @@
 package uk.gov.communities.delta.auth.services
 
+import io.ktor.server.application.*
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.controllers.external.getSetPasswordURL
 
 class RegistrationService(
     private val deltaConfig: DeltaConfig,
     private val emailConfig: EmailConfig,
     private val ldapConfig: LDAPConfig,
-    private val authServiceConfig: AuthServiceConfig,
-    private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
+    private val setPasswordTokenService: SetPasswordTokenService,
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
@@ -21,7 +19,7 @@ class RegistrationService(
     sealed class RegistrationResult
     class UserCreated(val registration: Registration, val token: String, val userCN: String) : RegistrationResult()
     class SSOUserCreated(val userCN: String) : RegistrationResult()
-    class UserAlreadyExists(val registration: Registration) : RegistrationResult()
+    class UserAlreadyExists(val registration: Registration, val userCN: String) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
     // Previously users could be datamart users but not delta users, at migration we only transferred over users who
@@ -39,7 +37,7 @@ class RegistrationService(
         val adUser = UserService.ADUser(registration, ssoUser, ldapConfig)
         if (userLookupService.userExists(adUser.cn)) {
             logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
-            return UserAlreadyExists(registration)
+            return UserAlreadyExists(registration, adUser.cn)
         }
         try {
             userService.createUser(adUser)
@@ -54,7 +52,7 @@ class RegistrationService(
         return if (ssoUser)
             SSOUserCreated(adUser.cn)
         else
-            UserCreated(registration, registrationSetPasswordTokenService.createToken(adUser.cn), adUser.cn)
+            UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
     }
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
@@ -98,29 +96,20 @@ class RegistrationService(
         return EmailContacts(
             registration.emailAddress,
             registration.firstName + " " + registration.lastName,
-            emailConfig.fromEmailAddress,
-            emailConfig.fromEmailName,
-            emailConfig.replyToEmailAddress,
-            emailConfig.replyToEmailName,
+            emailConfig
         )
     }
 
-    suspend fun sendRegistrationEmail(registrationResult: RegistrationResult) {
+    suspend fun sendRegistrationEmail(registrationResult: RegistrationResult, call: ApplicationCall) {
         when (registrationResult) {
             is UserCreated -> {
-                emailService.sendTemplateEmail(
-                    "new-user",
+                emailService.sendSetPasswordEmail(
+                    registrationResult.registration.firstName,
+                    registrationResult.token,
+                    registrationResult.userCN,
+                    null,
                     getRegistrationEmailContacts(registrationResult.registration),
-                    "DLUHC DELTA - New User Account",
-                    mapOf(
-                        "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                        "userFirstName" to registrationResult.registration.firstName,
-                        "setPasswordUrl" to getSetPasswordURL(
-                            registrationResult.token,
-                            registrationResult.userCN,
-                            authServiceConfig.serviceUrl
-                        )
-                    )
+                    call,
                 )
             }
 
@@ -129,14 +118,10 @@ class RegistrationService(
             }
 
             is UserAlreadyExists -> {
-                emailService.sendTemplateEmail(
-                    "already-a-user",
+                emailService.sendAlreadyAUserEmail(
+                    registrationResult.registration.firstName,
+                    registrationResult.userCN,
                     getRegistrationEmailContacts(registrationResult.registration),
-                    "DLUHC DELTA - Existing Account",
-                    mapOf(
-                        "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                        "userFirstName" to registrationResult.registration.firstName,
-                    )
                 )
             }
 

@@ -35,7 +35,7 @@ class UserAuditTrailRepoTest {
             val firstPage = repo.getAuditForUser(it, "some.user!audit-test.com", Pair(1, 0))
             val secondPage = repo.getAuditForUser(it, "some.user!audit-test.com", Pair(1, 1))
             val thirdPage = repo.getAuditForUser(it, "some.user!audit-test.com", Pair(1, 2))
-            assertEquals(UserAuditTrailRepo.AuditAction.FORGOT_PASSWORD_EMAIL, firstPage.single().action)
+            assertEquals(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL, firstPage.single().action)
             assertEquals(UserAuditTrailRepo.AuditAction.FORM_LOGIN, secondPage.single().action)
             assertEquals(0, thirdPage.size)
         }
@@ -63,7 +63,7 @@ class UserAuditTrailRepoTest {
                 Thread.sleep(1)
                 repo.insertAuditRow(
                     it,
-                    UserAuditTrailRepo.AuditAction.FORGOT_PASSWORD_EMAIL,
+                    UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL,
                     "some.user!audit-test.com",
                     null,
                     "requestId2",

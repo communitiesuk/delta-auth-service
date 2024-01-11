@@ -163,9 +163,8 @@ class DeltaResetPasswordControllerTest {
             }
         ).apply {
             coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(expiredToken, userCN) }
-            assertEquals(emailTemplate.captured, "reset-password")
+            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), null, any()) }
             coVerify(exactly = 1) { resetPasswordTokenService.createToken(userCN) }
-            coVerify(exactly = 1) { userAuditService.userForgotPasswordAudit(userCN, any()) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your password reset link has been email to you")
         }
@@ -216,9 +215,9 @@ class DeltaResetPasswordControllerTest {
         coEvery {
             resetPasswordTokenService.consumeTokenIfValid("", any())
         } returns PasswordTokenService.NoSuchToken
-        coEvery { emailService.sendTemplateEmail(capture(emailTemplate), any(), any(), any()) } just runs
         coEvery { resetPasswordTokenService.createToken(userCN) } returns "token"
         coEvery { userService.resetPassword(userDN, validPassword) } just runs
+        coEvery { emailService.sendResetPasswordEmail(any(), any(), null, any()) } just runs
     }
 
     companion object {
@@ -245,7 +244,6 @@ class DeltaResetPasswordControllerTest {
         private val emailService = mockk<EmailService>()
         private val userService = mockk<UserService>()
         private val userLookupService = mockk<UserLookupService>()
-        private var emailTemplate = slot<String>()
         private var userAuditService = mockk<UserAuditService>(relaxed = true)
 
 

@@ -41,9 +41,13 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         )
     }
 
-    val userForgotPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORGOT_PASSWORD_EMAIL)
+    val resetPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
+
+    val adminResetPasswordEmailAudit = insertAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
 
     val setPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
+
+    val adminResendActivationEmailAudit = insertAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
 
     val resetPasswordAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD)
 
@@ -51,7 +55,12 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
 
     val userSelfRegisterAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SELF_REGISTER)
 
-    suspend fun ssoUserCreatedAudit(userCn: String, azureUserObjectId: String, ssoClient: AzureADSSOClient, call: ApplicationCall) {
+    suspend fun ssoUserCreatedAudit(
+        userCn: String,
+        azureUserObjectId: String,
+        ssoClient: AzureADSSOClient,
+        call: ApplicationCall,
+    ) {
         insertAuditRow(
             UserAuditTrailRepo.AuditAction.SSO_USER_CREATED, userCn, null, call.callId!!,
             Json.encodeToString(SSOLoginAuditData(ssoClient.internalId, azureUserObjectId))
@@ -61,6 +70,12 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
     private fun insertSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall) -> Unit {
         return { userCn: String, call: ApplicationCall ->
             insertAuditRow(auditAction, userCn, null, call.callId!!, "{}")
+        }
+    }
+
+    private fun insertAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, String, ApplicationCall) -> Unit {
+        return { userCn: String, editingUserCn: String, call: ApplicationCall ->
+            insertAuditRow(auditAction, userCn, editingUserCn, call.callId!!, "{}")
         }
     }
 

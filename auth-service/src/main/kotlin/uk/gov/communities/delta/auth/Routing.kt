@@ -11,12 +11,10 @@ import io.ktor.server.sessions.*
 import io.ktor.util.*
 import kotlinx.serialization.Serializable
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.*
-import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
-import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
-import uk.gov.communities.delta.auth.controllers.internal.OAuthTokenController
-import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
+import uk.gov.communities.delta.auth.controllers.internal.*
 import uk.gov.communities.delta.auth.plugins.*
 import uk.gov.communities.delta.auth.security.*
 
@@ -37,6 +35,7 @@ fun Application.configureRouting(injection: Injection) {
         internalRoutes(injection)
         externalRoutes(
             injection.authServiceConfig,
+            injection.deltaConfig,
             injection.externalDeltaLoginController(),
             injection.deltaOAuthLoginController(),
             injection.externalDeltaUserRegisterController(),
@@ -55,6 +54,7 @@ fun Route.healthcheckRoute() {
 
 fun Route.externalRoutes(
     serviceConfig: AuthServiceConfig,
+    deltaConfig: DeltaConfig,
     deltaLoginController: DeltaLoginController,
     deltaSSOLoginController: DeltaSSOLoginController,
     deltaUserRegistrationController: DeltaUserRegistrationController,
@@ -79,7 +79,7 @@ fun Route.externalRoutes(
     }
 
     route("/delta") {
-        install(originHeaderCheck(serviceConfig.serviceUrl))
+        install(originHeaderCheck(serviceConfig.serviceUrl, deltaConfig))
         install(BrowserSecurityHeaders)
 
         route("/register") {
@@ -198,13 +198,14 @@ fun Route.internalRoutes(injection: Injection) {
     val oauthTokenController = injection.internalOAuthTokenController()
     val refreshUserInfoController = injection.refreshUserInfoController()
     val fetchUserAuditController = injection.fetchUserAuditController()
+    val adminEmailController = injection.adminEmailController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController)
 
         oauthTokenRoute(oauthTokenController)
 
-        bearerTokenRoutes(refreshUserInfoController, fetchUserAuditController)
+        bearerTokenRoutes(refreshUserInfoController, adminEmailController, fetchUserAuditController)
     }
 }
 
@@ -214,7 +215,11 @@ fun Route.oauthTokenRoute(oauthTokenController: OAuthTokenController) {
     }
 }
 
-fun Route.bearerTokenRoutes(refreshUserInfoController: RefreshUserInfoController, fetchUserAuditController: FetchUserAuditController) {
+fun Route.bearerTokenRoutes(
+    refreshUserInfoController: RefreshUserInfoController,
+    adminEmailController: AdminEmailController,
+    fetchUserAuditController: FetchUserAuditController,
+) {
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
             install(addClientIdToMDC)
@@ -224,6 +229,9 @@ fun Route.bearerTokenRoutes(refreshUserInfoController: RefreshUserInfoController
             }
             route("/bearer/user-audit") {
                 fetchUserAuditController.route(this)
+            }
+            route("/bearer/email") {
+                adminEmailController.route(this)
             }
         }
     }

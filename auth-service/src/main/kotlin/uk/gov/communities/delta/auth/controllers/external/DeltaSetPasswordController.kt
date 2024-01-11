@@ -8,9 +8,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
@@ -19,10 +17,8 @@ import uk.gov.communities.delta.auth.utils.PasswordChecker
 class DeltaSetPasswordController(
     private val deltaConfig: DeltaConfig,
     private val ldapConfig: LDAPConfig,
-    private val emailConfig: EmailConfig,
-    private val authServiceConfig: AuthServiceConfig,
     private val userService: UserService,
-    private val registrationSetPasswordTokenService: RegistrationSetPasswordTokenService,
+    private val setPasswordTokenService: SetPasswordTokenService,
     private val userLookupService: UserLookupService,
     private val emailService: EmailService,
     private val userAuditService: UserAuditService,
@@ -54,7 +50,7 @@ class DeltaSetPasswordController(
     private suspend fun setPasswordGet(call: ApplicationCall) {
         val userCN = call.request.queryParameters["userCN"].orEmpty()
         val token = call.request.queryParameters["token"].orEmpty()
-        when (val tokenResult = registrationSetPasswordTokenService.validateToken(token, userCN)) {
+        when (val tokenResult = setPasswordTokenService.validateToken(token, userCN)) {
             is PasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException("set_password_no_token", "Set password token did not exist")
             }
@@ -73,9 +69,13 @@ class DeltaSetPasswordController(
         val formParameters = call.receiveParameters()
         val userCN = formParameters["userCN"].orEmpty()
         val token = formParameters["token"].orEmpty()
-        val tokenResult = registrationSetPasswordTokenService.consumeTokenIfValid(token, userCN)
+        val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, userCN)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
-            sendNewSetPasswordLink(userCN, call)
+            emailService.sendNotYetEnabledEmail(
+                userLookupService.lookupUserByCn(userCN),
+                setPasswordTokenService.createToken(userCN),
+                call
+            )
             call.respondNewEmailSentPage(userCN.replace("!", "@"))
         } else throw Exception("tokenResult was $tokenResult when trying to send a new set password email")
     }
@@ -97,7 +97,7 @@ class DeltaSetPasswordController(
         val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, userCN)
         if (message != null) return call.respondSetPasswordPage(message)
 
-        when (val tokenResult = registrationSetPasswordTokenService.consumeTokenIfValid(token, userCN)) {
+        when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, userCN)) {
             is PasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException(
                     "set_password_invalid_token",
@@ -121,33 +121,6 @@ class DeltaSetPasswordController(
                 call.respondRedirect("/delta/set-password/success")
             }
         }
-    }
-
-    private suspend fun sendNewSetPasswordLink(userCN: String, call: ApplicationCall) {
-        val user = userLookupService.lookupUserByCn(userCN)
-        val setPasswordToken = registrationSetPasswordTokenService.createToken(userCN)
-        userAuditService.setPasswordEmailAudit(userCN, call)
-        emailService.sendTemplateEmail(
-            "not-yet-enabled-user",
-            EmailContacts(
-                user.email!!,
-                user.fullName,
-                emailConfig.fromEmailAddress,
-                emailConfig.fromEmailName,
-                emailConfig.replyToEmailAddress,
-                emailConfig.replyToEmailName,
-            ),
-            "DLUHC DELTA - Set Your Password",
-            mapOf(
-                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "userFirstName" to user.firstName,
-                "setPasswordUrl" to getSetPasswordURL(
-                    setPasswordToken,
-                    userCN,
-                    authServiceConfig.serviceUrl
-                )
-            )
-        )
     }
 
     class SetPasswordException(
