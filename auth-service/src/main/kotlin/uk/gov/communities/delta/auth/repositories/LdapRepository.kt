@@ -15,6 +15,7 @@ import javax.naming.ldap.Control
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.ldap.PagedResultsControl
 import javax.naming.ldap.PagedResultsResponseControl
+import kotlin.text.HexFormat
 
 class LdapRepository(
     private val ldapConfig: LDAPConfig,
@@ -128,10 +129,13 @@ class LdapRepository(
         // but Delta doesn't do that and instead attempts to use them as strings, which discards much of the value.
         // These ids are scattered through the Delta database now though, so we keep them for compatibility
         val importedGuid = get("imported-guid")?.get() as String?
-        if (importedGuid != null) {
-            return importedGuid.toByteArray().toHexString()
+        val guidStringToUse = importedGuid ?: (get("objectGUID").get() as String)
+
+        val hexFormat = HexFormat {
+            number.removeLeadingZeros = true
         }
-        return (get("objectGUID").get() as String).toByteArray().toHexString()
+
+        return guidStringToUse.toByteArray().toHexString(hexFormat)
     }
 }
 
