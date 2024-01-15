@@ -131,11 +131,7 @@ class LdapRepository(
         val importedGuid = get("imported-guid")?.get() as String?
         val guidStringToUse = importedGuid ?: (get("objectGUID").get() as String)
 
-        val hexFormat = HexFormat {
-            number.removeLeadingZeros = true
-        }
-
-        return guidStringToUse.toByteArray().toHexString(hexFormat)
+        return guidStringToUse.toByteArray().toHexString().trimStart { it == '0' }
     }
 }
 
