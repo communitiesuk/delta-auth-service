@@ -88,15 +88,16 @@ class Injection(
         ldapServiceUserBind,
         ldapRepository,
     )
-    private val userService = UserService(ldapServiceUserBind, userLookupService)
-    private val accessGroupsService = AccessGroupsService(ldapServiceUserBind, ldapConfig)
-    private val groupService = GroupService(ldapServiceUserBind, ldapConfig)
-    private val emailRepository = EmailRepository(emailConfig)
 
     val dbPool = DbPool(databaseConfig)
 
     val userAuditTrailRepo = UserAuditTrailRepo()
     val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
+
+    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService)
+    private val accessGroupsService = AccessGroupsService(ldapServiceUserBind, ldapConfig)
+    private val groupService = GroupService(ldapServiceUserBind, ldapConfig, userAuditService)
+    private val emailRepository = EmailRepository(emailConfig)
 
     val setPasswordTokenService = SetPasswordTokenService(dbPool, TimeSource.System)
     val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
@@ -266,5 +267,17 @@ class Injection(
     fun fetchUserAuditController() = FetchUserAuditController(
         userLookupService,
         userAuditService,
+    )
+
+    fun adminUserCreationController() = AdminUserCreationController(
+        ldapConfig,
+        deltaConfig,
+        azureADSSOConfig,
+        emailConfig,
+        userLookupService,
+        userService,
+        groupService,
+        emailService,
+        setPasswordTokenService,
     )
 }

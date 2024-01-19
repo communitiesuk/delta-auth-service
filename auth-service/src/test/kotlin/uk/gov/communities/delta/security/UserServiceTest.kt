@@ -1,20 +1,16 @@
 package uk.gov.communities.delta.security
 
+import io.ktor.server.application.*
 import io.ktor.test.dispatcher.*
-import io.mockk.coEvery
-import io.mockk.mockk
-import io.mockk.slot
-import io.mockk.verify
+import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
-import uk.gov.communities.delta.auth.services.LdapServiceUserBind
-import uk.gov.communities.delta.auth.services.Registration
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import javax.naming.directory.Attributes
 import javax.naming.directory.DirContext
@@ -27,7 +23,8 @@ class UserServiceTest {
     private val deltaUserDnFormat = "CN=%s"
     private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
     private val userLookupService = mockk<UserLookupService>()
-    private val userService = UserService(ldapServiceUserBind, userLookupService)
+    private val userAuditService = mockk<UserAuditService>()
+    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService)
     private val userEmail = "user@example.com"
     private val registration = Registration("Test", "User", userEmail)
     private val container = slot<Attributes>()
@@ -36,6 +33,8 @@ class UserServiceTest {
     private val contextBlock = slot<(InitialLdapContext) -> Unit>()
     private val userCN = LDAPConfig.emailToCN(userEmail)
     private val userDN = String.format(deltaUserDnFormat, userCN)
+    private val call = mockk<ApplicationCall>()
+    private val ssoClient = mockk<AzureADSSOClient>()
 
     @Before
     fun setupMocks() {
@@ -46,11 +45,14 @@ class UserServiceTest {
         }
         coEvery { context.createSubcontext(userDN, capture(container)) } coAnswers { nothing }
         coEvery { context.modifyAttributes(userDN, capture(modificationItems)) } coAnswers { nothing }
+        coEvery { userAuditService.userCreatedBySSOAudit(any(), call, any()) } coAnswers { nothing }
+        coEvery { userAuditService.userSelfRegisterAudit(any(), call, any()) } just runs
+        coEvery { ssoClient.internalId } returns "abc-123"
     }
 
     @Test
     fun testSuccessfulCreateStandardUser() = testSuspend {
-        userService.createUser(UserService.ADUser(registration, false, ldapConfig))
+        userService.createUser(UserService.ADUser(ldapConfig, registration, null), null, null, call)
         verify(exactly = 1) { context.createSubcontext(userDN, any()) }
         // User has normal and disabled account
         assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
@@ -60,7 +62,7 @@ class UserServiceTest {
 
     @Test
     fun testSuccessfulCreateSSOUser() = testSuspend {
-        userService.createUser(UserService.ADUser(registration, true, ldapConfig))
+        userService.createUser(UserService.ADUser(ldapConfig, registration, ssoClient), ssoClient, null, call)
         verify(exactly = 1) { context.createSubcontext(userDN, any()) }
         // User has normal and enabled account
         assertEquals<String>("512", container.captured.get("userAccountControl").get() as String)
@@ -105,7 +107,7 @@ class UserServiceTest {
 
     @Test
     fun testPasswordCreation() = testSuspend {
-        val adUser = UserService.ADUser(registration, true, ldapConfig)
+        val adUser = UserService.ADUser(ldapConfig, registration, ssoClient)
         assertEquals(18 * 8 / 6, adUser.password!!.length)
     }
 }

@@ -16,8 +16,11 @@ class UserAuditTrailRepo {
         SET_PASSWORD_EMAIL("set_password_email"),
         RESET_PASSWORD("reset_password"),
         SET_PASSWORD("set_password"),
-        SELF_REGISTER("self_register"),
-        SSO_USER_CREATED("sso_user_created"),
+        USER_CREATED_BY_SELF_REGISTER("user_created_by_self_register"),
+        USER_CREATED_BY_SSO("user_created_by_sso"),
+        USER_CREATED_BY_ADMIN("user_created_by_admin"),
+        SSO_USER_CREATED_BY_ADMIN("sso_user_created_by_admin"),
+        USER_UPDATE("user_update"),
         ;
 
         companion object {

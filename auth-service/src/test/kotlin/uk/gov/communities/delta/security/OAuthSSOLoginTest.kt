@@ -144,12 +144,14 @@ class OAuthSSOLoginTest {
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
-        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated(userCN)
+        coEvery {
+            registrationService.register(any<Registration>(), any(), any(), ssoClient)
+        } returns RegistrationService.SSOUserCreated(userCN)
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
                 val registration = Registration("Example", "User", "user@example.com")
-                coVerify(exactly = 0) { registrationService.register(registration, organisations, true) }
+                coVerify(exactly = 0) { registrationService.register(registration, organisations, any(), ssoClient) }
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals("/delta/register?fromSSOEmail=user%40example.com", headers["Location"])
             }
@@ -165,15 +167,17 @@ class OAuthSSOLoginTest {
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
-        coEvery { registrationService.register(any(), any(), true) } returns RegistrationService.SSOUserCreated(userCN)
-        coEvery { userAuditService.ssoUserCreatedAudit(userCN, "abc-123", requiredSsoClient, any()) } returns Unit
+        coEvery {
+            registrationService.register(any<Registration>(), any(), any(), requiredSsoClient)
+        } returns RegistrationService.SSOUserCreated(userCN)
 
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
                 val registration = Registration("Example", "User", "user@example.com", "abc-123")
-                coVerify(exactly = 1) { registrationService.register(registration, organisations, true) }
-                coVerify(exactly = 1) { userAuditService.ssoUserCreatedAudit(userCN, "abc-123", requiredSsoClient, any()) }
+                coVerify(exactly = 1) {
+                    registrationService.register(registration, organisations, any(), requiredSsoClient)
+                }
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             }

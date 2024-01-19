@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.security
 
+import io.ktor.server.application.*
 import io.ktor.test.dispatcher.*
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -8,10 +9,7 @@ import io.mockk.verify
 import org.junit.Before
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.services.GroupService
-import uk.gov.communities.delta.auth.services.LdapServiceUserBind
-import uk.gov.communities.delta.auth.services.Registration
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import javax.naming.NameNotFoundException
 import javax.naming.directory.*
 import javax.naming.ldap.InitialLdapContext
@@ -21,17 +19,19 @@ import kotlin.test.assertTrue
 
 class GroupServiceTest {
     private val ldapServiceUserBind = mockk<LdapServiceUserBind>()
+    private val userAuditService = mockk<UserAuditService>(relaxed = true)
     private val groupCN = "datamart-delta-group"
     private val groupDnFormat = "CN=%s"
     private val groupDN = String.format(groupDnFormat, groupCN)
     private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", groupDnFormat, "", "", "", "", "")
-    private val groupService = GroupService(ldapServiceUserBind, ldapConfig)
+    private val groupService = GroupService(ldapServiceUserBind, ldapConfig, userAuditService)
     private val container = slot<Attributes>()
     private val modificationItems = slot<Array<ModificationItem>>()
     private val context = mockk<InitialLdapContext>()
     private val contextBlock = slot<(InitialLdapContext) -> Any>()
-    private val adUser = UserService.ADUser(Registration("Test", "User", "user@example.com"), false, ldapConfig)
+    private val adUser = UserService.ADUser(ldapConfig, Registration("Test", "User", "user@example.com"), null)
     private val attributes = BasicAttributes()
+    private val call = mockk<ApplicationCall>()
 
     @Before
     fun setupMocks() {
@@ -73,7 +73,7 @@ class GroupServiceTest {
     @Test
     fun testAddingUserToExistingGroup() = testSuspend {
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
-        groupService.addUserToGroup(adUser, groupCN)
+        groupService.addUserToGroup(adUser, groupCN, call)
         verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
@@ -88,7 +88,7 @@ class GroupServiceTest {
                 arrayOf("cn")
             )
         } coAnswers { BasicAttributes() } coAndThen { attributes }
-        groupService.addUserToGroup(adUser, groupCN)
+        groupService.addUserToGroup(adUser, groupCN, call)
         verify(exactly = 1) { context.createSubcontext(groupDN, any()) }
         assertEquals(groupCN, container.captured.get("cn").get())
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
