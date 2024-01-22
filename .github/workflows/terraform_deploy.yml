@@ -1,0 +1,48 @@
+name: "Terraform deploy"
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+        description: Desired image tag to be deployed
+    secrets:
+      aws_access_key_tf:
+        required: true
+      aws_secret_key_tf:
+        required: true
+
+jobs:
+  apply:
+    name: Terraform apply
+    runs-on: ubuntu-latest
+    concurrency: terraform
+    environment: test
+    defaults:
+      run:
+        working-directory: test
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_tf }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key_tf }}
+      AWS_REGION: "eu-west-1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -input=false
+
+      - name: Terraform Apply ${{ inputs.image_tag }}
+        run: |
+          terraform apply -auto-approve -input=false \
+          -var="image_tag=${{ inputs.image_tag }}"
+
+      - name: Wait for deployment to complete
+        run: aws ecs wait services-stable --services ecs-service-test --cluster delta-auth-service-cluster-test
