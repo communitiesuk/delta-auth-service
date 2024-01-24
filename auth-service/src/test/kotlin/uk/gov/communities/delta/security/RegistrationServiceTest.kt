@@ -21,7 +21,8 @@ class RegistrationServiceTest {
     private val userLookupService = mockk<UserLookupService>()
     private val groupService = mockk<GroupService>()
     private val call = mockk<ApplicationCall>()
-    private val ssoClient = mockk<AzureADSSOClient>()
+    private val requiredSSOClient = mockk<AzureADSSOClient>()
+    private val notRequiredSSOClient = mockk<AzureADSSOClient>()
     private val orgCode = "E12345"
     private val userCN = "user!example.com"
     private val anotherOrgCode = orgCode + "2"
@@ -43,8 +44,11 @@ class RegistrationServiceTest {
         coEvery { userLookupService.userExists(any()) } returns false
         coEvery { groupService.addUserToGroup(any(), any(), any()) } just runs
         coEvery { userService.createUser(any(), any(), any(), any()) } just runs
+        coEvery { userService.createUser(any(), any(), any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
         coEvery { call.principal<OAuthSession>() } returns null
+        coEvery { requiredSSOClient.required } returns true
+        coEvery { notRequiredSSOClient.required } returns false
     }
 
     @Test
@@ -69,9 +73,9 @@ class RegistrationServiceTest {
             Registration("Test", "User", "user@example.com"),
             listOf(Organisation(orgCode, "Test org")),
             call,
-            ssoClient
+            requiredSSOClient
         )
-        coVerify(exactly = 1) { userService.createUser(any(), ssoClient, null, call) }
+        coVerify(exactly = 1) { userService.createUser(any(), requiredSSOClient, null, call) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
         coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
@@ -81,13 +85,49 @@ class RegistrationServiceTest {
     }
 
     @Test
+    fun testSSOUserRegistrationWithAzureObjectID() = testSuspend {
+        val azureId = "testAzureId"
+        val registrationResult = registrationService.register(
+            Registration("Test", "User", "user@example.com"),
+            listOf(Organisation(orgCode, "Test org")),
+            call,
+            requiredSSOClient,
+            azureId
+        )
+        coVerify(exactly = 1) { userService.createUser(any(), requiredSSOClient, null, call, azureId) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+        assertTrue(registrationResult is RegistrationService.SSOUserCreated)
+    }
+
+    @Test
+    fun testNotRequiredSSOUserRegistration() = testSuspend {
+        val registrationResult = registrationService.register(
+            Registration("Test", "User", "user@example.com"),
+            listOf(Organisation(orgCode, "Test org")),
+            call,
+            notRequiredSSOClient
+        )
+        coVerify(exactly = 1) { userService.createUser(any(), notRequiredSSOClient, null, call) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
+        assertTrue(registrationResult is RegistrationService.UserCreated)
+    }
+
+    @Test
     fun testRegisteringExistingStandardUser() = testSuspend {
         coEvery { userLookupService.userExists(userCN) } returns true
         val registrationResult = registrationService.register(
             Registration("Test", "User", "user@example.com"),
             listOf(Organisation(orgCode, "Test org")),
             call,
-            ssoClient
+            requiredSSOClient
         )
         assertTrue(registrationResult is RegistrationService.UserAlreadyExists)
         coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }

@@ -49,11 +49,12 @@ class AdminUserCreationController(
             )
         }
 
+        // Delta sends over validated user details in json format
         val jsonString = call.receiveText()
         val deltaUserDetails = ObjectMapper().readValue(jsonString, UserService.DeltaUserDetails::class.java)
 
         val ssoClient = ssoConfig.ssoClients.firstOrNull {
-            it.required && deltaUserDetails.email.lowercase().endsWith(it.emailDomain)
+            deltaUserDetails.email.lowercase().endsWith(it.emailDomain)
         }
         val adUser = UserService.ADUser(
             ldapConfig,
@@ -96,8 +97,9 @@ class AdminUserCreationController(
             deltaUserDetails.accessGroups.forEach { accessGroup ->
                 groupService.addUserToGroup(adUser, accessGroup, call, session)
             }
-            deltaUserDetails.accessGroupDelegates.forEach { accessGroupDelegate ->
-                groupService.addUserToGroup(adUser, accessGroupDelegate, call, session)
+            deltaUserDetails.accessGroupDelegates.forEach { accessGroup ->
+                val delegateAccessGroup = makeDelegate(accessGroup)
+                groupService.addUserToGroup(adUser, delegateAccessGroup, call, session)
             }
             deltaUserDetails.accessGroupOrganisations.forEach { (accessGroup, organisations) ->
                 organisations.forEach { orgCode ->
@@ -121,7 +123,7 @@ class AdminUserCreationController(
         }
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully added to all desired groups")
 
-        if (ssoClient != null) {
+        if (ssoClient?.required == true) {
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("SSO user created by admin, no email sent")
             return call.respondText("SSO user created, no email has been sent to the user since emails aren't sent to SSO users")
         }
@@ -144,5 +146,9 @@ class AdminUserCreationController(
         }
 
         return call.respondText("User created successfully")
+    }
+
+    private fun makeDelegate(accessGroup: String): String {
+        return LDAPConfig.DATAMART_DELTA_PREFIX + "delegate-" + accessGroup.substringAfter(LDAPConfig.DATAMART_DELTA_PREFIX)
     }
 }

@@ -61,11 +61,11 @@ class GroupService(
     }
 
     private suspend fun auditAddingUserToGroup(userCN :String, groupCN: String, triggeringAdminSession: OAuthSession?, call: ApplicationCall) {
-        val auditData = Json.encodeToString(GroupAuditData(groupCN))
+        val auditData = Json.encodeToString(AddedGroupAuditData(groupCN))
         if (triggeringAdminSession != null)
             userAuditService.userUpdateByAdminAudit(userCN, triggeringAdminSession.userCn, call, auditData)
         else
-            userAuditService.userUpdateAudit(userCN, call)
+            userAuditService.userUpdateAudit(userCN, call, auditData)
     }
 
     private suspend fun addGroupToAD(adGroup: ADGroup) {
@@ -95,5 +95,5 @@ class GroupService(
     }
 
     @Serializable
-    private data class GroupAuditData(val groupCN: String)
+    private data class AddedGroupAuditData(val addedGroupCN: String)
 }

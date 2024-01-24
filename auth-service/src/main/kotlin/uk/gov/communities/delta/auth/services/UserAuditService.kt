@@ -25,8 +25,6 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         }
     }
 
-    val userFormLoginAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORM_LOGIN)
-
     suspend fun userSSOLoginAudit(
         userCn: String,
         ssoClient: AzureADSSOClient,
@@ -41,6 +39,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         )
     }
 
+    val userFormLoginAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORM_LOGIN)
     val resetPasswordEmailAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
     val adminResetPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
     val setPasswordEmailAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL)
@@ -53,7 +52,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
     val userCreatedBySSOAudit = insertAnonDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.USER_CREATED_BY_SSO)
     val ssoUserCreatedByAdminAudit = insertDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.SSO_USER_CREATED_BY_ADMIN)
     val userUpdateByAdminAudit = insertDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.USER_UPDATE)
-    val userUpdateAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.USER_UPDATE)
+    val userUpdateAudit = insertAnonDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.USER_UPDATE)
 
     private fun insertAnonSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall) -> Unit {
         return { userCn: String, call: ApplicationCall ->

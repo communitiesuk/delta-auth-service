@@ -44,20 +44,21 @@ class UserService(
         auditData: MutableMap<String, String>,
         azureUserObjectId: String?,
     ) {
-        if (ssoClient != null) {
-            auditData["ssoClientInternalId"] = ssoClient.internalId
+        val ssoUser = ssoClient?.required == true
+        if (ssoUser) {
+            auditData["ssoClientInternalId"] = ssoClient!!.internalId
             if (azureUserObjectId != null) auditData["azureObjectId"] = azureUserObjectId
         }
         val encodedAuditData = Json.encodeToString(auditData)
         if (triggeringAdminSession != null) {
-            if (ssoClient != null) userAuditService.ssoUserCreatedByAdminAudit(
+            if (ssoUser) userAuditService.ssoUserCreatedByAdminAudit(
                 userCN,
                 triggeringAdminSession.userCn,
                 call,
                 encodedAuditData
             )
             else userAuditService.userCreatedByAdminAudit(userCN, triggeringAdminSession.userCn, call, encodedAuditData)
-        } else if (ssoClient != null) userAuditService.userCreatedBySSOAudit(
+        } else if (ssoUser) userAuditService.userCreatedBySSOAudit(
             userCN,
             call,
             encodedAuditData
@@ -202,7 +203,7 @@ class UserService(
         var objClasses: Attribute = objClasses()
 
         constructor(ldapConfig: LDAPConfig, registration: Registration, ssoClient: AzureADSSOClient?) {
-            val ssoUser = ssoClient != null
+            val ssoUser = ssoClient?.required ?: false
             this.ldapConfig = ldapConfig
             this.cn = LDAPConfig.emailToCN(registration.emailAddress)
             this.givenName = registration.firstName
@@ -221,7 +222,7 @@ class UserService(
             deltaUserDetails: DeltaUserDetails,
             ssoClient: AzureADSSOClient?,
         ) {
-            val ssoUser = ssoClient != null
+            val ssoUser = ssoClient?.required ?: false
             this.ldapConfig = ldapConfig
             this.cn = LDAPConfig.emailToCN(deltaUserDetails.email)
             this.givenName = deltaUserDetails.firstName
@@ -288,8 +289,8 @@ class UserService(
     }
 
     data class DeltaUserDetails(
-        @JsonProperty("id") val id: String,
-        @JsonProperty("enabled") val enabled: Boolean,
+        @JsonProperty("id") val id: String, //Not used anywhere yet
+        @JsonProperty("enabled") val enabled: Boolean, //Always false for user creation - not used anywhere yet
         @JsonProperty("email") val email: String,
         @JsonProperty("lastName") val lastName: String,
         @JsonProperty("firstName") val firstName: String,
@@ -301,9 +302,9 @@ class UserService(
         @JsonProperty("accessGroupDelegates") val accessGroupDelegates: Array<String>,
         @JsonProperty("accessGroupOrganisations") val accessGroupOrganisations: Map<String, Array<String>>,
         @JsonProperty("roles") val roles: Array<String>,
-        @JsonProperty("externalRoles") val externalRoles: Array<String>,
+        @JsonProperty("externalRoles") val externalRoles: Array<String>, //Not used anywhere yet
         @JsonProperty("organisations") val organisations: Array<String>,
         @JsonProperty("comment") val comment: String?,
-        @JsonProperty("classificationType") val classificationType: String?,
+        @JsonProperty("classificationType") val classificationType: String?, //Not used anywhere yet
     )
 }

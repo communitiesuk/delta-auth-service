@@ -54,7 +54,7 @@ class RegistrationService(
         }
 
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
-        return if (ssoClient != null)
+        return if (ssoClient?.required == true)
             SSOUserCreated(adUser.cn)
         else
             UserCreated(adUser, setPasswordTokenService.createToken(adUser.cn))

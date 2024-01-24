@@ -2,24 +2,24 @@ package uk.gov.communities.delta.security
 
 import io.ktor.server.application.*
 import io.ktor.test.dispatcher.*
-import io.mockk.coEvery
-import io.mockk.mockk
-import io.mockk.slot
-import io.mockk.verify
+import io.mockk.*
 import org.junit.Before
 import org.junit.Test
+import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.services.*
+import java.time.Instant
 import javax.naming.NameNotFoundException
 import javax.naming.directory.*
 import javax.naming.ldap.InitialLdapContext
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GroupServiceTest {
     private val ldapServiceUserBind = mockk<LdapServiceUserBind>()
-    private val userAuditService = mockk<UserAuditService>(relaxed = true)
+    private val userAuditService = mockk<UserAuditService>()
     private val groupCN = "datamart-delta-group"
     private val groupDnFormat = "CN=%s"
     private val groupDN = String.format(groupDnFormat, groupCN)
@@ -32,13 +32,17 @@ class GroupServiceTest {
     private val adUser = UserService.ADUser(ldapConfig, Registration("Test", "User", "user@example.com"), null)
     private val attributes = BasicAttributes()
     private val call = mockk<ApplicationCall>()
+    private val auditData = slot<String>()
 
     @Before
     fun setupMocks() {
+        auditData.clear()
         attributes.put(BasicAttribute("cn", groupCN))
         coEvery { ldapServiceUserBind.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
         coEvery { context.createSubcontext(groupDN, capture(container)) } coAnswers { nothing }
         coEvery { context.modifyAttributes(groupDN, capture(modificationItems)) } coAnswers { nothing }
+        coEvery { userAuditService.userUpdateAudit(any(), any(), capture(auditData)) } just runs
+        coEvery { userAuditService.userUpdateByAdminAudit(any(), any(), any(), capture(auditData)) } just runs
     }
 
     @Test
@@ -78,6 +82,23 @@ class GroupServiceTest {
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
+        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, call, any()) }
+        assertContains(auditData.captured, groupCN)
+    }
+
+    @Test
+    fun testAdminAddingUserToExistingGroup() = testSuspend {
+        val adminSession = OAuthSession(
+            1, "adminUserCN", mockk<DeltaLoginEnabledClient>(), "adminAccessToken", Instant.now(), "trace"
+        )
+        coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
+        groupService.addUserToGroup(adUser, groupCN, call, adminSession)
+        verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
+        verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
+        assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
+        assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
+        coVerify(exactly = 1) { userAuditService.userUpdateByAdminAudit(adUser.cn, "adminUserCN", call, any()) }
+        assertContains(auditData.captured, groupCN)
     }
 
     @Test
@@ -94,5 +115,6 @@ class GroupServiceTest {
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
+        assertContains(auditData.captured, groupCN)
     }
 }
