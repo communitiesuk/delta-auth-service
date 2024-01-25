@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  docker_push:
+  publish_image:
     name: Push auth service image to ECR
     runs-on: ubuntu-latest
     environment: publish
@@ -42,7 +42,7 @@ jobs:
   deploy_to_test:
     name: Deploy new image to test environment
     uses: "./.github/workflows/terraform_deploy.yml"
-    needs: "publish_image"
+    needs: publish_image
     if: github.ref == 'refs/heads/main'
     with:
       image_tag: ${{ needs.publish_image.outputs.image_tag}}
