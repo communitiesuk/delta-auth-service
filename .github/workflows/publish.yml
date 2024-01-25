@@ -39,3 +39,11 @@ jobs:
         working-directory: auth-service/
       - name: Pushing tag ${{ steps.determine_tag.outputs.tag }}
         run: docker push $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }}
+  deploy_to_test:
+    name: Deploy new image to test environment
+    uses: "./.github/workflows/terraform-deploy.yml"
+    needs: "publish_image"
+    if: github.ref == 'refs/heads/main'
+    with:
+      image_tag: ${{ needs.publish_image.outputs.image_tag}}
+    secrets: inherit
