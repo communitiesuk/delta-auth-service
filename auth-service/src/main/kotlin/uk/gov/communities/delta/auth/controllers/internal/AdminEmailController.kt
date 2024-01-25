@@ -35,7 +35,7 @@ class AdminEmailController(
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
                 .log("User already enabled on activation email request")
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.BadRequest,
                 "already_enabled",
                 "User already enabled on activation email request",
                 "User already enabled"
@@ -46,7 +46,7 @@ class AdminEmailController(
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
                 .log("Trying to send activation email to SSO User")
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.BadRequest,
                 "no_emails_to_sso_users",
                 "Trying to send activation email to SSO User",
                 "SSO user - account is automatically activated, can be enabled using the Enable Access button"
@@ -59,14 +59,14 @@ class AdminEmailController(
         } catch (e: Exception) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send activation email")
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.InternalServerError,
                 "email_failure",
                 "Failed to send activation email",
                 "Failed to send activation email"
             )
         }
         logger.atInfo().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("New activation email sent")
-        return call.respondText("New activation email sent")
+        return call.respond(mapOf("message" to "New activation email sent successfully"))
     }
 
     private suspend fun adminSendResetPasswordEmail(call: ApplicationCall) {
@@ -77,7 +77,7 @@ class AdminEmailController(
         if (!receivingUser.accountEnabled) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("User not enabled")
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.BadRequest,
                 "not_enabled",
                 "User not enabled on reset password email request",
                 "User not enabled"
@@ -88,7 +88,7 @@ class AdminEmailController(
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
                 .log("Trying to send reset password to SSO User")
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.BadRequest,
                 "no_emails_to_sso_users",
                 "Trying to send reset password email to SSO User",
                 "SSO user - account doesn't have a password"
@@ -101,14 +101,14 @@ class AdminEmailController(
         } catch (e: Exception) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send email")
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.InternalServerError,
                 "email_failure",
                 "Failed to send reset password email",
                 "Failed to send reset password email"
             )
         }
         logger.atInfo().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Reset password email sent")
-        return call.respondText("Reset password email sent")
+        return call.respond(mapOf("message" to "Reset password email sent successfully"))
     }
 
     private suspend fun getUsersFromCall(call: ApplicationCall): Array<LdapUser> {

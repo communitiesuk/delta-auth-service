@@ -1,7 +1,8 @@
 package uk.gov.communities.delta.auth.services
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import io.ktor.server.application.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -75,11 +76,11 @@ class UserService(
         auditData["st"] = adUser.notificationStatus
         auditData["userAccountControl"] = adUser.userAccountControl
 
-        if (adUser.comment != null) auditData["comment"] = adUser.comment!!
-        if (adUser.telephone != null) auditData["telephoneNumber"] = adUser.telephone!!
-        if (adUser.mobile != null) auditData["mobile"] = adUser.mobile!!
-        if (adUser.reasonForAccess != null) auditData["description"] = adUser.reasonForAccess!!
-        if (adUser.position != null) auditData["title"] = adUser.position!!
+        adUser.comment?.let { auditData["comment"] = it }
+        adUser.telephone?.let { auditData["telephoneNumber"] = it }
+        adUser.mobile?.let { auditData["mobile"] = it }
+        adUser.reasonForAccess?.let { auditData["description"] = it }
+        adUser.position?.let { auditData["title"] = it }
 
         auditData["HasPassword"] = (adUser.password != null).toString()
 
@@ -97,13 +98,13 @@ class UserService(
         attributes.put(BasicAttribute("st", adUser.notificationStatus))
         attributes.put(BasicAttribute("userAccountControl", adUser.userAccountControl))
 
-        if (adUser.comment != null) attributes.put(BasicAttribute("comment", adUser.comment))
-        if (adUser.telephone != null) attributes.put(BasicAttribute("telephoneNumber", adUser.telephone))
-        if (adUser.mobile != null) attributes.put(BasicAttribute("mobile", adUser.mobile))
-        if (adUser.reasonForAccess != null) attributes.put(BasicAttribute("description", adUser.reasonForAccess))
-        if (adUser.position != null) attributes.put(BasicAttribute("title", adUser.position))
+        adUser.comment?.let { attributes.put(BasicAttribute("comment",it)) }
+        adUser.telephone?.let { attributes.put(BasicAttribute("telephoneNumber",it)) }
+        adUser.mobile?.let { attributes.put(BasicAttribute("mobile",it)) }
+        adUser.reasonForAccess?.let { attributes.put(BasicAttribute("description",it)) }
+        adUser.position?.let { attributes.put(BasicAttribute("title",it)) }
 
-        if (adUser.password != null) attributes.put(ADUser.getPasswordAttribute(adUser.password!!))
+        adUser.password?.let { attributes.put(ADUser.getPasswordAttribute(it)) }
 
         return attributes
     }
@@ -260,7 +261,7 @@ class UserService(
         }
 
         fun getDisplayName(): String {
-            return this.givenName + this.sn
+            return "${this.givenName} ${this.sn}"
         }
 
         companion object {
@@ -288,23 +289,24 @@ class UserService(
         }
     }
 
+    @Serializable
     data class DeltaUserDetails(
-        @JsonProperty("id") val id: String, //Not used anywhere yet
-        @JsonProperty("enabled") val enabled: Boolean, //Always false for user creation - not used anywhere yet
-        @JsonProperty("email") val email: String,
-        @JsonProperty("lastName") val lastName: String,
-        @JsonProperty("firstName") val firstName: String,
-        @JsonProperty("telephone") val telephone: String?,
-        @JsonProperty("mobile") val mobile: String?,
-        @JsonProperty("position") val position: String?,
-        @JsonProperty("reasonForAccess") val reasonForAccess: String?,
-        @JsonProperty("accessGroups") val accessGroups: Array<String>,
-        @JsonProperty("accessGroupDelegates") val accessGroupDelegates: Array<String>,
-        @JsonProperty("accessGroupOrganisations") val accessGroupOrganisations: Map<String, Array<String>>,
-        @JsonProperty("roles") val roles: Array<String>,
-        @JsonProperty("externalRoles") val externalRoles: Array<String>, //Not used anywhere yet
-        @JsonProperty("organisations") val organisations: Array<String>,
-        @JsonProperty("comment") val comment: String?,
-        @JsonProperty("classificationType") val classificationType: String?, //Not used anywhere yet
+        @SerialName("id") val id: String, //Not used anywhere yet
+        @SerialName("enabled") val enabled: Boolean, //Always false for user creation - not used anywhere yet
+        @SerialName("email") val email: String,
+        @SerialName("lastName") val lastName: String,
+        @SerialName("firstName") val firstName: String,
+        @SerialName("telephone") val telephone: String? = null,
+        @SerialName("mobile") val mobile: String? = null,
+        @SerialName("position") val position: String? = null,
+        @SerialName("reasonForAccess") val reasonForAccess: String? = null,
+        @SerialName("accessGroups") val accessGroups: Array<String>,
+        @SerialName("accessGroupDelegates") val accessGroupDelegates: Array<String>,
+        @SerialName("accessGroupOrganisations") val accessGroupOrganisations: Map<String, Array<String>>,
+        @SerialName("roles") val roles: Array<String>,
+        @SerialName("externalRoles") val externalRoles: Array<String>, //Not used anywhere yet
+        @SerialName("organisations") val organisations: Array<String>,
+        @SerialName("comment") val comment: String? = null,
+        @SerialName("classificationType") val classificationType: String? = null, //Not used anywhere yet
     )
 }

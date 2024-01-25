@@ -49,9 +49,7 @@ class AdminUserCreationController(
             )
         }
 
-        // Delta sends over validated user details in json format
-        val jsonString = call.receiveText()
-        val deltaUserDetails = ObjectMapper().readValue(jsonString, UserService.DeltaUserDetails::class.java)
+        val deltaUserDetails = call.receive<UserService.DeltaUserDetails>()
 
         val ssoClient = ssoConfig.ssoClients.firstOrNull {
             deltaUserDetails.email.lowercase().endsWith(it.emailDomain)
@@ -66,7 +64,7 @@ class AdminUserCreationController(
             logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
                 .log("User being made by admin already exists")
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.Conflict,
                 "user_already_exists",
                 "User already exists upon creation by admin",
                 "A user with this username already exists, you can edit that user via the users page"
@@ -77,7 +75,7 @@ class AdminUserCreationController(
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.InternalServerError,
                 "error_creating_user",
                 "Error creating user",
                 "An error occurred while creating the user, please try again"
@@ -115,7 +113,7 @@ class AdminUserCreationController(
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to groups", e)
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.InternalServerError,
                 "error_adding_user_to_groups",
                 "Error adding user to groups",
                 "The user was created but the details were not saved correctly, please find and edit the user to have the desired details."
@@ -125,7 +123,7 @@ class AdminUserCreationController(
 
         if (ssoClient?.required == true) {
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("SSO user created by admin, no email sent")
-            return call.respondText("SSO user created, no email has been sent to the user since emails aren't sent to SSO users")
+            return call.respond(mapOf("message" to "SSO user created, no email has been sent to the user since emails aren't sent to SSO users"))
         }
         try {
             emailService.sendSetPasswordEmail(
@@ -138,14 +136,14 @@ class AdminUserCreationController(
             )
         } catch (e: Exception) {
             throw ApiError(
-                HttpStatusCode.ExpectationFailed,
+                HttpStatusCode.InternalServerError,
                 "error_sending_email",
                 "Error sending new user email",
                 "The user was made successfully but the activation email failed to send, please find the user and send a new activation email"
             )
         }
 
-        return call.respondText("User created successfully")
+        return call.respond(mapOf("message" to "User created successfully"))
     }
 
     private fun makeDelegate(accessGroup: String): String {

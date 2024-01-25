@@ -1,9 +1,11 @@
 package uk.gov.communities.delta.controllers
 
 import io.ktor.client.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
@@ -13,6 +15,8 @@ import jakarta.mail.Authenticator
 import jakarta.mail.PasswordAuthentication
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.apache.commons.lang3.builder.EqualsBuilder
 import org.junit.*
 import uk.gov.communities.delta.auth.bearerTokenRoutes
@@ -36,10 +40,11 @@ class AdminUserCreationControllerTest {
     @Test
     fun testAdminCreateUser() = testSuspend {
         testClient.post("/bearer/create-user") {
+            contentType(ContentType.Application.Json)
+            setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                setBody(getUserDetailsJsonString(NEW_STANDARD_USER_EMAIL))
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -61,7 +66,7 @@ class AdminUserCreationControllerTest {
                     any()
                 )
             }
-            assertEquals("User created successfully", bodyAsText())
+            assertEquals("{\"message\":\"User created successfully\"}", bodyAsText())
         }
     }
 
@@ -71,6 +76,8 @@ class AdminUserCreationControllerTest {
         Assert.assertThrows(NameNotFoundException::class.java) {
             runBlocking {
                 testClient.post("/bearer/create-user") {
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -89,7 +96,8 @@ class AdminUserCreationControllerTest {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
-                    parameter("text", "testing testing")
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                 }
             }
         }.apply {
@@ -100,10 +108,11 @@ class AdminUserCreationControllerTest {
     @Test
     fun testAdminCreateSSOUser() = testSuspend {
         testClient.post("/bearer/create-user") {
+            contentType(ContentType.Application.Json)
+            setBody(getUserDetailsJson(NEW_SSO_USER_EMAIL))
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                setBody(getUserDetailsJsonString(NEW_SSO_USER_EMAIL))
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -117,7 +126,7 @@ class AdminUserCreationControllerTest {
             verifyCorrectGroupsAdded()
             coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) }
             assertEquals(
-                "SSO user created, no email has been sent to the user since emails aren't sent to SSO users",
+                "{\"message\":\"SSO user created, no email has been sent to the user since emails aren't sent to SSO users\"}",
                 bodyAsText()
             )
         }
@@ -126,10 +135,11 @@ class AdminUserCreationControllerTest {
     @Test
     fun testAdminCreateNotRequiredSSOUser() = testSuspend {
         testClient.post("/bearer/create-user") {
+            contentType(ContentType.Application.Json)
+            setBody(getUserDetailsJson(NEW_NOT_REQUIRED_SSO_USER))
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                setBody(getUserDetailsJsonString(NEW_NOT_REQUIRED_SSO_USER))
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -151,7 +161,7 @@ class AdminUserCreationControllerTest {
                     any()
                 )
             }
-            assertEquals("User created successfully", bodyAsText())
+            assertEquals("{\"message\":\"User created successfully\"}", bodyAsText())
         }
     }
 
@@ -160,10 +170,11 @@ class AdminUserCreationControllerTest {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/bearer/create-user") {
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(OLD_STANDARD_USER_EMAIL))
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                        setBody(getUserDetailsJsonString(OLD_STANDARD_USER_EMAIL))
                     }
                 }
             }
@@ -179,10 +190,11 @@ class AdminUserCreationControllerTest {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/bearer/create-user") {
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                        setBody(getUserDetailsJsonString(NEW_STANDARD_USER_EMAIL))
                     }
                 }
             }
@@ -197,10 +209,11 @@ class AdminUserCreationControllerTest {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/bearer/create-user") {
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                        setBody(getUserDetailsJsonString(NEW_STANDARD_USER_EMAIL))
                     }
                 }
             }
@@ -215,10 +228,11 @@ class AdminUserCreationControllerTest {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/bearer/create-user") {
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                        setBody(getUserDetailsJsonString(NEW_STANDARD_USER_EMAIL))
                     }
                 }
             }
@@ -293,8 +307,9 @@ class AdminUserCreationControllerTest {
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
         private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace")
 
-        private fun getUserDetailsJsonString(email: String): String {
-            return "{\"id\":\"\"," +
+        private fun getUserDetailsJson(email: String): JsonElement {
+            return Json.parseToJsonElement(
+                "{\"id\":\"\"," +
                     "\"enabled\":false," +
                     "\"email\":\"$email\"," +
                     "\"lastName\":\"testLast\"," +
@@ -309,9 +324,8 @@ class AdminUserCreationControllerTest {
                     "\"externalRoles\":[]," +
                     "\"organisations\":[\"orgCode1\", \"orgCode2\"]," +
                     "\"comment\":\"test comment\"}"
+            )
         }
-
-//        {"id":"","enabled":false,"email":"test65@test610.com","lastName":"test dt610","firstName":"phoebe","telephone":"4564563","mobile":"2452345","position":"","accessGroups":["datamart-delta-abcdef","datamart-delta-aga-test-grant"],"accessGroupDelegates":["datamart-delta-abcdef","datamart-delta-aga-test-grant"],"accessGroupOrganisations":{"datamart-delta-abcdef":["pw-org-36616"]},"roles":["datamart-delta-setup-managers"],"externalRoles":[],"organisations":["pw-org-36616"],"comment":""}
 
         private fun getDeltaUserDetails(email: String): UserService.DeltaUserDetails {
             return UserService.DeltaUserDetails(
@@ -447,6 +461,9 @@ class AdminUserCreationControllerTest {
             }
 
             testClient = testApp.createClient {
+                install(ContentNegotiation) {
+                    json()
+                }
                 followRedirects = false
             }
         }
