@@ -21,7 +21,7 @@ jobs:
     environment: test
     defaults:
       run:
-        working-directory: test
+        working-directory: terraform/test
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_tf }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key_tf }}
