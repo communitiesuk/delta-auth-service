@@ -2,9 +2,9 @@ val ktorVersion = "2.3.7"
 val kotlinVersion = "1.9.22"
 
 plugins {
-    kotlin("jvm") version "1.9.20"
+    kotlin("jvm") version "1.9.22"
     id("io.ktor.plugin") version "2.3.7"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.21"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -56,7 +56,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.1")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.2")
 
     //Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
@@ -73,12 +73,13 @@ dependencies {
     // Database
     implementation("org.postgresql:postgresql:42.7.1")
     implementation("com.zaxxer:HikariCP:5.1.0") // Connection pool
+    // Flyway 10 doesn't support postgres 14, we'll need to update postgres before upgrading
     implementation("org.flywaydb:flyway-core:9.22.3") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("io.mockk:mockk:1.13.9")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
