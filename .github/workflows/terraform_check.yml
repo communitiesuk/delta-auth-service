@@ -31,7 +31,7 @@ jobs:
         # Exposes stdout, stderr and exitcode as outputs for any steps that run terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.6.0
+          terraform_version: 1.7.0
 
       - name: Check formatting of all Terraform files
         id: fmt
