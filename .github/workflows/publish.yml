@@ -41,7 +41,7 @@ jobs:
         run: docker push $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }}
   deploy_to_test:
     name: Deploy new image to test environment
-    uses: "./.github/workflows/terraform-deploy.yml"
+    uses: "./.github/workflows/terraform_deploy.yml"
     needs: "publish_image"
     if: github.ref == 'refs/heads/main'
     with:
