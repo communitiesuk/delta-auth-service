@@ -16,9 +16,9 @@ import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
-import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.services.withAuthCode
 import kotlin.time.Duration.Companion.hours
@@ -137,12 +137,6 @@ class DeltaLoginController(
         if (formUsername.isNullOrEmpty()) return call.respondLoginPage(
             client, errorMessage = "Username is required", errorLink = "#username"
         )
-        if (password.isNullOrEmpty()) return call.respondLoginPage(
-            client,
-            errorMessage = "Password is required",
-            errorLink = "#password",
-            username = formUsername,
-        )
 
         val ssoClientMatchingEmailDomain = ssoConfig.ssoClients.firstOrNull {
             it.required && formUsername.lowercase().endsWith(it.emailDomain)
@@ -150,6 +144,13 @@ class DeltaLoginController(
         if (ssoClientMatchingEmailDomain != null) {
             return call.respondRedirect(oauthClientLoginRoute(ssoClientMatchingEmailDomain.internalId, formUsername))
         }
+
+        if (password.isNullOrEmpty()) return call.respondLoginPage(
+            client,
+            errorMessage = "Password is required",
+            errorLink = "#password",
+            username = formUsername,
+        )
 
         val cn = formUsername.replace('@', '!')
         when (val loginResult = ldapService.ldapLogin(cn, password)) {
