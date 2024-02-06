@@ -15,9 +15,7 @@ WORKDIR /app
 RUN yum install wget openssl -y
 
 RUN mkdir -p /root/.postgresql && \
-    wget https://truststore.pki.rds.amazonaws.com/eu-west-1/eu-west-1-bundle.pem -O /tmp/rds.pem && \
-    openssl x509 -outform der -in /tmp/rds.pem -out /root/.postgresql/root.crt && \
-    rm /tmp/rds.pem
+    wget https://truststore.pki.rds.amazonaws.com/eu-west-1/eu-west-1-bundle.pem -O /root/.postgresql/ca-bundle.pem
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh

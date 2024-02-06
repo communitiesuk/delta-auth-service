@@ -71,7 +71,7 @@ module "fargate" {
     },
     {
       name  = "DATABASE_URL"
-      value = "jdbc:postgresql://${aws_db_instance.auth_service.endpoint}/auth_service?ssl=true&sslmode=verify-full"
+      value = "jdbc:postgresql://${aws_db_instance.auth_service.endpoint}/auth_service?ssl=true&sslmode=verify-full&sslrootcert=/root/.postgresql/ca-bundle.pem"
     },
     {
       name  = "DATABASE_USER"
