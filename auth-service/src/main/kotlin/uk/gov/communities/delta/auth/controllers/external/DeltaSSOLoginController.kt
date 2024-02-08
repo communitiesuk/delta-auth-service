@@ -240,7 +240,7 @@ class DeltaSSOLoginController(
         if (adminGroups.isNotEmpty() && ssoClient.requiredAdminGroupId != null && !azGroups.contains(ssoClient.requiredAdminGroupId)) {
             throw OAuthLoginException(
                 "not_in_required_admin_group",
-                "User ${user.cn} is admin in Delta (member of ${adminGroups.joinToString(", ")}, but not member of required admin group ${ssoClient.requiredAdminGroupId}",
+                "User ${user.cn} is admin in Delta (member of ${adminGroups.joinToString(", ")}), but not member of required admin group ${ssoClient.requiredAdminGroupId}",
                 "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()} (${ssoClient.requiredAdminGroupId}). Please contact the Service Desk"
             )
         }
