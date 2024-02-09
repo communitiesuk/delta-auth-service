@@ -62,8 +62,8 @@ class RegistrationService(
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser, call: ApplicationCall) {
         try {
-            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers, call)
-            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser, call)
+            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call)
+            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_USER, call)
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to default groups")
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to default groups", e)
@@ -72,7 +72,7 @@ class RegistrationService(
     }
 
     private fun organisationUserGroup(orgCode: String): String {
-        return String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode)
+        return String.format("%s-%s", DeltaConfig.DATAMART_DELTA_USER, orgCode)
     }
 
     private suspend fun addUserToOrganisations(

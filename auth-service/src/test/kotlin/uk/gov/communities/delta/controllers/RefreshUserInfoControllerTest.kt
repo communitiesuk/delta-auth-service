@@ -130,6 +130,7 @@ class RefreshUserInfoControllerTest {
                             adminEmailController,
                             mockk<FetchUserAuditController>(relaxed = true),
                             mockk<AdminUserCreationController>(relaxed = true),
+                            mockk(relaxed = true),
                         )
                     }
                 }

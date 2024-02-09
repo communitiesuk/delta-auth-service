@@ -26,6 +26,16 @@ class GroupService(
         }
     }
 
+    private suspend fun addGroupToAD(adGroup: ADGroup) {
+        val container: Attributes = BasicAttributes()
+        container.put(adGroup.objectClasses)
+        container.put(BasicAttribute("cn", adGroup.cn))
+        ldapServiceUserBind.useServiceUserBind {
+            it.createSubcontext(adGroup.dn, container)
+            logger.info("Group with dn {} created on active directory", adGroup.dn)
+        }
+    }
+
     suspend fun groupExists(groupDn: String): Boolean {
         return try {
             val attributes = ldapServiceUserBind.useServiceUserBind {
@@ -46,18 +56,49 @@ class GroupService(
         call: ApplicationCall,
         triggeringAdminSession: OAuthSession? = null,
     ) {
+        addUserToGroup(adUser.cn, adUser.dn, groupCN, call, triggeringAdminSession)
+    }
+
+    suspend fun addUserToGroup(
+        userCN: String,
+        userDN: String,
+        groupCN: String,
+        call: ApplicationCall,
+        triggeringAdminSession: OAuthSession? = null,
+    ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
         if (!groupExists(groupDN)) {
             createGroup(groupCN)
         }
         ldapServiceUserBind.useServiceUserBind {
-            val member = BasicAttribute("member", adUser.dn)
+            val member = BasicAttribute("member", userDN)
             val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
             it.modifyAttributes(groupDN, modificationItems)
-            logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to group with dn {}", groupDN)
+            logger.atInfo().addKeyValue("UserDN", userDN).log("User added to group with dn {}", groupDN)
         }
-        auditAddingUserToGroup(adUser.cn, groupCN, triggeringAdminSession, call)
+        auditAddingUserToGroup(userCN, groupCN, triggeringAdminSession, call)
+    }
+
+    suspend fun removeUserFromGroup(
+        userCN: String,
+        userDN: String,
+        groupCN: String,
+        call: ApplicationCall,
+        triggeringAdminSession: OAuthSession? = null,
+    ) {
+        val groupDN = ldapConfig.groupDnFormat.format(groupCN)
+
+        if (!groupExists(groupDN)) {
+            throw Exception("Group did not exist in AD when trying to remove a user from it")
+        }
+        ldapServiceUserBind.useServiceUserBind {
+            val member = BasicAttribute("member", userDN)
+            val modificationItems = arrayOf(ModificationItem(DirContext.REMOVE_ATTRIBUTE, member))
+            it.modifyAttributes(groupDN, modificationItems)
+            logger.atInfo().addKeyValue("UserDN", userDN).log("User removed from group with dn {}", groupDN)
+        }
+        auditRemovingUserFromGroup(userCN, groupCN, triggeringAdminSession, call)
     }
 
     private suspend fun auditAddingUserToGroup(userCN :String, groupCN: String, triggeringAdminSession: OAuthSession?, call: ApplicationCall) {
@@ -68,14 +109,17 @@ class GroupService(
             userAuditService.userUpdateAudit(userCN, call, auditData)
     }
 
-    private suspend fun addGroupToAD(adGroup: ADGroup) {
-        val container: Attributes = BasicAttributes()
-        container.put(adGroup.objectClasses)
-        container.put(BasicAttribute("cn", adGroup.cn))
-        ldapServiceUserBind.useServiceUserBind {
-            it.createSubcontext(adGroup.dn, container)
-            logger.info("Group with dn {} created on active directory", adGroup.dn)
-        }
+    private suspend fun auditRemovingUserFromGroup(
+        userCN: String,
+        groupCN: String,
+        triggeringAdminSession: OAuthSession?,
+        call: ApplicationCall
+    ) {
+        val auditData = Json.encodeToString(RemovedGroupAuditData(groupCN))
+        if (triggeringAdminSession != null)
+            userAuditService.userUpdateByAdminAudit(userCN, triggeringAdminSession.userCn, call, auditData)
+        else
+            userAuditService.userUpdateAudit(userCN, call, auditData)
     }
 
     class ADGroup(val cn: String, private val ldapConfig: LDAPConfig) {
@@ -96,4 +140,7 @@ class GroupService(
 
     @Serializable
     private data class AddedGroupAuditData(val addedGroupCN: String)
+
+    @Serializable
+    private data class RemovedGroupAuditData(val removedGroupCN: String)
 }

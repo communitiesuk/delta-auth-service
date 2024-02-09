@@ -56,8 +56,8 @@ class DeltaUserRegistrationControllerTest {
             formParameters = correctFormParameters(emailStart + standardDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any()) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
             assertSuccessPageRedirect(status, headers, emailStart + standardDomain)
             coVerify(exactly = 1) {
@@ -160,8 +160,8 @@ class DeltaUserRegistrationControllerTest {
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any()) }
             coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
             assertSuccessPageRedirect(status, headers, emailStart + notRequiredDomain)
             coVerify(exactly = 1) {
@@ -237,7 +237,7 @@ class DeltaUserRegistrationControllerTest {
         append("confirmEmailAddress", userEmail)
     }
 
-    private fun groupName(orgCode: String) = String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode)
+    private fun groupName(orgCode: String) = String.format("%s-%s", DeltaConfig.DATAMART_DELTA_USER, orgCode)
 
     @Before
     fun resetMocks() {

@@ -24,6 +24,7 @@ import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
@@ -205,7 +206,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testErrorHandlingDuringAddingToGroup() = testSuspend {
-        coEvery { groupService.addUserToGroup(any(), any(), any(), any()) } throws Exception()
+        coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/bearer/create-user") {
@@ -266,7 +267,7 @@ class AdminUserCreationControllerTest {
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_SSO_USER_EMAIL)) } returns true
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_NOT_REQUIRED_SSO_USER)) } returns true
         coEvery { userService.createUser(capture(user), any(), any(), any()) } just runs
-        coEvery { groupService.addUserToGroup(any(), any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } just runs
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "passwordToken"
     }
@@ -386,7 +387,7 @@ class AdminUserCreationControllerTest {
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-role-1-orgCode2", any(), adminSession)
             }
-            coVerify(exactly = 14) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 14) { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) }
         }
 
         private fun assertCapturedUserIsAsExpected(
@@ -426,7 +427,6 @@ class AdminUserCreationControllerTest {
         fun setup() {
             controller = AdminUserCreationController(
                 ldapConfig,
-                deltaConfig,
                 ssoConfig,
                 emailConfig,
                 userLookupService,
@@ -455,6 +455,7 @@ class AdminUserCreationControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                         )
                     }
                 }

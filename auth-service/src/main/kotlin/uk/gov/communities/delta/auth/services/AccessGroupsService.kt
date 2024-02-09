@@ -17,6 +17,7 @@ data class AccessGroup(
     val registrationDisplayName: String?,
     val enableOnlineRegistration: Boolean,
     val enableInternalUser: Boolean,
+    val isDelegate: Boolean? = null,
 )
 
 

@@ -18,7 +18,8 @@ fun testLdapUser(
     positionInOrganisation: String? = null,
     reasonForAccess: String? = null,
     comment: String? = null,
+    notificationStatus: String = "active",
 ) = LdapUser(
     dn, cn, memberOfCNs, email, deltaTOTPSecret, firstName, lastName, fullName, accountEnabled,
-    mangledDeltaObjectGuid, telephone, mobile, positionInOrganisation, reasonForAccess, comment
+    mangledDeltaObjectGuid, telephone, mobile, positionInOrganisation, reasonForAccess, comment, notificationStatus
 )
