@@ -17,6 +17,7 @@ import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.bearerTokenRoutes
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
 import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
@@ -128,7 +129,7 @@ class FetchUserAuditControllerTest {
         private lateinit var controller: FetchUserAuditController
 
         private val client = testServiceClient()
-        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf("datamart-delta-admin"))
+        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
         private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace")

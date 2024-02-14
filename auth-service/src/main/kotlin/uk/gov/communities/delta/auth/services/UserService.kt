@@ -366,7 +366,7 @@ class UserService(
 
     @Serializable
     data class DeltaUserDetails(
-        @SerialName("id") val id: String, //Not used anywhere yet - think this is cn (email with ! not @) ?
+        @SerialName("id") val id: String, //This is the username in email form
         @SerialName("enabled") val enabled: Boolean, //Always false for user creation - not used anywhere yet
         @SerialName("email") val email: String,
         @SerialName("lastName") val lastName: String,

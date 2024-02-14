@@ -242,7 +242,7 @@ class OAuthSSOLoginTest {
 
     private fun mockAdminUser() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, "datamart-delta-admin"))
+            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_ADMIN))
         }
     }
 

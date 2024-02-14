@@ -3,6 +3,8 @@ package uk.gov.communities.delta.security
 import io.ktor.server.application.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
@@ -83,7 +85,7 @@ class GroupServiceTest {
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
         coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, call, any()) }
-        assertContains(auditData.captured, groupCN)
+        assertContains(auditData.captured, "\"addedGroupCN\":\"$groupCN\"")
     }
 
     @Test
@@ -98,7 +100,7 @@ class GroupServiceTest {
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
         coVerify(exactly = 1) { userAuditService.userUpdateByAdminAudit(adUser.cn, "adminUserCN", call, any()) }
-        assertContains(auditData.captured, groupCN)
+        assertContains(auditData.captured, "\"addedGroupCN\":\"$groupCN\"")
     }
 
     @Test
@@ -115,6 +117,45 @@ class GroupServiceTest {
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
-        assertContains(auditData.captured, groupCN)
+        assertContains(auditData.captured, "\"addedGroupCN\":\"$groupCN\"")
+    }
+
+    @Test
+    fun testRemovingUserFromGroup() = testSuspend {
+        coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
+        groupService.removeUserFromGroup(adUser.cn, adUser.dn, groupCN, call)
+        verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
+        verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
+        assertEquals(DirContext.REMOVE_ATTRIBUTE, modificationItems.captured[0].modificationOp)
+        assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
+        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, call, any()) }
+        assertContains(auditData.captured, "\"removedGroupCN\":\"$groupCN\"")
+    }
+
+    @Test
+    fun testAdminRemovingUserFromGroup() = testSuspend {
+        val adminSession = OAuthSession(
+            1, "adminUserCN", mockk<DeltaLoginEnabledClient>(), "adminAccessToken", Instant.now(), "trace"
+        )
+        coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
+        groupService.removeUserFromGroup(adUser.cn, adUser.dn, groupCN, call, adminSession)
+        verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
+        verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
+        assertEquals(DirContext.REMOVE_ATTRIBUTE, modificationItems.captured[0].modificationOp)
+        assertEquals(adUser.dn, modificationItems.captured[0].attribute.get())
+        coVerify(exactly = 1) { userAuditService.userUpdateByAdminAudit(adUser.cn, "adminUserCN", call, any()) }
+        assertContains(auditData.captured, "\"removedGroupCN\":\"$groupCN\"")
+    }
+
+    @Test
+    fun testErrorThrownOnRemovingUserFromNotExistingGroup() = testSuspend {
+        Assert.assertThrows(Exception::class.java) {
+            runBlocking {
+                groupService.addUserToGroup(adUser, groupCN, call)
+            }
+        }.apply {
+            verify(exactly = 0) { context.createSubcontext(any<String>(), any()) }
+            verify(exactly = 0) { context.modifyAttributes(any<String>(), any()) }
+        }
     }
 }

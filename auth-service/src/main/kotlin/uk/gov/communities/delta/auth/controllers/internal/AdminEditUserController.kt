@@ -85,7 +85,11 @@ class AdminEditUserController(
 
         val updatedDeltaUserDetails = call.receive<UserService.DeltaUserDetails>()
 
-        if (updatedDeltaUserDetails.id.replace("@", "!") != cn) throw Exception("Username has been changed")
+        if (updatedDeltaUserDetails.id.replace("@", "!") != cn) throw ApiError(
+            HttpStatusCode.BadRequest,
+            "username_changed",
+            "Username has been changed"
+        )
 
         val modifications = getModifications(currentUser, updatedDeltaUserDetails)
         val updatedUserGroups = updatedDeltaUserDetails.getGroups()
@@ -95,7 +99,8 @@ class AdminEditUserController(
         if (modifications.isEmpty() && groupsToAddToUser.isEmpty() && groupsToRemoveFromUser.isEmpty())
             return call.respond(mapOf("message" to "No changes were made to the user"))
 
-        userService.updateUser(currentUser, modifications, session, call)
+        if (modifications.isNotEmpty()) userService.updateUser(currentUser, modifications, session, call)
+
         groupsToAddToUser.forEach {
             groupService.addUserToGroup(currentUser.cn, currentUser.dn, it, call, session)
         }

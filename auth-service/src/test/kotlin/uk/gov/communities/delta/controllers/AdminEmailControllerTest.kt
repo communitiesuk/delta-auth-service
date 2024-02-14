@@ -13,6 +13,7 @@ import org.junit.*
 import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -39,6 +40,21 @@ class AdminEmailControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { emailService.sendSetPasswordEmail(disabledReceivingUser, any(), adminSession, any()) }
+            coVerify(exactly = 1) { setPasswordTokenService.createToken(disabledReceivingUser.cn) }
+        }
+    }
+
+    @Test
+    fun testReadOnlyAdminSendActivationEmail() = testSuspend {
+        testClient.post("/bearer/email/activation") {
+            headers {
+                append("Authorization", "Bearer ${readOnlyAdminSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            parameter("userEmail", disabledReceivingUserEmail)
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) { emailService.sendSetPasswordEmail(disabledReceivingUser, any(), readOnlyAdminSession, any()) }
             coVerify(exactly = 1) { setPasswordTokenService.createToken(disabledReceivingUser.cn) }
         }
     }
@@ -116,6 +132,21 @@ class AdminEmailControllerTest {
     }
 
     @Test
+    fun testReadOnlyAdminSendResetPasswordEmail() = testSuspend {
+        testClient.post("/bearer/email/reset-password") {
+            headers {
+                append("Authorization", "Bearer ${readOnlyAdminSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            parameter("userEmail", enabledReceivingUserEmail)
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", readOnlyAdminSession, any()) }
+            coVerify(exactly = 1) { resetPasswordTokenService.createToken(any()) }
+        }
+    }
+
+    @Test
     fun testAdminSendResetPasswordEmailDisabledUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
@@ -183,8 +214,15 @@ class AdminEmailControllerTest {
             )
         } answers { adminSession }
         coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
+        coEvery {
+            oauthSessionService.retrieveFomAuthToken(
+                readOnlyAdminSession.authToken,
+                client
+            )
+        } answers { readOnlyAdminSession }
         coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
         coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
+        coEvery { userLookupService.lookupUserByCn(readOnlyAdminUser.cn) } returns readOnlyAdminUser
         coEvery { userLookupService.lookupUserByCn(enabledReceivingUser.cn) } returns enabledReceivingUser
         coEvery { userLookupService.lookupUserByCn(enabledReceivingSSOUser.cn) } returns enabledReceivingSSOUser
         coEvery { userLookupService.lookupUserByCn(disabledReceivingUser.cn) } returns disabledReceivingUser
@@ -193,6 +231,8 @@ class AdminEmailControllerTest {
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
         coEvery { emailService.sendSetPasswordEmail(disabledReceivingUser, "token", adminSession, any()) } just runs
         coEvery { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", adminSession, any()) } just runs
+        coEvery { emailService.sendSetPasswordEmail(disabledReceivingUser, "token", readOnlyAdminSession, any()) } just runs
+        coEvery { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", readOnlyAdminSession, any()) } just runs
     }
 
     companion object {
@@ -207,7 +247,9 @@ class AdminEmailControllerTest {
         private val emailService = mockk<EmailService>()
 
         private val client = testServiceClient()
-        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf("datamart-delta-admin"))
+        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
+        private val readOnlyAdminUser =
+            testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
         private const val enabledReceivingUserEmail = "enabled-receiving-user@test.com"
         private const val enabledReceivingSSOUserEmail = "enabled-receiving-user@sso.domain"
@@ -235,6 +277,8 @@ class AdminEmailControllerTest {
             accountEnabled = false
         )
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
+        private val readOnlyAdminSession =
+            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminAccessToken", Instant.now(), "trace")
         private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace")
 
         @BeforeClass

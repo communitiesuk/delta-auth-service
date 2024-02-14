@@ -24,7 +24,6 @@ import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
@@ -280,7 +279,6 @@ class AdminUserCreationControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", "")
-        private val deltaConfig = DeltaConfig.fromEnv()
         private val requiredSSOClient = AzureADSSOClient("dev", "", "", "", "@required.sso.domain", required = true)
         private val notRequiredSSOClient =
             AzureADSSOClient("dev", "", "", "", "@not.required.sso.domain", required = false)
@@ -302,7 +300,7 @@ class AdminUserCreationControllerTest {
         private val user = slot<UserService.ADUser>()
 
         private val client = testServiceClient()
-        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf("datamart-delta-admin"))
+        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
