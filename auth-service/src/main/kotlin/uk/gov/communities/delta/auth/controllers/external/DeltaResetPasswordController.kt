@@ -126,14 +126,8 @@ class DeltaResetPasswordController(
                 logger.atInfo().addKeyValue("userCN", tokenResult.userCN)
                     .log("Reset password form submitted with valid token")
                 val userDN = String.format(ldapConfig.deltaUserDnFormat, tokenResult.userCN)
-                try {
-                    userService.resetPassword(userDN, newPassword)
-                    logger.atInfo().addKeyValue("userCN", tokenResult.userCN).log("Password reset")
-                } catch (e: Exception) {
-                    logger.atError().addKeyValue("UserDN", userDN).addKeyValue("userCN", tokenResult.userCN)
-                        .log("Error resetting password for user", e)
-                    throw e
-                }
+                userService.resetPassword(userDN, newPassword)
+                logger.atInfo().addKeyValue("userCN", tokenResult.userCN).log("Password reset")
                 userAuditService.resetPasswordAudit(userCN, call)
                 call.respondRedirect("/delta/reset-password/success")
             }
