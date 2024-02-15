@@ -10,6 +10,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
@@ -26,8 +27,6 @@ class AdminEditUserController(
     private val accessGroupsService: AccessGroupsService,
     private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
 ) : AdminUserController(userLookupService) {
-
-    // TODO - Notification Status, Enabled/Disabled, MFA - this ticket or next?
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -93,8 +92,8 @@ class AdminEditUserController(
 
         val modifications = getModifications(currentUser, updatedDeltaUserDetails)
         val updatedUserGroups = updatedDeltaUserDetails.getGroups()
-        val groupsToAddToUser = updatedUserGroups.filter { it !in currentUser.memberOfCNs }
-        val groupsToRemoveFromUser = currentUser.memberOfCNs.filter { it !in updatedUserGroups }
+        val groupsToAddToUser = updatedUserGroups.filter { it !in currentUser.memberOfCNs && editableGroup(it) }
+        val groupsToRemoveFromUser = currentUser.memberOfCNs.filter { it !in updatedUserGroups && editableGroup(it) }
 
         if (modifications.isEmpty() && groupsToAddToUser.isEmpty() && groupsToRemoveFromUser.isEmpty())
             return call.respond(mapOf("message" to "No changes were made to the user"))
@@ -111,6 +110,14 @@ class AdminEditUserController(
         logger.atInfo().log("User $cn successfully updated")
 
         return call.respond(mapOf("message" to "User profile has been updated. Any changes to their roles or access groups will take effect the next time they log in."))
+    }
+
+    private fun editableGroup(group: String): Boolean {
+        return if (!group.startsWith(LDAPConfig.DATAMART_DELTA_PREFIX)) false
+        else if (group.startsWith(DeltaConfig.DATAMART_DELTA_ADMIN)) false
+        else if (group == DeltaConfig.DATAMART_DELTA_USER) false
+        else if (DELTA_EXTERNAL_ROLES.any{group.contains(it)}) false
+        else true
     }
 
     private fun getModifications(
