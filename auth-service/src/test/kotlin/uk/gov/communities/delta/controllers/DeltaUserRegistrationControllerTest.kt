@@ -56,9 +56,9 @@ class DeltaUserRegistrationControllerTest {
             formParameters = correctFormParameters(emailStart + standardDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
             assertSuccessPageRedirect(status, headers, emailStart + standardDomain)
             coVerify(exactly = 1) {
                 emailService.sendSetPasswordEmail(
@@ -160,9 +160,9 @@ class DeltaUserRegistrationControllerTest {
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
             assertSuccessPageRedirect(status, headers, emailStart + notRequiredDomain)
             coVerify(exactly = 1) {
                 emailService.sendSetPasswordEmail(
@@ -244,7 +244,7 @@ class DeltaUserRegistrationControllerTest {
         clearAllMocks()
         coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "Test org"))
         coEvery { userService.createUser(any(), any(), any(), any()) } just runs
-        coEvery { groupService.addUserToGroup(any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(any(), any(), any(), null) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
         coEvery { emailService.sendAlreadyAUserEmail(any(), any(), any()) } just runs
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), null, any(), any()) } just runs

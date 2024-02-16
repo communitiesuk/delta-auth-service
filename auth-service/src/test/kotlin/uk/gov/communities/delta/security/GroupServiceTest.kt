@@ -79,7 +79,7 @@ class GroupServiceTest {
     @Test
     fun testAddingUserToExistingGroup() = testSuspend {
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
-        groupService.addUserToGroup(adUser, groupCN, call)
+        groupService.addUserToGroup(adUser, groupCN, call, null)
         verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
@@ -111,7 +111,7 @@ class GroupServiceTest {
                 arrayOf("cn")
             )
         } coAnswers { BasicAttributes() } coAndThen { attributes }
-        groupService.addUserToGroup(adUser, groupCN, call)
+        groupService.addUserToGroup(adUser, groupCN, call, null)
         verify(exactly = 1) { context.createSubcontext(groupDN, any()) }
         assertEquals(groupCN, container.captured.get("cn").get())
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
@@ -123,7 +123,7 @@ class GroupServiceTest {
     @Test
     fun testRemovingUserFromGroup() = testSuspend {
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
-        groupService.removeUserFromGroup(adUser.cn, adUser.dn, groupCN, call)
+        groupService.removeUserFromGroup(adUser.cn, adUser.dn, groupCN, call, null)
         verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.REMOVE_ATTRIBUTE, modificationItems.captured[0].modificationOp)
@@ -151,7 +151,7 @@ class GroupServiceTest {
     fun testErrorThrownOnRemovingUserFromNotExistingGroup() = testSuspend {
         Assert.assertThrows(Exception::class.java) {
             runBlocking {
-                groupService.addUserToGroup(adUser, groupCN, call)
+                groupService.addUserToGroup(adUser, groupCN, call, null)
             }
         }.apply {
             verify(exactly = 0) { context.createSubcontext(any<String>(), any()) }

@@ -128,7 +128,6 @@ class AdminEditUserController(
 
         getModificationItem("sn", currentUser.lastName, newUser.lastName)?.let { modifications += it }
         getModificationItem("givenName", currentUser.firstName, newUser.firstName)?.let { modifications += it }
-        getModificationItem("mail", currentUser.email, newUser.email)?.let { modifications += it }
         getModificationItem("comment", currentUser.comment, newUser.comment)?.let { modifications += it }
         getModificationItem("telephoneNumber", currentUser.telephone, newUser.telephone)?.let { modifications += it }
         getModificationItem("mobile", currentUser.mobile, newUser.mobile)?.let { modifications += it }

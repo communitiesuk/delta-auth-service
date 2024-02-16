@@ -54,7 +54,7 @@ class GroupService(
         adUser: UserService.ADUser,
         groupCN: String,
         call: ApplicationCall,
-        triggeringAdminSession: OAuthSession? = null,
+        triggeringAdminSession: OAuthSession?,
     ) {
         addUserToGroup(adUser.cn, adUser.dn, groupCN, call, triggeringAdminSession)
     }
@@ -64,7 +64,7 @@ class GroupService(
         userDN: String,
         groupCN: String,
         call: ApplicationCall,
-        triggeringAdminSession: OAuthSession? = null,
+        triggeringAdminSession: OAuthSession?,
     ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
@@ -85,13 +85,10 @@ class GroupService(
         userDN: String,
         groupCN: String,
         call: ApplicationCall,
-        triggeringAdminSession: OAuthSession? = null,
+        triggeringAdminSession: OAuthSession?,
     ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
-        if (!groupExists(groupDN)) {
-            throw Exception("Group did not exist in AD when trying to remove a user from it")
-        }
         ldapServiceUserBind.useServiceUserBind {
             val member = BasicAttribute("member", userDN)
             val modificationItems = arrayOf(ModificationItem(DirContext.REMOVE_ATTRIBUTE, member))

@@ -29,12 +29,12 @@ open class AdminUserController(
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
 
         // Authenticate calling user
-        if (!callingUser.memberOfCNs.any { it in permittedRoles }) {
+        if (!callingUser.memberOfCNs.any { it in permittedRoles } || !callingUser.accountEnabled) {
             logger.atWarn().log("User does not have the necessary permissions to view/edit the user")
             throw ApiError(
                 HttpStatusCode.Forbidden,
                 "forbidden",
-                "User is not an admin",
+                "User is not an enabled admin",
                 "You do not have the necessary permissions to do this"
             )
         }

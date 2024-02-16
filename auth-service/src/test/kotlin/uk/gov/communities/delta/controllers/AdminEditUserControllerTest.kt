@@ -264,16 +264,43 @@ class AdminEditUserControllerTest {
         }
     }
 
+    @Test
+    fun testDisabledAdminUpdateUnchangedUser() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/edit-user?userCn=${user.cn}") {
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(user.email!!))
+                    headers {
+                        append("Authorization", "Bearer ${disabledAdminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                }
+            }.apply {
+                assertEquals(HttpStatusCode.Unauthorized, status)
+                coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            }
+        }.apply {
+            assertEquals("forbidden", errorCode)
+        }
+    }
+
     @Before
     fun resetMocks() {
         modifications.clear()
         clearAllMocks()
         coEvery { oauthSessionService.retrieveFomAuthToken(adminSession.authToken, client) } answers { adminSession }
         coEvery {
+            oauthSessionService.retrieveFomAuthToken(disabledAdminSession.authToken, client)
+        } answers { disabledAdminSession }
+        coEvery {
             oauthSessionService.retrieveFomAuthToken(readOnlyAdminSession.authToken, client)
         } answers { readOnlyAdminSession }
         coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
         coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
+        coEvery { userLookupService.lookupUserByCn(disabledAdminUser.cn) } returns disabledAdminUser
         coEvery { userLookupService.lookupUserByCn(readOnlyAdminUser.cn) } returns readOnlyAdminUser
         coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
         coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
@@ -310,14 +337,18 @@ class AdminEditUserControllerTest {
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
+        private val disabledAdminUser =
+            testLdapUser(cn = "disabledAdmin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN), accountEnabled = false)
         private val readOnlyAdminUser =
             testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
+        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace")
+        private val disabledAdminSession =
+            OAuthSession(1, disabledAdminUser.cn, client, "disabledAdminToken", Instant.now(), "trace")
         private val readOnlyAdminSession =
-            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminAccessToken", Instant.now(), "trace")
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace")
+            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminToken", Instant.now(), "trace")
+        private val userSession = OAuthSession(1, regularUser.cn, client, "userToken", Instant.now(), "trace")
 
         private val user = testLdapUser(
             cn = "beingUpdated!user.com",

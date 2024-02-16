@@ -126,7 +126,7 @@ class AdminUserCreationControllerTest {
             verifyCorrectGroupsAdded()
             coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) }
             assertEquals(
-                "{\"message\":\"SSO user created, no email has been sent to the user since emails aren't sent to SSO users\"}",
+                "{\"message\":\"User created. Single Sign On (SSO) is enabled for this user based on their email domain. The account has been activated automatically, no email has been sent.\"}",
                 bodyAsText()
             )
         }

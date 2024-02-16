@@ -62,8 +62,8 @@ class RegistrationService(
 
     private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser, call: ApplicationCall) {
         try {
-            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call)
-            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_USER, call)
+            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null)
+            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_USER, call, null)
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to default groups")
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to default groups", e)
@@ -87,7 +87,8 @@ class RegistrationService(
                     groupService.addUserToGroup(
                         adUser,
                         organisationUserGroup(it.code),
-                        call
+                        call,
+                        null,
                     )
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
                         .log("Added user to domain organisation with code {}", it.code)
