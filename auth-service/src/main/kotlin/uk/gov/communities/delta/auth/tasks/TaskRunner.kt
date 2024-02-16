@@ -42,8 +42,10 @@ class TaskRunner(private val meterRegistry: MeterRegistry) {
 
         try {
             logger.info("Starting task")
+            val startTime = System.currentTimeMillis()
             task.execute()
-            logger.info("Task complete")
+            val durationMs = System.currentTimeMillis() - startTime
+            logger.atInfo().addKeyValue("durationMs", durationMs).log("Task complete")
             allTasksSuccessCounter.increment()
             taskSpecificSuccessCounter.increment()
         } catch (e: Exception) {
