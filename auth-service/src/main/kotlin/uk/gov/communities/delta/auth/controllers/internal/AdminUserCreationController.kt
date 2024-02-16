@@ -123,7 +123,7 @@ class AdminUserCreationController(
 
         if (ssoClient?.required == true) {
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("SSO user created by admin, no email sent")
-            return call.respond(mapOf("message" to "SSO user created, no email has been sent to the user since emails aren't sent to SSO users"))
+            return call.respond(mapOf("message" to "User created. Single Sign On (SSO) is enabled for this user based on their email domain. The account has been activated automatically, no email has been sent."))
         }
         try {
             emailService.sendSetPasswordEmail(
