@@ -50,17 +50,15 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationForNewStandardUser() = testSuspend {
-        coEvery { userAuditService.userSelfRegisterAudit(cnStart + standardDomain, any()) } returns Unit
         coEvery { userLookupService.userExists(cnStart + standardDomain) } returns false
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + standardDomain)
         ).apply {
-            coVerify(exactly = 1) { userService.createUser(any()) }
-            coVerify(exactly = 1) { userAuditService.userSelfRegisterAudit(cnStart + standardDomain, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
+            coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
             assertSuccessPageRedirect(status, headers, emailStart + standardDomain)
             coVerify(exactly = 1) {
                 emailService.sendSetPasswordEmail(
@@ -87,7 +85,7 @@ class DeltaUserRegistrationControllerTest {
                 append("confirmEmailAddress", "differentUser@example.com")
             }
         ).apply {
-            coVerify(exactly = 0) { userService.createUser(any()) }
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
             assertFormPage(bodyAsText(), status)
             assertContains(bodyAsText(), "Email addresses do not match")
         }
@@ -100,7 +98,7 @@ class DeltaUserRegistrationControllerTest {
             url = "/register",
             formParameters = correctFormParameters(emailStart + standardDomain)
         ).apply {
-            coVerify(exactly = 0) { userService.createUser(any()) }
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
             assertFormPage(bodyAsText(), status)
             assertContains(bodyAsText(), "Email address domain not recognised")
         }
@@ -113,7 +111,7 @@ class DeltaUserRegistrationControllerTest {
             url = "/register",
             formParameters = correctFormParameters("notAn@EmailStringcom")
         ).apply {
-            coVerify(exactly = 0) { userService.createUser(any()) }
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
             assertFormPage(bodyAsText(), status)
             assertContains(bodyAsText(), "Email address must be a valid email address")
         }
@@ -126,7 +124,7 @@ class DeltaUserRegistrationControllerTest {
             url = "/register",
             formParameters = correctFormParameters(emailStart + standardDomain)
         ).apply {
-            coVerify(exactly = 0) { userService.createUser(any()) }
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
             assertSuccessPageRedirect(status, headers, emailStart + standardDomain)
             coVerify(exactly = 1) { emailService.sendAlreadyAUserEmail(any(), any(), any()) }
         }
@@ -156,17 +154,15 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationOfNewNotRequiredSSOUser() = testSuspend {
-        coEvery { userAuditService.userSelfRegisterAudit(cnStart + notRequiredDomain, any()) } just runs
         coEvery { userLookupService.userExists(cnStart + notRequiredDomain) } returns false
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
-            coVerify(exactly = 1) { userService.createUser(any()) }
-            coVerify(exactly = 1) { userAuditService.userSelfRegisterAudit(cnStart + notRequiredDomain, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode)) }
+            coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
             assertSuccessPageRedirect(status, headers, emailStart + notRequiredDomain)
             coVerify(exactly = 1) {
                 emailService.sendSetPasswordEmail(
@@ -188,7 +184,7 @@ class DeltaUserRegistrationControllerTest {
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
-            coVerify(exactly = 0) { userService.createUser(any()) }
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
             assertSuccessPageRedirect(status, headers, emailStart + notRequiredDomain)
             coVerify(exactly = 1) { emailService.sendAlreadyAUserEmail("Test", cnStart + notRequiredDomain, any()) }
         }
@@ -203,7 +199,7 @@ class DeltaUserRegistrationControllerTest {
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
-            coVerify(exactly = 0) { userService.createUser(any()) }
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
             coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any()) }
             assertFormPage(bodyAsText(), status)
             assertContains(bodyAsText(), "Email address domain not recognised")
@@ -247,8 +243,8 @@ class DeltaUserRegistrationControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "Test org"))
-        coEvery { userService.createUser(any()) } just runs
-        coEvery { groupService.addUserToGroup(any(), any()) } just runs
+        coEvery { userService.createUser(any(), any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
         coEvery { emailService.sendAlreadyAUserEmail(any(), any(), any()) } just runs
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), null, any(), any()) } just runs

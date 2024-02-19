@@ -1,7 +1,9 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
@@ -17,9 +19,9 @@ class RegistrationService(
     private val groupService: GroupService,
 ) {
     sealed class RegistrationResult
-    class UserCreated(val registration: Registration, val token: String, val userCN: String) : RegistrationResult()
+    class UserCreated(val user: UserService.ADUser, val token: String) : RegistrationResult()
     class SSOUserCreated(val userCN: String) : RegistrationResult()
-    class UserAlreadyExists(val registration: Registration, val userCN: String) : RegistrationResult()
+    class UserAlreadyExists(val user: UserService.ADUser) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
     // Previously users could be datamart users but not delta users, at migration we only transferred over users who
@@ -32,33 +34,36 @@ class RegistrationService(
     suspend fun register(
         registration: Registration,
         organisations: List<Organisation>,
-        ssoUser: Boolean = false,
+        call: ApplicationCall,
+        ssoClient: AzureADSSOClient? = null,
+        azureObjectId: String? = null,
     ): RegistrationResult {
-        val adUser = UserService.ADUser(registration, ssoUser, ldapConfig)
+        val adUser = UserService.ADUser(ldapConfig, registration, ssoClient)
+
         if (userLookupService.userExists(adUser.cn)) {
             logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
-            return UserAlreadyExists(registration, adUser.cn)
+            return UserAlreadyExists(adUser)
         }
         try {
-            userService.createUser(adUser)
-            addUserToDefaultGroups(adUser)
-            addUserToOrganisations(adUser, organisations)
+            userService.createUser(adUser, ssoClient, call.principal<OAuthSession>(), call, azureObjectId)
+            addUserToDefaultGroups(adUser, call)
+            addUserToOrganisations(adUser, organisations, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             return RegistrationFailure(e)
         }
 
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
-        return if (ssoUser)
+        return if (ssoClient?.required == true)
             SSOUserCreated(adUser.cn)
         else
-            UserCreated(registration, setPasswordTokenService.createToken(adUser.cn), adUser.cn)
+            UserCreated(adUser, setPasswordTokenService.createToken(adUser.cn))
     }
 
-    private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser) {
+    private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser, call: ApplicationCall) {
         try {
-            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers)
-            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser)
+            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaReportUsers, call)
+            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser, call)
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to default groups")
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to default groups", e)
@@ -70,14 +75,19 @@ class RegistrationService(
         return String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode)
     }
 
-    private suspend fun addUserToOrganisations(adUser: UserService.ADUser, organisations: List<Organisation>) {
+    private suspend fun addUserToOrganisations(
+        adUser: UserService.ADUser,
+        organisations: List<Organisation>,
+        call: ApplicationCall
+    ) {
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("Adding user to domain organisations")
         try {
             organisations.forEach {
                 if (!it.retired) {
                     groupService.addUserToGroup(
                         adUser,
-                        organisationUserGroup(it.code)
+                        organisationUserGroup(it.code),
+                        call
                     )
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
                         .log("Added user to domain organisation with code {}", it.code)
@@ -92,10 +102,10 @@ class RegistrationService(
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to domain organisations")
     }
 
-    private fun getRegistrationEmailContacts(registration: Registration): EmailContacts {
+    private fun getEmailContacts(adUser: UserService.ADUser): EmailContacts {
         return EmailContacts(
-            registration.emailAddress,
-            registration.firstName + " " + registration.lastName,
+            adUser.mail,
+            adUser.getDisplayName(),
             emailConfig
         )
     }
@@ -104,11 +114,11 @@ class RegistrationService(
         when (registrationResult) {
             is UserCreated -> {
                 emailService.sendSetPasswordEmail(
-                    registrationResult.registration.firstName,
+                    registrationResult.user.givenName,
                     registrationResult.token,
-                    registrationResult.userCN,
+                    registrationResult.user.cn,
                     null,
-                    getRegistrationEmailContacts(registrationResult.registration),
+                    getEmailContacts(registrationResult.user),
                     call,
                 )
             }
@@ -119,9 +129,9 @@ class RegistrationService(
 
             is UserAlreadyExists -> {
                 emailService.sendAlreadyAUserEmail(
-                    registrationResult.registration.firstName,
-                    registrationResult.userCN,
-                    getRegistrationEmailContacts(registrationResult.registration),
+                    registrationResult.user.givenName,
+                    registrationResult.user.cn,
+                    getEmailContacts(registrationResult.user),
                 )
             }
 

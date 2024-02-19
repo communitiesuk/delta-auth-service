@@ -10,6 +10,7 @@ import org.opensaml.saml.saml2.core.*
 import org.opensaml.saml.saml2.core.impl.*
 import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.utils.timed
 import java.io.StringWriter
@@ -34,7 +35,7 @@ class SAMLTokenService {
                 initialiseOpenSaml()
             }
             try {
-                val roles = user.memberOfCNs.filter { it.startsWith("datamart-delta-") }
+                val roles = user.memberOfCNs.filter { it.startsWith(LDAPConfig.DATAMART_DELTA_PREFIX) }
                 val assertion = makeAssertionElement(user.cn, roles, validFrom, validTo)
 
                 // This block of code reportedly comes from MarkLogic support, though we no longer have access to the original ticket

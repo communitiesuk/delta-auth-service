@@ -1,5 +1,9 @@
 package uk.gov.communities.delta.auth.services
 
+import io.ktor.server.application.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import javax.naming.NameNotFoundException
@@ -8,6 +12,7 @@ import javax.naming.directory.*
 class GroupService(
     private val ldapServiceUserBind: LdapServiceUserBind,
     private val ldapConfig: LDAPConfig,
+    private val userAuditService: UserAuditService,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -35,7 +40,12 @@ class GroupService(
         }
     }
 
-    suspend fun addUserToGroup(adUser: UserService.ADUser, groupCN: String) {
+    suspend fun addUserToGroup(
+        adUser: UserService.ADUser,
+        groupCN: String,
+        call: ApplicationCall,
+        triggeringAdminSession: OAuthSession? = null,
+    ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
         if (!groupExists(groupDN)) {
@@ -47,6 +57,15 @@ class GroupService(
             it.modifyAttributes(groupDN, modificationItems)
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to group with dn {}", groupDN)
         }
+        auditAddingUserToGroup(adUser.cn, groupCN, triggeringAdminSession, call)
+    }
+
+    private suspend fun auditAddingUserToGroup(userCN :String, groupCN: String, triggeringAdminSession: OAuthSession?, call: ApplicationCall) {
+        val auditData = Json.encodeToString(AddedGroupAuditData(groupCN))
+        if (triggeringAdminSession != null)
+            userAuditService.userUpdateByAdminAudit(userCN, triggeringAdminSession.userCn, call, auditData)
+        else
+            userAuditService.userUpdateAudit(userCN, call, auditData)
     }
 
     private suspend fun addGroupToAD(adGroup: ADGroup) {
@@ -74,4 +93,7 @@ class GroupService(
             return String.format(ldapConfig.groupDnFormat, cn)
         }
     }
+
+    @Serializable
+    private data class AddedGroupAuditData(val addedGroupCN: String)
 }

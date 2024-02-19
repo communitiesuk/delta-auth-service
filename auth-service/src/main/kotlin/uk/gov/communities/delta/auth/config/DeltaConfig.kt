@@ -7,8 +7,8 @@ class DeltaConfig(
     val rateLimit: Int,
     val masterStoreBaseNoAuth: String,
 ) {
-    val datamartDeltaUser = "datamart-delta-user"
-    val datamartDeltaReportUsers = "datamart-delta-report-users"
+    val datamartDeltaUser = LDAPConfig.DATAMART_DELTA_PREFIX + "user"
+    val datamartDeltaReportUsers = LDAPConfig.DATAMART_DELTA_PREFIX + "report-users"
 
     companion object {
         fun fromEnv() = DeltaConfig(

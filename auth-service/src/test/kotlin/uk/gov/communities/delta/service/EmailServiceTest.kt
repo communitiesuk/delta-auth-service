@@ -79,7 +79,7 @@ class EmailServiceTest {
                 emailRepository.sendEmail("new-user", any(), any(), any())
             }
             coVerify(exactly = 1) {
-                userAuditService.adminResendActivationEmailAudit(
+                userAuditService.adminSetPasswordEmailAudit(
                     testLdapUser().cn,
                     "adminUserCn",
                     any()
@@ -154,7 +154,7 @@ class EmailServiceTest {
         every { emailRepository.sendEmail(any(), any(), any(), any()) } just runs
         coEvery { userAuditService.setPasswordEmailAudit(any(), any()) } just runs
         coEvery { userAuditService.resetPasswordEmailAudit(any(), any()) } just runs
-        coEvery { userAuditService.adminResendActivationEmailAudit(any(), any(), any()) } just runs
+        coEvery { userAuditService.adminSetPasswordEmailAudit(any(), any(), any()) } just runs
         coEvery { userAuditService.adminResetPasswordEmailAudit(any(), any(), any()) } just runs
     }
 }

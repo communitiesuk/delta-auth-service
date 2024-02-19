@@ -135,7 +135,7 @@ class DeltaUserRegistrationController(
 
             val registration = Registration(firstName, lastName, emailAddress)
             val registrationResult = try {
-                registrationService.register(registration, organisations)
+                registrationService.register(registration, organisations, call)
             } catch (e: Exception) {
                 logger.error(
                     "Error registering user with  name: {} {}, email address: {}",
@@ -145,9 +145,6 @@ class DeltaUserRegistrationController(
                     e
                 )
                 throw e
-            }
-            if (registrationResult is RegistrationService.UserCreated) {
-                userAuditService.userSelfRegisterAudit(registrationResult.userCN, call)
             }
             try {
                 registrationService.sendRegistrationEmail(registrationResult, call)
@@ -187,7 +184,7 @@ class DeltaUserRegistrationController(
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
         return when (registrationResult) {
             is RegistrationService.UserCreated -> {
-                respondSuccessPage(registrationResult.registration.emailAddress)
+                respondSuccessPage(registrationResult.user.mail)
             }
 
             is RegistrationService.SSOUserCreated -> {
@@ -195,7 +192,7 @@ class DeltaUserRegistrationController(
             }
 
             is RegistrationService.UserAlreadyExists -> {
-                respondSuccessPage(registrationResult.registration.emailAddress)
+                respondSuccessPage(registrationResult.user.mail)
             }
 
             is RegistrationService.RegistrationFailure -> {
