@@ -201,6 +201,7 @@ class FetchUserAuditControllerTest {
                             controller,
                             mockk<AdminUserCreationController>(relaxed = true),
                             mockk(relaxed = true),
+                            mockk(relaxed = true),
                         )
                     }
                 }

@@ -5,15 +5,15 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.DELTA_EXTERNAL_ROLES
+import uk.gov.communities.delta.auth.services.GroupService
+import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.UserService
 import javax.naming.NameNotFoundException
 import javax.naming.directory.BasicAttribute
 import javax.naming.directory.DirContext
@@ -23,43 +23,13 @@ class AdminEditUserController(
     private val userLookupService: UserLookupService,
     private val userService: UserService,
     private val groupService: GroupService,
-    private val organisationService: OrganisationService,
-    private val accessGroupsService: AccessGroupsService,
-    private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
 ) : AdminUserController(userLookupService) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun route(route: Route) {
-        route.get { getUser(call) }
         route.post { editUser(call) }
     }
-
-    private suspend fun getUser(call: ApplicationCall) {
-        getSessionIfUserHasPermittedRole(
-            arrayOf(
-                DeltaConfig.DATAMART_DELTA_ADMIN,
-                DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN,
-            ), call
-        )
-
-        val cn = call.request.queryParameters["userCn"]!!
-        logger.atInfo().log("Getting info for user $cn")
-        val user = userLookupService.lookupUserByCn(cn)
-        coroutineScope {
-            val allOrganisations = async { organisationService.findAllNamesAndCodes() }
-            val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
-
-            val roles = memberOfToDeltaRolesMapperFactory(
-                user.cn, allOrganisations.await(), allAccessGroups.await()
-            ).map(user.memberOfCNs)
-            call.respond(UserWithRoles(user, roles))
-        }
-
-    }
-
-    @Serializable
-    data class UserWithRoles(val user: LdapUser, val roles: MemberOfToDeltaRolesMapper.Roles)
 
     private suspend fun editUser(call: ApplicationCall) {
 

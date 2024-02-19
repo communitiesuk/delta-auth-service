@@ -41,64 +41,6 @@ import kotlin.test.assertEquals
 class AdminEditUserControllerTest {
 
     @Test
-    fun testAdminGetUser() = testSuspend {
-        testClient.get("/bearer/edit-user?userCn=${user.cn}") {
-            headers {
-                append("Authorization", "Bearer ${adminSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-            }
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals(getUserWithRolesAsString(user.email!!, user.cn), bodyAsText())
-        }
-    }
-
-    @Test
-    fun testReadOnlyAdminGetUser() = testSuspend {
-        testClient.get("/bearer/edit-user?userCn=${user.cn}") {
-            headers {
-                append("Authorization", "Bearer ${readOnlyAdminSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-            }
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals(getUserWithRolesAsString(user.email!!, user.cn), bodyAsText())
-        }
-    }
-
-    @Test
-    fun testNonAdminGetUser() = testSuspend {
-        Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                testClient.get("/bearer/edit-user?userCn=${user.cn}") {
-                    headers {
-                        append("Authorization", "Bearer ${userSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                }
-            }
-        }.apply {
-            assertEquals("forbidden", errorCode)
-        }
-    }
-
-    @Test
-    fun testAdminGetNonExistentUser() = testSuspend {
-        Assert.assertThrows(NameNotFoundException::class.java) {
-            runBlocking {
-                testClient.get("/bearer/edit-user?userCn=${NON_EXISTENT_USER_CN}") {
-                    headers {
-                        append("Authorization", "Bearer ${adminSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                }
-            }.apply {
-                assertEquals(HttpStatusCode.BadRequest, status)
-            }
-        }
-    }
-
-    @Test
     fun testAdminUpdateUser() = testSuspend {
         testClient.post("/bearer/edit-user?userCn=${user.cn}") {
             contentType(ContentType.Application.Json)
@@ -306,16 +248,6 @@ class AdminEditUserControllerTest {
         coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
         coEvery { userLookupService.lookupUserByCn(unchangedUser.cn) } returns unchangedUser
         coEvery { userLookupService.lookupUserByCn(NON_EXISTENT_USER_CN) } throws NameNotFoundException()
-        coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
-            OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
-            OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
-            OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
-        )
-        coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
-            AccessGroup("access-group-1", null, null, true, false),
-            AccessGroup("access-group-2", "statistics", null, true, false),
-            AccessGroup("access-group-3", null, null, true, false),
-        )
         coEvery { userService.updateUser(user, capture(modifications), adminSession, any()) } just runs
         coEvery { groupService.addUserToGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
         coEvery { groupService.removeUserFromGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
@@ -331,9 +263,6 @@ class AdminEditUserControllerTest {
         private val userLookupService = mockk<UserLookupService>()
         private val userService = mockk<UserService>()
         private val groupService = mockk<GroupService>()
-        private val organisationService = mockk<OrganisationService>()
-        private val accessGroupsService = mockk<AccessGroupsService>()
-        private val memberOfToDeltaRolesMapper = ::MemberOfToDeltaRolesMapper
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
@@ -397,61 +326,6 @@ class AdminEditUserControllerTest {
         private const val NON_EXISTENT_USER_CN = "fake!user.com"
         private const val NON_EXISTENT_USER_EMAIL = "fake@user.com"
 
-        private fun getUserWithRolesAsString(email: String, cn: String): String {
-            return "{" +
-                        "\"user\":{" +
-                            "\"dn\":\"dn\"," +
-                            "\"cn\":\"$cn\"," +
-                            "\"memberOfCNs\":[" +
-                                "\"datamart-delta-user\"," +
-                                "\"datamart-delta-user-orgCode1\"," +
-                                "\"datamart-delta-user-orgCode2\"," +
-                                "\"datamart-delta-access-group-2\"," +
-                                "\"datamart-delta-access-group-3\"," +
-                                "\"datamart-delta-access-group-2-orgCode2\"," +
-                                "\"datamart-delta-access-group-3-orgCode1\"," +
-                                "\"datamart-delta-delegate-access-group-3\"," +
-                                "\"datamart-delta-role-1\"," +
-                                "\"datamart-delta-role-1-orgCode1\"," +
-                                "\"datamart-delta-role-1-orgCode2\"" +
-                            "]," +
-                            "\"email\":\"$email\"," +
-                            "\"deltaTOTPSecret\":null," +
-                            "\"firstName\":\"Test\"," +
-                            "\"lastName\":\"Surname\"," +
-                            "\"fullName\":\"Test Surname\"," +
-                            "\"accountEnabled\":true," +
-                            "\"mangledDeltaObjectGuid\":\"mangled-id\"," +
-                            "\"telephone\":\"0987654321\"," +
-                            "\"mobile\":\"0123456789\"," +
-                            "\"positionInOrganisation\":null," +
-                            "\"reasonForAccess\":null," +
-                            "\"comment\":null," +
-                            "\"notificationStatus\":\"active\"" +
-                        "}," +
-                        "\"roles\":{" +
-                            "\"systemRoles\":[{\"name\":\"user\",\"organisationIds\":[\"orgCode1\",\"orgCode2\"]}]," +
-                            "\"externalRoles\":[]," +
-                            "\"accessGroups\":[" +
-                                "{\"name\":\"access-group-2\"," +
-                                    "\"classification\":\"statistics\"," +
-                                    "\"organisationIds\":[\"orgCode2\"]," +
-                                    "\"isDelegate\":false" +
-                                "}," +
-                                "{\"name\":\"access-group-3\"," +
-                                    "\"classification\":null," +
-                                    "\"organisationIds\":[\"orgCode1\"]," +
-                                    "\"isDelegate\":true" +
-                                "}" +
-                            "]," +
-                            "\"organisations\":[" +
-                                "{\"code\":\"orgCode1\",\"name\":\"Organisation Name 1\"}," +
-                                "{\"code\":\"orgCode2\",\"name\":\"Organisation Name 2\"}" +
-                            "]" +
-                        "}" +
-                    "}"
-        }
-
         private fun getUserDetailsJson(email: String): JsonElement {
             return Json.parseToJsonElement(
                 "{\"id\":\"$email\"," +
@@ -479,9 +353,6 @@ class AdminEditUserControllerTest {
                 userLookupService,
                 userService,
                 groupService,
-                organisationService,
-                accessGroupsService,
-                memberOfToDeltaRolesMapper,
             )
 
             testApp = TestApplication {
@@ -504,6 +375,7 @@ class AdminEditUserControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                         )
                     }
                 }

@@ -284,6 +284,10 @@ class Injection(
         userLookupService,
         userService,
         groupService,
+    )
+
+    fun adminGetUserController() = AdminGetUserController(
+        userLookupService,
         organisationService,
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper
