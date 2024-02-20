@@ -203,7 +203,6 @@ class DeltaLoginControllerTest {
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
                 append("username", testUserEmail)
-                append("password", "pass")
             }
         ).apply {
             assertEquals(HttpStatusCode.Found, status)
