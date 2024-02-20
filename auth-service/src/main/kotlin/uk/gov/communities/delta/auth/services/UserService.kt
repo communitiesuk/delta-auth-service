@@ -7,8 +7,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.utils.randomBase64
 import java.io.UnsupportedEncodingException
 import javax.naming.directory.*
@@ -28,13 +30,35 @@ class UserService(
         call: ApplicationCall,
         azureUserObjectId: String? = null,
     ) {
+        val attributes = getAttributes(adUser)
         try {
-            addUserToAD(adUser)
+            addUserToAD(adUser, attributes)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             throw e
         }
-        auditUserCreation(adUser.cn, ssoClient, triggeringAdminSession, call, getAuditData(adUser), azureUserObjectId)
+        auditUserCreation(
+            adUser.cn,
+            ssoClient,
+            triggeringAdminSession,
+            call,
+            getAuditData(attributes, ssoClient, azureUserObjectId),
+        )
+    }
+
+    suspend fun updateUser(
+        ldapUser: LdapUser,
+        modifications: Array<ModificationItem>,
+        triggeringAdminSession: OAuthSession?,
+        call: ApplicationCall,
+    ) {
+        try {
+            updateUserOnAD(ldapUser.dn, modifications)
+        } catch (e: Exception) {
+            logger.atError().addKeyValue("UserDN", ldapUser.dn).log("Error creating user", e)
+            throw e
+        }
+        auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, getAuditData(modifications))
     }
 
     private suspend fun auditUserCreation(
@@ -42,14 +66,9 @@ class UserService(
         ssoClient: AzureADSSOClient?,
         triggeringAdminSession: OAuthSession?,
         call: ApplicationCall,
-        auditData: MutableMap<String, String>,
-        azureUserObjectId: String?,
+        auditData: Map<String, String>,
     ) {
         val ssoUser = ssoClient?.required == true
-        if (ssoUser) {
-            auditData["ssoClientInternalId"] = ssoClient!!.internalId
-            if (azureUserObjectId != null) auditData["azureObjectId"] = azureUserObjectId
-        }
         val encodedAuditData = Json.encodeToString(auditData)
         if (triggeringAdminSession != null) {
             if (ssoUser) userAuditService.ssoUserCreatedByAdminAudit(
@@ -66,25 +85,68 @@ class UserService(
         ) else userAuditService.userSelfRegisterAudit(userCN, call, encodedAuditData)
     }
 
-    private fun getAuditData(adUser: ADUser): MutableMap<String, String> {
+    private suspend fun auditUserUpdate(
+        userCN: String,
+        triggeringAdminSession: OAuthSession?,
+        call: ApplicationCall,
+        auditData: Map<String, String>,
+    ) {
+        val encodedAuditData = Json.encodeToString(auditData)
+        if (triggeringAdminSession != null)
+            userAuditService.userUpdateByAdminAudit(userCN, triggeringAdminSession.userCn, call, encodedAuditData)
+        else
+            userAuditService.userUpdateAudit(userCN, call, encodedAuditData)
+    }
+
+    private fun getAuditData(
+        attributes: Attributes,
+        ssoClient: AzureADSSOClient? = null,
+        azureUserObjectId: String? = null
+    ): Map<String, String> {
         val auditData = mutableMapOf<String, String>()
-        auditData["userPrincipalName"] = adUser.userPrincipalName
-        auditData["cn"] = adUser.cn
-        auditData["sn"] = adUser.sn
-        auditData["givenName"] = adUser.givenName
-        auditData["mail"] = adUser.mail
-        auditData["st"] = adUser.notificationStatus
-        auditData["userAccountControl"] = adUser.userAccountControl
 
-        adUser.comment?.let { auditData["comment"] = it }
-        adUser.telephone?.let { auditData["telephoneNumber"] = it }
-        adUser.mobile?.let { auditData["mobile"] = it }
-        adUser.reasonForAccess?.let { auditData["description"] = it }
-        adUser.position?.let { auditData["title"] = it }
-
-        auditData["HasPassword"] = (adUser.password != null).toString()
+        attributes.all.asIterator().forEach {
+            addToAuditData(auditData, it)
+        }
+        addSSODetailsToAuditData(auditData, ssoClient, azureUserObjectId)
 
         return auditData
+    }
+
+    private fun getAuditData(
+        modifications: Array<ModificationItem>,
+        ssoClient: AzureADSSOClient? = null,
+        azureUserObjectId: String? = null
+    ): Map<String, String> {
+        val auditData = mutableMapOf<String, String>()
+
+        modifications.forEach {
+            when (it.modificationOp) {
+                DirContext.ADD_ATTRIBUTE -> addToAuditData(auditData, it.attribute)
+                DirContext.REPLACE_ATTRIBUTE -> addToAuditData(auditData, it.attribute)
+                DirContext.REMOVE_ATTRIBUTE -> auditData[it.attribute.id] = ""
+            }
+        }
+        addSSODetailsToAuditData(auditData, ssoClient, azureUserObjectId)
+
+        return auditData
+    }
+
+    private fun addSSODetailsToAuditData(
+        auditData: MutableMap<String, String>,
+        ssoClient: AzureADSSOClient?,
+        azureUserObjectId: String?
+    ) {
+        val ssoUser = ssoClient?.required == true
+        if (ssoUser) {
+            auditData["ssoClientInternalId"] = ssoClient!!.internalId
+            if (azureUserObjectId != null) auditData["azureObjectId"] = azureUserObjectId
+        }
+    }
+
+    private fun addToAuditData(auditData: MutableMap<String, String>, attribute: Attribute) {
+        if (attribute.id.equals("unicodePwd")) auditData["SettingPassword"] = true.toString()
+        else auditData[attribute.id] = attribute.get().toString()
     }
 
     private fun getAttributes(adUser: ADUser): Attributes {
@@ -109,22 +171,35 @@ class UserService(
         return attributes
     }
 
-    private suspend fun addUserToAD(adUser: ADUser) {
-        val container = getAttributes(adUser)
-
+    private suspend fun addUserToAD(adUser: ADUser, attributes: Attributes) {
         val enabled = adUser.userAccountControl == ADUser.accountFlags(true)
         if (enabled && adUser.password == null) {
             throw Exception("Trying to create user with no password")
         } else {
             ldapServiceUserBind.useServiceUserBind {
                 try {
-                    it.createSubcontext(adUser.dn, container)
+                    it.createSubcontext(adUser.dn, attributes)
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
                         .log("{} user created", if (enabled) "Enabled" else "Disabled")
                 } catch (e: Exception) {
                     logger.atError().addKeyValue("UserDN", adUser.dn).log("Problem creating user", e)
                     throw e
                 }
+            }
+        }
+    }
+
+    private suspend fun updateUserOnAD(
+        userDN: String,
+        modifications: Array<ModificationItem>,
+    ) {
+        ldapServiceUserBind.useServiceUserBind {
+            try {
+                it.modifyAttributes(userDN, modifications)
+                logger.atInfo().addKeyValue("UserDN", userDN).log("User updated")
+            } catch (e: Exception) {
+                logger.atError().addKeyValue("UserDN", userDN).log("Problem updating user", e)
+                throw e
             }
         }
     }
@@ -291,7 +366,7 @@ class UserService(
 
     @Serializable
     data class DeltaUserDetails(
-        @SerialName("id") val id: String, //Not used anywhere yet
+        @SerialName("id") val id: String, //This is the username in email form
         @SerialName("enabled") val enabled: Boolean, //Always false for user creation - not used anywhere yet
         @SerialName("email") val email: String,
         @SerialName("lastName") val lastName: String,
@@ -304,9 +379,40 @@ class UserService(
         @SerialName("accessGroupDelegates") val accessGroupDelegates: Array<String>,
         @SerialName("accessGroupOrganisations") val accessGroupOrganisations: Map<String, Array<String>>,
         @SerialName("roles") val roles: Array<String>,
-        @SerialName("externalRoles") val externalRoles: Array<String>, //Not used anywhere yet
+        @SerialName("externalRoles") val externalRoles: Array<String>, //Not used anywhere yet - S151 Officer related
         @SerialName("organisations") val organisations: Array<String>,
         @SerialName("comment") val comment: String? = null,
         @SerialName("classificationType") val classificationType: String? = null, //Not used anywhere yet
-    )
+    ) {
+        fun getGroups(): List<String> {
+            val groups = mutableListOf<String>()
+            groups.add(DeltaConfig.DATAMART_DELTA_USER)
+            organisations.forEach { orgCode: String ->
+                groups.add(String.format("%s-%s", DeltaConfig.DATAMART_DELTA_USER, orgCode))
+            }
+            accessGroups.forEach { accessGroup ->
+                groups.add(accessGroup)
+            }
+            accessGroupDelegates.forEach { accessGroup ->
+                val delegateAccessGroup = makeDelegate(accessGroup)
+                groups.add(delegateAccessGroup)
+            }
+            accessGroupOrganisations.forEach { (accessGroup, organisations) ->
+                organisations.forEach { orgCode ->
+                    groups.add(String.format("%s-%s", accessGroup, orgCode))
+                }
+            }
+            roles.forEach { role ->
+                groups.add(role)
+                organisations.forEach { orgCode ->
+                    groups.add(String.format("%s-%s", role, orgCode))
+                }
+            }
+            return groups
+        }
+
+        private fun makeDelegate(accessGroup: String): String {
+            return LDAPConfig.DATAMART_DELTA_PREFIX + "delegate-" + accessGroup.substringAfter(LDAPConfig.DATAMART_DELTA_PREFIX)
+        }
+    }
 }

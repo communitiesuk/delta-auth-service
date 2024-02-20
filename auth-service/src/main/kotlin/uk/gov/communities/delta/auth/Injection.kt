@@ -271,7 +271,6 @@ class Injection(
 
     fun adminUserCreationController() = AdminUserCreationController(
         ldapConfig,
-        deltaConfig,
         azureADSSOConfig,
         emailConfig,
         userLookupService,
@@ -279,5 +278,18 @@ class Injection(
         groupService,
         emailService,
         setPasswordTokenService,
+    )
+
+    fun adminEditUserController() = AdminEditUserController(
+        userLookupService,
+        userService,
+        groupService,
+    )
+
+    fun adminGetUserController() = AdminGetUserController(
+        userLookupService,
+        organisationService,
+        accessGroupsService,
+        ::MemberOfToDeltaRolesMapper
     )
 }

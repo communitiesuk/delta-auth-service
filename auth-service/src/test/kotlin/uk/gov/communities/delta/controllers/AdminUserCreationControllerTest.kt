@@ -205,7 +205,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testErrorHandlingDuringAddingToGroup() = testSuspend {
-        coEvery { groupService.addUserToGroup(any(), any(), any(), any()) } throws Exception()
+        coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/bearer/create-user") {
@@ -266,7 +266,7 @@ class AdminUserCreationControllerTest {
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_SSO_USER_EMAIL)) } returns true
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_NOT_REQUIRED_SSO_USER)) } returns true
         coEvery { userService.createUser(capture(user), any(), any(), any()) } just runs
-        coEvery { groupService.addUserToGroup(any(), any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } just runs
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "passwordToken"
     }
@@ -279,7 +279,6 @@ class AdminUserCreationControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", "")
-        private val deltaConfig = DeltaConfig.fromEnv()
         private val requiredSSOClient = AzureADSSOClient("dev", "", "", "", "@required.sso.domain", required = true)
         private val notRequiredSSOClient =
             AzureADSSOClient("dev", "", "", "", "@not.required.sso.domain", required = false)
@@ -301,7 +300,7 @@ class AdminUserCreationControllerTest {
         private val user = slot<UserService.ADUser>()
 
         private val client = testServiceClient()
-        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf("datamart-delta-admin"))
+        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
@@ -386,7 +385,7 @@ class AdminUserCreationControllerTest {
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-role-1-orgCode2", any(), adminSession)
             }
-            coVerify(exactly = 14) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 14) { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) }
         }
 
         private fun assertCapturedUserIsAsExpected(
@@ -426,7 +425,6 @@ class AdminUserCreationControllerTest {
         fun setup() {
             controller = AdminUserCreationController(
                 ldapConfig,
-                deltaConfig,
                 ssoConfig,
                 emailConfig,
                 userLookupService,
@@ -455,6 +453,8 @@ class AdminUserCreationControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
+                            mockk(relaxed = true),
                         )
                     }
                 }

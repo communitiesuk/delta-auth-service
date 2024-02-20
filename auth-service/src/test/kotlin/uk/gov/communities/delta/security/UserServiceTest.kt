@@ -17,6 +17,7 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import java.time.Instant
 import javax.naming.directory.Attributes
+import javax.naming.directory.BasicAttribute
 import javax.naming.directory.DirContext
 import javax.naming.directory.ModificationItem
 import javax.naming.ldap.InitialLdapContext
@@ -44,6 +45,25 @@ class UserServiceTest {
     private val auditData = slot<String>()
     private val adminSession =
         OAuthSession(1, "adminUserCN", mockk(relaxed = true), "adminAccessToken", Instant.now(), "trace")
+    private val testUserDetails = UserService.DeltaUserDetails(
+        userEmail,
+        false,
+        userEmail,
+        "testLast",
+        "testFirst",
+        "0123456789",
+        "0987654321",
+        "test position",
+        null,
+        arrayOf("datamart-delta-access-group-1", "datamart-delta-access-group-2"),
+        arrayOf("datamart-delta-access-group-2"),
+        mapOf("datamart-delta-access-group-2" to arrayOf("orgCode1", "orgCode2")),
+        arrayOf("datamart-delta-role-1", "datamart-delta-role-2"),
+        emptyArray(),
+        arrayOf("orgCode1", "orgCode2"),
+        "test comment",
+        null
+    )
 
     @Before
     fun setupMocks() {
@@ -78,6 +98,14 @@ class UserServiceTest {
                 capture(auditData)
             )
         } just runs
+        coEvery {
+            userAuditService.userUpdateByAdminAudit(
+                userCN,
+                adminSession.userCn,
+                call,
+                capture(auditData)
+            )
+        } just runs
     }
 
     @Test
@@ -91,41 +119,24 @@ class UserServiceTest {
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
         assertContains(auditData.captured, "\"sn\":\"${registration.lastName}\"")
         assertContains(auditData.captured, "\"mail\":\"${registration.emailAddress}\"")
+        assertThat(auditData.captured, not(containsString("\"SettingPassword\"")))
         assertThat(auditData.captured, not(containsString("\"ssoClientInternalId\"")))
         assertThat(auditData.captured, not(containsString("\"azureObjectId\"")))
     }
 
     @Test
     fun testCreateStandardUserWithAllDetails() = testSuspend {
-        val userDetails = UserService.DeltaUserDetails(
-            "",
-            false,
-            userEmail,
-            "testLast",
-            "testFirst",
-            "0123456789",
-            "0987654321",
-            "test position",
-            null,
-            arrayOf("datamart-delta-access-group-2", "datamart-delta-access-group-1"),
-            arrayOf("datamart-delta-access-group-2"),
-            mapOf("datamart-delta-access-group-2" to arrayOf("orgCode1", "orgCode2")),
-            arrayOf("datamart-delta-role-1", "datamart-delta-role-2"),
-            emptyArray(),
-            arrayOf("orgCode1", "orgCode2"),
-            "test comment",
-            null
-        )
-        userService.createUser(UserService.ADUser(ldapConfig, userDetails, null), null, null, call)
+        userService.createUser(UserService.ADUser(ldapConfig, testUserDetails, null), null, null, call)
         verify(exactly = 1) { context.createSubcontext(userDN, any()) }
         // User has normal and disabled account
         assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
         // User has no password set yet
         assert(container.captured.get("unicodePwd") == null)
-        assertContains(auditData.captured, "\"givenName\":\"${userDetails.firstName}\"")
-        assertContains(auditData.captured, "\"sn\":\"${userDetails.lastName}\"")
-        assertContains(auditData.captured, "\"mail\":\"${userDetails.email}\"")
-        assertContains(auditData.captured, "\"title\":\"${userDetails.position}\"")
+        assertContains(auditData.captured, "\"givenName\":\"${testUserDetails.firstName}\"")
+        assertContains(auditData.captured, "\"sn\":\"${testUserDetails.lastName}\"")
+        assertContains(auditData.captured, "\"mail\":\"${testUserDetails.email}\"")
+        assertContains(auditData.captured, "\"title\":\"${testUserDetails.position}\"")
+        assertThat(auditData.captured, not(containsString("\"SettingPassword\"")))
         assertThat(auditData.captured, not(containsString("\"ssoClientInternalId\"")))
         assertThat(auditData.captured, not(containsString("\"azureObjectId\"")))
         // Check that reasonForAccess is not audited (blank in input data)
@@ -143,6 +154,7 @@ class UserServiceTest {
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
         assertContains(auditData.captured, "\"sn\":\"${registration.lastName}\"")
         assertContains(auditData.captured, "\"mail\":\"${registration.emailAddress}\"")
+        assertThat(auditData.captured, not(containsString("\"SettingPassword\"")))
         assertThat(auditData.captured, not(containsString("\"ssoClientInternalId\"")))
         assertThat(auditData.captured, not(containsString("\"azureObjectId\"")))
     }
@@ -164,6 +176,7 @@ class UserServiceTest {
         assertContains(auditData.captured, "\"sn\":\"${registration.lastName}\"")
         assertContains(auditData.captured, "\"mail\":\"${registration.emailAddress}\"")
         assertContains(auditData.captured, "\"ssoClientInternalId\":\"${requiredSSOClient.internalId}\"")
+        assertContains(auditData.captured, "\"SettingPassword\":\"true\"")
         assertThat(auditData.captured, not(containsString("\"azureObjectId\"")))
     }
 
@@ -184,6 +197,7 @@ class UserServiceTest {
         assertContains(auditData.captured, "\"sn\":\"${registration.lastName}\"")
         assertContains(auditData.captured, "\"mail\":\"${registration.emailAddress}\"")
         assertContains(auditData.captured, "\"ssoClientInternalId\":\"${requiredSSOClient.internalId}\"")
+        assertContains(auditData.captured, "\"SettingPassword\":\"true\"")
         assertThat(auditData.captured, not(containsString("\"azureObjectId\"")))
     }
 
@@ -207,6 +221,7 @@ class UserServiceTest {
         assertContains(auditData.captured, "\"mail\":\"${registration.emailAddress}\"")
         assertContains(auditData.captured, "\"ssoClientInternalId\":\"${requiredSSOClient.internalId}\"")
         assertContains(auditData.captured, "\"azureObjectId\":\"${azureObjectId}\"")
+        assertContains(auditData.captured, "\"SettingPassword\":\"true\"")
     }
 
     @Test
@@ -225,6 +240,7 @@ class UserServiceTest {
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
         assertContains(auditData.captured, "\"sn\":\"${registration.lastName}\"")
         assertContains(auditData.captured, "\"mail\":\"${registration.emailAddress}\"")
+        assertThat(auditData.captured, not(containsString("\"SettingPassword\"")))
         assertThat(auditData.captured, not(containsString("\"ssoClientInternalId\"")))
         assertThat(auditData.captured, not(containsString("\"azureObjectId\"")))
     }
@@ -245,8 +261,34 @@ class UserServiceTest {
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
         assertContains(auditData.captured, "\"sn\":\"${registration.lastName}\"")
         assertContains(auditData.captured, "\"mail\":\"${registration.emailAddress}\"")
+        assertThat(auditData.captured, not(containsString("\"SettingPassword\"")))
         assertThat(auditData.captured, not(containsString("\"ssoClientInternalId\"")))
         assertThat(auditData.captured, not(containsString("\"azureObjectId\"")))
+    }
+
+    @Test
+    fun testAdminUpdateUser() = testSuspend {
+        val modificationItems = arrayOf(
+            ModificationItem(DirContext.REMOVE_ATTRIBUTE, BasicAttribute("comment")),
+            ModificationItem(DirContext.ADD_ATTRIBUTE, BasicAttribute("description", "test reasonForAccess")),
+            ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("sn", "test new surname"))
+        )
+        userService.updateUser(
+            testLdapUser(
+                cn = userCN,
+                dn = userDN,
+                memberOfCNs = listOf("group-1", "group-2"),
+                comment = "test comment"
+            ),
+            modificationItems,
+            adminSession,
+            call,
+        )
+        verify(exactly = 1) { context.modifyAttributes(userDN, modificationItems) }
+        assertEquals(
+            auditData.captured,
+            "{\"comment\":\"\",\"description\":\"test reasonForAccess\",\"sn\":\"test new surname\"}"
+        )
     }
 
     @Test
@@ -288,5 +330,28 @@ class UserServiceTest {
     fun testPasswordCreation() = testSuspend {
         val adUser = UserService.ADUser(ldapConfig, registration, requiredSSOClient)
         assertEquals(18 * 8 / 6, adUser.password!!.length)
+    }
+
+    @Test
+    fun testGetGroupsFromUserDetails() = testSuspend {
+        val groups = testUserDetails.getGroups()
+        val expectedGroups = arrayOf(
+            "datamart-delta-user",
+            "datamart-delta-access-group-1",
+            "datamart-delta-access-group-2",
+            "datamart-delta-delegate-access-group-2",
+            "datamart-delta-access-group-2-orgCode1",
+            "datamart-delta-access-group-2-orgCode2",
+            "datamart-delta-role-1",
+            "datamart-delta-role-1-orgCode1",
+            "datamart-delta-role-1-orgCode2",
+            "datamart-delta-role-2",
+            "datamart-delta-role-2-orgCode1",
+            "datamart-delta-role-2-orgCode2",
+            "datamart-delta-user-orgCode1",
+            "datamart-delta-user-orgCode2",
+        )
+        expectedGroups.forEach { assertContains(groups, it) }
+        assertEquals(expectedGroups.size, groups.size)
     }
 }

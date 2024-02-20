@@ -118,7 +118,7 @@ class DeltaLoginControllerTest {
     @Test
     fun testLoginPostNoEmail() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(
-            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.datamartDeltaUser), email = null)
+            testLdapUser(cn = "username", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER), email = null)
         )
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
@@ -162,7 +162,7 @@ class DeltaLoginControllerTest {
     @Test
     fun testLoginPostSuccess() = testSuspend {
         loginResult = IADLdapLoginService.LdapLoginSuccess(
-            testLdapUser(cn = "username", memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
+            testLdapUser(cn = "username", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER))
         )
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",

@@ -7,9 +7,6 @@ class DeltaConfig(
     val rateLimit: Int,
     val masterStoreBaseNoAuth: String,
 ) {
-    val datamartDeltaUser = LDAPConfig.DATAMART_DELTA_PREFIX + "user"
-    val datamartDeltaReportUsers = LDAPConfig.DATAMART_DELTA_PREFIX + "report-users"
-
     companion object {
         fun fromEnv() = DeltaConfig(
             deltaWebsiteUrl = Env.getRequiredOrDevFallback("DELTA_WEBSITE_URL", "http://localhost:8080"),
@@ -19,6 +16,13 @@ class DeltaConfig(
                 "http://localhost:8030/"
             ),
         )
+
+        const val DATAMART_DELTA_USER = LDAPConfig.DATAMART_DELTA_PREFIX + "user"
+        const val DATAMART_DELTA_REPORT_USERS = LDAPConfig.DATAMART_DELTA_PREFIX + "report-users"
+        const val DATAMART_DELTA_ADMIN = LDAPConfig.DATAMART_DELTA_PREFIX + "admin"
+        const val DATAMART_DELTA_DATASET_ADMINS = LDAPConfig.DATAMART_DELTA_PREFIX + "dataset-admins"
+        const val DATAMART_DELTA_LOCAL_ADMINS = LDAPConfig.DATAMART_DELTA_PREFIX + "local-admins"
+        const val DATAMART_DELTA_READ_ONLY_ADMIN = LDAPConfig.DATAMART_DELTA_PREFIX + "read-only-admin"
     }
 
     fun log(logger: LoggingEventBuilder) {

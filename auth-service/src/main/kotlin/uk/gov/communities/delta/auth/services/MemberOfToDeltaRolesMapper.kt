@@ -20,7 +20,7 @@ class MemberOfToDeltaRolesMapper(
     }
 
     @Serializable
-    data class AccessGroupRole(val name: String, val classification: String?, val organisationIds: List<String>)
+    data class AccessGroupRole(val name: String, val classification: String?, val organisationIds: List<String>, val isDelegate: Boolean)
 
     @Serializable
     data class SystemRole(val name: String, val organisationIds: List<String>)
@@ -51,6 +51,7 @@ class MemberOfToDeltaRolesMapper(
             RoleType.SYSTEM to mutableMapOf(),
             RoleType.EXTERNAL to mutableMapOf(),
             RoleType.ACCESS_GROUP to mutableMapOf(),
+            RoleType.DELEGATE to mutableMapOf(),
         )
 
         if (organisationIds.isEmpty()) logger.atWarn().addKeyValue("username", username).log("No organisations from AD")
@@ -80,6 +81,8 @@ class MemberOfToDeltaRolesMapper(
             orgListForRole.add(role.organisation.code)
         }
 
+        val delegateAccessGroups = roleOrgIdsMap[RoleType.DELEGATE]!!.entries.map { it.key.substringAfter("delegate-") }
+
         return Roles(
             roleOrgIdsMap[RoleType.SYSTEM]!!.entries.map { SystemRole(it.key, it.value) },
             roleOrgIdsMap[RoleType.EXTERNAL]!!.entries.map { ExternalRole(it.key, it.value) },
@@ -87,7 +90,8 @@ class MemberOfToDeltaRolesMapper(
                 AccessGroupRole(
                     it.key,
                     allAccessGroupsMap[it.key]!!.classification,
-                    it.value
+                    it.value,
+                    it.key in delegateAccessGroups,
                 )
             },
             organisationIds.map { organisationsMap[it]!! }
@@ -142,21 +146,12 @@ class MemberOfToDeltaRolesMapper(
                 null
             }
 
-            RoleType.DELEGATE -> {
-                // Dataset admins are supposed to be able to be given delegated access to manage access groups,
-                // but this isn't implemented in Delta
-                logger.atDebug().addKeyValue("username", username).addKeyValue("role", roleStr)
-                    .addKeyValue("orgId", orgId).addKeyValue("group", DATAMART_DELTA_PREFIX + groupWithoutPrefix)
-                    .log("Ignoring delegate group")
-                null
-            }
-
             else -> ParsedRole(roleStr, organisationsMap[orgId], roleType, DATAMART_DELTA_PREFIX + groupWithoutPrefix)
         }
     }
 
     private fun determineRoleType(role: String): RoleType? {
-        return if (role.startsWith("delegate-")) RoleType.DELEGATE
+        return if (role.startsWith("delegate-") && allAccessGroupsMap.contains(role.substringAfter("delegate-"))) RoleType.DELEGATE
         else if (DELTA_SYSTEM_ROLES.contains(role)) RoleType.SYSTEM
         else if (DELTA_EXTERNAL_ROLES.contains(role)) RoleType.EXTERNAL
         else if (allAccessGroupsMap.contains(role)) RoleType.ACCESS_GROUP

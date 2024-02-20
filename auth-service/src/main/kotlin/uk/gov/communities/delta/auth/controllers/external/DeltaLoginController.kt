@@ -237,5 +237,5 @@ class DeltaLoginController(
         }
     }
 
-    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(deltaConfig.datamartDeltaUser)
+    private fun LdapUser.isMemberOfDeltaGroup() = memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_USER)
 }
