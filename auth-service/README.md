@@ -128,9 +128,9 @@ To update them:
 
 * See <https://frontend.design-system.service.gov.uk/install-using-precompiled-files/> for general instructions and
   download links
-* Download the updated bundle and replace the existing files, following the folder structure in this repo
+* Download the updated bundle and replace the existing files, following the folder structure in this repo. They can be found in `auth-service/src/main/resources/static`
 * Find and replace in the CSS file to change links to "/assets/" to "/static/assets/"
-* Update the version numbers linked from the HTML header
+* Update the version numbers linked from the HTML header (`auth-service/src/main/resources/templates/thymeleaf/fragments/template.html`)
 
 ## Scheduled tasks
 
