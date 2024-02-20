@@ -12,5 +12,6 @@ Part of the Delta system to handle auth related logic and abstract the underlyin
 
 Currently used to:
 
-1. Generate SAML tokens for use by MarkLogic XQuery code to allow it to authenticate send requests to Orbeon
-2. Act as an OAuth 2 server for Delta, hosting the login page and handling communication with AD
+1. Act as an OAuth 2 server for Delta, hosting the login page and handling communication with AD
+2. Generate SAML tokens for use by MarkLogic XQuery code to allow it to authenticate send requests to Orbeon
+3. As an interface between Delta and Active Directory handling LDAP queries and audit logs
