@@ -22,34 +22,13 @@ class UpdateUserGUIDMap(
     // Tasks are run separately anyway
     @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun execute() {
-        logger.info("Starting UpdateUserGUIDMap")
         val oldUserGuids = fetchOldModeUserGuids()
-        logger.info("Read {} users in old mode from AD", oldUserGuids.size)
         val newUserGuids = fetchNewModeUserGuids()
-        logger.info("Read {} users in new mode from AD", newUserGuids.size)
 
-        val newGuidsMap = newUserGuids.associateBy { it.cn }.mapValues { it.value.guid }
-        val guidMapRows = oldUserGuids.map {
-            UserGuidMapTableRow(
-                it.cn,
-                oldGuid = it.guid,
-                newGuid = newGuidsMap.getOrElse(
-                    it.cn
-                ) { throw RuntimeException("No new GUID found for user " + it.cn) }
-            )
-        }
-        logger.info("All users loaded")
+        val guidMapTableRows = constructUserGuidMapTableRows(oldUserGuids, newUserGuids)
 
-        dbPool.connection().use { conn ->
-            val truncate = conn.prepareStatement("TRUNCATE TABLE user_guid_map")
-            truncate.execute()
-            truncate.close()
-
-            conn.batchInsert(guidMapRows)
-
-            conn.commit()
-        }
-        logger.info("All rows inserted, done")
+        insertIntoDatabase(guidMapTableRows)
+        logger.info("UpdateUserGUIDMap complete")
     }
 
     @Blocking
@@ -70,6 +49,7 @@ class UpdateUserGUIDMap(
             UserGuid(cn, mangledObjectGuid)
         }
         ctx.close()
+        logger.info("Read {} users in old mode from AD", users.size)
         return users
     }
 
@@ -92,6 +72,7 @@ class UpdateUserGUIDMap(
             UserGuid(cn, objectGuid)
         }
         ctx.close()
+        logger.info("Read {} users in new mode from AD", users.size)
         return users
     }
 
@@ -101,6 +82,37 @@ class UpdateUserGUIDMap(
         searchControls.timeLimit = 2.minutes.inWholeMilliseconds.toInt()
         searchControls.returningAttributes = arrayOf("cn", "objectGUID", "imported-guid")
         return searchControls
+    }
+
+    private fun constructUserGuidMapTableRows(
+        oldGuids: List<UserGuid>,
+        newGuids: List<UserGuid>,
+    ): List<UserGuidMapTableRow> {
+        val newGuidsMap = newGuids.associateBy { it.cn }.mapValues { it.value.guid }
+        return oldGuids.map {
+            UserGuidMapTableRow(
+                it.cn,
+                oldGuid = it.guid,
+                newGuid = newGuidsMap.getOrElse(
+                    it.cn
+                ) { throw RuntimeException("No new GUID found for user " + it.cn) }
+            )
+        }
+    }
+
+    @Blocking
+    private fun insertIntoDatabase(rows: List<UserGuidMapTableRow>) {
+        dbPool.connection().use { conn ->
+            logger.info("Truncating table to delete existing rows")
+            val truncate = conn.prepareStatement("TRUNCATE TABLE user_guid_map")
+            truncate.execute()
+            truncate.close()
+
+            logger.info("Starting insert of {} rows into user_guid_map", rows.size)
+            conn.batchInsert(rows)
+
+            conn.commit()
+        }
     }
 
     @Blocking
