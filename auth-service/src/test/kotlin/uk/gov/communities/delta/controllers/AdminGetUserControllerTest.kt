@@ -80,17 +80,14 @@ class AdminGetUserControllerTest {
 
     @Test
     fun testAdminGetNonExistentUser() = testSuspend {
-        Assert.assertThrows(NameNotFoundException::class.java) {
-            runBlocking {
-                testClient.get("/bearer/get-user?userCn=${NON_EXISTENT_USER_CN}") {
-                    headers {
-                        append("Authorization", "Bearer ${adminSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                }
-            }.apply {
-                assertEquals(HttpStatusCode.BadRequest, status)
+        testClient.get("/bearer/get-user?userCn=${NON_EXISTENT_USER_CN}") {
+            headers {
+                append("Authorization", "Bearer ${adminSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
+        }.apply {
+            assertEquals(HttpStatusCode.NotFound, status)
+            assertEquals("User not found", bodyAsText())
         }
     }
 
