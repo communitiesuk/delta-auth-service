@@ -22,6 +22,7 @@ data class OAuthSession(
     val authToken: String,
     val createdAt: Instant,
     val traceId: String,
+    val isSso: Boolean
 ) : Principal {
     fun expired(timeSource: TimeSource) =
         createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
@@ -64,14 +65,15 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
     private fun insert(authCode: AuthCode, client: DeltaLoginEnabledClient, token: String, now: Instant): OAuthSession {
         return dbPool.useConnectionBlocking("Insert delta_session") {
             val stmt = it.prepareStatement(
-                "INSERT INTO delta_session (username, client_id, auth_token_hash, created_at, trace_id) " +
-                        "VALUES (?, ?, ?, ?, ?) RETURNING id"
+                "INSERT INTO delta_session (username, client_id, auth_token_hash, created_at, trace_id, is_sso) " +
+                        "VALUES (?, ?, ?, ?, ?, ?) RETURNING id"
             )
             stmt.setString(1, authCode.userCn)
             stmt.setString(2, client.clientId)
             stmt.setBytes(3, hashBase64String(token))
             stmt.setTimestamp(4, Timestamp.from(now))
             stmt.setString(5, authCode.traceId)
+            stmt.setBoolean(6, authCode.isSso)
             val result = stmt.executeQuery()
             if (!result.next()) throw Exception("Expected one result")
             val id = result.getInt(1)
@@ -83,6 +85,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
                 authToken = token,
                 createdAt = now,
                 traceId = authCode.traceId,
+                isSso = authCode.isSso
             )
         }
     }
@@ -92,7 +95,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
         return dbPool.useConnectionBlocking("Read delta_session") {
             val stmt =
                 it.prepareStatement(
-                    "SELECT id, username, client_id, created_at, trace_id " +
+                    "SELECT id, username, client_id, created_at, trace_id, is_sso " +
                             "FROM delta_session WHERE auth_token_hash = ? AND client_id = ?"
                 )
             stmt.setBytes(1, hashBase64String(authToken))
@@ -110,6 +113,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
                     authToken = authToken,
                     createdAt = result.getTimestamp("created_at").toInstant(),
                     traceId = result.getString("trace_id"),
+                    isSso = result.getBoolean("is_sso")
                 )
             }
         }

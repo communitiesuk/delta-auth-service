@@ -80,6 +80,7 @@ class OAuthTokenController(
                     saml_token = samlToken.token,
                     expires_at_epoch_second = samlToken.expiry.epochSecond,
                     delta_user_roles = roles,
+                    is_sso = userSession.session.isSso
                 )
             )
         }
@@ -105,6 +106,7 @@ class OAuthTokenController(
         val expires_at_epoch_second: Long,
         val token_type: String = "bearer",
         val expires_in: String = TOKEN_EXPIRY_SECONDS.toString(),
+        val is_sso: Boolean
     )
 }
 
