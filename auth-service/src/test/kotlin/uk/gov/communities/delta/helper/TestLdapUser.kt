@@ -13,6 +13,7 @@ fun testLdapUser(
     fullName: String = "Test Surname",
     accountEnabled: Boolean = true,
     mangledDeltaObjectGuid: String = "mangled-id",
+    javaUUIDObjectGuid: String? = null,
     telephone: String? = null,
     mobile: String? = null,
     positionInOrganisation: String? = null,
@@ -21,5 +22,6 @@ fun testLdapUser(
     notificationStatus: String = "active",
 ) = LdapUser(
     dn, cn, memberOfCNs, email, deltaTOTPSecret, firstName, lastName, fullName, accountEnabled,
-    mangledDeltaObjectGuid, telephone, mobile, positionInOrganisation, reasonForAccess, comment, notificationStatus
+    mangledDeltaObjectGuid, javaUUIDObjectGuid, telephone, mobile, positionInOrganisation,
+    reasonForAccess, comment, notificationStatus
 )

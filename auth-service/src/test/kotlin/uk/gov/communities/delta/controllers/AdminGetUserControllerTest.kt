@@ -188,6 +188,7 @@ class AdminGetUserControllerTest {
                             "\"fullName\":\"Test Surname\"," +
                             "\"accountEnabled\":true," +
                             "\"mangledDeltaObjectGuid\":\"mangled-id\"," +
+                            "\"javaUUIDObjectGuid\":null," +
                             "\"telephone\":\"0987654321\"," +
                             "\"mobile\":\"0123456789\"," +
                             "\"positionInOrganisation\":null," +

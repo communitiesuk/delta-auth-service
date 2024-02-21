@@ -85,7 +85,7 @@ dependencies {
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
 // Extra task to run Flyway migrations without (re)starting the app.
 task("migrate", JavaExec::class) {
-    mainClass.set("uk.gov.communities.delta.auth.services.DbPoolKt")
+    mainClass.set("uk.gov.communities.delta.auth.repositories.DbPoolKt")
     classpath = sourceSets["main"].runtimeClasspath
 }
 
