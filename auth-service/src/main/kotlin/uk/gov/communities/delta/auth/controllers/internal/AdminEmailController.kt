@@ -7,6 +7,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
@@ -18,8 +19,13 @@ class AdminEmailController(
     private val userLookupService: UserLookupService,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val resetPasswordTokenService: ResetPasswordTokenService,
-) {
+) : AdminUserController(userLookupService) {
+
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    // Help desk are read-only-admin s and can trigger these emails as well as other admins
+    private val rolesThatCanSendPasswordEmails =
+        arrayOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN, DeltaConfig.DATAMART_DELTA_ADMIN)
 
     fun route(route: Route) {
         route.post("/activation") { adminSendActivationEmail(call) }
@@ -27,9 +33,9 @@ class AdminEmailController(
     }
 
     private suspend fun adminSendActivationEmail(call: ApplicationCall) {
-        val (callingUser, receivingUser) = getUsersFromCall(call)
+        val receivingUser = getReceivingUserFromCall(call)
 
-        if (!userHasPermissionToTriggerEmails(callingUser)) return call.respondUnauthorised(receivingUser)
+        checkUserHasPermittedRole(rolesThatCanSendPasswordEmails, call)
 
         if (receivingUser.accountEnabled) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
@@ -70,9 +76,9 @@ class AdminEmailController(
     }
 
     private suspend fun adminSendResetPasswordEmail(call: ApplicationCall) {
-        val (callingUser, receivingUser) = getUsersFromCall(call)
+        val receivingUser = getReceivingUserFromCall(call)
 
-        if (!userHasPermissionToTriggerEmails(callingUser)) return call.respondUnauthorised(receivingUser)
+        checkUserHasPermittedRole(rolesThatCanSendPasswordEmails, call)
 
         if (!receivingUser.accountEnabled) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("User not enabled")
@@ -111,38 +117,16 @@ class AdminEmailController(
         return call.respond(mapOf("message" to "Reset password email sent successfully"))
     }
 
-    private suspend fun getUsersFromCall(call: ApplicationCall): Array<LdapUser> {
-        val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+    private suspend fun getReceivingUserFromCall(call: ApplicationCall): LdapUser {
         val receivingEmailAddress = call.parameters["userEmail"]!!
         val receivingUserCN = LDAPConfig.emailToCN(receivingEmailAddress)
         val receivingUser = userLookupService.lookupUserByCn(receivingUserCN)
-        return arrayOf(callingUser, receivingUser)
-    }
-
-    // Help desk are read-only-admin s and can trigger these emails as well as other admins
-    private val triggerEmailsAdminGroupCNs =
-        listOf("admin", "read-only-admin").map { LDAPConfig.DATAMART_DELTA_PREFIX + it }
-
-    private fun userHasPermissionToTriggerEmails(callingUser: LdapUser): Boolean {
-        return callingUser.memberOfCNs.any { triggerEmailsAdminGroupCNs.contains(it) }
+        return receivingUser
     }
 
     private fun isRequiredSSOUser(receivingUser: LdapUser): Boolean {
         return ssoConfig.ssoClients.any {
             it.required && receivingUser.email!!.lowercase().endsWith(it.emailDomain)
         }
-    }
-
-    private fun ApplicationCall.respondUnauthorised(receivingUser: LdapUser) {
-        logger.atWarn().withSession(this.principal<OAuthSession>()!!)
-            .addKeyValue("userCNToSendEmailTo", receivingUser.cn)
-            .log("User does not have permission to trigger password emails for {}", receivingUser.cn)
-        throw ApiError(
-            HttpStatusCode.Forbidden,
-            "forbidden",
-            "User does not have permission to trigger password emails",
-            "You do not have permission to trigger password emails"
-        )
     }
 }

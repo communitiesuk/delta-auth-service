@@ -49,10 +49,10 @@ class AzureADSSOConfig(val ssoClients: List<AzureADSSOClient>) {
         }
 
         val DELTA_ADMIN_ROLES: List<String> = listOf(
-            "datamart-delta-admin",
-            "datamart-delta-dataset-admins",
-            "datamart-delta-local-admins",
-            "datamart-delta-read-only-admin"
+            DeltaConfig.DATAMART_DELTA_ADMIN,
+            DeltaConfig.DATAMART_DELTA_DATASET_ADMINS,
+            DeltaConfig.DATAMART_DELTA_LOCAL_ADMINS,
+            DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN,
         )
     }
 

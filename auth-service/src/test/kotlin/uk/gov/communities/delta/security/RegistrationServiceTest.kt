@@ -42,7 +42,7 @@ class RegistrationServiceTest {
     @Before
     fun setup() {
         coEvery { userLookupService.userExists(any()) } returns false
-        coEvery { groupService.addUserToGroup(any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(any(), any(), any(), null) } just runs
         coEvery { userService.createUser(any(), any(), any(), any()) } just runs
         coEvery { userService.createUser(any(), any(), any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
@@ -59,10 +59,10 @@ class RegistrationServiceTest {
             call,
         )
         coVerify(exactly = 1) { userService.createUser(any(), null, null, call) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
         coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
@@ -76,10 +76,10 @@ class RegistrationServiceTest {
             requiredSSOClient
         )
         coVerify(exactly = 1) { userService.createUser(any(), requiredSSOClient, null, call) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
         coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.SSOUserCreated)
     }
@@ -95,10 +95,10 @@ class RegistrationServiceTest {
             azureId
         )
         coVerify(exactly = 1) { userService.createUser(any(), requiredSSOClient, null, call, azureId) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
         coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.SSOUserCreated)
     }
@@ -112,10 +112,10 @@ class RegistrationServiceTest {
             notRequiredSSOClient
         )
         coVerify(exactly = 1) { userService.createUser(any(), notRequiredSSOClient, null, call) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
         coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
@@ -131,7 +131,7 @@ class RegistrationServiceTest {
         )
         assertTrue(registrationResult is RegistrationService.UserAlreadyExists)
         coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), null) }
         coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
     }
 
@@ -143,11 +143,11 @@ class RegistrationServiceTest {
             call,
         )
         coVerify(exactly = 1) { userService.createUser(any(), null, null, call) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode), any()) }
-        coVerify(exactly = 4) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode), any(), null) }
+        coVerify(exactly = 4) { groupService.addUserToGroup(any(), any(), any(), null) }
         coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
@@ -160,14 +160,14 @@ class RegistrationServiceTest {
             call,
         )
         coVerify(exactly = 1) { userService.createUser(any(), null, null, call) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaReportUsers, any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), deltaConfig.datamartDeltaUser, any()) }
-        coVerify(exactly = 0) { groupService.addUserToGroup(any(), groupName(orgCode), any()) }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode), any()) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 0) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
         coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
-    private fun groupName(orgCode: String) = String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode)
+    private fun groupName(orgCode: String) = String.format("%s-%s", DeltaConfig.DATAMART_DELTA_USER, orgCode)
 }

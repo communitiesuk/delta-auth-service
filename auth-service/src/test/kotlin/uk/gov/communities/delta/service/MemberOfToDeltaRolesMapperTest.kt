@@ -73,7 +73,12 @@ class MemberOfToDeltaRolesMapperTest {
     fun testAccessGroupMapping() {
         val result = mapper().map(
             listOf(
-                "user-dclg", "access-group", "access-group-dclg", "another-group"
+                "user-dclg",
+                "access-group",
+                "access-group-dclg",
+                "another-group",
+                "yet-another-group",
+                "delegate-yet-another-group",
             ).map { "datamart-delta-$it" }
         )
 
@@ -81,8 +86,9 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(
             listOf(
-                MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg")),
-                MemberOfToDeltaRolesMapper.AccessGroupRole("another-group", null, listOf()),
+                MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg"), false),
+                MemberOfToDeltaRolesMapper.AccessGroupRole("another-group", null, listOf(), false),
+                MemberOfToDeltaRolesMapper.AccessGroupRole("yet-another-group", null, listOf(), true),
             ), result.accessGroups
         )
         assertEquals(listOf("dclg"), result.organisations.map { it.code })
@@ -92,7 +98,7 @@ class MemberOfToDeltaRolesMapperTest {
     fun testIgnoresInvalidAccessGroups() {
         val result = mapper().map(
             listOf(
-                "user-dclg", "invalid-group", "invalid-group-dclg", "delegate-access-group"
+                "user-dclg", "invalid-group", "invalid-group-dclg", "delegate-invalid-access-group"
             ).map { "datamart-delta-$it" }
         )
 
@@ -121,7 +127,7 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(
             listOf(
-                MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg", "E1234"))
+                MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg", "E1234"), false)
             ), result.accessGroups
         )
         assertEquals(listOf("dclg", "E1234"), result.organisations.map { it.code })
@@ -132,6 +138,7 @@ class MemberOfToDeltaRolesMapperTest {
     private val accessGroups = listOf(
         AccessGroup("access-group", "statistics", null, enableOnlineRegistration = false, enableInternalUser = false),
         AccessGroup("another-group", null, null, enableOnlineRegistration = false, enableInternalUser = false),
+        AccessGroup("yet-another-group", null, null, enableOnlineRegistration = false, enableInternalUser = false)
     )
 
     private val organisations = listOf(OrganisationNameAndCode("E1234", "Test org 1"), OrganisationNameAndCode("dclg", "The Department"))

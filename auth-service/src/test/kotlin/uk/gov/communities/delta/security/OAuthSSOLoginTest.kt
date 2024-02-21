@@ -140,7 +140,7 @@ class OAuthSSOLoginTest {
     fun `Callback redirects to register page if no ldap user for non-required SSO client`() = testSuspend {
         val userCN = "user!example.com"
         coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
-            memberOfCNs = listOf(deltaConfig.datamartDeltaUser)
+            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
@@ -163,7 +163,7 @@ class OAuthSSOLoginTest {
         every { ssoConfig.ssoClients } answers { listOf(requiredSsoClient) }
         val userCN = "user!example.com"
         coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
-            memberOfCNs = listOf(deltaConfig.datamartDeltaUser)
+            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
         )
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
@@ -186,7 +186,7 @@ class OAuthSSOLoginTest {
     @Test
     fun `Callback returns error if user is disabled`() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser), accountEnabled = false)
+            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER), accountEnabled = false)
         }
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
@@ -198,7 +198,7 @@ class OAuthSSOLoginTest {
     @Test
     fun `Callback returns error if user has no email`() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser), email = null)
+            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER), email = null)
         }
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
@@ -242,7 +242,7 @@ class OAuthSSOLoginTest {
 
     private fun mockAdminUser() {
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser, "datamart-delta-admin"))
+            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_ADMIN))
         }
     }
 
@@ -280,7 +280,11 @@ class OAuthSSOLoginTest {
             )
         } answers { listOf(emailMappingSSOClient.requiredGroupId!!) }
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!email-domain.com") } answers {
-            testLdapUser(cn = "user!email-domain.com", email = "user@email-domain.com", memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
+            testLdapUser(
+                cn = "user!email-domain.com",
+                email = "user@email-domain.com",
+                memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
+            )
         }
         coEvery { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()) } answers {
             AuthCode("code", "user!email-domain.com", serviceClient, Instant.MIN, "trace")
@@ -314,7 +318,7 @@ class OAuthSSOLoginTest {
     fun setupMocks() {
         clearAllMocks()
         coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(deltaConfig.datamartDeltaUser))
+            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER))
         }
         coEvery { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
             AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")

@@ -242,16 +242,16 @@ class DeltaSSOLoginController(
     }
 
     private fun checkDeltaUsersGroup(user: LdapUser) {
-        if (!user.memberOfCNs.contains(deltaConfig.datamartDeltaUser)) {
+        if (!user.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_USER)) {
             logger.error(
                 "User {} is not a member of required Delta group {}",
                 keyValue("username", user.cn),
-                deltaConfig.datamartDeltaUser
+                DeltaConfig.DATAMART_DELTA_USER
             )
             throw OAuthLoginException(
                 "not_delta_user",
-                "User ${user.cn} is not member of required Delta group ${deltaConfig.datamartDeltaUser}",
-                "Your Delta user is misconfigured (not in ${deltaConfig.datamartDeltaUser}). Please contact the Service Desk",
+                "User ${user.cn} is not member of required Delta group ${DeltaConfig.DATAMART_DELTA_USER}",
+                "Your Delta user is misconfigured (not in ${DeltaConfig.DATAMART_DELTA_USER}). Please contact the Service Desk",
             )
         }
     }

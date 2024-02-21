@@ -1,6 +1,5 @@
 package uk.gov.communities.delta.auth.controllers.internal
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -17,7 +16,6 @@ import uk.gov.communities.delta.auth.services.*
 
 class AdminUserCreationController(
     private val ldapConfig: LDAPConfig,
-    private val deltaConfig: DeltaConfig,
     private val ssoConfig: AzureADSSOConfig,
     private val emailConfig: EmailConfig,
     private val userLookupService: UserLookupService,
@@ -25,7 +23,7 @@ class AdminUserCreationController(
     private val groupService: GroupService,
     private val emailService: EmailService,
     private val setPasswordTokenService: SetPasswordTokenService,
-) {
+) : AdminUserController(userLookupService) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -35,19 +33,7 @@ class AdminUserCreationController(
 
     private suspend fun createUser(call: ApplicationCall) {
         // Get calling user from call
-        val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
-
-        // Authenticate calling user
-        val adminGroupCN = LDAPConfig.DATAMART_DELTA_PREFIX + "admin"
-        if (!callingUser.memberOfCNs.any { adminGroupCN == it }) {
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "forbidden",
-                "User trying to create a new user is not an admin",
-                "You do not have the permissions to create a user"
-            )
-        }
+        val session = getSessionIfUserHasPermittedRole(arrayOf(DeltaConfig.DATAMART_DELTA_ADMIN), call)
 
         val deltaUserDetails = call.receive<UserService.DeltaUserDetails>()
 
@@ -83,32 +69,8 @@ class AdminUserCreationController(
         }
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
         try {
-            groupService.addUserToGroup(adUser, deltaConfig.datamartDeltaUser, call, session)
-            deltaUserDetails.organisations.forEach { orgCode: String ->
-                groupService.addUserToGroup(
-                    adUser,
-                    String.format("%s-%s", deltaConfig.datamartDeltaUser, orgCode),
-                    call,
-                    session
-                )
-            }
-            deltaUserDetails.accessGroups.forEach { accessGroup ->
-                groupService.addUserToGroup(adUser, accessGroup, call, session)
-            }
-            deltaUserDetails.accessGroupDelegates.forEach { accessGroup ->
-                val delegateAccessGroup = makeDelegate(accessGroup)
-                groupService.addUserToGroup(adUser, delegateAccessGroup, call, session)
-            }
-            deltaUserDetails.accessGroupOrganisations.forEach { (accessGroup, organisations) ->
-                organisations.forEach { orgCode ->
-                    groupService.addUserToGroup(adUser, String.format("%s-%s", accessGroup, orgCode), call, session)
-                }
-            }
-            deltaUserDetails.roles.forEach { role ->
-                groupService.addUserToGroup(adUser, role, call, session)
-                deltaUserDetails.organisations.forEach { orgCode ->
-                    groupService.addUserToGroup(adUser, String.format("%s-%s", role, orgCode), call, session)
-                }
+            deltaUserDetails.getGroups().forEach {
+                groupService.addUserToGroup(adUser, it, call, session)
             }
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to groups", e)
@@ -144,9 +106,5 @@ class AdminUserCreationController(
         }
 
         return call.respond(mapOf("message" to "User created successfully"))
-    }
-
-    private fun makeDelegate(accessGroup: String): String {
-        return LDAPConfig.DATAMART_DELTA_PREFIX + "delegate-" + accessGroup.substringAfter(LDAPConfig.DATAMART_DELTA_PREFIX)
     }
 }

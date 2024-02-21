@@ -69,6 +69,7 @@ class LdapRepository(
                     "title", // Delta "Position in organisation"
                     "description", // Delta "Reason for access"
                     "comment",
+                    "st",
                 )
             )
 
@@ -83,6 +84,7 @@ class LdapRepository(
         val positionInOrganisation = attributes.get("title")?.get() as String?
         val reasonForAccess = attributes.get("description")?.get() as String?
         val comment = attributes.get("comment")?.get() as String?
+        val notificationStatus = attributes.get("st")?.get() as String?
         val memberOfGroupDNs = attributes.getMemberOfList()
         val accountEnabled = attributes.getAccountEnabled()
         val deltaGuid = attributes.getMangledDeltaObjectGUID()
@@ -107,6 +109,7 @@ class LdapRepository(
             positionInOrganisation = positionInOrganisation,
             reasonForAccess = reasonForAccess,
             comment = comment,
+            notificationStatus = notificationStatus,
         )
     }
 
@@ -152,6 +155,7 @@ data class LdapUser(
     val positionInOrganisation: String?,
     val reasonForAccess: String?,
     val comment: String?,
+    val notificationStatus: String?,
 )
 
 class InvalidLdapUserException(message: String) : Exception(message)
