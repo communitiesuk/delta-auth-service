@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.controllers.internal
 
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
+import javax.naming.NameNotFoundException
 
 class AdminGetUserController(
     private val userLookupService: UserLookupService,
@@ -34,7 +36,12 @@ class AdminGetUserController(
 
         val cn = call.request.queryParameters["userCn"]!!
         logger.atInfo().log("Getting info for user $cn")
-        val user = userLookupService.lookupUserByCn(cn)
+        val user: LdapUser
+        try {
+            user = userLookupService.lookupUserByCn(cn)
+        } catch (e: NameNotFoundException) {
+            return call.respond(HttpStatusCode.NotFound, "User not found")
+        }
         coroutineScope {
             val allOrganisations = async { organisationService.findAllNamesAndCodes() }
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }

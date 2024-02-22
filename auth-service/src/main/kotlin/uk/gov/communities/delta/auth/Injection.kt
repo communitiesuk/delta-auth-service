@@ -21,9 +21,7 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
-import uk.gov.communities.delta.auth.tasks.DeleteOldAuthCodes
-import uk.gov.communities.delta.auth.tasks.DeleteOldDeltaSessions
-import uk.gov.communities.delta.auth.tasks.TaskRunner
+import uk.gov.communities.delta.auth.tasks.*
 import uk.gov.communities.delta.auth.utils.TimeSource
 import java.time.Duration
 
@@ -77,7 +75,7 @@ class Injection(
     }
 
     private val samlTokenService = SAMLTokenService()
-    private val ldapRepository = LdapRepository(ldapConfig)
+    private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.OLD_MANGLED)
     private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
     private val userLookupService = UserLookupService(
         UserLookupService.Configuration(
@@ -150,10 +148,13 @@ class Injection(
     val resetPasswordRateLimitCounter: Counter = meterRegistry.counter("resetPassword.rateLimitedRequests")
     val forgotPasswordRateLimitCounter: Counter = meterRegistry.counter("forgotPassword.rateLimitedRequests")
 
-    val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
-    val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
-    val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask)
-    fun tasksMap() = tasks.associateBy { it.name }
+    fun tasksMap(): Map<String, AuthServiceTask> {
+        val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
+        val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
+        val updateUserGuidMapTask = UpdateUserGUIDMap(ldapConfig, dbPool)
+        val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask, updateUserGuidMapTask)
+        return tasks.associateBy { it.name }
+    }
 
     fun taskRunner() = TaskRunner(meterRegistry)
 
