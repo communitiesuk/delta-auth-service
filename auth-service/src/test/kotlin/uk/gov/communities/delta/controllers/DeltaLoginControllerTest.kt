@@ -222,7 +222,7 @@ class DeltaLoginControllerTest {
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit
         coEvery { userAuditService.userFormLoginAudit(any(), any()) } returns Unit
-        coEvery { authorizationCodeService.generateAndStore(any(), any(), any()) } answers {
+        coEvery { authorizationCodeService.generateAndStore(any(), any(), any(), any()) } answers {
             AuthCode("test-auth-code", "user", client, Instant.now(), "trace", false)
         }
     }
