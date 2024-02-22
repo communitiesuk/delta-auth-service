@@ -303,8 +303,8 @@ class AdminUserCreationControllerTest {
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace")
+        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
+        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
 
         private fun getUserDetailsJson(email: String): JsonElement {
             return Json.parseToJsonElement(

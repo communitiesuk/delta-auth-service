@@ -83,7 +83,7 @@ class OAuthTokenControllerTest {
         private val client = testServiceClient()
 
         private val authCode = AuthCode("code", "user", client, Instant.now(), "trace")
-        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
+        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace", false)
         private val user = testLdapUser(cn = "user")
 
         private val authorizationCodeService = mockk<AuthorizationCodeService>()

@@ -44,7 +44,7 @@ class UserServiceTest {
     private val notRequiredSSOClient = mockk<AzureADSSOClient>()
     private val auditData = slot<String>()
     private val adminSession =
-        OAuthSession(1, "adminUserCN", mockk(relaxed = true), "adminAccessToken", Instant.now(), "trace")
+        OAuthSession(1, "adminUserCN", mockk(relaxed = true), "adminAccessToken", Instant.now(), "trace", false)
     private val testUserDetails = UserService.DeltaUserDetails(
         userEmail,
         false,
