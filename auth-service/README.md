@@ -145,6 +145,12 @@ which invokes an ECS task with the RUN_TASK environment variable set, and the
 Docker [entrypoint script](./entrypoint.sh)
 will execute the task instead of the application.
 
+Tasks can also be manually started using the run-scheduled-task.sh script in this repository:
+
+```shell
+aws-vault exec <profile> -- bash ./scripts/run-scheduled-task.sh test DeleteOldAuthCodes
+```
+
 ## Coroutines and Ktor
 
 Kotlin uses [Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) for parallel and asynchronous work,
