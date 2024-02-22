@@ -20,14 +20,14 @@ class AuthorizationCodeServiceTest {
 
     @Test
     fun testLookupCodeWrongClientFails() = testSuspend {
-        val code = service.generateAndStore("some.user", client, "traceId")
+        val code = service.generateAndStore("some.user", client, "traceId", false)
         val result = service.lookupAndInvalidate(code.code, testServiceClient("wrong-client"))
         assertNull(result)
     }
 
     @Test
     fun testRetrieveValidCode() = testSuspend {
-        val code = service.generateAndStore("some.user", client, "traceId")
+        val code = service.generateAndStore("some.user", client, "traceId", false)
         val result = service.lookupAndInvalidate(code.code, client)
         assertNotNull(result)
         assertEquals(result.userCn, "some.user")

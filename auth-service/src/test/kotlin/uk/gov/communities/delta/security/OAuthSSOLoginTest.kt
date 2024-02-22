@@ -75,7 +75,7 @@ class OAuthSSOLoginTest {
             // Which should redirect us back to Delta with an Authorisation code
             assertEquals(HttpStatusCode.Found, status)
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
-            coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+            coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()), true }
             verify(exactly = 1) { ssoLoginCounter.increment() }
             coVerify(exactly = 1) {
                 userAuditService.userSSOLoginAudit("cn", ssoClient, "abc-123", any())
@@ -123,7 +123,7 @@ class OAuthSSOLoginTest {
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
                 assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error"))
-                coVerify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) }
+                coVerify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()), true }
             }
     }
 
@@ -287,7 +287,7 @@ class OAuthSSOLoginTest {
             )
         }
         coEvery { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()) } answers {
-            AuthCode("code", "user!email-domain.com", serviceClient, Instant.MIN, "trace")
+            AuthCode("code", "user!email-domain.com", serviceClient, Instant.MIN, "trace", true)
         }
 
         val loginState = runBlocking {
@@ -301,7 +301,7 @@ class OAuthSSOLoginTest {
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals(headers["Location"], "https://delta/login/oauth2/redirect?code=code&state=delta-state")
-                coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()) }
+                coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any()), true }
             }
     }
 
@@ -321,7 +321,7 @@ class OAuthSSOLoginTest {
             testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER))
         }
         coEvery { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any()) } answers {
-            AuthCode("code", "cn", serviceClient, Instant.MIN, "trace")
+            AuthCode("code", "cn", serviceClient, Instant.MIN, "trace", true)
         }
         coEvery {
             microsoftGraphServiceMock.checkCurrentUserGroups(

@@ -21,7 +21,7 @@ class OAuthSessionServiceTest {
 
     @Test
     fun testLookupInvalidClientFails() = testSuspend {
-        val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace")
+        val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace", falseß)
         val createResult = service.create(authCode, client)
 
         val result = service.retrieveFomAuthToken(createResult.authToken, testServiceClient("wrong-client"))
@@ -30,7 +30,7 @@ class OAuthSessionServiceTest {
 
     @Test
     fun testCreateAndRetrieveSession() = testSuspend {
-        val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace")
+        val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace", false)
         val createResult = service.create(authCode, client)
 
         assertNotNull(createResult.id)
