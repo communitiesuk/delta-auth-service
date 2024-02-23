@@ -293,4 +293,9 @@ class Injection(
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper
     )
+
+    fun editRolesController() = EditRolesController(
+        userLookupService,
+        groupService,
+    )
 }

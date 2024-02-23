@@ -202,6 +202,7 @@ fun Route.internalRoutes(injection: Injection) {
     val adminUserCreationController = injection.adminUserCreationController()
     val adminEditUserController = injection.adminEditUserController()
     val adminGetUserController = injection.adminGetUserController()
+    val editRolesController = injection.editRolesController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController)
@@ -215,6 +216,7 @@ fun Route.internalRoutes(injection: Injection) {
             adminUserCreationController,
             adminEditUserController,
             adminGetUserController,
+            editRolesController,
         )
     }
 }
@@ -232,6 +234,7 @@ fun Route.bearerTokenRoutes(
     adminUserCreationController: AdminUserCreationController,
     adminEditUserController: AdminEditUserController,
     adminGetUserController: AdminGetUserController,
+    editRolesController: EditRolesController,
 ) {
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
@@ -254,6 +257,9 @@ fun Route.bearerTokenRoutes(
             }
             route("/bearer/email") {
                 adminEmailController.route(this)
+            }
+            route("/bearer/roles") {
+                editRolesController.route(this)
             }
         }
     }
