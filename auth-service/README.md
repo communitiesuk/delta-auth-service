@@ -39,7 +39,7 @@ or in PowerShell
 ```
 
 Note that Gradle will still say "EXECUTING", but the logs say "Application started" the app will be running on port 8088.
-The `io.ktor.development` is automatically set when using gradle run.
+The `io.ktor.development` property is automatically set when using gradle run.
 
 ### With metrics
 
