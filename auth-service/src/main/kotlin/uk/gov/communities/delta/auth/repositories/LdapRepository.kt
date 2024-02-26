@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.utils.toUUID
+import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDString
 import java.lang.Integer.parseInt
 import java.util.*
 import javax.naming.Context
@@ -101,7 +101,7 @@ class LdapRepository(
         }
         val javaUUIDObjectGuid = when (objectGUIDMode) {
             ObjectGUIDMode.OLD_MANGLED -> null
-            ObjectGUIDMode.NEW_JAVA_UUID_STRING -> attributes.getNewModeObjectGuid().toString()
+            ObjectGUIDMode.NEW_JAVA_UUID_STRING -> attributes.getNewModeObjectGuidString()
         }
 
         val memberOfGroupCNs = memberOfGroupDNs.mapNotNull {
@@ -154,9 +154,9 @@ fun Attributes.getMangledDeltaObjectGUID(): String {
     return guidStringToUse.toByteArray().toHexString().trimStart { it == '0' }
 }
 
-fun Attributes.getNewModeObjectGuid(): UUID {
+fun Attributes.getNewModeObjectGuidString(): String {
     val objectGuid = get("objectGUID").get() as ByteArray
-    return objectGuid.toUUID()
+    return objectGuid.toActiveDirectoryGUIDString()
 }
 
 @Serializable
@@ -172,8 +172,7 @@ data class LdapUser(
     val accountEnabled: Boolean,
     // Exactly one of these should be populated
     val mangledDeltaObjectGuid: String?,
-    // Text representation of the user's objectGUID bytes interpreted as a Java UUID,
-    // note that this is different to what Active Directory displays in the Attribute Editor, see UUIDUtils.kt
+    // Text representation of the user's objectGUID
     val javaUUIDObjectGuid: String?,
     val telephone: String?,
     val mobile: String?,
