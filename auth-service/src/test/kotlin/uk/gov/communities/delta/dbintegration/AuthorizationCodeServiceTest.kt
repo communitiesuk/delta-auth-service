@@ -27,11 +27,12 @@ class AuthorizationCodeServiceTest {
 
     @Test
     fun testRetrieveValidCode() = testSuspend {
-        val code = service.generateAndStore("some.user", client, "traceId", false)
+        val code = service.generateAndStore("some.user", client, "traceId", true)
         val result = service.lookupAndInvalidate(code.code, client)
         assertNotNull(result)
         assertEquals(result.userCn, "some.user")
         assertEquals(result.traceId, "traceId")
+        assertEquals(result.isSso, true)
         assertNull(service.lookupAndInvalidate(code.code, client), "Each code should only be usable once")
     }
 

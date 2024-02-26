@@ -177,6 +177,7 @@ class DeltaLoginControllerTest {
             }
             verify(exactly = 0) { failedLoginCounter.increment(1.0) }
             verify(exactly = 1) { successfulLoginCounter.increment(1.0) }
+            coVerify(exactly = 1) { authorizationCodeService.generateAndStore(any(), any(), any(), false)}
             coVerify(exactly = 1) { userAuditService.userFormLoginAudit("username", any()) }
         }
     }
