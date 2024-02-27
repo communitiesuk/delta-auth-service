@@ -41,7 +41,7 @@ class RefreshUserInfoController(
             ).map(user.memberOfCNs)
 
             logger.info("Retrieved updated user info")
-            call.respond(UserInfoResponse(user, samlToken.token, roles, samlToken.expiry.epochSecond))
+            call.respond(UserInfoResponse(user, samlToken.token, roles, samlToken.expiry.epochSecond, session.isSso))
         }
     }
 
@@ -52,5 +52,6 @@ class RefreshUserInfoController(
         val saml_token: String,
         val delta_user_roles: MemberOfToDeltaRolesMapper.Roles,
         val expires_at_epoch_second: Long,
+        val is_sso: Boolean,
     )
 }
