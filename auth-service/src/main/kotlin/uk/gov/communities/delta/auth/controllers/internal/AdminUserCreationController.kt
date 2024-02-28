@@ -13,6 +13,7 @@ import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 
 class AdminUserCreationController(
     private val ldapConfig: LDAPConfig,
@@ -24,7 +25,7 @@ class AdminUserCreationController(
     private val emailService: EmailService,
     private val setPasswordTokenService: SetPasswordTokenService,
 ) : AdminUserController(userLookupService) {
-
+    private val emailAddressChecker = EmailAddressChecker()
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun route(route: Route) {
@@ -54,6 +55,16 @@ class AdminUserCreationController(
                 "user_already_exists",
                 "User already exists upon creation by admin",
                 "A user with this username already exists, you can edit that user via the users page"
+            )
+        }
+        if (!emailAddressChecker.hasValidFormat(adUser.mail)) {
+            logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
+                .log("Admin tried to create user with invalid email")
+            throw ApiError(
+                HttpStatusCode.Conflict,
+                "invalid_email",
+                "Email address is invalid",
+                "This email is invalid. Please check it was entered correctly"
             )
         }
         try {
