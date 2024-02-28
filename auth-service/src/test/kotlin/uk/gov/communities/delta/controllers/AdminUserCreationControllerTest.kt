@@ -185,6 +185,25 @@ class AdminUserCreationControllerTest {
     }
 
     @Test
+    fun testAdminCreateInvalidEmail() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/create-user") {
+                    contentType(ContentType.Application.Json)
+                    setBody(getUserDetailsJson(NEW_INVALID_USER_EMAIL))
+                    headers {
+                        append("Authorization", "Bearer ${adminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                }
+            }
+        }.apply {
+            assertEquals("invalid_email", errorCode)
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
+        }
+    }
+
+    @Test
     fun testErrorHandlingDuringCreation() = testSuspend {
         coEvery { userService.createUser(any(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
@@ -260,6 +279,7 @@ class AdminUserCreationControllerTest {
         coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
         coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_STANDARD_USER_EMAIL)) } returns false
+        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_INVALID_USER_EMAIL)) } returns false
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_SSO_USER_EMAIL)) } returns false
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_NOT_REQUIRED_SSO_USER)) } returns false
         coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_STANDARD_USER_EMAIL)) } returns true
@@ -279,9 +299,9 @@ class AdminUserCreationControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", "")
-        private val requiredSSOClient = AzureADSSOClient("dev", "", "", "", "@required.sso.domain", required = true)
+        private val requiredSSOClient = AzureADSSOClient("dev", "", "", "", "@required.sso.domain.uk", required = true)
         private val notRequiredSSOClient =
-            AzureADSSOClient("dev", "", "", "", "@not.required.sso.domain", required = false)
+            AzureADSSOClient("dev", "", "", "", "@not.required.sso.domain.uk", required = false)
 
         private val ssoConfig =
             AzureADSSOConfig(listOf(requiredSSOClient, notRequiredSSOClient))
@@ -414,11 +434,12 @@ class AdminUserCreationControllerTest {
         }
 
         private const val NEW_STANDARD_USER_EMAIL = "new.user@test.com"
-        private const val NEW_SSO_USER_EMAIL = "new.user@required.sso.domain"
-        private const val NEW_NOT_REQUIRED_SSO_USER = "new.user@not.required.sso.domain"
+        private const val NEW_INVALID_USER_EMAIL = "new.user.@test.com"
+        private const val NEW_SSO_USER_EMAIL = "new.user@required.sso.domain.uk"
+        private const val NEW_NOT_REQUIRED_SSO_USER = "new.user@not.required.sso.domain.uk"
         private const val OLD_STANDARD_USER_EMAIL = "old.user@test.com"
-        private const val OLD_SSO_USER_EMAIL = "old.user@required.sso.domain"
-        private const val OLD_NOT_REQUIRED_SSO_USER = "old.user@not.required.sso.domain"
+        private const val OLD_SSO_USER_EMAIL = "old.user@required.sso.domain.uk"
+        private const val OLD_NOT_REQUIRED_SSO_USER = "old.user@not.required.sso.domain.uk"
 
         @BeforeClass
         @JvmStatic
