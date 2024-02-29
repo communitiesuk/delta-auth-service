@@ -1,9 +1,9 @@
 package uk.gov.communities.delta.auth.controllers.internal
 
+import com.google.common.base.Strings
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.*
-import io.ktor.server.routing.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
@@ -21,16 +21,9 @@ class RefreshUserInfoController(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun route(route: Route) {
-        route.get { getUserInfo(call) }
-    }
-
-    private suspend fun getUserInfo(call: ApplicationCall) {
+    private suspend fun getUserInfo(call: ApplicationCall, user: LdapUser): UserInfoResponse{
         val session = call.principal<OAuthSession>()!!
-
-        val user = userLookupService.lookupUserByCn(session.userCn)
-
-        coroutineScope {
+        return coroutineScope {
             val allOrganisations = async { organisationService.findAllNamesAndCodes() }
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
 
@@ -45,6 +38,25 @@ class RefreshUserInfoController(
         }
     }
 
+    suspend fun refreshUserInfo(call: ApplicationCall) {
+        val session = call.principal<OAuthSession>()!!
+        val user = userLookupService.lookupUserByCn(session.userCn)
+        call.respond(getUserInfo(call, user))
+    }
+     suspend fun impersonateUser(call: ApplicationCall) {
+        val session = call.principal<OAuthSession>()!!
+        val impersonatedUsersCn = Strings.nullToEmpty(call.parameters["userToImpersonate"]).replace("@", "!")
+        val originalUser = userLookupService.lookupUserByCn(session.userCn)
+        val userToImpersonate = userLookupService.lookupUserByCn(impersonatedUsersCn)
+        val originalUserWithImpersonatedRoles = originalUser.copy(
+            memberOfCNs = userToImpersonate.memberOfCNs,
+            firstName = "Impersonating " + userToImpersonate.firstName,
+            lastName = userToImpersonate.lastName)
+        val userInfoResponse = getUserInfo(call, originalUserWithImpersonatedRoles)
+        userInfoResponse.impersonatedUserCn = impersonatedUsersCn
+        call.respond(userInfoResponse)
+    }
+
     @Suppress("PropertyName")
     @Serializable
     data class UserInfoResponse(
@@ -53,5 +65,7 @@ class RefreshUserInfoController(
         val delta_user_roles: MemberOfToDeltaRolesMapper.Roles,
         val expires_at_epoch_second: Long,
         val is_sso: Boolean,
+        var impersonatedUserCn: String? = null,
     )
+    //add check for user is admin
 }
