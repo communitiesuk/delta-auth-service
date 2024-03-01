@@ -179,8 +179,8 @@ class EditRolesControllerTest {
             telephone = "0987654321",
         )
 
-        private val externalUserSession = OAuthSession(1, externalUser.cn, client, "externalUserToken", Instant.now(), "trace")
-        private val internalUserSession = OAuthSession(1, internalUser.cn, client, "internalUserToken", Instant.now(), "trace")
+        private val externalUserSession = OAuthSession(1, externalUser.cn, client, "externalUserToken", Instant.now(), "trace", false)
+        private val internalUserSession = OAuthSession(1, internalUser.cn, client, "internalUserToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic
