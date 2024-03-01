@@ -110,7 +110,7 @@ class DeltaSSOLoginController(
 
         val client = clientConfig.oauthClients.first { it.clientId == session.clientId }
         val authCode = authorizationCodeService.generateAndStore(
-            userCn = user.cn, client = client, traceId = call.callId!!
+            userCn = user.cn, client = client, traceId = call.callId!!, isSso = true
         )
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")

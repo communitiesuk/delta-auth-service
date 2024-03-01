@@ -25,9 +25,9 @@ class DeleteOldAuthCodesTest {
     @Test
     fun deleteOldAuthCodesTest() = testSuspend {
         val newCode =
-            authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-new-user", testServiceClient(), "trace")
+            authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-new-user", testServiceClient(), "trace", false)
         time = { Instant.now().minus(2, ChronoUnit.DAYS) }
-        authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-old-user", testServiceClient(), "old-trace")
+        authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-old-user", testServiceClient(), "old-trace", false)
         time = { Instant.now() }
 
         testDbPool.useConnectionBlocking("test") {
