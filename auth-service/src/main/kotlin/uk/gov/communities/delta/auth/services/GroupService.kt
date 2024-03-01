@@ -81,15 +81,6 @@ class GroupService(
     }
 
     suspend fun removeUserFromGroup(
-        adUser: UserService.ADUser,
-        groupCN: String,
-        call: ApplicationCall,
-        triggeringAdminSession: OAuthSession?,
-    ) {
-        removeUserFromGroup(adUser.cn, adUser.dn, groupCN, call, triggeringAdminSession)
-    }
-
-    suspend fun removeUserFromGroup(
         userCN: String,
         userDN: String,
         groupCN: String,
