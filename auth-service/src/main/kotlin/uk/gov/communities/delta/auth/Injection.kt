@@ -297,5 +297,8 @@ class Injection(
     fun editRolesController() = EditRolesController(
         userLookupService,
         groupService,
+        organisationService,
+        accessGroupsService,
+        ::MemberOfToDeltaRolesMapper
     )
 }
