@@ -376,6 +376,7 @@ class AdminEditUserControllerTest {
                             mockk(relaxed = true),
                             controller,
                             mockk(relaxed = true),
+                            mockk(relaxed = true),
                         )
                     }
                 }

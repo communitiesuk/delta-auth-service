@@ -247,6 +247,7 @@ class AdminGetUserControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                         )
                     }
                 }

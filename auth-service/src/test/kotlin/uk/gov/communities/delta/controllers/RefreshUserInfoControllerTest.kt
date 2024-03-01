@@ -132,6 +132,7 @@ class RefreshUserInfoControllerTest {
                             mockk<AdminUserCreationController>(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),
+                            mockk(relaxed = true),
                         )
                     }
                 }
