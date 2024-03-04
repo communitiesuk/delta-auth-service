@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.auth.controllers.internal
 
 import com.google.common.base.Strings
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.*
@@ -8,6 +9,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
@@ -34,7 +37,7 @@ class RefreshUserInfoController(
             ).map(user.memberOfCNs)
 
             logger.info("Retrieved updated user info")
-            call.respond(UserInfoResponse(user, samlToken.token, roles, samlToken.expiry.epochSecond, session.isSso))
+            UserInfoResponse(user, samlToken.token, roles, samlToken.expiry.epochSecond, session.isSso)
         }
     }
 
@@ -47,6 +50,15 @@ class RefreshUserInfoController(
         val session = call.principal<OAuthSession>()!!
         val impersonatedUsersCn = Strings.nullToEmpty(call.parameters["userToImpersonate"]).replace("@", "!")
         val originalUser = userLookupService.lookupUserByCn(session.userCn)
+         // this check is technically unnecessary as also checks on delta side
+         if (!originalUser.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_ADMIN) || !originalUser.accountEnabled) {
+             logger.atWarn().log("User does not have the necessary permissions to impersonate this user")
+             throw ApiError(
+                 HttpStatusCode.Forbidden,
+                 "forbidden",
+                 "User is not an enabled admin",
+                 "You do not have the necessary permissions to do this"
+             )}
         val userToImpersonate = userLookupService.lookupUserByCn(impersonatedUsersCn)
         val originalUserWithImpersonatedRoles = originalUser.copy(
             memberOfCNs = userToImpersonate.memberOfCNs,
@@ -67,5 +79,4 @@ class RefreshUserInfoController(
         val is_sso: Boolean,
         var impersonatedUserCn: String? = null,
     )
-    //add check for user is admin
 }
