@@ -8,8 +8,22 @@
   and delta for port forwarding commands
 * Copy `.env.template` to `.env` and fill it in as instructed in that file
 * Postgres, by default on port 5438, use `docker compose up -d`
-* Follow the steps in delta repository README `delta\biz-tier-app\delta\README.md` to set up LDAPS certificate
-
+* Add LDAPS CA certificate to your certificate store (we have to use LDAPS for password resets)
+    * Run this on your local machine. The `keytool` command will need to be run as admin (Windows) or with sudo (MacOS).
+    ```sh
+    curl "https://data-collection-service-ldaps-crl-test.s3.eu-west-1.amazonaws.com/CASRVTEST2/CASRVtest2.dluhctest.local_CASRVtest2.crt" -o dluhctest.crt
+    openssl x509 -inform der -in dluhctest.crt -outform pem -out dluhctest.pem
+    keytool -import -cacerts -alias dluhctest -file dluhctest.pem -noprompt -storepass changeit
+    ```
+    * If the `-cacerts` option doesn't work, specify the correct cacerts file for the Java version you are using,
+    by replacing it with e.g. `-keystore "C:\Program Files\Amazon Corretto\jdk17.0.16_8\lib\security\cacerts"` (Powershell).
+* We need to force the "dluhctest.local" domain to resolve to localhost, so it goes through the SSH tunnel.
+    * Add the following to your hosts file (Windows: `C:\Windows\System32\Drivers\etc\hosts`, MacOS: `/etc/hosts`):
+      ```plaintext
+      127.0.0.1 dluhctest.local
+      ```
+    * If tunneling into the staging environment, you will nee a line for `dluhcdata.local` as well
+ 
 ## Run
 
 Open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
