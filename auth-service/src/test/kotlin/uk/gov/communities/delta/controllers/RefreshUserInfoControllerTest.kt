@@ -19,6 +19,7 @@ import org.junit.Test
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
+import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
@@ -82,6 +83,8 @@ class RefreshUserInfoControllerTest {
             val accessGroupsService = mockk<AccessGroupsService>()
             val organisationService = mockk<OrganisationService>()
             val adminEmailController = mockk<AdminEmailController>()
+            val dbPool = mockk<DbPool>()
+            val userAuditService = mockk<UserAuditService>()
 
             coEvery { userLookupService.lookupUserByCn(session.userCn) } answers { user }
             every {
@@ -105,7 +108,10 @@ class RefreshUserInfoControllerTest {
                 samlTokenService,
                 accessGroupsService,
                 organisationService,
-                ::MemberOfToDeltaRolesMapper
+                ::MemberOfToDeltaRolesMapper,
+                oauthSessionService,
+                dbPool,
+                userAuditService
             )
             testApp = TestApplication {
                 application {

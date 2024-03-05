@@ -4,6 +4,7 @@ import com.google.common.base.Strings
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.plugins.callid.*
 import io.ktor.server.response.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -11,6 +12,7 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
@@ -21,10 +23,13 @@ class RefreshUserInfoController(
     private val accessGroupsService: AccessGroupsService,
     private val organisationService: OrganisationService,
     private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
+    private val oAuthSessionService: OAuthSessionService,
+    private val dbPool: DbPool,
+    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    private suspend fun getUserInfo(call: ApplicationCall, user: LdapUser): UserInfoResponse{
+    private suspend fun getUserInfo(call: ApplicationCall, user: LdapUser): UserInfoResponse {
         val session = call.principal<OAuthSession>()!!
         return coroutineScope {
             val allOrganisations = async { organisationService.findAllNamesAndCodes() }
@@ -43,29 +48,42 @@ class RefreshUserInfoController(
 
     suspend fun refreshUserInfo(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
+        ensureNotAlreadyImpersonating(session)
         val user = userLookupService.lookupUserByCn(session.userCn)
         call.respond(getUserInfo(call, user))
     }
-     suspend fun impersonateUser(call: ApplicationCall) {
+
+    suspend fun impersonateUser(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
+        ensureNotAlreadyImpersonating(session)
         val impersonatedUsersCn = Strings.nullToEmpty(call.parameters["userToImpersonate"]).replace("@", "!")
         val originalUser = userLookupService.lookupUserByCn(session.userCn)
-         // this check is technically unnecessary as also checks on delta side
-         if (!originalUser.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_ADMIN) || !originalUser.accountEnabled) {
-             logger.atWarn().log("User does not have the necessary permissions to impersonate this user")
-             throw ApiError(
-                 HttpStatusCode.Forbidden,
-                 "forbidden",
-                 "User is not an enabled admin",
-                 "You do not have the necessary permissions to do this"
-             )}
+        // this check is technically unnecessary as also checks on delta side
+        if (!originalUser.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_ADMIN) || !originalUser.accountEnabled) {
+            logger.atWarn().log("User does not have the necessary permissions to impersonate this user")
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "forbidden",
+                "User is not an enabled admin",
+                "You do not have the necessary permissions to do this"
+            )
+        }
         val userToImpersonate = userLookupService.lookupUserByCn(impersonatedUsersCn)
         val originalUserWithImpersonatedRoles = originalUser.copy(
             memberOfCNs = userToImpersonate.memberOfCNs,
             firstName = "Impersonating " + userToImpersonate.firstName,
-            lastName = userToImpersonate.lastName)
+            lastName = userToImpersonate.lastName
+        )
         val userInfoResponse = getUserInfo(call, originalUserWithImpersonatedRoles)
         userInfoResponse.impersonatedUserCn = impersonatedUsersCn
+        dbPool.useConnectionNonBlocking("impersonate_user") {
+            oAuthSessionService.updateWithImpersonatedCn(
+                session.id,
+                impersonatedUsersCn,
+                dbPool.connection()
+            )
+        }
+        userAuditService.insertImpersonatingUserAuditRow(session, impersonatedUsersCn, call.callId!!)
         call.respond(userInfoResponse)
     }
 
@@ -79,4 +97,15 @@ class RefreshUserInfoController(
         val is_sso: Boolean,
         var impersonatedUserCn: String? = null,
     )
+
+    private fun ensureNotAlreadyImpersonating(session: OAuthSession) {
+        if (session.impersonatedUserCn != null) {
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "forbidden",
+                "User impersonating another user",
+                "Not allowed while impersonating"
+            )
+        }
+    }
 }
