@@ -12,7 +12,9 @@ output "cluster_arn" {
 }
 
 output "latest_task_definition_arn" {
-  value = trimsuffix(aws_ecs_task_definition.main.arn, ":${aws_ecs_task_definition.main.revision}")
+  # Construct the task definition ARN rather than reading it from the latest task definition,
+  # otherwise Terraform can't tell it hasn't changed when planning
+  value = "arn:aws:ecs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:task-definition/${local.task_definition_family}"
 }
 
 output "execution_role_arn" {

@@ -43,6 +43,10 @@ resource "null_resource" "image_tag" {
   }
 }
 
+locals {
+  task_definition_family = "${var.app_name}-${var.environment}"
+}
+
 resource "aws_ecs_task_definition" "main" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
@@ -70,7 +74,7 @@ resource "aws_ecs_task_definition" "main" {
       }
     }
   }])
-  family = "${var.app_name}-${var.environment}"
+  family = local.task_definition_family
 }
 
 #tfsec:ignore:aws-ecs-enable-container-insight
