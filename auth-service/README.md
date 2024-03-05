@@ -166,6 +166,15 @@ curl 'http://localhost:8088/auth-internal/bearer/user-audit?cn=delta.admin' \
   --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret'
 ```
 
+#### Update user's own roles
+
+```sh
+curl -X POST 'http://localhost:8088/auth-internal/bearer/roles' \
+  --header 'Authorization: Bearer ABC123' \
+  --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret' \
+  -d '{"roles": ["data-providers"]}'
+```
+
 ## GOV.UK Frontend
 
 We use the [GOV.UK Frontend](https://frontend.design-system.service.gov.uk/) design system.
