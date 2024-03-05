@@ -61,7 +61,7 @@ class AdminUserCreationController(
             logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
                 .log("Admin tried to create user with invalid email")
             throw ApiError(
-                HttpStatusCode.Conflict,
+                HttpStatusCode.BadRequest,
                 "invalid_email",
                 "Email address is invalid",
                 "This email is invalid. Please check it was entered correctly"
