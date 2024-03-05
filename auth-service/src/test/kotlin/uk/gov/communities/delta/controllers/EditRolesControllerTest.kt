@@ -40,7 +40,7 @@ class EditRolesControllerTest {
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody(Json.parseToJsonElement("{\"roles\": [\"data-providers\"]}"))
+            setBody("{\"roles\": [\"data-providers\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers", any(), null) }
@@ -49,6 +49,7 @@ class EditRolesControllerTest {
             coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers", any(), null) }
             coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers-orgCode1", any(), null) }
             coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers-orgCode2", any(), null) }
+            confirmVerified(groupService)
         }
     }
 
@@ -62,7 +63,7 @@ class EditRolesControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody(Json.parseToJsonElement("{\"roles\": [\"payments-reviewers\"]}"))
+                    setBody("{\"roles\": [\"payments-reviewers\"]}")
             }
             }.apply {
                 assertEquals(HttpStatusCode.Forbidden, status)
@@ -82,7 +83,7 @@ class EditRolesControllerTest {
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody(Json.parseToJsonElement("{\"roles\": [\"payments-reviewers\"]}"))
+            setBody("{\"roles\": [\"payments-reviewers\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers", any(), null) }
@@ -91,6 +92,7 @@ class EditRolesControllerTest {
             coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers", any(), null) }
             coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers-orgCode1", any(), null) }
             coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers-orgCode2", any(), null) }
+            confirmVerified(groupService)
         }
     }
 

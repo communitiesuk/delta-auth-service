@@ -39,10 +39,13 @@ class EditRolesController(
     )
 
     fun route(route: Route) {
-        route.post { editUserRoles(call) }
+        route.post { updateUserRoles(call) }
     }
 
-    private suspend fun editUserRoles(call: ApplicationCall) {
+    // This endpoint takes a list of roles and adds the user to any roles in the list they have permission to add
+    // themselves to and are not already members of, while removing them from any roles they have permission to add
+    // themselves to but did not include in the list
+    private suspend fun updateUserRoles(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
         logger.atInfo().log("Updating roles for user ${session.userCn}")
@@ -67,14 +70,14 @@ class EditRolesController(
         val systemRoles = mapperResult.systemRoles.filter { allowedRoles.contains(it.name) }
         val userOrgs = mapperResult.organisations
 
-        val rolesToAdd = requestedRoles.toSet().minus(systemRoles.map { it.name }.toSet()).toList()
+        val rolesToAdd = requestedRoles.toSet().minus(systemRoles.map { it.name }.toSet())
         val rolesToAddWithOrgs = rolesToAdd.flatMap { role -> userOrgs.map { org -> "$role-${org.code}" } } + rolesToAdd
         logger.atInfo().log("Granting user ${session.userCn} roles $rolesToAddWithOrgs")
 
         rolesToAddWithOrgs.map { LDAPConfig.DATAMART_DELTA_PREFIX + it }
             .forEach { x -> groupService.addUserToGroup(callingUser.cn, callingUser.dn, x, call, null) }
 
-        val rolesToRemove = systemRoles.map { it.name }.toSet().minus(requestedRoles.toSet()).toList()
+        val rolesToRemove = systemRoles.map { it.name }.toSet().minus(requestedRoles.toSet())
         val rolesToRemoveWithOrgs = rolesToRemove.flatMap { role -> userOrgs.map { org -> "$role-${org.code}" } } + rolesToRemove
         var rolesToRemoveFilteredForUserMembership = rolesToRemoveWithOrgs.map { LDAPConfig.DATAMART_DELTA_PREFIX + it }.filter { callingUser.memberOfCNs.contains(it) }
         logger.atInfo().log("Revoking user ${session.userCn} roles $rolesToRemoveFilteredForUserMembership")
