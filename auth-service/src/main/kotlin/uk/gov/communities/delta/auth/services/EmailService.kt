@@ -236,6 +236,45 @@ class EmailService(
 
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
     }
+
+    suspend fun sendDLUHCUserAddedToUserGroupEmail(
+            user: LdapUser,
+            recipient: LdapUser,
+            accessGroup: String
+    ){
+        sendDLUHCUserAddedToUserGroupEmail(
+                recipient.firstName,
+                user.cn,
+                user.fullName,
+                accessGroup,
+                EmailContacts(user.email!!, user.fullName, emailConfig),
+                EmailContacts(recipient.email!!, recipient.fullName, emailConfig)
+        )
+    }
+
+    private suspend fun sendDLUHCUserAddedToUserGroupEmail(
+        recipientFirstName: String,
+        userCN: String,
+        userFullName: String,
+        accessGroupName: String,
+        userContacts: EmailContacts,
+        recipientContacts: EmailContacts,
+    ) {
+        sendTemplateEmail(
+                "dluhc-user-added-to-collection",
+                recipientContacts,
+                "DLUHC DELTA: user has been added to collection",
+                mapOf(
+                        "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                        "recipientFirstName" to recipientFirstName,
+                        "userFullName" to userFullName,
+                        "userEmailAddress" to userContacts.getTo().toString(),
+                        "accessGroupName" to accessGroupName
+                )
+        )
+
+        logger.atInfo().addKeyValue("userCN", userCN).log("Sent dluhc-user-added-to-collection email")
+    }
 }
 
 class EmailContacts(

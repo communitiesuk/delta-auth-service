@@ -10,10 +10,7 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.services.DELTA_EXTERNAL_ROLES
-import uk.gov.communities.delta.auth.services.GroupService
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import javax.naming.NameNotFoundException
 import javax.naming.directory.BasicAttribute
 import javax.naming.directory.DirContext
@@ -23,6 +20,7 @@ class AdminEditUserController(
     private val userLookupService: UserLookupService,
     private val userService: UserService,
     private val groupService: GroupService,
+    private val emailService: EmailService,
 ) : AdminUserController(userLookupService) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -52,6 +50,17 @@ class AdminEditUserController(
             )
         }
 
+        val recipient: LdapUser
+        try {
+            recipient = userLookupService.lookupUserByCn(session.userCn)
+        } catch (e: NameNotFoundException) {
+            throw ApiError(
+                HttpStatusCode.BadRequest,
+                "no_existing_user",
+                "Attempting to retrieve a user that doesn't exist",
+            )
+        }
+
         val updatedDeltaUserDetails = call.receive<UserService.DeltaUserDetails>()
 
         if (updatedDeltaUserDetails.id.replace("@", "!") != cn) throw ApiError(
@@ -72,6 +81,10 @@ class AdminEditUserController(
 
         groupsToAddToUser.forEach {
             groupService.addUserToGroup(currentUser.cn, currentUser.dn, it, call, session)
+            if (currentUser.email?.contains("levellingup.gov.uk") == true)
+            {
+                emailService.sendDLUHCUserAddedToUserGroupEmail(currentUser, recipient, it)
+            }
         }
         groupsToRemoveFromUser.forEach {
             groupService.removeUserFromGroup(currentUser.cn, currentUser.dn, it, call, session)

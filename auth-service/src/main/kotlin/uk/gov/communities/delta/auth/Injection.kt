@@ -285,6 +285,7 @@ class Injection(
         userLookupService,
         userService,
         groupService,
+        emailService
     )
 
     fun adminGetUserController() = AdminGetUserController(
