@@ -58,7 +58,6 @@ class RefreshUserInfoController(
         ensureNotAlreadyImpersonating(session)
         val impersonatedUsersCn = Strings.nullToEmpty(call.parameters["userToImpersonate"]).replace("@", "!")
         val originalUser = userLookupService.lookupUserByCn(session.userCn)
-        // this check is technically unnecessary as also checks on delta side
         if (!originalUser.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_ADMIN) || !originalUser.accountEnabled) {
             logger.atWarn().log("User does not have the necessary permissions to impersonate this user")
             throw ApiError(
