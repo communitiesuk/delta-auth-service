@@ -1,6 +1,13 @@
 package uk.gov.communities.delta.auth.services
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig.Companion.DATAMART_DELTA_PREFIX
 
@@ -23,7 +30,7 @@ class MemberOfToDeltaRolesMapper(
     data class AccessGroupRole(val name: String, val classification: String?, val organisationIds: List<String>, val isDelegate: Boolean)
 
     @Serializable
-    data class SystemRole(val name: String, val organisationIds: List<String>)
+    data class SystemRole(@SerialName("name") val role: DeltaSystemRole, val organisationIds: List<String>)
 
     @Serializable
     data class ExternalRole(val name: String, val organisationIds: List<String>)
@@ -84,7 +91,12 @@ class MemberOfToDeltaRolesMapper(
         val delegateAccessGroups = roleOrgIdsMap[RoleType.DELEGATE]!!.entries.map { it.key.substringAfter("delegate-") }
 
         return Roles(
-            roleOrgIdsMap[RoleType.SYSTEM]!!.entries.map { SystemRole(it.key, it.value) },
+            roleOrgIdsMap[RoleType.SYSTEM]!!.entries.map {
+                SystemRole(
+                    DeltaSystemRole.ROLE_NAME_MAP[it.key]!!,
+                    it.value
+                )
+            },
             roleOrgIdsMap[RoleType.EXTERNAL]!!.entries.map { ExternalRole(it.key, it.value) },
             roleOrgIdsMap[RoleType.ACCESS_GROUP]!!.entries.map {
                 AccessGroupRole(
@@ -152,39 +164,73 @@ class MemberOfToDeltaRolesMapper(
 
     private fun determineRoleType(role: String): RoleType? {
         return if (role.startsWith("delegate-") && allAccessGroupsMap.contains(role.substringAfter("delegate-"))) RoleType.DELEGATE
-        else if (DELTA_SYSTEM_ROLES.contains(role)) RoleType.SYSTEM
+        else if (DeltaSystemRole.ROLE_NAME_MAP.containsKey(role)) RoleType.SYSTEM
         else if (DELTA_EXTERNAL_ROLES.contains(role)) RoleType.EXTERNAL
         else if (allAccessGroupsMap.contains(role)) RoleType.ACCESS_GROUP
         else null
     }
 }
 
-val DELTA_SYSTEM_ROLES = hashSetOf(
-    "admin",
-    "read-only-admin",
-    "testers",
-    "data-providers",
-    "data-certifiers",
-    "data-auditors",
-    "billing-data-approvers",
-    "warehouse-users",
-    "dataset-admins",
-    "form-designers",
-    "lead-testers",
-    "user",
-    "data-entry-clerks",
-    "payments-approvers",
-    "payments-reviewers",
-    "sap-team-members",
-    "local-admins",
-    "abatements-approvers",
-    "suspensions-approvers",
-    "write-offs-approvers",
-    "setup-managers",
-    "report-users",
-    "personal-data-owners",
-    "stats-data-certifiers",
-)
+enum class DeltaSystemRoleClassification {
+    EXTERNAL, // All users can choose these roles in My account on Delta
+    EXTERNAL_AUDIT, // Users that are part of an auditing organisation can choose these roles in My account on Delta
+    INTERNAL, // Internal (dclg) users can choose these roles in My account
+    RESTRICTED, // Only admins can assign these roles
+    SYSTEM;
+}
+
+@Serializable(with = DeltaSystemRoleSerializer::class)
+enum class DeltaSystemRole(val adRoleName: String, val classification: DeltaSystemRoleClassification) {
+    ADMIN("admin", DeltaSystemRoleClassification.SYSTEM),
+    READ_ONLY_ADMIN("read-only-admin", DeltaSystemRoleClassification.RESTRICTED),
+    TESTERS("testers", DeltaSystemRoleClassification.INTERNAL),
+    DATA_PROVIDERS("data-providers", DeltaSystemRoleClassification.EXTERNAL),
+    DATA_CERTIFIERS("data-certifiers", DeltaSystemRoleClassification.EXTERNAL),
+    DATA_AUDITORS("data-auditors", DeltaSystemRoleClassification.EXTERNAL_AUDIT),
+    BILLING_DATA_APPROVERS("billing-data-approvers", DeltaSystemRoleClassification.RESTRICTED),
+    WAREHOUSE_USERS("warehouse-users", DeltaSystemRoleClassification.RESTRICTED),
+    DATASET_ADMINS("dataset-admins", DeltaSystemRoleClassification.RESTRICTED),
+    FORM_DESIGNERS("form-designers", DeltaSystemRoleClassification.INTERNAL),
+    LEAD_TESTERS("lead-testers", DeltaSystemRoleClassification.RESTRICTED),
+    USER("user", DeltaSystemRoleClassification.SYSTEM),
+    DATA_ENTRY_CLERKS("data-entry-clerks", DeltaSystemRoleClassification.RESTRICTED),
+    PAYMENTS_APPROVERS("payments-approvers", DeltaSystemRoleClassification.INTERNAL),
+    PAYMENTS_REVIEWERS("payments-reviewers", DeltaSystemRoleClassification.INTERNAL),
+    SAP_TEAM_MEMBERS("sap-team-members", DeltaSystemRoleClassification.RESTRICTED),
+    LOCAL_ADMINS("local-admins", DeltaSystemRoleClassification.RESTRICTED),
+    ABATEMENTS_APPROVERS("abatements-approvers", DeltaSystemRoleClassification.RESTRICTED),
+    SUSPENSIONS_APPROVERS("suspensions-approvers", DeltaSystemRoleClassification.RESTRICTED),
+    WRITE_OFFS_APPROVERS("write-offs-approvers", DeltaSystemRoleClassification.RESTRICTED),
+    SETUP_MANAGERS("setup-managers", DeltaSystemRoleClassification.RESTRICTED),
+    REPORT_USERS("report-users", DeltaSystemRoleClassification.EXTERNAL),
+    PERSONAL_DATA_OWNERS("personal-data-owners", DeltaSystemRoleClassification.RESTRICTED),
+    STATS_DATA_CERTIFIERS("stats-data-certifiers", DeltaSystemRoleClassification.RESTRICTED);
+
+    override fun toString() = adRoleName
+
+    // The Common Name (CN) of the group representing this role in Active Directory
+    fun adCn() = DATAMART_DELTA_PREFIX + adRoleName
+    fun adCn(orgCode: String) = "$DATAMART_DELTA_PREFIX$adRoleName-$orgCode"
+
+    companion object {
+        val ROLE_NAME_MAP = DeltaSystemRole.entries.associateBy { it.adRoleName }
+    }
+}
+
+object DeltaSystemRoleSerializer : KSerializer<DeltaSystemRole> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("DeltaSystemRole", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: DeltaSystemRole) {
+        encoder.encodeString(value.adRoleName)
+    }
+
+    override fun deserialize(decoder: Decoder): DeltaSystemRole {
+        val key = decoder.decodeString()
+        return DeltaSystemRole.ROLE_NAME_MAP[key]
+            ?: throw IllegalArgumentException("System role not found $key")
+    }
+}
 
 /*
  * Name is copied from Delta, "External" in that it's managed by MarkLogic rather than Delta's Java layer.
