@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.repositories
 import kotlinx.serialization.Serializable
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDString
 import java.lang.Integer.parseInt
@@ -181,6 +182,10 @@ data class LdapUser(
     val comment: String?,
     val notificationStatus: String?,
 )
+
+fun LdapUser.isInternal() : Boolean {
+    return this.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_INTERNAL_USER)
+}
 
 class InvalidLdapUserException(message: String) : Exception(message)
 

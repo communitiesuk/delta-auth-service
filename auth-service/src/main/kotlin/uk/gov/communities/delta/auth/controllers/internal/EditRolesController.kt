@@ -8,10 +8,9 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
-import uk.gov.communities.delta.auth.repositories.LdapUser
+import uk.gov.communities.delta.auth.repositories.isInternal
 import uk.gov.communities.delta.auth.services.*
 
 class EditRolesController(
@@ -85,10 +84,6 @@ class EditRolesController(
         rolesToRemoveFilteredForUserMembership.forEach { x -> groupService.removeUserFromGroup(callingUser.cn, callingUser.dn, x, call, null) }
 
         return call.respond(mapOf("message" to "Roles have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
-    }
-
-    private fun LdapUser.isInternal() : Boolean {
-        return this.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_INTERNAL_USER)
     }
 
     @Serializable
