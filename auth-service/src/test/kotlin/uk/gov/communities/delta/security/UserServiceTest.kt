@@ -293,7 +293,7 @@ class UserServiceTest {
 
     @Test
     fun testSetUserPassword() = testSuspend {
-        userService.setPassword(userDN, "TestPassword")
+        userService.setPasswordAndEnable(userDN, "TestPassword")
         verify(exactly = 1) { context.modifyAttributes(userDN, any()) }
         // User has normal and enabled account
         assertEquals(DirContext.REPLACE_ATTRIBUTE, modificationItems.captured[1].modificationOp)

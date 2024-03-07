@@ -174,7 +174,7 @@ class UserService(
     private suspend fun addUserToAD(adUser: ADUser, attributes: Attributes) {
         val enabled = adUser.userAccountControl == ADUser.accountFlags(true)
         if (enabled && adUser.password == null) {
-            throw Exception("Trying to create user with no password")
+            throw Exception("Trying to create enabled user with no password")
         } else {
             ldapServiceUserBind.useServiceUserBind {
                 try {
@@ -204,7 +204,7 @@ class UserService(
         }
     }
 
-    suspend fun setPassword(userDN: String, password: String) {
+    suspend fun setPasswordAndEnable(userDN: String, password: String) {
         val modificationItems = arrayOf(
             ModificationItem(DirContext.REPLACE_ATTRIBUTE, ADUser.getPasswordAttribute(password)),
             ModificationItem(
@@ -213,12 +213,44 @@ class UserService(
             )
         )
         ldapServiceUserBind.useServiceUserBind {
-            try {
-                it.modifyAttributes(userDN, modificationItems)
-                logger.atInfo().addKeyValue("UserDN", userDN).log("Account enabled and password set")
-            } catch (e: Exception) {
-                throw e
-            }
+            it.modifyAttributes(userDN, modificationItems)
+            logger.atInfo().addKeyValue("UserDN", userDN).log("Account enabled and password set")
+        }
+    }
+
+    // Enabling the account and notifications would ideally be separate,
+    // but for now we do both to keep compatibility with Delta
+    suspend fun enableAccountAndNotifications(userDN: String) {
+        val modificationItems = arrayOf(
+            ModificationItem(
+                DirContext.REPLACE_ATTRIBUTE,
+                BasicAttribute("userAccountControl", ADUser.accountFlags(true))
+            ),
+            ModificationItem(
+                DirContext.REPLACE_ATTRIBUTE,
+                BasicAttribute("st", "active")
+            )
+        )
+        ldapServiceUserBind.useServiceUserBind {
+            it.modifyAttributes(userDN, modificationItems)
+            logger.atInfo().addKeyValue("UserDN", userDN).log("Account and notifications enabled")
+        }
+    }
+
+    suspend fun disableAccountAndNotifications(userDN: String) {
+        val modificationItems = arrayOf(
+            ModificationItem(
+                DirContext.REPLACE_ATTRIBUTE,
+                BasicAttribute("userAccountControl", ADUser.accountFlags(false))
+            ),
+            ModificationItem(
+                DirContext.REPLACE_ATTRIBUTE,
+                BasicAttribute("st", "inactive")
+            )
+        )
+        ldapServiceUserBind.useServiceUserBind {
+            it.modifyAttributes(userDN, modificationItems)
+            logger.atInfo().addKeyValue("UserDN", userDN).log("Account and notifications disabled")
         }
     }
 
