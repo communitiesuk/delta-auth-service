@@ -70,8 +70,6 @@ class RefreshUserInfoController(
         val userToImpersonate = userLookupService.lookupUserByCn(impersonatedUsersCn)
         val originalUserWithImpersonatedRoles = originalUser.copy(
             memberOfCNs = userToImpersonate.memberOfCNs,
-            firstName = "Impersonating " + userToImpersonate.firstName,
-            lastName = userToImpersonate.lastName
         )
         val userInfoResponse = getUserInfo(call, originalUserWithImpersonatedRoles)
         userInfoResponse.impersonatedUserCn = impersonatedUsersCn
