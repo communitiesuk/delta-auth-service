@@ -12,11 +12,7 @@
 
 ## Run
 
-* Start with `./gradlew run` (to run locally with AWS metrics run through aws-vault
-  as `aws-vault exec <profile> -- .\gradlew.bat run` and set environment variable AUTH_METRICS_NAMESPACE to e.g. "
-  localYourName/AuthService")
-
-Alternatively open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
+Open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
 with `uk.gov.communities.delta.auth.ApplicationKt` as the main class and environment variables set from `.env`. (See
 below image for an example)
 
@@ -29,6 +25,58 @@ faster restarts, reloading of templates).
 
 * `./gradlew test`
 * Postgres must be running
+
+## Running from a terminal
+
+```shell
+./gradlew run
+```
+
+or in PowerShell
+
+```powershell
+.\gradlew.bat run
+```
+
+Note that Gradle will still say "EXECUTING", but the logs say "Application started" the app will be running on port 8088.
+The `io.ktor.development` property is automatically set when using gradle run.
+
+### With metrics
+
+To run locally with AWS metrics set the `AUTH_METRICS_NAMESPACE` and start the app with AWS credentials.
+For example:
+
+```shell
+AUTH_METRICS_NAMESPACE="localYourName/AuthService" aws-vault exec <profile> -- ./gradlew run
+```
+
+### Migrations
+
+Database migrations are run automatically when the database connection is first initialised by the app.
+You can also run only the migrations without starting the app:
+
+```shell
+./gradlew migrate
+```
+
+### Scheduled tasks
+
+You can run a task locally by setting the RUN_TASK environment variable and using the "runTask" gradle task, for example
+
+```shell
+RUN_TASK=DeleteOldAuthCodes ./gradlew runTask
+```
+
+In hosted environments scheduled tasks are run using AWS EventBridge Scheduler,
+which invokes an ECS task with the RUN_TASK environment variable set, and the
+Docker [entrypoint script](./entrypoint.sh)
+will execute the task instead of starting the application.
+
+Tasks can also be manually started using the run-scheduled-task.sh script in this repository:
+
+```shell
+aws-vault exec <profile> -- bash ./scripts/run-scheduled-task.sh test DeleteOldAuthCodes
+```
 
 ## Example requests
 
@@ -118,6 +166,15 @@ curl 'http://localhost:8088/auth-internal/bearer/user-audit?cn=delta.admin' \
   --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret'
 ```
 
+#### Update user's own roles
+
+```sh
+curl -X POST 'http://localhost:8088/auth-internal/bearer/roles' \
+  --header 'Authorization: Bearer ABC123' \
+  --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret' \
+  -d '{"roles": ["data-providers"]}'
+```
+
 ## GOV.UK Frontend
 
 We use the [GOV.UK Frontend](https://frontend.design-system.service.gov.uk/) design system.
@@ -131,19 +188,6 @@ To update them:
 * Download the updated bundle and replace the existing files, following the folder structure in this repo. They can be found in `auth-service/src/main/resources/static`
 * Find and replace in the CSS file to change links to "/assets/" to "/static/assets/"
 * Update the version numbers linked from the HTML header (`auth-service/src/main/resources/templates/thymeleaf/fragments/template.html`)
-
-## Scheduled tasks
-
-You can run a task locally by setting the RUN_TASK environment variable and using the "runTask" gradle task, for example
-
-```shell
-RUN_TASK=DeleteOldAuthCodes ./gradlew runTask
-```
-
-In hosted environments scheduled tasks are run using AWS EventBridge Scheduler,
-which invokes an ECS task with the RUN_TASK environment variable set, and the
-Docker [entrypoint script](./entrypoint.sh)
-will execute the task instead of the application.
 
 ## Coroutines and Ktor
 

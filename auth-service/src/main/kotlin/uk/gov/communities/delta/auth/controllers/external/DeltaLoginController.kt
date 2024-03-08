@@ -195,7 +195,7 @@ class DeltaLoginController(
                 }
 
                 val authCode = authorizationCodeService.generateAndStore(
-                    userCn = loginResult.user.cn, client = client, traceId = call.callId!!
+                    userCn = loginResult.user.cn, client = client, traceId = call.callId!!, isSso = false
                 )
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")

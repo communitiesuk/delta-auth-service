@@ -134,10 +134,10 @@ class AdminGetUserControllerTest {
             testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace")
+        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)
         private val readOnlyAdminSession =
-            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminToken", Instant.now(), "trace")
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userToken", Instant.now(), "trace")
+            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminToken", Instant.now(), "trace", false)
+        private val userSession = OAuthSession(1, regularUser.cn, client, "userToken", Instant.now(), "trace", false)
 
         private val user = testLdapUser(
             cn = "beingUpdated!user.com",
@@ -247,6 +247,7 @@ class AdminGetUserControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                         )
                     }
                 }

@@ -91,7 +91,7 @@ class GroupServiceTest {
     @Test
     fun testAdminAddingUserToExistingGroup() = testSuspend {
         val adminSession = OAuthSession(
-            1, "adminUserCN", mockk<DeltaLoginEnabledClient>(), "adminAccessToken", Instant.now(), "trace"
+            1, "adminUserCN", mockk<DeltaLoginEnabledClient>(), "adminAccessToken", Instant.now(), "trace", false
         )
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
         groupService.addUserToGroup(adUser, groupCN, call, adminSession)
@@ -135,7 +135,7 @@ class GroupServiceTest {
     @Test
     fun testAdminRemovingUserFromGroup() = testSuspend {
         val adminSession = OAuthSession(
-            1, "adminUserCN", mockk<DeltaLoginEnabledClient>(), "adminAccessToken", Instant.now(), "trace"
+            1, "adminUserCN", mockk<DeltaLoginEnabledClient>(), "adminAccessToken", Instant.now(), "trace", false
         )
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
         groupService.removeUserFromGroup(adUser.cn, adUser.dn, groupCN, call, adminSession)

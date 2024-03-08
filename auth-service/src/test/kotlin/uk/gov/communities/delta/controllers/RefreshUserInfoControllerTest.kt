@@ -72,7 +72,7 @@ class RefreshUserInfoControllerTest {
         private lateinit var controller: RefreshUserInfoController
 
         private val client = testServiceClient()
-        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace")
+        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace", false)
         private val user = testLdapUser(cn = "user", memberOfCNs = listOf("datamart-delta-user-dclg"))
 
         @BeforeClass
@@ -130,6 +130,7 @@ class RefreshUserInfoControllerTest {
                             adminEmailController,
                             mockk<FetchUserAuditController>(relaxed = true),
                             mockk<AdminUserCreationController>(relaxed = true),
+                            mockk(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                         )

@@ -75,7 +75,7 @@ class Injection(
     }
 
     private val samlTokenService = SAMLTokenService()
-    private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.OLD_MANGLED)
+    private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
     private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
     private val userLookupService = UserLookupService(
         UserLookupService.Configuration(
@@ -289,6 +289,14 @@ class Injection(
 
     fun adminGetUserController() = AdminGetUserController(
         userLookupService,
+        organisationService,
+        accessGroupsService,
+        ::MemberOfToDeltaRolesMapper
+    )
+
+    fun editRolesController() = EditRolesController(
+        userLookupService,
+        groupService,
         organisationService,
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper

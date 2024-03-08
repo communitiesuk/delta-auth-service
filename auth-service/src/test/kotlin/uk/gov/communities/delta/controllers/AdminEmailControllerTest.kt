@@ -276,10 +276,10 @@ class AdminEmailControllerTest {
             cn = LDAPConfig.emailToCN(disabledReceivingSSOUserEmail),
             accountEnabled = false
         )
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace")
+        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
         private val readOnlyAdminSession =
-            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminAccessToken", Instant.now(), "trace")
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace")
+            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminAccessToken", Instant.now(), "trace", false)
+        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic
@@ -309,6 +309,7 @@ class AdminEmailControllerTest {
                         bearerTokenRoutes(
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),

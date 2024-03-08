@@ -68,7 +68,7 @@ class UpdateUserGUIDMap(
             pageSize = 200,
         ) {
             val cn = it.get("cn").get() as String
-            val objectGuid = it.getNewModeObjectGuid().toString()
+            val objectGuid = it.getNewModeObjectGuidString()
             UserGuid(cn, objectGuid)
         }
         ctx.close()
