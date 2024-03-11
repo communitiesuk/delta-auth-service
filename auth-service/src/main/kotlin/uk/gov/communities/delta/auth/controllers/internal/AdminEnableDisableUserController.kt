@@ -41,7 +41,7 @@ class AdminEnableDisableUserController(
 
         if (user.passwordLastSet == null) {
             if (user.isSSORequiredUser()) {
-                logger.atInfo().addKeyValue("UserCN", user.cn)
+                logger.atInfo().addKeyValue("targetUserCN", user.cn)
                     .log("Setting random password and enabling SSO user")
                 userService.setPasswordAndEnable(user.dn, randomBase64(18))
                 auditService.userEnableAudit(user.cn, session.userCn, call)
@@ -56,7 +56,7 @@ class AdminEnableDisableUserController(
             }
         }
 
-        logger.atInfo().addKeyValue("UserCN", user.cn).log("Enabling user")
+        logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Enabling user")
         userService.enableAccountAndNotifications(user.dn)
         auditService.userEnableAudit(user.cn, session.userCn, call)
 
@@ -73,7 +73,7 @@ class AdminEnableDisableUserController(
             return call.respond(mapOf("message" to "Account already disabled"))
         }
 
-        logger.atInfo().addKeyValue("UserCN", user.cn).log("Disabling user")
+        logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Disabling user")
         userService.disableAccountAndNotifications(user.dn)
         auditService.userDisableAudit(user.cn, session.userCn, call)
         // Clear any set password tokens so that they can't re-enable their account themselves
