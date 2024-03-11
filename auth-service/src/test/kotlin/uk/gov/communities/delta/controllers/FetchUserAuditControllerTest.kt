@@ -16,12 +16,8 @@ import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
-import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
 import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
-import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -31,6 +27,7 @@ import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.OAuthSessionService
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.sql.Timestamp
@@ -195,16 +192,11 @@ class FetchUserAuditControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk<RefreshUserInfoController>(relaxed = true),
-                            mockk<AdminEmailController>(relaxed = true),
-                            controller,
-                            mockk<AdminUserCreationController>(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/bearer/user-audit") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }

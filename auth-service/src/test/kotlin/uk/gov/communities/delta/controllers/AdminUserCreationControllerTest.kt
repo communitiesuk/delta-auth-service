@@ -19,7 +19,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.apache.commons.lang3.builder.EqualsBuilder
 import org.junit.*
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -28,6 +27,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -469,16 +469,11 @@ class AdminUserCreationControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            controller,
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/bearer/create-user") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }

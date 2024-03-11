@@ -18,7 +18,6 @@ import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.Before
 import org.junit.BeforeClass
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminGetUserController
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -27,6 +26,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -38,7 +38,7 @@ class AdminGetUserControllerTest {
 
     @Test
     fun testAdminGetUser() = testSuspend {
-        testClient.get("/bearer/get-user?userCn=${user.cn}") {
+        testClient.get("/get-user?userCn=${user.cn}") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -51,7 +51,7 @@ class AdminGetUserControllerTest {
 
     @Test
     fun testReadOnlyAdminGetUser() = testSuspend {
-        testClient.get("/bearer/get-user?userCn=${user.cn}") {
+        testClient.get("/get-user?userCn=${user.cn}") {
             headers {
                 append("Authorization", "Bearer ${readOnlyAdminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -66,7 +66,7 @@ class AdminGetUserControllerTest {
     fun testNonAdminGetUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.get("/bearer/get-user?userCn=${user.cn}") {
+                testClient.get("/get-user?userCn=${user.cn}") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -80,7 +80,7 @@ class AdminGetUserControllerTest {
 
     @Test
     fun testAdminGetNonExistentUser() = testSuspend {
-        testClient.get("/bearer/get-user?userCn=${NON_EXISTENT_USER_CN}") {
+        testClient.get("/get-user?userCn=${NON_EXISTENT_USER_CN}") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -240,16 +240,11 @@ class AdminGetUserControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            controller,
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/get-user") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }
