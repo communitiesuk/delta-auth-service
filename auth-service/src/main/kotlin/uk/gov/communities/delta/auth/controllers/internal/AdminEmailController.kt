@@ -7,7 +7,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
@@ -25,7 +24,7 @@ class AdminEmailController(
 
     // Help desk are read-only-admin s and can trigger these emails as well as other admins
     private val rolesThatCanSendPasswordEmails =
-        arrayOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN, DeltaConfig.DATAMART_DELTA_ADMIN)
+        arrayOf(DeltaSystemRole.ADMIN, DeltaSystemRole.READ_ONLY_ADMIN)
 
     fun route(route: Route) {
         route.post("/activation") { adminSendActivationEmail(call) }

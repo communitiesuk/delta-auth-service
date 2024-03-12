@@ -264,7 +264,7 @@ class AdminEditUserControllerTest {
         private val disabledAdminUser =
             testLdapUser(cn = "disabledAdmin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN), accountEnabled = false)
         private val readOnlyAdminUser =
-            testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN))
+            testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaSystemRole.READ_ONLY_ADMIN.adCn()))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)

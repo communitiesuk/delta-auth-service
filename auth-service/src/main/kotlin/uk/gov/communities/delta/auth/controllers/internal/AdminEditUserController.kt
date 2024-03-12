@@ -10,10 +10,7 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.services.DELTA_EXTERNAL_ROLES
-import uk.gov.communities.delta.auth.services.GroupService
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import javax.naming.NameNotFoundException
 import javax.naming.directory.BasicAttribute
 import javax.naming.directory.DirContext
@@ -34,9 +31,7 @@ class AdminEditUserController(
     private suspend fun editUser(call: ApplicationCall) {
 
         val session = getSessionIfUserHasPermittedRole(
-            arrayOf(
-                DeltaConfig.DATAMART_DELTA_ADMIN,
-            ), call
+            arrayOf(DeltaSystemRole.ADMIN), call
         )
 
         val cn = call.request.queryParameters["userCn"]!!

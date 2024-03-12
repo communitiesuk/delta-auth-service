@@ -20,13 +20,7 @@ class DeltaConfig(
         const val DATAMART_DELTA_USER = LDAPConfig.DATAMART_DELTA_PREFIX + "user"
         const val DATAMART_DELTA_REPORT_USERS = LDAPConfig.DATAMART_DELTA_PREFIX + "report-users"
         const val DATAMART_DELTA_ADMIN = LDAPConfig.DATAMART_DELTA_PREFIX + "admin"
-        const val DATAMART_DELTA_DATASET_ADMINS = LDAPConfig.DATAMART_DELTA_PREFIX + "dataset-admins"
-        const val DATAMART_DELTA_LOCAL_ADMINS = LDAPConfig.DATAMART_DELTA_PREFIX + "local-admins"
-        // In practice this role is used by the first line helpdesk and can perform some
-        // non-read-only actions like enabling/disabling users and sending password reset emails
-        const val DATAMART_DELTA_READ_ONLY_ADMIN = LDAPConfig.DATAMART_DELTA_PREFIX + "read-only-admin"
         const val DATAMART_DELTA_INTERNAL_USER = LDAPConfig.DATAMART_DELTA_PREFIX + "user-dclg"
-
     }
 
     fun log(logger: LoggingEventBuilder) {

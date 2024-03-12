@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.services.DeltaSystemRole
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserLookupService
 
@@ -15,21 +16,22 @@ open class AdminUserController(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     protected suspend fun checkUserHasPermittedRole(
-        permittedRoles: Array<String>,
+        permittedRoles: Array<DeltaSystemRole>,
         call: ApplicationCall
     ) {
         getSessionIfUserHasPermittedRole(permittedRoles, call)
     }
 
     protected suspend fun getSessionIfUserHasPermittedRole(
-        permittedRoles: Array<String>,
+        permittedRoles: Array<DeltaSystemRole>,
         call: ApplicationCall
     ): OAuthSession {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val roleCns = permittedRoles.map { it.adCn() }
 
         // Authenticate calling user
-        if (!callingUser.memberOfCNs.any { it in permittedRoles } || !callingUser.accountEnabled) {
+        if (!callingUser.memberOfCNs.any { it in roleCns } || !callingUser.accountEnabled) {
             logger.atWarn().log("User does not have the necessary permissions to view/edit the user")
             throw ApiError(
                 HttpStatusCode.Forbidden,

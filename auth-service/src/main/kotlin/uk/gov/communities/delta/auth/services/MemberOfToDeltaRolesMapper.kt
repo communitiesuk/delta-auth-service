@@ -182,6 +182,8 @@ enum class DeltaSystemRoleClassification {
 @Serializable(with = DeltaSystemRoleSerializer::class)
 enum class DeltaSystemRole(val adRoleName: String, val classification: DeltaSystemRoleClassification) {
     ADMIN("admin", DeltaSystemRoleClassification.SYSTEM),
+    // In practice this role is used by the first line helpdesk and can perform some
+    // non-read-only actions like enabling/disabling users and sending password reset emails
     READ_ONLY_ADMIN("read-only-admin", DeltaSystemRoleClassification.RESTRICTED),
     TESTERS("testers", DeltaSystemRoleClassification.INTERNAL),
     DATA_PROVIDERS("data-providers", DeltaSystemRoleClassification.EXTERNAL),
