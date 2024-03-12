@@ -8,7 +8,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -34,7 +33,7 @@ class AdminUserCreationController(
 
     private suspend fun createUser(call: ApplicationCall) {
         // Get calling user from call
-        val session = getSessionIfUserHasPermittedRole(arrayOf(DeltaConfig.DATAMART_DELTA_ADMIN), call)
+        val session = getSessionIfUserHasPermittedRole(arrayOf(DeltaSystemRole.ADMIN), call)
 
         val deltaUserDetails = call.receive<UserService.DeltaUserDetails>()
 

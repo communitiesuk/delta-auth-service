@@ -6,14 +6,10 @@ import io.ktor.server.response.*
 import io.ktor.server.util.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig.Companion.VALID_USERNAME_REGEX
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.services.SetPasswordTokenService
-import uk.gov.communities.delta.auth.services.UserAuditService
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.randomBase64
 import javax.naming.NameNotFoundException
 
@@ -27,8 +23,7 @@ class AdminEnableDisableUserController(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    private val allowedRoles =
-        arrayOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN, DeltaConfig.DATAMART_DELTA_ADMIN)
+    private val allowedRoles = arrayOf(DeltaSystemRole.ADMIN, DeltaSystemRole.READ_ONLY_ADMIN)
 
     suspend fun enableUser(call: ApplicationCall) {
         val session = getSessionIfUserHasPermittedRole(allowedRoles, call)

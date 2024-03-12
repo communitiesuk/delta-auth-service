@@ -8,7 +8,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import javax.naming.NameNotFoundException
@@ -28,10 +27,7 @@ class AdminGetUserController(
 
     private suspend fun getUser(call: ApplicationCall) {
         getSessionIfUserHasPermittedRole(
-            arrayOf(
-                DeltaConfig.DATAMART_DELTA_ADMIN,
-                DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN,
-            ), call
+            arrayOf(DeltaSystemRole.ADMIN, DeltaSystemRole.READ_ONLY_ADMIN), call
         )
 
         val cn = call.request.queryParameters["userCn"]!!

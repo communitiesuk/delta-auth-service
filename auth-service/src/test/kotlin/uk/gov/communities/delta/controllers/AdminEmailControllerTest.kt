@@ -13,7 +13,6 @@ import org.junit.*
 import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -247,9 +246,9 @@ class AdminEmailControllerTest {
         private val emailService = mockk<EmailService>()
 
         private val client = testServiceClient()
-        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
+        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaSystemRole.ADMIN.adCn()))
         private val readOnlyAdminUser =
-            testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN))
+            testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaSystemRole.READ_ONLY_ADMIN.adCn()))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
         private const val enabledReceivingUserEmail = "enabled-receiving-user@test.com"
         private const val enabledReceivingSSOUserEmail = "enabled-receiving-user@sso.domain"

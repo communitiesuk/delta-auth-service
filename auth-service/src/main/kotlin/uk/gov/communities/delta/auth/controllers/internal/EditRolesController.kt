@@ -9,7 +9,6 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
@@ -24,20 +23,6 @@ class EditRolesController(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    private val internalOnlyRoles : List<String> = listOf(
-        "payments-reviewers",
-        "payments-approvers",
-        "testers",
-        "form-designers",
-        )
-
-    private val universalAndAuditRoles : List<String> = listOf(
-        "data-providers",
-        "data-certifiers",
-        "report-users",
-        "data-auditors",
-    )
-
     fun route(route: Route) {
         route.post { updateUserRoles(call) }
     }
@@ -51,9 +36,18 @@ class EditRolesController(
         logger.atInfo().log("Updating roles for user ${session.userCn}")
         val userInternal = callingUser.isInternal()
 
-        val requestedRoles = call.receive<DeltaUserRoles>().roles
+        val requestedRoles = call.receive<DeltaUserRoles>().roles.map { reqRoleStr ->
+            DeltaSystemRole.entries.find { it.adRoleName == reqRoleStr }
+                ?: throw ApiError(HttpStatusCode.BadRequest, "bad_request", "Unknown role $reqRoleStr")
+        }
 
-        val allowedRoles = if (userInternal) internalOnlyRoles.plus(universalAndAuditRoles) else universalAndAuditRoles
+        val allowedClassifications = listOf(
+            DeltaSystemRoleClassification.EXTERNAL_AUDIT,
+            DeltaSystemRoleClassification.EXTERNAL,
+        ) + if (userInternal) listOf(DeltaSystemRoleClassification.INTERNAL) else emptyList()
+
+        val allowedRoles = DeltaSystemRole.entries.filter { allowedClassifications.contains(it.classification) }
+        val allowedRoleNames = allowedRoles.map { it.adRoleName }
 
         if (!allowedRoles.containsAll(requestedRoles)) {
             logger.atError().log("External user attempted to give self internal-only role")
@@ -67,22 +61,30 @@ class EditRolesController(
         val mapperResult = memberOfToDeltaRolesMapperFactory(
             callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
         ).map(callingUser.memberOfCNs)
-        val systemRoles = mapperResult.systemRoles.filter { allowedRoles.contains(it.name) }
+        val systemRoles = mapperResult.systemRoles.filter { allowedRoleNames.contains(it.role.adRoleName) }
         val userOrgs = mapperResult.organisations
 
-        val rolesToAdd = requestedRoles.toSet().minus(systemRoles.map { it.name }.toSet())
-        val rolesToAddWithOrgs = rolesToAdd.flatMap { role -> userOrgs.map { org -> "$role-${org.code}" } } + rolesToAdd
-        logger.atInfo().log("Granting user ${session.userCn} roles $rolesToAddWithOrgs")
+        val rolesToAdd = requestedRoles.map { it }.toSet().minus(systemRoles.map { it.role }.toSet())
+        val groupCNsToAdd = rolesToAdd.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
+                rolesToAdd.map { it.adCn() }
+        logger.atInfo().log("Granting user ${session.userCn} roles $groupCNsToAdd")
 
-        rolesToAddWithOrgs.map { LDAPConfig.DATAMART_DELTA_PREFIX + it }
-            .forEach { x -> groupService.addUserToGroup(callingUser.cn, callingUser.dn, x, call, null) }
+        groupCNsToAdd
+            .forEach {
+                groupService.addUserToGroup(callingUser.cn, callingUser.dn, it, call, null)
+            }
 
-        val rolesToRemove = systemRoles.map { it.name }.toSet().minus(requestedRoles.toSet())
-        val rolesToRemoveWithOrgs = rolesToRemove.flatMap { role -> userOrgs.map { org -> "$role-${org.code}" } } + rolesToRemove
-        var rolesToRemoveFilteredForUserMembership = rolesToRemoveWithOrgs.map { LDAPConfig.DATAMART_DELTA_PREFIX + it }.filter { callingUser.memberOfCNs.contains(it) }
-        logger.atInfo().log("Revoking user ${session.userCn} roles $rolesToRemoveFilteredForUserMembership")
+        val rolesToRemove = systemRoles.map { it.role }.toSet().minus(requestedRoles.toSet())
+        val groupCNsToRemove =
+            rolesToRemove.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
+                    rolesToRemove.map { it.adCn() }
+        val groupCNsToRemoveFilteredForMembership = groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
+        logger.atInfo().log("Revoking user ${session.userCn} roles $groupCNsToRemoveFilteredForMembership")
 
-        rolesToRemoveFilteredForUserMembership.forEach { x -> groupService.removeUserFromGroup(callingUser.cn, callingUser.dn, x, call, null) }
+        groupCNsToRemoveFilteredForMembership
+            .forEach {
+                groupService.removeUserFromGroup(callingUser.cn, callingUser.dn, it, call, null)
+            }
 
         return call.respond(mapOf("message" to "Roles have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
     }

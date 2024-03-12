@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.service
 
 import uk.gov.communities.delta.auth.services.AccessGroup
+import uk.gov.communities.delta.auth.services.DeltaSystemRole
 import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper
 import uk.gov.communities.delta.auth.services.OrganisationNameAndCode
 import kotlin.test.Test
@@ -42,9 +43,9 @@ class MemberOfToDeltaRolesMapperTest {
 
         assertEquals(
             listOf(
-                MemberOfToDeltaRolesMapper.SystemRole("data-providers", listOf("dclg")),
-                MemberOfToDeltaRolesMapper.SystemRole("form-designers", listOf()),
-                MemberOfToDeltaRolesMapper.SystemRole("user", listOf("dclg")),
+                MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.DATA_PROVIDERS, listOf("dclg")),
+                MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.FORM_DESIGNERS, listOf()),
+                MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.USER, listOf("dclg")),
             ), result.systemRoles
         )
         assertEquals(
@@ -63,7 +64,7 @@ class MemberOfToDeltaRolesMapperTest {
             ).map { "datamart-delta-$it" }
         )
 
-        assertEquals(listOf(MemberOfToDeltaRolesMapper.SystemRole("data-providers", listOf())), result.systemRoles)
+        assertEquals(listOf(MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.DATA_PROVIDERS, listOf())), result.systemRoles)
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(emptyList(), result.accessGroups)
         assertEquals(emptyList(), result.organisations)
@@ -120,8 +121,8 @@ class MemberOfToDeltaRolesMapperTest {
 
         assertEquals(
             listOf(
-                MemberOfToDeltaRolesMapper.SystemRole("data-certifiers", listOf("E1234")),
-                MemberOfToDeltaRolesMapper.SystemRole("data-providers", listOf("dclg", "E1234")),
+                MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.DATA_CERTIFIERS, listOf("E1234")),
+                MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.DATA_PROVIDERS, listOf("dclg", "E1234")),
             ), result.systemRoles
         )
         assertEquals(emptyList(), result.externalRoles)
