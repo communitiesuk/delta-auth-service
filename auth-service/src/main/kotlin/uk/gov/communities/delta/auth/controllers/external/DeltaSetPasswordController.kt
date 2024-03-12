@@ -112,7 +112,7 @@ class DeltaSetPasswordController(
             is PasswordTokenService.ValidToken -> {
                 val userDN = String.format(ldapConfig.deltaUserDnFormat, tokenResult.userCN)
                 try {
-                    userService.setPassword(userDN, newPassword)
+                    userService.setPasswordAndEnable(userDN, newPassword)
                 } catch (e: Exception) {
                     logger.atError().addKeyValue("UserDN", userDN).log("Error setting password for user", e)
                     throw e

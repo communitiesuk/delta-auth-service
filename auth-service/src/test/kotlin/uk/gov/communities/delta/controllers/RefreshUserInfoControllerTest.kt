@@ -133,6 +133,7 @@ class RefreshUserInfoControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),
+                            mockk(relaxed = true),
                         )
                     }
                 }

@@ -11,7 +11,6 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.Before
@@ -64,14 +63,13 @@ class EditRolesControllerTest {
                     }
                     contentType(ContentType.Application.Json)
                     setBody("{\"roles\": [\"payments-reviewers\"]}")
-            }
-            }.apply {
-                assertEquals(HttpStatusCode.Forbidden, status)
-                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+                }
             }
         }.apply {
             assertEquals("illegal_role", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -217,6 +215,7 @@ class EditRolesControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                         )
                     }
                 }

@@ -126,14 +126,13 @@ class AdminEditUserControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                 }
-            }.apply {
-                assertEquals(HttpStatusCode.BadRequest, status)
-                coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             }
         }.apply {
             assertEquals("username_changed", errorCode)
+            assertEquals(HttpStatusCode.BadRequest, statusCode)
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -149,14 +148,13 @@ class AdminEditUserControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                 }
-            }.apply {
-                assertEquals(HttpStatusCode.BadRequest, status)
-                coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             }
         }.apply {
             assertEquals("no_existing_user", errorCode)
+            assertEquals(HttpStatusCode.BadRequest, statusCode)
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -172,14 +170,13 @@ class AdminEditUserControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                 }
-            }.apply {
-                assertEquals(HttpStatusCode.Unauthorized, status)
-                coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             }
         }.apply {
             assertEquals("forbidden", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -195,14 +192,13 @@ class AdminEditUserControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                 }
-            }.apply {
-                assertEquals(HttpStatusCode.Unauthorized, status)
-                coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             }
         }.apply {
             assertEquals("forbidden", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -218,14 +214,13 @@ class AdminEditUserControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                 }
-            }.apply {
-                assertEquals(HttpStatusCode.Unauthorized, status)
-                coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             }
         }.apply {
             assertEquals("forbidden", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -375,6 +370,7 @@ class AdminEditUserControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                         )

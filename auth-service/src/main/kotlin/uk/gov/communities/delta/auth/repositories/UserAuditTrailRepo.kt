@@ -21,6 +21,8 @@ class UserAuditTrailRepo {
         USER_CREATED_BY_ADMIN("user_created_by_admin"),
         SSO_USER_CREATED_BY_ADMIN("sso_user_created_by_admin"),
         USER_UPDATE("user_update"),
+        USER_ENABLE_BY_ADMIN("user_enable_by_admin"),
+        USER_DISABLE_BY_ADMIN("user_disable_by_admin"),
         ;
 
         companion object {

@@ -11,9 +11,7 @@ import uk.gov.communities.delta.auth.services.SetPasswordTokenService
 import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.helper.testServiceClient
 import java.sql.Timestamp
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class PasswordTokenServiceTest {
     @Test
@@ -186,7 +184,7 @@ class PasswordTokenServiceTest {
 
     @Test
     fun testPasswordNeverSetChecksForSetPasswordToken() = testSuspend {
-        val otherUserCN = "other" + userCN
+        val otherUserCN = "other-$userCN"
         var passwordSet = setPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
         assertFalse(passwordSet)
         resetPasswordTokenService.createToken(otherUserCN)
@@ -195,6 +193,18 @@ class PasswordTokenServiceTest {
         setPasswordTokenService.createToken(otherUserCN)
         passwordSet = setPasswordTokenService.passwordNeverSetForUserCN(otherUserCN)
         assertTrue(passwordSet)
+    }
+
+    @Test
+    fun testClearTokenForUserCn() = testSuspend {
+        val clearTokenUserCn = "clear-token-$userCN"
+        val token = setPasswordTokenService.createToken(clearTokenUserCn)
+
+        assertIs<PasswordTokenService.ValidToken>(setPasswordTokenService.validateToken(token, clearTokenUserCn))
+
+        setPasswordTokenService.clearTokenForUserCn(clearTokenUserCn)
+
+        assertIsNot<PasswordTokenService.ValidToken>(setPasswordTokenService.validateToken(token, clearTokenUserCn))
     }
 
     companion object {

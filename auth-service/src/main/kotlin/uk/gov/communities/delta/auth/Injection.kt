@@ -301,4 +301,12 @@ class Injection(
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper
     )
+
+    fun adminEnableDisableUserController() = AdminEnableDisableUserController(
+        azureADSSOConfig,
+        userLookupService,
+        userService,
+        setPasswordTokenService,
+        userAuditService,
+    )
 }
