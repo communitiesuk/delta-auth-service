@@ -6,19 +6,15 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.auth.*
-import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import io.ktor.server.routing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
-import org.junit.AfterClass
-import org.junit.Assert
-import org.junit.Before
-import org.junit.BeforeClass
+import org.junit.*
 import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.controllers.internal.EditRolesController
+import uk.gov.communities.delta.auth.controllers.internal.EditAccessGroupsController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -28,71 +24,69 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class EditRolesControllerTest {
+class EditAccessGroupsControllerTest {
     @Test
-    fun testEditRolesForUser() = testSuspend {
-        testClient.post("/bearer/roles") {
+    fun testUserCanUpdateAccessGroups() = testSuspend {
+        testClient.post("/bearer/access-groups") {
             headers {
                 append("Authorization", "Bearer ${externalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"roles\": [\"data-providers\"]}")
+            setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": [], \"datamart-delta-access-group-3\": []}}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers-orgCode2", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers-orgCode2", any(), null) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-1-orgCode2", any(), null) }
+            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-2", any(), null) }
+            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-2-orgCode1", any(), null) }
+            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-3", any(), null) }
+            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-3-orgCode2", any(), null) }
+            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-1-orgCode3", any(), null) }
             confirmVerified(groupService)
         }
     }
 
     @Test
-    fun testExternalUserCannotRequestInternalRole() = testSuspend {
+    fun internalUserCannotUpdateGroupsWithEnableInternalUserFalse() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/roles") {
+                testClient.post("/bearer/access-groups") {
+                    headers {
+                        append("Authorization", "Bearer ${internalUserSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-2\": [\"orgCode1\"]}}")
+                }.apply {
+                    assertEquals(HttpStatusCode.Forbidden, status)
+                    coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+                    coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+                    confirmVerified(groupService)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun userCannotUpdateGroupsWithEnableOnlineRegistrationFalse() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/access-groups") {
                     headers {
                         append("Authorization", "Bearer ${externalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody("{\"roles\": [\"payments-reviewers\"]}")
+                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-3\": [\"orgCode1\"]}}")
+                }.apply {
+                    assertEquals(HttpStatusCode.Forbidden, status)
+                    coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+                    coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+                    confirmVerified(groupService)
+                }
             }
-            }.apply {
-                assertEquals(HttpStatusCode.Forbidden, status)
-                coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
-            }
-        }.apply {
-            assertEquals("illegal_role", errorCode)
-        }
-    }
-
-    @Test
-    fun testInternalUserCanRequestInternalRole() = testSuspend {
-        testClient.post("/bearer/roles") {
-            headers {
-                append("Authorization", "Bearer ${internalUserSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-            }
-            contentType(ContentType.Application.Json)
-            setBody("{\"roles\": [\"payments-reviewers\"]}")
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers-orgCode2", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers-orgCode2", any(), null) }
-            confirmVerified(groupService)
         }
     }
 
@@ -109,9 +103,9 @@ class EditRolesControllerTest {
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
         )
         coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
-            AccessGroup("access-group-1", null, null, true, false),
-            AccessGroup("access-group-2", "statistics", null, true, false),
-            AccessGroup("access-group-3", null, null, true, false),
+            AccessGroup("access-group-1", null, null, true, true),
+            AccessGroup("access-group-2", null, null, true, false),
+            AccessGroup("access-group-3", null, null, false, true),
         )
         coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
         coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
@@ -122,7 +116,7 @@ class EditRolesControllerTest {
     companion object {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
-        private lateinit var controller: EditRolesController
+        private lateinit var controller: EditAccessGroupsController
 
         private val oauthSessionService = mockk<OAuthSessionService>()
 
@@ -141,17 +135,14 @@ class EditRolesControllerTest {
                 DeltaConfig.DATAMART_DELTA_USER,
                 "datamart-delta-user-orgCode1",
                 "datamart-delta-user-orgCode2",
-                "datamart-delta-data-certifiers",
-                "datamart-delta-data-certifiers-orgCode1",
-                "datamart-delta-data-certifiers-orgCode2",
+                "datamart-delta-user-orgCode3",
+                "datamart-delta-access-group-1",
+                "datamart-delta-access-group-1-orgCode1",
+                "datamart-delta-access-group-1-orgCode3",
                 "datamart-delta-access-group-2",
+                "datamart-delta-access-group-2-orgCode1",
                 "datamart-delta-access-group-3",
-                "datamart-delta-access-group-2-orgCode2",
-                "datamart-delta-access-group-3-orgCode1",
-                "datamart-delta-delegate-access-group-3",
-                "datamart-delta-role-1",
-                "datamart-delta-role-1-orgCode1",
-                "datamart-delta-role-1-orgCode2",
+                "datamart-delta-access-group-3-orgCode2",
             ),
             mobile = "0123456789",
             telephone = "0987654321",
@@ -187,7 +178,7 @@ class EditRolesControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            controller = EditRolesController(
+            controller = EditAccessGroupsController(
                 userLookupService,
                 groupService,
                 organisationService,
@@ -216,8 +207,8 @@ class EditRolesControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),
-                            controller,
                             mockk(relaxed = true),
+                            controller,
                         )
                     }
                 }
