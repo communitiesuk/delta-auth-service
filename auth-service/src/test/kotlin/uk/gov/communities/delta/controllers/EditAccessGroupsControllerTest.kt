@@ -35,15 +35,132 @@ class EditAccessGroupsControllerTest {
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": [], \"datamart-delta-access-group-3\": []}}")
+            setBody(
+                "{" +
+                        "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": [], \"datamart-delta-access-group-3\": []}" +
+                        ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\", \"orgCode3\"]" +
+                        "}"
+            )
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-1-orgCode2", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-2", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-2-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-3", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-3-orgCode2", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-access-group-1-orgCode3", any(), null) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-1-orgCode2",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-2",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-2-orgCode1",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-3",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-3-orgCode2",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-1-orgCode3",
+                    any(),
+                    null
+                )
+            }
+            confirmVerified(groupService)
+        }
+    }
+    @Test
+    fun testAccessGroupsForUnselectedOrgsAreNotRemoved() = testSuspend {
+        testClient.post("/bearer/access-groups") {
+            headers {
+                append("Authorization", "Bearer ${externalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(
+                "{" +
+                        "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": [], \"datamart-delta-access-group-3\": []}" +
+                        ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\"]" +
+                        "}"
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-1-orgCode2",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-2",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-2-orgCode1",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-3",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-3-orgCode2",
+                    any(),
+                    null
+                )
+            }
             confirmVerified(groupService)
         }
     }
@@ -58,7 +175,7 @@ class EditAccessGroupsControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-2\": [\"orgCode1\"]}}")
+                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-2\": [\"orgCode1\"]}, \"userSelectedOrgs\": [\"orgCode1\"]}")
                 }.apply {
                     assertEquals(HttpStatusCode.Forbidden, status)
                     coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
@@ -79,7 +196,7 @@ class EditAccessGroupsControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-3\": [\"orgCode1\"]}}")
+                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-3\": [\"orgCode1\"]}, \"userSelectedOrgs\": [\"orgCode1\"]}")
                 }.apply {
                     assertEquals(HttpStatusCode.Forbidden, status)
                     coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
@@ -93,8 +210,18 @@ class EditAccessGroupsControllerTest {
     @Before
     fun resetMocks() {
         clearAllMocks()
-        coEvery { oauthSessionService.retrieveFomAuthToken(externalUserSession.authToken, client) } answers { externalUserSession }
-        coEvery { oauthSessionService.retrieveFomAuthToken(internalUserSession.authToken, client) } answers { internalUserSession }
+        coEvery {
+            oauthSessionService.retrieveFomAuthToken(
+                externalUserSession.authToken,
+                client
+            )
+        } answers { externalUserSession }
+        coEvery {
+            oauthSessionService.retrieveFomAuthToken(
+                internalUserSession.authToken,
+                client
+            )
+        } answers { internalUserSession }
         coEvery { userLookupService.lookupUserByCn(externalUser.cn) } returns externalUser
         coEvery { userLookupService.lookupUserByCn(internalUser.cn) } returns internalUser
         coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
@@ -107,10 +234,10 @@ class EditAccessGroupsControllerTest {
             AccessGroup("access-group-2", null, null, true, false),
             AccessGroup("access-group-3", null, null, false, true),
         )
-        coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
-        coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
-        coEvery { groupService.addUserToGroup(internalUser.cn, externalUser.dn, any(), any(), null)} just runs
-        coEvery { groupService.removeUserFromGroup(internalUser.cn, externalUser.dn, any(), any(), null)} just runs
+        coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), null) } just runs
+        coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), null) } just runs
+        coEvery { groupService.addUserToGroup(internalUser.cn, externalUser.dn, any(), any(), null) } just runs
+        coEvery { groupService.removeUserFromGroup(internalUser.cn, externalUser.dn, any(), any(), null) } just runs
     }
 
     companion object {
@@ -172,8 +299,10 @@ class EditAccessGroupsControllerTest {
             telephone = "0987654321",
         )
 
-        private val externalUserSession = OAuthSession(1, externalUser.cn, client, "externalUserToken", Instant.now(), "trace", false)
-        private val internalUserSession = OAuthSession(1, internalUser.cn, client, "internalUserToken", Instant.now(), "trace", false)
+        private val externalUserSession =
+            OAuthSession(1, externalUser.cn, client, "externalUserToken", Instant.now(), "trace", false)
+        private val internalUserSession =
+            OAuthSession(1, internalUser.cn, client, "internalUserToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic
