@@ -53,25 +53,31 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
     val ssoUserCreatedByAdminAudit = insertDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.SSO_USER_CREATED_BY_ADMIN)
     val userUpdateByAdminAudit = insertDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.USER_UPDATE)
     val userUpdateAudit = insertAnonDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.USER_UPDATE)
+    val userEnableAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.USER_ENABLE_BY_ADMIN)
+    val userDisableAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.USER_DISABLE_BY_ADMIN)
 
+    // A user doing something to their own account with no extra data
     private fun insertAnonSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall) -> Unit {
         return { userCn: String, call: ApplicationCall ->
             insertAuditRow(auditAction, userCn, null, call.callId!!, "{}")
         }
     }
 
+    // A user altering changing someone else's account with no extra data
     private fun insertSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, String, ApplicationCall) -> Unit {
         return { userCn: String, editingUserCn: String, call: ApplicationCall ->
             insertAuditRow(auditAction, userCn, editingUserCn, call.callId!!, "{}")
         }
     }
 
+    // A user doing something to their own account
     private fun insertAnonDetailedAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall, String) -> Unit {
         return { userCn: String, call: ApplicationCall, encodedActionData: String ->
             insertAuditRow(auditAction, userCn, null, call.callId!!, encodedActionData)
         }
     }
 
+    // A user altering changing someone else's account
     private fun insertDetailedAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, String, ApplicationCall, String) -> Unit {
         return { userCn: String, editingUserCn: String, call: ApplicationCall, encodedActionData: String ->
             insertAuditRow(auditAction, userCn, editingUserCn, call.callId!!, encodedActionData)

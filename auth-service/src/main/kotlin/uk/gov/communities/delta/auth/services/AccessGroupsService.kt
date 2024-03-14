@@ -36,7 +36,7 @@ class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, 
                 ctx.searchPaged(config.accessGroupContainerDn, "(objectClass=group)", searchControls(), PAGE_SIZE) {
                     val cn = it.get("cn").get() as String
 
-                    if (DELTA_SYSTEM_ROLES.contains(cn) || DELTA_EXTERNAL_ROLES.contains(cn)) {
+                    if (DeltaSystemRole.ROLE_NAME_MAP.containsKey(cn) || DELTA_EXTERNAL_ROLES.contains(cn)) {
                         null
                     } else {
                         val info = it.getInfo()

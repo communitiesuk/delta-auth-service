@@ -204,6 +204,7 @@ fun Route.internalRoutes(injection: Injection) {
     val adminGetUserController = injection.adminGetUserController()
     val editRolesController = injection.editRolesController()
     val editAccessGroupsController = injection.editAccessGroupsController()
+    val adminEnableDisableUserController = injection.adminEnableDisableUserController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController)
@@ -219,6 +220,7 @@ fun Route.internalRoutes(injection: Injection) {
             adminGetUserController,
             editRolesController,
             editAccessGroupsController,
+            adminEnableDisableUserController,
         )
     }
 }
@@ -238,6 +240,7 @@ fun Route.bearerTokenRoutes(
     adminGetUserController: AdminGetUserController,
     editRolesController: EditRolesController,
     editAccessGroupsController: EditAccessGroupsController,
+    adminEnableDisableUserController: AdminEnableDisableUserController,
 ) {
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
@@ -267,6 +270,12 @@ fun Route.bearerTokenRoutes(
             route("/bearer/access-groups") {
                 editAccessGroupsController.route(this)
             }
+            post("/bearer/admin/enable-user") {
+                adminEnableDisableUserController.enableUser(call)
+            }
+            post("/bearer/admin/disable-user") {
+                adminEnableDisableUserController.disableUser(call)
+            }
         }
     }
 }
@@ -287,3 +296,4 @@ fun Route.serviceUserRoutes(samlTokenController: GenerateSAMLTokenController) {
         }
     }
 }
+

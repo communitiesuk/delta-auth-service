@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.config
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.spi.LoggingEventBuilder
+import uk.gov.communities.delta.auth.services.DeltaSystemRole
 
 @Serializable
 data class AzureADSSOClient(
@@ -49,10 +50,10 @@ class AzureADSSOConfig(val ssoClients: List<AzureADSSOClient>) {
         }
 
         val DELTA_ADMIN_ROLES: List<String> = listOf(
-            DeltaConfig.DATAMART_DELTA_ADMIN,
-            DeltaConfig.DATAMART_DELTA_DATASET_ADMINS,
-            DeltaConfig.DATAMART_DELTA_LOCAL_ADMINS,
-            DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN,
+            DeltaSystemRole.ADMIN.adCn(),
+            DeltaSystemRole.DATASET_ADMINS.adCn(),
+            DeltaSystemRole.READ_ONLY_ADMIN.adCn(),
+            DeltaSystemRole.LOCAL_ADMINS.adCn(),
         )
     }
 

@@ -131,7 +131,7 @@ class AdminGetUserControllerTest {
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val readOnlyAdminUser =
-            testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN))
+            testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaSystemRole.READ_ONLY_ADMIN.adCn()))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)
@@ -247,6 +247,7 @@ class AdminGetUserControllerTest {
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                             controller,
+                            mockk(relaxed = true),
                             mockk(relaxed = true),
                             mockk(relaxed = true),
                         )

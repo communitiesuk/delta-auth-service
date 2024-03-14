@@ -26,6 +26,27 @@ class SetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource
         }
     }
 
+    suspend fun clearTokenForUserCn(userCN: String) {
+        withContext(Dispatchers.IO) {
+            if (deleteForUser(userCN)) {
+                logger.info("Cleared set password token for user {}", userCN)
+            }
+        }
+    }
+
+    @Blocking
+    private fun deleteForUser(userCN: String): Boolean {
+        return dbPool.useConnectionBlocking("Delete token for user") {
+            val stmt = it.prepareStatement(
+                "DELETE FROM $tableName WHERE user_cn = ?",
+            )
+            stmt.setString(1, userCN)
+            val result = stmt.executeUpdate()
+            it.commit()
+            result == 1
+        }
+    }
+
     @Blocking
     private fun setPasswordTokenExistsForUserCN(userCN: String): Boolean {
         return dbPool.useConnectionBlocking("Check if set password token exists") {
@@ -47,7 +68,7 @@ class ResetPasswordTokenService(dbPool: DbPool, timeSource: TimeSource) : Passwo
 }
 
 abstract class PasswordTokenService(private val dbPool: DbPool, private val timeSource: TimeSource) {
-    private val logger = LoggerFactory.getLogger(javaClass)
+    protected val logger = LoggerFactory.getLogger(javaClass)
     protected abstract val tableName: String
 
     sealed class TokenResult

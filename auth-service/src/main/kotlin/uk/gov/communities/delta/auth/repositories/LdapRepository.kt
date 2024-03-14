@@ -1,12 +1,14 @@
 package uk.gov.communities.delta.auth.repositories
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDString
 import java.lang.Integer.parseInt
+import java.time.Instant
 import java.util.*
 import javax.naming.Context
 import javax.naming.NamingException
@@ -79,6 +81,7 @@ class LdapRepository(
                     "description", // Delta "Reason for access"
                     "comment",
                     "st",
+                    "pwdLastSet",
                 )
             )
 
@@ -94,6 +97,7 @@ class LdapRepository(
         val reasonForAccess = attributes.get("description")?.get() as String?
         val comment = attributes.get("comment")?.get() as String?
         val notificationStatus = attributes.get("st")?.get() as String?
+        val passwordLastSet = attributes.getPwdLastSet()
         val memberOfGroupDNs = attributes.getMemberOfList()
         val accountEnabled = attributes.getAccountEnabled()
         val mangledDeltaObjectGuid = when (objectGUIDMode) {
@@ -127,6 +131,7 @@ class LdapRepository(
             reasonForAccess = reasonForAccess,
             comment = comment,
             notificationStatus = notificationStatus,
+            passwordLastSet = passwordLastSet,
         )
     }
 
@@ -140,6 +145,16 @@ class LdapRepository(
         val userAccountControl = parseInt(userAccountControlDecimal)
         // https://learn.microsoft.com/en-us/troubleshoot/windows-server/identity/useraccountcontrol-manipulate-account-properties
         return userAccountControl and (1 shl 1) == 0
+    }
+
+    private fun Attributes.getPwdLastSet(): Instant? {
+        val pwdLastSet = (get("pwdLastSet")?.get() as String?) ?: return null
+        if (pwdLastSet == "0") return null
+        return win32FileTimeToInstant(pwdLastSet.toLong())
+    }
+
+    private fun win32FileTimeToInstant(fileTime: Long): Instant {
+        return Instant.ofEpochMilli(fileTime / 10000 - 11644473600000L)
     }
 }
 
@@ -181,6 +196,8 @@ data class LdapUser(
     val reasonForAccess: String?,
     val comment: String?,
     val notificationStatus: String?,
+    // Not required by Delta, but used internally
+    @Transient val passwordLastSet: Instant? = null,
 )
 
 fun LdapUser.isInternal() : Boolean {
