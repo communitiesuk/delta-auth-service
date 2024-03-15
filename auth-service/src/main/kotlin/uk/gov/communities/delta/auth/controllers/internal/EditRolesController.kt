@@ -27,60 +27,41 @@ class EditRolesController(
         route.post { updateUserRoles(call) }
     }
 
-    // This endpoint takes a list of roles and adds the user to any roles in the list they have permission to add
-    // themselves to and are not already members of, while removing them from any roles they have permission to add
-    // themselves to but did not include in the list
+    // This endpoint takes a list of roles to add and remove
+    // The user must have permission to add/remove themselves from the roles
+    // Trying to add a role the user already has, or remove one they don't, has no effect
     private suspend fun updateUserRoles(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
+        val request = call.receive<DeltaUserRolesRequest>()
+
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
-        logger.atInfo().log("Updating roles for user ${session.userCn}")
-        val userInternal = callingUser.isInternal()
+        logger.atInfo().log("Request to update own roles for user ${session.userCn}")
 
-        val requestedRoles = call.receive<DeltaUserRoles>().roles.map { reqRoleStr ->
-            DeltaSystemRole.entries.find { it.adRoleName == reqRoleStr }
-                ?: throw ApiError(HttpStatusCode.BadRequest, "bad_request", "Unknown role $reqRoleStr")
-        }
+        checkRequestedRolesArePermitted(request, callingUser)
 
-        val allowedClassifications = listOf(
-            DeltaSystemRoleClassification.EXTERNAL_AUDIT,
-            DeltaSystemRoleClassification.EXTERNAL,
-        ) + if (userInternal) listOf(DeltaSystemRoleClassification.INTERNAL) else emptyList()
-
-        val allowedRoles = DeltaSystemRole.entries.filter { allowedClassifications.contains(it.classification) }
-        val allowedRoleNames = allowedRoles.map { it.adRoleName }
-
-        if (!allowedRoles.containsAll(requestedRoles)) {
-            logger.atError().log("External user attempted to give self internal-only role")
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "illegal_role",
-                "Attempted to assign a user a role they are not permitted",
-            )
-        }
-
-        val mapperResult = memberOfToDeltaRolesMapperFactory(
+        val currentUserPermissions = memberOfToDeltaRolesMapperFactory(
             callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
         ).map(callingUser.memberOfCNs)
-        val systemRoles = mapperResult.systemRoles.filter { allowedRoleNames.contains(it.role.adRoleName) }
-        val userOrgs = mapperResult.organisations
+        val systemRoles = currentUserPermissions.systemRoles
+        val userOrgs = currentUserPermissions.organisations
 
-        val rolesToAdd = requestedRoles.map { it }.toSet().minus(systemRoles.map { it.role }.toSet())
+        val rolesToAdd = request.addToRoles.toSet().minus(systemRoles.map { it.role }.toSet())
         val groupCNsToAdd = rolesToAdd.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
                 rolesToAdd.map { it.adCn() }
-        logger.atInfo().log("Granting user ${session.userCn} roles $groupCNsToAdd")
+        val groupCNsToAddFilteredForNonMembership = groupCNsToAdd.filter { !callingUser.memberOfCNs.contains(it) }
 
-        groupCNsToAdd
+        val rolesToRemove = request.removeFromRoles
+        val groupCNsToRemove = rolesToRemove.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
+                rolesToRemove.map { it.adCn() }
+        val groupCNsToRemoveFilteredForMembership = groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
+
+        logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAdd")
+        groupCNsToAddFilteredForNonMembership
             .forEach {
                 groupService.addUserToGroup(callingUser.cn, callingUser.dn, it, call, null)
             }
 
-        val rolesToRemove = systemRoles.map { it.role }.toSet().minus(requestedRoles.toSet())
-        val groupCNsToRemove =
-            rolesToRemove.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
-                    rolesToRemove.map { it.adCn() }
-        val groupCNsToRemoveFilteredForMembership = groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
-        logger.atInfo().log("Revoking user ${session.userCn} roles $groupCNsToRemoveFilteredForMembership")
-
+        logger.atInfo().log("Revoking user ${session.userCn} groups $groupCNsToRemoveFilteredForMembership")
         groupCNsToRemoveFilteredForMembership
             .forEach {
                 groupService.removeUserFromGroup(callingUser.cn, callingUser.dn, it, call, null)
@@ -89,12 +70,45 @@ class EditRolesController(
         return call.respond(mapOf("message" to "Roles have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
     }
 
+    private fun checkRequestedRolesArePermitted(request: DeltaUserRolesRequest, callingUser: LdapUser) {
+        val userIsInternal = callingUser.isInternal()
+        val allowedRoles = allowedRoles(userIsInternal)
+
+        request.addToRoles.firstOrNull { !allowedRoles.contains(it) }?.let {
+            logger.atError().log("User not permitted to add self to role {} (internal: {})", it.adRoleName, userIsInternal)
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "illegal_role",
+                "Not permitted to add role ${it.adRoleName}",
+            )
+        }
+        request.removeFromRoles.firstOrNull { !allowedRoles.contains(it) }?.let {
+            logger.atError()
+                .log("User not permitted to remove self from role {} (internal: {})", it.adRoleName, userIsInternal)
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "illegal_role",
+                "Not permitted to remove role ${it.adRoleName}",
+            )
+        }
+    }
+
+    private fun allowedRoles(userIsInternal: Boolean): List<DeltaSystemRole> {
+        val allowedClassifications = listOf(
+            DeltaSystemRoleClassification.EXTERNAL_AUDIT,
+            DeltaSystemRoleClassification.EXTERNAL,
+        ) + if (userIsInternal) listOf(DeltaSystemRoleClassification.INTERNAL) else emptyList()
+
+        return DeltaSystemRole.entries.filter { allowedClassifications.contains(it.classification) }
+    }
+
     private fun LdapUser.isInternal() : Boolean {
         return this.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_INTERNAL_USER)
     }
 
     @Serializable
-    data class DeltaUserRoles(
-        val roles: List<String>,
+    data class DeltaUserRolesRequest(
+        val addToRoles: Set<DeltaSystemRole>,
+        val removeFromRoles: Set<DeltaSystemRole>,
     )
 }
