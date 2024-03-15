@@ -55,7 +55,7 @@ class EditRolesController(
                 rolesToRemove.map { it.adCn() }
         val groupCNsToRemoveFilteredForMembership = groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
 
-        logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAdd")
+        logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAddFilteredForNonMembership")
         groupCNsToAddFilteredForNonMembership
             .forEach {
                 groupService.addUserToGroup(callingUser.cn, callingUser.dn, it, call, null)
