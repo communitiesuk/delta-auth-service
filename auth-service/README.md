@@ -186,7 +186,7 @@ curl 'http://localhost:8088/auth-internal/bearer/user-audit?cn=delta.admin' \
 curl -X POST 'http://localhost:8088/auth-internal/bearer/roles' \
   --header 'Authorization: Bearer ABC123' \
   --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret' \
-  -d '{"roles": ["data-providers"]}'
+  -d '{"addToRoles": ["data-providers"], "removeFromRoles": []}'
 ```
 
 ## GOV.UK Frontend
