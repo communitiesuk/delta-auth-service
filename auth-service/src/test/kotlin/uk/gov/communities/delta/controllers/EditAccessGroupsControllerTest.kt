@@ -15,6 +15,7 @@ import org.junit.*
 import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.EditAccessGroupsController
+import uk.gov.communities.delta.auth.controllers.internal.EditAccessGroupsController.*
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -25,6 +26,7 @@ import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class EditAccessGroupsControllerTest {
     @Test
@@ -37,7 +39,10 @@ class EditAccessGroupsControllerTest {
             contentType(ContentType.Application.Json)
             setBody(
                 "{" +
-                        "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": [], \"datamart-delta-access-group-3\": []}" +
+                        "\"accessGroupsRequest\": {" +
+                        "\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], " +
+                        "\"datamart-delta-access-group-2\": [\"orgCode2\"], " +
+                        "\"datamart-delta-access-group-3\": []}" +
                         ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\", \"orgCode3\"]" +
                         "}"
             )
@@ -53,10 +58,19 @@ class EditAccessGroupsControllerTest {
                 )
             }
             coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-2-orgCode2",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
                     externalUser.cn,
                     externalUser.dn,
-                    "datamart-delta-access-group-2",
+                    "datamart-delta-access-group-1-orgCode3",
                     any(),
                     null
                 )
@@ -88,18 +102,10 @@ class EditAccessGroupsControllerTest {
                     null
                 )
             }
-            coVerify(exactly = 1) {
-                groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-1-orgCode3",
-                    any(),
-                    null
-                )
-            }
             confirmVerified(groupService)
         }
     }
+
     @Test
     fun testAccessGroupsForUnselectedOrgsAreNotRemoved() = testSuspend {
         testClient.post("/bearer/access-groups") {
@@ -163,6 +169,60 @@ class EditAccessGroupsControllerTest {
             }
             confirmVerified(groupService)
         }
+    }
+
+    @Test
+    fun accessGroupIsAddedIfUserIsntAlreadyMember() = testSuspend {
+        val accessGroupsRequestMap = mapOf("ag1" to listOf("org1"))
+        val currentAccessGroupsMap = mapOf<String, List<String>>()
+        val selectedOrgs = setOf("org1")
+        val actions =
+            controller.generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
+        assertTrue {
+            actions.filter {
+                it.getActiveDirectoryString()
+                    .equals("datamart-delta-ag1-org1") && it is AddAccessGroupOrganisationAction
+            }.size == 1
+        }
+        assertTrue {
+            actions.filter {
+                it.getActiveDirectoryString()
+                    .equals("datamart-delta-ag1") && it is AddAccessGroupAction
+            }.size == 1
+        }
+        assertTrue { actions.size == 2 }
+    }
+
+    @Test
+    fun accessGroupIsRemovedIfUserIsMemberOfNoOrgsForIt() = testSuspend {
+        val accessGroupsRequestMap = mapOf("ag1" to listOf<String>())
+        val currentAccessGroupsMap = mapOf("ag1" to listOf("org1"))
+        val selectedOrgs = setOf("org1")
+        val actions =
+            controller.generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
+        assertTrue {
+            actions.filter {
+                it.getActiveDirectoryString()
+                    .equals("datamart-delta-ag1-org1") && it is RemoveAccessGroupOrganisationAction
+            }.size == 1
+        }
+        assertTrue {
+            actions.filter {
+                it.getActiveDirectoryString()
+                    .equals("datamart-delta-ag1") && it is RemoveAccessGroupAction
+            }.size == 1
+        }
+        assertTrue { actions.size == 2 }
+    }
+
+    @Test
+    fun accessGroupIsNotRemovedIfUserIsMemberInUnselectedOrg() = testSuspend {
+        val accessGroupsRequestMap = mapOf("ag1" to listOf<String>())
+        val currentAccessGroupsMap = mapOf("ag1" to listOf("org2"))
+        val selectedOrgs = setOf("org1")
+        val actions =
+            controller.generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
+        assertTrue { actions.isEmpty() }
     }
 
     @Test
@@ -233,6 +293,11 @@ class EditAccessGroupsControllerTest {
             AccessGroup("access-group-1", null, null, true, true),
             AccessGroup("access-group-2", null, null, true, false),
             AccessGroup("access-group-3", null, null, false, true),
+        )
+        coEvery { organisationService.findAllByDomain(externalUser.email!!) } returns listOf(
+            Organisation("orgCode1", "Organisation Name 1"),
+            Organisation("orgCode2", "Organisation Name 2"),
+            Organisation("orgCode3", "Organisation Name 3"),
         )
         coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), null) } just runs
         coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), null) } just runs

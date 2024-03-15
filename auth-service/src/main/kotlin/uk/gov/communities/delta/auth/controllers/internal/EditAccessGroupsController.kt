@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.repositories.isInternal
 import uk.gov.communities.delta.auth.services.*
 
@@ -33,18 +34,66 @@ class EditAccessGroupsController(
     private suspend fun updateUserAccessGroups(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
-        logger.atInfo().log("Updating access groups for user ${session.userCn}")
-        val userInternal = callingUser.isInternal()
-
-        val requestBodyObject = call.receive<DeltaUserAccessGroups>()
-        val rawAccessGroupsRequestMap = requestBodyObject.accessGroupsRequest
-
-        val accessGroupsRequestMap = stripDatamartPrefixFromKeys(rawAccessGroupsRequestMap)
-
-        val accessGroupsRequested = accessGroupsRequestMap.filter { m -> m.value.isNotEmpty() }
-
+        logger.atInfo().log("Updating access groups for user {}", session.userCn)
+        val userIsInternal = callingUser.isInternal()
         val allAccessGroups = accessGroupsService.getAllAccessGroups().associateBy { it.name }
 
+        val requestBodyObject = call.receive<DeltaUserAccessGroups>()
+        val selectedOrgs = requestBodyObject.userSelectedOrgs.toSet()
+        val accessGroupsRequestMap = stripDatamartPrefixFromKeys(requestBodyObject.accessGroupsRequest)
+        val accessGroupsRequested = accessGroupsRequestMap.filter { m -> m.value.isNotEmpty() }
+
+        validateRequest(accessGroupsRequested, selectedOrgs, allAccessGroups, userIsInternal, callingUser)
+
+
+        val deltaRolesForUser = memberOfToDeltaRolesMapperFactory(
+            callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
+        ).map(callingUser.memberOfCNs)
+        val currentAccessGroups = deltaRolesForUser.accessGroups.associateBy({ it.name },
+            { it.organisationIds })
+
+        val accessGroupActions = generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroups, selectedOrgs)
+
+        executeAccessGroupActions(accessGroupActions, session, callingUser, call)
+
+        return call.respond(mapOf("message" to "Access groups have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
+    }
+
+    private suspend fun validateRequest(
+        accessGroupsRequested: Map<String, List<String>>,
+        selectedOrgs: Set<String>,
+        allAccessGroups: Map<String, AccessGroup>,
+        userIsInternal: Boolean,
+        callingUser: LdapUser
+    ) {
+        validateAccessGroupRequest(accessGroupsRequested, allAccessGroups, selectedOrgs, userIsInternal)
+        validateOrganisationRequest(callingUser, selectedOrgs)
+    }
+
+    private suspend fun validateOrganisationRequest(
+        callingUser: LdapUser,
+        selectedOrgs: Set<String>
+    ) {
+        val userDomainOrgs =
+            if (callingUser.email == null) listOf() else organisationService.findAllByDomain(callingUser.email)
+                .map { it.code }
+        for (org in selectedOrgs) {
+            if (!userDomainOrgs.contains(org)) {
+                throw ApiError(
+                    HttpStatusCode.Forbidden,
+                    "external_user_non_online_registration_group",
+                    "User attempted to assign self to an organisation not in their domain: $org",
+                )
+            }
+        }
+    }
+
+    private fun validateAccessGroupRequest(
+        accessGroupsRequested: Map<String, List<String>>,
+        allAccessGroups: Map<String, AccessGroup>,
+        selectedOrgs: Set<String>,
+        userIsInternal: Boolean
+    ) {
         for (requestedAccessGroup in accessGroupsRequested) {
             val accessGroupData = allAccessGroups.getOrElse(requestedAccessGroup.key) {
                 throw ApiError(
@@ -55,7 +104,7 @@ class EditAccessGroupsController(
                 )
             }
 
-            if (userInternal && !accessGroupData.enableInternalUser) {
+            if (userIsInternal && !accessGroupData.enableInternalUser) {
                 throw ApiError(
                     HttpStatusCode.Forbidden,
                     "internal_user_non_internal_group",
@@ -64,7 +113,7 @@ class EditAccessGroupsController(
                 )
             }
 
-            if (!userInternal && !accessGroupData.enableOnlineRegistration) {
+            if (!userIsInternal && !accessGroupData.enableOnlineRegistration) {
                 throw ApiError(
                     HttpStatusCode.Forbidden,
                     "external_user_non_online_registration_group",
@@ -72,18 +121,25 @@ class EditAccessGroupsController(
                             + requestedAccessGroup.key,
                 )
             }
+
+            for (requestedGroupOrg in requestedAccessGroup.value) {
+                if (!selectedOrgs.contains(requestedGroupOrg)) {
+                    throw ApiError(
+                        HttpStatusCode.Forbidden,
+                        "external_user_non_online_registration_group",
+                        "Attempted to assign user access group an organisation not in their selected organisations: $requestedGroupOrg"
+                    )
+                }
+            }
         }
+    }
 
-        val mapperResult = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
-        ).map(callingUser.memberOfCNs)
-
-        val currentAccessGroups = mapperResult.accessGroups.associateBy({ it.name },
-            { it.organisationIds })
-
+    public fun generateAccessGroupActionList(
+        accessGroupsRequestMap: Map<String, List<String>>,
+        currentAccessGroups: Map<String, List<String>>,
+        selectedOrgs: Set<String>
+    ): MutableList<AccessGroupAction> {
         val accessGroupActions = mutableListOf<AccessGroupAction>()
-
-        val selectedOrgs = requestBodyObject.userSelectedOrgs
 
         for (accessGroup in accessGroupsRequestMap) {
             val currentOrganisations = currentAccessGroups[accessGroup.key]
@@ -115,10 +171,19 @@ class EditAccessGroupsController(
                 }
             }
         }
+        return accessGroupActions
+    }
 
+    private suspend fun executeAccessGroupActions(
+        accessGroupActions: MutableList<AccessGroupAction>,
+        session: OAuthSession,
+        callingUser: LdapUser,
+        call: ApplicationCall
+    ) {
         for (action in accessGroupActions) {
             if (action is AddAccessGroupAction || action is AddAccessGroupOrganisationAction) {
-                logger.atInfo().log("Adding user ${session.userCn} to access group ${action.getActiveDirectoryString()}")
+                logger.atInfo()
+                    .log("Adding user {} to access group {}", session.userCn, action.getActiveDirectoryString())
                 groupService.addUserToGroup(
                     callingUser.cn,
                     callingUser.dn,
@@ -127,7 +192,8 @@ class EditAccessGroupsController(
                     null
                 )
             } else if (action is RemoveAccessGroupAction || action is RemoveAccessGroupOrganisationAction) {
-                logger.atInfo().log("Removing user ${session.userCn} from access group ${action.getActiveDirectoryString()}")
+                logger.atInfo()
+                    .log("Removing user {} from access group {}", session.userCn, action.getActiveDirectoryString())
                 groupService.removeUserFromGroup(
                     callingUser.cn,
                     callingUser.dn,
@@ -137,8 +203,6 @@ class EditAccessGroupsController(
                 )
             }
         }
-
-        return call.respond(mapOf("message" to "Access groups have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
     }
 
     private fun stripDatamartPrefixFromKeys(prefixedMap: Map<String, List<String>>): Map<String, List<String>> {
@@ -149,7 +213,7 @@ class EditAccessGroupsController(
         return newMap.toMap()
     }
 
-    private sealed class AccessGroupAction(
+    sealed class AccessGroupAction(
         val accessGroupName: String,
         val organisationCode: String?,
     ) {
@@ -157,13 +221,17 @@ class EditAccessGroupsController(
                 if (organisationCode == null) "" else "-$organisationCode"
     }
 
-    private class AddAccessGroupAction(accessGroupName: String) : AccessGroupAction(accessGroupName, null)
-    private class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
+    open class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
         AccessGroupAction(accessGroupName, organisationCode)
 
-    private class RemoveAccessGroupAction(accessGroupName: String) : AccessGroupAction(accessGroupName, null)
-    private class RemoveAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
+    class AddAccessGroupAction(accessGroupName: String) :
+        AddAccessGroupOrganisationAction(accessGroupName, null)
+
+    open class RemoveAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
         AccessGroupAction(accessGroupName, organisationCode)
+
+    class RemoveAccessGroupAction(accessGroupName: String) :
+        RemoveAccessGroupOrganisationAction(accessGroupName, null)
 
     @Serializable
     data class DeltaUserAccessGroups(
