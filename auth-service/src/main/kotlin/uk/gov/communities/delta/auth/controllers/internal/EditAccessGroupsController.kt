@@ -28,31 +28,37 @@ class EditAccessGroupsController(
         route.post { updateUserAccessGroups(call) }
     }
 
-    // This endpoint takes a list of access groups to add and to remove in the form of maps of the group name (with
-    // delta prefix) and a list of organisations for that access group. Generation of the correct lists is performed in
-    // Delta.
+    // This endpoint takes a map of access groups or organisations and a list of organisations. The map should contain all
+    // access groups the user could potentially assign themselves to. Groups the user has selected should contain a list of
+    // associated organisations, groups the user has not selected should contain an empty list. The list of organisations
+    // should contain the organisations the user has chosen to be part of from the organisations available to them.
     private suspend fun updateUserAccessGroups(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
         logger.atInfo().log("Updating access groups for user {}", session.userCn)
         val userIsInternal = callingUser.isInternal()
-        val allAccessGroups = accessGroupsService.getAllAccessGroups().associateBy { it.name }
+        val allAccessGroups = accessGroupsService.getAllAccessGroups()
 
         val requestBodyObject = call.receive<DeltaUserAccessGroups>()
         val selectedOrgs = requestBodyObject.userSelectedOrgs.toSet()
         val accessGroupsRequestMap = stripDatamartPrefixFromKeys(requestBodyObject.accessGroupsRequest)
         val accessGroupsRequested = accessGroupsRequestMap.filter { m -> m.value.isNotEmpty() }
 
-        validateRequest(accessGroupsRequested, selectedOrgs, allAccessGroups, userIsInternal, callingUser)
-
+        validateRequest(
+            accessGroupsRequested,
+            selectedOrgs,
+            allAccessGroups,
+            userIsInternal,
+            callingUser
+        )
 
         val deltaRolesForUser = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
+            callingUser.cn, organisationService.findAllNamesAndCodes(), allAccessGroups
         ).map(callingUser.memberOfCNs)
         val currentAccessGroups = deltaRolesForUser.accessGroups.associateBy({ it.name },
             { it.organisationIds })
 
-        val accessGroupActions = generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroups, selectedOrgs)
+        val accessGroupActions = generateAccessGroupActions(accessGroupsRequestMap, currentAccessGroups, selectedOrgs)
 
         executeAccessGroupActions(accessGroupActions, session, callingUser, call)
 
@@ -62,11 +68,16 @@ class EditAccessGroupsController(
     private suspend fun validateRequest(
         accessGroupsRequested: Map<String, List<String>>,
         selectedOrgs: Set<String>,
-        allAccessGroups: Map<String, AccessGroup>,
+        allAccessGroups: List<AccessGroup>,
         userIsInternal: Boolean,
         callingUser: LdapUser
     ) {
-        validateAccessGroupRequest(accessGroupsRequested, allAccessGroups, selectedOrgs, userIsInternal)
+        validateAccessGroupRequest(
+            accessGroupsRequested,
+            allAccessGroups,
+            selectedOrgs,
+            userIsInternal
+        )
         validateOrganisationRequest(callingUser, selectedOrgs)
     }
 
@@ -81,7 +92,7 @@ class EditAccessGroupsController(
             if (!userDomainOrgs.contains(org)) {
                 throw ApiError(
                     HttpStatusCode.Forbidden,
-                    "external_user_non_online_registration_group",
+                    "user_non_domain_organisation",
                     "User attempted to assign self to an organisation not in their domain: $org",
                 )
             }
@@ -89,17 +100,19 @@ class EditAccessGroupsController(
     }
 
     private fun validateAccessGroupRequest(
-        accessGroupsRequested: Map<String, List<String>>,
-        allAccessGroups: Map<String, AccessGroup>,
+        accessGroupRequestMap: Map<String, List<String>>,
+        allAccessGroups: List<AccessGroup>,
         selectedOrgs: Set<String>,
         userIsInternal: Boolean
     ) {
-        for (requestedAccessGroup in accessGroupsRequested) {
-            val accessGroupData = allAccessGroups.getOrElse(requestedAccessGroup.key) {
+        val allAccessGroupsMap = allAccessGroups.associateBy { it.name }
+
+        for (requestedAccessGroup in accessGroupRequestMap) {
+            val accessGroupData = allAccessGroupsMap.getOrElse(requestedAccessGroup.key) {
                 throw ApiError(
                     HttpStatusCode.Forbidden,
-                    "inexistent_group",
-                    "Attempted to assign a user an access group that does not exist: "
+                    "nonexistent_group",
+                    "Request contained an access group that does not exist: "
                             + requestedAccessGroup.key,
                 )
             }
@@ -108,7 +121,7 @@ class EditAccessGroupsController(
                 throw ApiError(
                     HttpStatusCode.Forbidden,
                     "internal_user_non_internal_group",
-                    "Attempted to assign an internal user a group not enabled for internal users: "
+                    "Request for internal user contained a group not enabled for internal users: "
                             + requestedAccessGroup.key,
                 )
             }
@@ -117,7 +130,7 @@ class EditAccessGroupsController(
                 throw ApiError(
                     HttpStatusCode.Forbidden,
                     "external_user_non_online_registration_group",
-                    "Attempted to assign an external user a group not enabled for online registration: "
+                    "Request for external user contained a group not enabled for online registration: "
                             + requestedAccessGroup.key,
                 )
             }
@@ -126,20 +139,20 @@ class EditAccessGroupsController(
                 if (!selectedOrgs.contains(requestedGroupOrg)) {
                     throw ApiError(
                         HttpStatusCode.Forbidden,
-                        "external_user_non_online_registration_group",
-                        "Attempted to assign user access group an organisation not in their selected organisations: $requestedGroupOrg"
+                        "user_non_selected_organisation_access_group",
+                        "Request contained access group with organisation not in user's selected organisations: $requestedGroupOrg"
                     )
                 }
             }
         }
     }
 
-    public fun generateAccessGroupActionList(
+    fun generateAccessGroupActions(
         accessGroupsRequestMap: Map<String, List<String>>,
         currentAccessGroups: Map<String, List<String>>,
         selectedOrgs: Set<String>
-    ): MutableList<AccessGroupAction> {
-        val accessGroupActions = mutableListOf<AccessGroupAction>()
+    ): Set<AccessGroupAction> {
+        val accessGroupActions = mutableSetOf<AccessGroupAction>()
 
         for (accessGroup in accessGroupsRequestMap) {
             val currentOrganisations = currentAccessGroups[accessGroup.key]
@@ -171,11 +184,11 @@ class EditAccessGroupsController(
                 }
             }
         }
-        return accessGroupActions
+        return accessGroupActions.toSet()
     }
 
     private suspend fun executeAccessGroupActions(
-        accessGroupActions: MutableList<AccessGroupAction>,
+        accessGroupActions: Set<AccessGroupAction>,
         session: OAuthSession,
         callingUser: LdapUser,
         call: ApplicationCall
@@ -222,13 +235,35 @@ class EditAccessGroupsController(
     }
 
     open class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
-        AccessGroupAction(accessGroupName, organisationCode)
+        AccessGroupAction(accessGroupName, organisationCode) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is AddAccessGroupOrganisationAction) return false
+
+            return this.accessGroupName == other.accessGroupName && this.organisationCode == other.organisationCode
+        }
+
+        override fun hashCode(): Int {
+            return javaClass.hashCode()
+        }
+    }
 
     class AddAccessGroupAction(accessGroupName: String) :
         AddAccessGroupOrganisationAction(accessGroupName, null)
 
     open class RemoveAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
-        AccessGroupAction(accessGroupName, organisationCode)
+        AccessGroupAction(accessGroupName, organisationCode) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is RemoveAccessGroupOrganisationAction) return false
+
+            return this.accessGroupName == other.accessGroupName && this.organisationCode == other.organisationCode
+        }
+
+        override fun hashCode(): Int {
+            return javaClass.hashCode()
+        }
+    }
 
     class RemoveAccessGroupAction(accessGroupName: String) :
         RemoveAccessGroupOrganisationAction(accessGroupName, null)

@@ -177,7 +177,7 @@ class EditAccessGroupsControllerTest {
         val currentAccessGroupsMap = mapOf<String, List<String>>()
         val selectedOrgs = setOf("org1")
         val actions =
-            controller.generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
+            controller.generateAccessGroupActions(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
         assertTrue {
             actions.filter {
                 it.getActiveDirectoryString()
@@ -199,20 +199,14 @@ class EditAccessGroupsControllerTest {
         val currentAccessGroupsMap = mapOf("ag1" to listOf("org1"))
         val selectedOrgs = setOf("org1")
         val actions =
-            controller.generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
-        assertTrue {
-            actions.filter {
-                it.getActiveDirectoryString()
-                    .equals("datamart-delta-ag1-org1") && it is RemoveAccessGroupOrganisationAction
-            }.size == 1
-        }
-        assertTrue {
-            actions.filter {
-                it.getActiveDirectoryString()
-                    .equals("datamart-delta-ag1") && it is RemoveAccessGroupAction
-            }.size == 1
-        }
-        assertTrue { actions.size == 2 }
+            controller.generateAccessGroupActions(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
+        assertEquals(
+            setOf(
+                RemoveAccessGroupAction("ag1"),
+                RemoveAccessGroupOrganisationAction("ag1", "org1"),
+            ),
+            actions
+        )
     }
 
     @Test
@@ -221,7 +215,7 @@ class EditAccessGroupsControllerTest {
         val currentAccessGroupsMap = mapOf("ag1" to listOf("org2"))
         val selectedOrgs = setOf("org1")
         val actions =
-            controller.generateAccessGroupActionList(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
+            controller.generateAccessGroupActions(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
         assertTrue { actions.isEmpty() }
     }
 
@@ -236,13 +230,14 @@ class EditAccessGroupsControllerTest {
                     }
                     contentType(ContentType.Application.Json)
                     setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-2\": [\"orgCode1\"]}, \"userSelectedOrgs\": [\"orgCode1\"]}")
-                }.apply {
-                    assertEquals(HttpStatusCode.Forbidden, status)
-                    coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                    coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
-                    confirmVerified(groupService)
                 }
             }
+        }.apply {
+            assertEquals("internal_user_non_internal_group", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            confirmVerified(groupService)
         }
     }
 
@@ -257,13 +252,36 @@ class EditAccessGroupsControllerTest {
                     }
                     contentType(ContentType.Application.Json)
                     setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-3\": [\"orgCode1\"]}, \"userSelectedOrgs\": [\"orgCode1\"]}")
-                }.apply {
-                    assertEquals(HttpStatusCode.Forbidden, status)
-                    coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-                    coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
-                    confirmVerified(groupService)
                 }
             }
+        }.apply {
+            assertEquals("external_user_non_online_registration_group", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            confirmVerified(groupService)
+        }
+    }
+
+    @Test
+    fun userCannotRequestGroupsThatDoNotExist() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/bearer/access-groups") {
+                    headers {
+                        append("Authorization", "Bearer ${externalUserSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-fake_group\": [\"orgCode1\"]}, \"userSelectedOrgs\": [\"orgCode1\"]}")
+                }
+            }
+        }.apply {
+            assertEquals("nonexistent_group", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            confirmVerified(groupService)
         }
     }
 
