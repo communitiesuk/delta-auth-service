@@ -37,7 +37,7 @@ class RefreshUserInfoController(
             val samlToken = samlTokenService.samlTokenForSession(session, user)
 
             val roles = memberOfToDeltaRolesMapperFactory(
-                user.cn, allOrganisations.await(), allAccessGroups.await()
+                user.cn, allOrganisations.await(), allAccessGroups.await(), MemberOfToDeltaRolesMapper.Mode.RELAXED
             ).map(user.memberOfCNs)
 
             logger.info("Retrieved updated user info")

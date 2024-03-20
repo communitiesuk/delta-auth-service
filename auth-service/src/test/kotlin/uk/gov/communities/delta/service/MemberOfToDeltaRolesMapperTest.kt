@@ -1,22 +1,26 @@
 package uk.gov.communities.delta.service
 
+import org.junit.Assert
 import uk.gov.communities.delta.auth.services.AccessGroup
 import uk.gov.communities.delta.auth.services.DeltaSystemRole
 import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper
+import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper.Mode
 import uk.gov.communities.delta.auth.services.OrganisationNameAndCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class MemberOfToDeltaRolesMapperTest {
     @Test
     fun testOrganisationMapping() {
-        val result = mapper().map(
-            listOf(
-                "user-dclg"
-            ).map { "datamart-delta-$it" }
+        val result = mapper(Mode.STRICT).map(
+            listOf("user", "user-dclg").map { "datamart-delta-$it" }
         )
 
-        assertEquals(emptyList(), result.systemRoles)
+        assertEquals(
+            listOf(MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.USER, listOf("dclg"))),
+            result.systemRoles
+        )
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(emptyList(), result.accessGroups)
         assertEquals(listOf(OrganisationNameAndCode("dclg", "The Department")), result.organisations)
@@ -35,7 +39,7 @@ class MemberOfToDeltaRolesMapperTest {
 
     @Test
     fun testSystemRoles() {
-        val result = mapper().map(
+        val result = mapper(Mode.STRICT).map(
             listOf(
                 "user-dclg", "data-providers-dclg", "data-providers", "form-designers", "section-151-officers", "user"
             ).map { "datamart-delta-$it" }
@@ -71,9 +75,40 @@ class MemberOfToDeltaRolesMapperTest {
     }
 
     @Test
+    fun testStrictModeThrowsOnInvalidInput() {
+        Assert.assertThrows(MemberOfToDeltaRolesMapper.StrictModeViolation::class.java) {
+            mapper(Mode.STRICT).map(listOf("user", "user-dclg", "dclg").map { "datamart-delta-$it" })
+        }.apply {
+            assertEquals(
+                "datamart-delta-dclg Ignoring group as unable to find matching system role or access group",
+                message
+            )
+        }
+
+        Assert.assertThrows(MemberOfToDeltaRolesMapper.StrictModeViolation::class.java) {
+            mapper(Mode.STRICT).map(
+                listOf(
+                    "user",
+                    "user-dclg",
+                    "data-providers",
+                    "data-providers-E1234"
+                ).map { "datamart-delta-$it" })
+        }.apply {
+            assertTrue { message!!.startsWith("datamart-delta-data-providers-E1234") && message!!.contains("not part of the organisation") }
+        }
+
+        Assert.assertThrows(MemberOfToDeltaRolesMapper.StrictModeViolation::class.java) {
+            mapper(Mode.STRICT).map(listOf("user", "user-dclg", "data-providers-dclg").map { "datamart-delta-$it" })
+        }.apply {
+            assertTrue { message!!.contains("not member of datamart-delta-<role> group") }
+        }
+    }
+
+    @Test
     fun testAccessGroupMapping() {
-        val result = mapper().map(
+        val result = mapper(Mode.STRICT).map(
             listOf(
+                "user",
                 "user-dclg",
                 "access-group",
                 "access-group-dclg",
@@ -83,7 +118,10 @@ class MemberOfToDeltaRolesMapperTest {
             ).map { "datamart-delta-$it" }
         )
 
-        assertEquals(emptyList(), result.systemRoles)
+        assertEquals(
+            listOf(MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.USER, listOf("dclg"))),
+            result.systemRoles
+        )
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(
             listOf(
@@ -112,15 +150,21 @@ class MemberOfToDeltaRolesMapperTest {
 
     @Test
     fun testMultipleOrganisations() {
-        val result = mapper().map(
+        val result = mapper(Mode.STRICT).map(
             listOf(
-                "user-dclg", "user-E1234", "data-providers-dclg", "data-providers-E1234", "data-certifiers-E1234",
+                "user",
+                "user-dclg",
+                "user-E1234",
+                "data-providers-dclg",
+                "data-providers-E1234",
+                "data-certifiers-E1234",
                 "data-certifiers", "data-providers", "access-group", "access-group-dclg", "access-group-E1234"
             ).map { "datamart-delta-$it" }
         )
 
         assertEquals(
             listOf(
+                MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.USER, listOf("dclg", "E1234")),
                 MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.DATA_CERTIFIERS, listOf("E1234")),
                 MemberOfToDeltaRolesMapper.SystemRole(DeltaSystemRole.DATA_PROVIDERS, listOf("dclg", "E1234")),
             ), result.systemRoles
@@ -134,7 +178,8 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(listOf("dclg", "E1234"), result.organisations.map { it.code })
     }
 
-    private fun mapper() = MemberOfToDeltaRolesMapper("username", organisations, accessGroups)
+    private fun mapper(mode: Mode = Mode.RELAXED) =
+        MemberOfToDeltaRolesMapper("username", organisations, accessGroups, mode)
 
     private val accessGroups = listOf(
         AccessGroup("access-group", "statistics", null, enableOnlineRegistration = false, enableInternalUser = false),

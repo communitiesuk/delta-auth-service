@@ -31,7 +31,7 @@ class AdminGetUserController(
         )
 
         val cn = call.request.queryParameters["userCn"]!!
-        logger.atInfo().log("Getting info for user $cn")
+        logger.atInfo().log("Getting info for user {}", cn)
         val user: LdapUser
         try {
             user = userLookupService.lookupUserByCn(cn)
@@ -43,7 +43,7 @@ class AdminGetUserController(
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
 
             val roles = memberOfToDeltaRolesMapperFactory(
-                user.cn, allOrganisations.await(), allAccessGroups.await()
+                user.cn, allOrganisations.await(), allAccessGroups.await(), MemberOfToDeltaRolesMapper.Mode.RELAXED
             ).map(user.memberOfCNs)
             call.respond(UserWithRoles(user, roles))
         }

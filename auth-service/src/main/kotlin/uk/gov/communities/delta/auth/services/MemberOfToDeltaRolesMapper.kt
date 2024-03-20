@@ -15,15 +15,22 @@ typealias MemberOfToDeltaRolesMapperFactory = (
     username: String,
     allOrganisations: List<OrganisationNameAndCode>,
     allAccessGroups: List<AccessGroup>,
+    mode: MemberOfToDeltaRolesMapper.Mode,
 ) -> MemberOfToDeltaRolesMapper
 
 class MemberOfToDeltaRolesMapper(
     private val username: String,
     allOrganisations: List<OrganisationNameAndCode>,
     allAccessGroups: List<AccessGroup>,
+    private val mode: Mode,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(MemberOfToDeltaRolesMapper::class.java)
+    }
+
+    // Whether we fail or warn on unknown groups
+    enum class Mode {
+        STRICT, RELAXED;
     }
 
     @Serializable
@@ -61,7 +68,7 @@ class MemberOfToDeltaRolesMapper(
             RoleType.DELEGATE to mutableMapOf(),
         )
 
-        if (organisationIds.isEmpty()) logger.atWarn().addKeyValue("username", username).log("No organisations from AD")
+        if (organisationIds.isEmpty()) invalidGroupErrorOrWarning(null, "No organisations from AD")
 
         // Set the non-organisation specific roles first
         for (role in roles.filter { it.organisation == null }) {
@@ -72,17 +79,19 @@ class MemberOfToDeltaRolesMapper(
         for (role in roles) {
             if (role.organisation == null) continue
             if (!organisationIds.contains(role.organisation.code)) {
-                logger.atWarn().addKeyValue("username", username).addKeyValue("group", role.originalGroup)
-                    .addKeyValue("role", role.role).addKeyValue("orgId", role.organisation.code)
-                    .log("User is member of datamart-delta-<role>-<orgId> group, but not part of the organisation, i.e. not a member of datamart-delta-user-<orgId> group, discarding group")
+                invalidGroupErrorOrWarning(
+                    role.originalGroup,
+                    "User is member of datamart-delta-<role>-<orgId> group, but not part of the organisation, i.e. not a member of datamart-delta-user-<orgId> group, discarding group"
+                )
                 continue
             }
 
             val orgListForRole = roleOrgIdsMap[role.type]!![role.role]
             if (orgListForRole == null) {
-                logger.atWarn().addKeyValue("username", username).addKeyValue("group", role.originalGroup)
-                    .addKeyValue("role", role.role).addKeyValue("orgId", role.organisation.code)
-                    .log("User is member of datamart-delta-<role>-<orgId> group, but not member of datamart-delta-<role> group, discarding group")
+                invalidGroupErrorOrWarning(
+                    role.originalGroup,
+                    "User is member of datamart-delta-<role>-<orgId> group, but not member of datamart-delta-<role> group, discarding group"
+                )
                 continue
             }
             orgListForRole.add(role.organisation.code)
@@ -129,8 +138,7 @@ class MemberOfToDeltaRolesMapper(
         return if (group.startsWith(DATAMART_DELTA_PREFIX)) {
             group.substring(DATAMART_DELTA_PREFIX.length, group.length)
         } else {
-            logger.atWarn().addKeyValue("username", username).addKeyValue("group", group)
-                .log("Ignoring group as CN does not start with $DATAMART_DELTA_PREFIX")
+            invalidGroupErrorOrWarning(group, "Ignoring group as CN does not start with $DATAMART_DELTA_PREFIX")
             null
         }
     }
@@ -152,9 +160,10 @@ class MemberOfToDeltaRolesMapper(
 
         return when (val roleType = determineRoleType(roleStr)) {
             null -> {
-                logger.atWarn().addKeyValue("username", username).addKeyValue("role", roleStr)
-                    .addKeyValue("orgId", orgId).addKeyValue("group", DATAMART_DELTA_PREFIX + groupWithoutPrefix)
-                    .log("Ignoring group as unable to find matching system role or access group")
+                invalidGroupErrorOrWarning(
+                    DATAMART_DELTA_PREFIX + groupWithoutPrefix,
+                    "Ignoring group as unable to find matching system role or access group"
+                )
                 null
             }
 
@@ -169,6 +178,15 @@ class MemberOfToDeltaRolesMapper(
         else if (allAccessGroupsMap.contains(role)) RoleType.ACCESS_GROUP
         else null
     }
+
+    private fun invalidGroupErrorOrWarning(group: String?, message: String) {
+        when (mode) {
+            Mode.RELAXED -> logger.atWarn().addKeyValue("username", username).addKeyValue("group", group).log(message)
+            Mode.STRICT -> throw StrictModeViolation(if (group == null) message else "$group $message")
+        }
+    }
+
+    class StrictModeViolation(message: String) : Exception(message)
 }
 
 enum class DeltaSystemRoleClassification {

@@ -40,7 +40,7 @@ class EditRolesController(
         checkRequestedRolesArePermitted(request, callingUser)
 
         val currentUserPermissions = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
+            callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups(), MemberOfToDeltaRolesMapper.Mode.RELAXED
         ).map(callingUser.memberOfCNs)
         val systemRoles = currentUserPermissions.systemRoles
         val userOrgs = currentUserPermissions.organisations

@@ -52,7 +52,7 @@ class EditAccessGroupsController(
         )
 
         val deltaRolesForUser = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), allAccessGroups
+            callingUser.cn, organisationService.findAllNamesAndCodes(), allAccessGroups, MemberOfToDeltaRolesMapper.Mode.RELAXED
         ).map(callingUser.memberOfCNs)
         val currentAccessGroups = deltaRolesForUser.accessGroups.associateBy({ it.name },
             { it.organisationIds })
