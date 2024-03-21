@@ -41,8 +41,7 @@ class EditAccessGroupsControllerTest {
                 "{" +
                         "\"accessGroupsRequest\": {" +
                         "\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], " +
-                        "\"datamart-delta-access-group-2\": [\"orgCode2\"], " +
-                        "\"datamart-delta-access-group-3\": []}" +
+                        "\"datamart-delta-access-group-2\": [\"orgCode2\"]}" +
                         ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\", \"orgCode3\"]" +
                         "}"
             )
@@ -84,24 +83,6 @@ class EditAccessGroupsControllerTest {
                     null
                 )
             }
-            coVerify(exactly = 1) {
-                groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-3",
-                    any(),
-                    null
-                )
-            }
-            coVerify(exactly = 1) {
-                groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-3-orgCode2",
-                    any(),
-                    null
-                )
-            }
             confirmVerified(groupService)
         }
     }
@@ -116,7 +97,7 @@ class EditAccessGroupsControllerTest {
             contentType(ContentType.Application.Json)
             setBody(
                 "{" +
-                        "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": [], \"datamart-delta-access-group-3\": []}" +
+                        "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": []}" +
                         ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\"]" +
                         "}"
             )
@@ -149,24 +130,6 @@ class EditAccessGroupsControllerTest {
                     null
                 )
             }
-            coVerify(exactly = 1) {
-                groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-3",
-                    any(),
-                    null
-                )
-            }
-            coVerify(exactly = 1) {
-                groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-3-orgCode2",
-                    any(),
-                    null
-                )
-            }
             confirmVerified(groupService)
         }
     }
@@ -178,19 +141,13 @@ class EditAccessGroupsControllerTest {
         val selectedOrgs = setOf("org1")
         val actions =
             controller.generateAccessGroupActions(accessGroupsRequestMap, currentAccessGroupsMap, selectedOrgs)
-        assertTrue {
-            actions.filter {
-                it.getActiveDirectoryString()
-                    .equals("datamart-delta-ag1-org1") && it is AddAccessGroupOrganisationAction
-            }.size == 1
-        }
-        assertTrue {
-            actions.filter {
-                it.getActiveDirectoryString()
-                    .equals("datamart-delta-ag1") && it is AddAccessGroupAction
-            }.size == 1
-        }
-        assertTrue { actions.size == 2 }
+        assertEquals(
+            setOf(
+                AddAccessGroupAction("ag1"),
+                AddAccessGroupOrganisationAction("ag1", "org1"),
+            ),
+            actions
+        )
     }
 
     @Test
@@ -273,7 +230,7 @@ class EditAccessGroupsControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-fake_group\": [\"orgCode1\"]}, \"userSelectedOrgs\": [\"orgCode1\"]}")
+                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-fake_group\": []}, \"userSelectedOrgs\": [\"orgCode1\"]}")
                 }
             }
         }.apply {
@@ -351,8 +308,6 @@ class EditAccessGroupsControllerTest {
                 "datamart-delta-access-group-1-orgCode3",
                 "datamart-delta-access-group-2",
                 "datamart-delta-access-group-2-orgCode1",
-                "datamart-delta-access-group-3",
-                "datamart-delta-access-group-3-orgCode2",
             ),
             mobile = "0123456789",
             telephone = "0987654321",
@@ -369,9 +324,7 @@ class EditAccessGroupsControllerTest {
                 "datamart-delta-data-certifiers",
                 "datamart-delta-data-certifiers-orgCode1",
                 "datamart-delta-data-certifiers-orgCode2",
-                "datamart-delta-access-group-2",
                 "datamart-delta-access-group-3",
-                "datamart-delta-access-group-2-orgCode2",
                 "datamart-delta-access-group-3-orgCode1",
                 "datamart-delta-delegate-access-group-3",
                 "datamart-delta-role-1",

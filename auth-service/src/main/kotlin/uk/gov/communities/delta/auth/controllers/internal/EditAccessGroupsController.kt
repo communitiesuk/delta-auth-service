@@ -41,11 +41,10 @@ class EditAccessGroupsController(
 
         val requestBodyObject = call.receive<DeltaUserAccessGroups>()
         val selectedOrgs = requestBodyObject.userSelectedOrgs.toSet()
-        val accessGroupsRequestMap = stripDatamartPrefixFromKeys(requestBodyObject.accessGroupsRequest)
-        val accessGroupsRequested = accessGroupsRequestMap.filter { m -> m.value.isNotEmpty() }
+        val accessGroupRequestMap = stripDatamartPrefixFromKeys(requestBodyObject.accessGroupsRequest)
 
         validateRequest(
-            accessGroupsRequested,
+            accessGroupRequestMap,
             selectedOrgs,
             allAccessGroups,
             userIsInternal,
@@ -58,7 +57,7 @@ class EditAccessGroupsController(
         val currentAccessGroups = deltaRolesForUser.accessGroups.associateBy({ it.name },
             { it.organisationIds })
 
-        val accessGroupActions = generateAccessGroupActions(accessGroupsRequestMap, currentAccessGroups, selectedOrgs)
+        val accessGroupActions = generateAccessGroupActions(accessGroupRequestMap, currentAccessGroups, selectedOrgs)
 
         executeAccessGroupActions(accessGroupActions, session, callingUser, call)
 
@@ -66,14 +65,14 @@ class EditAccessGroupsController(
     }
 
     private suspend fun validateRequest(
-        accessGroupsRequested: Map<String, List<String>>,
+        accessGroupRequestMap: Map<String, List<String>>,
         selectedOrgs: Set<String>,
         allAccessGroups: List<AccessGroup>,
         userIsInternal: Boolean,
         callingUser: LdapUser
     ) {
         validateAccessGroupRequest(
-            accessGroupsRequested,
+            accessGroupRequestMap,
             allAccessGroups,
             selectedOrgs,
             userIsInternal
