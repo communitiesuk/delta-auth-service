@@ -42,7 +42,7 @@ class AdminEditUserControllerTest {
 
     @Test
     fun testAdminUpdateUser() = testSuspend {
-        testClient.post("/bearer/edit-user?userCn=${user.cn}") {
+        testClient.post("/edit-user?userCn=${user.cn}") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(user.email!!))
             headers {
@@ -98,7 +98,7 @@ class AdminEditUserControllerTest {
 
     @Test
     fun testAdminUpdateUnchangedUser() = testSuspend {
-        testClient.post("/bearer/edit-user?userCn=${unchangedUser.cn}") {
+        testClient.post("/edit-user?userCn=${unchangedUser.cn}") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(unchangedUser.email!!))
             headers {
@@ -118,7 +118,7 @@ class AdminEditUserControllerTest {
     fun testAdminUpdateUsernameChanged() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/edit-user?userCn=${user.cn}") {
+                testClient.post("/edit-user?userCn=${user.cn}") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson("fake@user.com"))
                     headers {
@@ -140,7 +140,7 @@ class AdminEditUserControllerTest {
     fun testAdminUpdateNonExistentUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/edit-user?userCn=$NON_EXISTENT_USER_CN") {
+                testClient.post("/edit-user?userCn=$NON_EXISTENT_USER_CN") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NON_EXISTENT_USER_EMAIL))
                     headers {
@@ -162,7 +162,7 @@ class AdminEditUserControllerTest {
     fun testReadOnlyAdminUpdateUnchangedUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/edit-user?userCn=${user.cn}") {
+                testClient.post("/edit-user?userCn=${user.cn}") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(user.email!!))
                     headers {
@@ -184,7 +184,7 @@ class AdminEditUserControllerTest {
     fun testNonAdminUpdateUnchangedUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/edit-user?userCn=${user.cn}") {
+                testClient.post("/edit-user?userCn=${user.cn}") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(user.email!!))
                     headers {
@@ -206,7 +206,7 @@ class AdminEditUserControllerTest {
     fun testDisabledAdminUpdateUnchangedUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/edit-user?userCn=${user.cn}") {
+                testClient.post("/edit-user?userCn=${user.cn}") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(user.email!!))
                     headers {
@@ -365,7 +365,7 @@ class AdminEditUserControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/bearer/edit-user") {
+                            route("/edit-user") {
                                 controller.route(this)
                             }
                         }

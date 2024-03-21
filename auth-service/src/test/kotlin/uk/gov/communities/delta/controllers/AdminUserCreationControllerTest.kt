@@ -39,7 +39,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateUser() = testSuspend {
-        testClient.post("/bearer/create-user") {
+        testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
             headers {
@@ -75,7 +75,7 @@ class AdminUserCreationControllerTest {
         coEvery { userLookupService.lookupUserByCn(adminUser.cn) } throws NameNotFoundException()
         Assert.assertThrows(NameNotFoundException::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -91,7 +91,7 @@ class AdminUserCreationControllerTest {
     fun testNonAdminMakingRequest() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -107,7 +107,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateSSOUser() = testSuspend {
-        testClient.post("/bearer/create-user") {
+        testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_SSO_USER_EMAIL))
             headers {
@@ -134,7 +134,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateNotRequiredSSOUser() = testSuspend {
-        testClient.post("/bearer/create-user") {
+        testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_NOT_REQUIRED_SSO_USER))
             headers {
@@ -169,7 +169,7 @@ class AdminUserCreationControllerTest {
     fun testAdminCreateAlreadyExistingUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(OLD_STANDARD_USER_EMAIL))
                     headers {
@@ -188,7 +188,7 @@ class AdminUserCreationControllerTest {
     fun testAdminCreateInvalidEmail() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_INVALID_USER_EMAIL))
                     headers {
@@ -208,7 +208,7 @@ class AdminUserCreationControllerTest {
         coEvery { userService.createUser(any(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -227,7 +227,7 @@ class AdminUserCreationControllerTest {
         coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -246,7 +246,7 @@ class AdminUserCreationControllerTest {
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -470,7 +470,7 @@ class AdminUserCreationControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/bearer/create-user") {
+                            route("/create-user") {
                                 controller.route(this)
                             }
                         }

@@ -33,7 +33,7 @@ import kotlin.test.assertEquals
 class EditRolesControllerTest {
     @Test
     fun testEditRolesForUser() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${externalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -56,7 +56,7 @@ class EditRolesControllerTest {
     fun testExternalUserCannotRequestInternalRole() {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/roles") {
+                testClient.post("/roles") {
                     headers {
                         append("Authorization", "Bearer ${externalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -74,7 +74,7 @@ class EditRolesControllerTest {
 
     @Test
     fun testInternalUserCanRequestInternalRole() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${internalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -119,7 +119,7 @@ class EditRolesControllerTest {
 
     @Test
     fun testSendingCurrentRolesHasNoEffect() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${internalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -136,7 +136,7 @@ class EditRolesControllerTest {
     fun testInternalUserCannotRemoveAdminRole() {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/roles") {
+                testClient.post("/roles") {
                     headers {
                         append("Authorization", "Bearer ${internalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -269,7 +269,7 @@ class EditRolesControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/bearer/roles") {
+                            route("/roles") {
                                 controller.route(this)
                             }
                         }

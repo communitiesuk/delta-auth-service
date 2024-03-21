@@ -95,7 +95,7 @@ class AdminEnableDisableUserControllerTest {
 
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/admin/enable-user") {
+                testClient.post("/admin/enable-user") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -142,7 +142,7 @@ class AdminEnableDisableUserControllerTest {
 
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/admin/disable-user") {
+                testClient.post("/admin/disable-user") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -157,7 +157,7 @@ class AdminEnableDisableUserControllerTest {
     }
 
     private suspend fun enableRequestAsAdminUser(user: LdapUser): HttpResponse {
-        return testClient.post("/bearer/admin/enable-user") {
+        return testClient.post("/admin/enable-user") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -167,7 +167,7 @@ class AdminEnableDisableUserControllerTest {
     }
 
     private suspend fun disableRequestAsAdminUser(user: LdapUser): HttpResponse {
-        return testClient.post("/bearer/admin/disable-user") {
+        return testClient.post("/admin/disable-user") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -245,10 +245,10 @@ class AdminEnableDisableUserControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            post("/bearer/admin/enable-user") {
+                            post("/admin/enable-user") {
                                 controller.enableUser(call)
                             }
-                            post("/bearer/admin/disable-user") {
+                            post("/admin/disable-user") {
                                 controller.disableUser(call)
                             }
                         }

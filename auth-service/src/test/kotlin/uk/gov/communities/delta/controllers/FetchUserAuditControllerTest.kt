@@ -39,7 +39,7 @@ class FetchUserAuditControllerTest {
 
     @Test
     fun testAuditEndpoint() = testSuspend {
-        testClient.get("/bearer/user-audit?cn=user") {
+        testClient.get("/user-audit?cn=user") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -57,7 +57,7 @@ class FetchUserAuditControllerTest {
 
     @Test
     fun testUserCanReadOwnAudit() = testSuspend {
-        testClient.get("/bearer/user-audit?cn=user") {
+        testClient.get("/user-audit?cn=user") {
             headers {
                 append("Authorization", "Bearer ${userSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -71,7 +71,7 @@ class FetchUserAuditControllerTest {
     fun testUserCannotReadAdminAudit() {
         Assert.assertThrows(FetchUserAuditController.AccessDeniedError::class.java) {
             runBlocking {
-                testClient.get("/bearer/user-audit?cn=admin") {
+                testClient.get("/user-audit?cn=admin") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -83,7 +83,7 @@ class FetchUserAuditControllerTest {
 
     @Test
     fun testActionDataSerialisedCorrectly() = testSuspend {
-        testClient.get("/bearer/user-audit?cn=admin") {
+        testClient.get("/user-audit?cn=admin") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -101,7 +101,7 @@ class FetchUserAuditControllerTest {
 
     @Test
     fun testCSVDownload() = testSuspend {
-        testClient.get("/bearer/user-audit/csv?cn=admin") {
+        testClient.get("/user-audit/csv?cn=admin") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -193,7 +193,7 @@ class FetchUserAuditControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/bearer/user-audit") {
+                            route("/user-audit") {
                                 controller.route(this)
                             }
                         }

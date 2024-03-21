@@ -35,7 +35,7 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testUserInfoEndpoint() = testSuspend {
-        testClient.get("/bearer/user-info") {
+        testClient.get("/user-info") {
             headers {
                 append("Authorization", "Bearer ${session.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -54,7 +54,7 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testInvalidBearerToken() = testSuspend {
-        testClient.get("/bearer/user-info") {
+        testClient.get("/user-info") {
             headers {
                 append("Authorization", "Bearer invalid_token")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -124,7 +124,7 @@ class RefreshUserInfoControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/bearer/user-info") {
+                            route("/user-info") {
                                 controller.route(this)
                             }
                         }
