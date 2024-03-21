@@ -6,8 +6,8 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.auth.*
-import io.ktor.server.testing.*
 import io.ktor.server.routing.*
+import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
@@ -28,7 +28,7 @@ import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class EditAccessGroupsControllerTest {
+class EditUserAccessGroupsControllerTest {
     @Test
     fun testUserCanUpdateAccessGroups() = testSuspend {
         testClient.post("/access-groups") {

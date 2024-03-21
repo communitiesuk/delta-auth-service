@@ -22,6 +22,7 @@ import org.junit.Before
 import org.junit.BeforeClass
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEditUserController
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserPermissionsRequestMapper
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -68,10 +69,10 @@ class AdminEditUserControllerTest {
                 "datamart-delta-access-group-1",
                 "datamart-delta-delegate-access-group-2",
                 "datamart-delta-access-group-2-orgCode3",
-                "datamart-delta-role-1-orgCode3",
-                "datamart-delta-role-2",
-                "datamart-delta-role-2-orgCode2",
-                "datamart-delta-role-2-orgCode3"
+                "datamart-delta-data-providers-orgCode3",
+                "datamart-delta-data-certifiers",
+                "datamart-delta-data-certifiers-orgCode2",
+                "datamart-delta-data-certifiers-orgCode3"
             )
             expectedAddedGroups.forEach {
                 coVerify(exactly = 1) { groupService.addUserToGroup(user.cn, user.dn, it, any(), adminSession) }
@@ -85,7 +86,7 @@ class AdminEditUserControllerTest {
                 "datamart-delta-access-group-3",
                 "datamart-delta-access-group-3-orgCode1",
                 "datamart-delta-delegate-access-group-3",
-                "datamart-delta-role-1-orgCode1"
+                "datamart-delta-data-providers-orgCode1"
             )
             expectedRemovedGroups.forEach {
                 coVerify(exactly = 1) { groupService.removeUserFromGroup(user.cn, user.dn, it, any(), adminSession) }
@@ -246,6 +247,15 @@ class AdminEditUserControllerTest {
         coEvery { userService.updateUser(user, capture(modifications), adminSession, any()) } just runs
         coEvery { groupService.addUserToGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
         coEvery { groupService.removeUserFromGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
+        coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
+            OrganisationNameAndCode("orgCode2", "Org 2"), OrganisationNameAndCode("orgCode3", "Org 3")
+        )
+        @Suppress("BooleanLiteralArgument")
+        coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
+            AccessGroup("access-group-1", "STATS", "access group 1", false, false),
+            AccessGroup("access-group-2", "STATS", "access group 2", false, false),
+            AccessGroup("access-group-3", "STATS", "access group 3", false, false),
+        )
     }
 
     companion object {
@@ -253,11 +263,12 @@ class AdminEditUserControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var controller: AdminEditUserController
 
-        private val oauthSessionService = mockk<OAuthSessionService>()
-
-        private val userLookupService = mockk<UserLookupService>()
-        private val userService = mockk<UserService>()
-        private val groupService = mockk<GroupService>()
+        private lateinit var oauthSessionService: OAuthSessionService
+        private lateinit var userLookupService: UserLookupService
+        private lateinit var userService: UserService
+        private lateinit var groupService: GroupService
+        private lateinit var organisationService: OrganisationService
+        private lateinit var accessGroupsService: AccessGroupsService
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
@@ -286,9 +297,9 @@ class AdminEditUserControllerTest {
                 "datamart-delta-access-group-2-orgCode2",
                 "datamart-delta-access-group-3-orgCode1",
                 "datamart-delta-delegate-access-group-3",
-                "datamart-delta-role-1",
-                "datamart-delta-role-1-orgCode1",
-                "datamart-delta-role-1-orgCode2",
+                "datamart-delta-data-providers",
+                "datamart-delta-data-providers-orgCode1",
+                "datamart-delta-data-providers-orgCode2",
             ),
             mobile = "0123456789",
             telephone = "0987654321",
@@ -307,12 +318,12 @@ class AdminEditUserControllerTest {
                 "datamart-delta-access-group-2-orgCode2",
                 "datamart-delta-access-group-2-orgCode3",
                 "datamart-delta-delegate-access-group-2",
-                "datamart-delta-role-1",
-                "datamart-delta-role-1-orgCode2",
-                "datamart-delta-role-1-orgCode3",
-                "datamart-delta-role-2",
-                "datamart-delta-role-2-orgCode2",
-                "datamart-delta-role-2-orgCode3",
+                "datamart-delta-data-providers",
+                "datamart-delta-data-providers-orgCode2",
+                "datamart-delta-data-providers-orgCode3",
+                "datamart-delta-data-certifiers",
+                "datamart-delta-data-certifiers-orgCode2",
+                "datamart-delta-data-certifiers-orgCode3",
             ),
             mobile = "0123456789",
             positionInOrganisation = "test position",
@@ -334,7 +345,7 @@ class AdminEditUserControllerTest {
                         "\"accessGroups\":[\"datamart-delta-access-group-1\",\"datamart-delta-access-group-2\"]," +
                         "\"accessGroupDelegates\":[\"datamart-delta-access-group-2\"]," +
                         "\"accessGroupOrganisations\":{\"datamart-delta-access-group-2\":[\"orgCode2\", \"orgCode3\"]}," +
-                        "\"roles\":[\"datamart-delta-role-1\",\"datamart-delta-role-2\"]," +
+                        "\"roles\":[\"datamart-delta-data-providers\",\"datamart-delta-data-certifiers\"]," +
                         "\"externalRoles\":[]," +
                         "\"organisations\":[\"orgCode2\", \"orgCode3\"]," +
                         "\"comment\":\"\"}"
@@ -344,10 +355,21 @@ class AdminEditUserControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
+            oauthSessionService = mockk<OAuthSessionService>()
+            userLookupService = mockk<UserLookupService>()
+            userService = mockk<UserService>()
+            groupService = mockk<GroupService>()
+            organisationService = mockk<OrganisationService>()
+            accessGroupsService = mockk<AccessGroupsService>()
+
+            val requestBodyMapper = DeltaUserPermissionsRequestMapper(
+                organisationService, accessGroupsService
+            )
             controller = AdminEditUserController(
                 userLookupService,
                 userService,
                 groupService,
+                requestBodyMapper,
             )
 
             testApp = TestApplication {

@@ -125,6 +125,7 @@ class Injection(
     val ssoOAuthClientProviderLookupService =
         SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
     val microsoftGraphService = MicrosoftGraphService()
+    val deltaUserDetailsRequestMapper = DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService)
     val meterRegistry =
         if (authServiceConfig.metricsNamespace.isNullOrEmpty()) SimpleMeterRegistry() else CloudWatchMeterRegistry(
             object : CloudWatchConfig {
@@ -281,12 +282,14 @@ class Injection(
         groupService,
         emailService,
         setPasswordTokenService,
+        deltaUserDetailsRequestMapper,
     )
 
     fun adminEditUserController() = AdminEditUserController(
         userLookupService,
         userService,
         groupService,
+        deltaUserDetailsRequestMapper,
     )
 
     fun adminGetUserController() = AdminGetUserController(

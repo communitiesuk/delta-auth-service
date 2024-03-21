@@ -1,15 +1,13 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.application.*
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.utils.randomBase64
 import java.io.UnsupportedEncodingException
@@ -327,7 +325,7 @@ class UserService(
 
         constructor(
             ldapConfig: LDAPConfig,
-            deltaUserDetails: DeltaUserDetails,
+            deltaUserDetails: DeltaUserDetailsRequest,
             ssoClient: AzureADSSOClient?,
         ) {
             val ssoUser = ssoClient?.required ?: false
@@ -393,58 +391,6 @@ class UserService(
 
                 return BasicAttribute("unicodePwd", bytes)
             }
-        }
-    }
-
-    @Serializable
-    data class DeltaUserDetails(
-        @SerialName("id") val id: String, //This is the username in email form
-        @SerialName("enabled") val enabled: Boolean, //Always false for user creation - not used anywhere yet
-        @SerialName("email") val email: String,
-        @SerialName("lastName") val lastName: String,
-        @SerialName("firstName") val firstName: String,
-        @SerialName("telephone") val telephone: String? = null,
-        @SerialName("mobile") val mobile: String? = null,
-        @SerialName("position") val position: String? = null,
-        @SerialName("reasonForAccess") val reasonForAccess: String? = null,
-        @SerialName("accessGroups") val accessGroups: Array<String>,
-        @SerialName("accessGroupDelegates") val accessGroupDelegates: Array<String>,
-        @SerialName("accessGroupOrganisations") val accessGroupOrganisations: Map<String, Array<String>>,
-        @SerialName("roles") val roles: Array<String>,
-        @SerialName("externalRoles") val externalRoles: Array<String>, //Not used anywhere yet - S151 Officer related
-        @SerialName("organisations") val organisations: Array<String>,
-        @SerialName("comment") val comment: String? = null,
-        @SerialName("classificationType") val classificationType: String? = null, //Not used anywhere yet
-    ) {
-        fun getGroups(): List<String> {
-            val groups = mutableListOf<String>()
-            groups.add(DeltaConfig.DATAMART_DELTA_USER)
-            organisations.forEach { orgCode: String ->
-                groups.add(String.format("%s-%s", DeltaConfig.DATAMART_DELTA_USER, orgCode))
-            }
-            accessGroups.forEach { accessGroup ->
-                groups.add(accessGroup)
-            }
-            accessGroupDelegates.forEach { accessGroup ->
-                val delegateAccessGroup = makeDelegate(accessGroup)
-                groups.add(delegateAccessGroup)
-            }
-            accessGroupOrganisations.forEach { (accessGroup, organisations) ->
-                organisations.forEach { orgCode ->
-                    groups.add(String.format("%s-%s", accessGroup, orgCode))
-                }
-            }
-            roles.forEach { role ->
-                groups.add(role)
-                organisations.forEach { orgCode ->
-                    groups.add(String.format("%s-%s", role, orgCode))
-                }
-            }
-            return groups
-        }
-
-        private fun makeDelegate(accessGroup: String): String {
-            return LDAPConfig.DATAMART_DELTA_PREFIX + "delegate-" + accessGroup.substringAfter(LDAPConfig.DATAMART_DELTA_PREFIX)
         }
     }
 }
