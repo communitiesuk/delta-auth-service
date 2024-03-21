@@ -30,7 +30,7 @@ class EditUserDetailsController(
         logger.atInfo().log("Updating details for user {}", session.userCn)
 
         // TODO 694 do we want not to receive this whole object? only a few things are listed as updatable
-        val updatedDeltaUserDetails = call.receive<UserService.DeltaUserDetails>()
+        val updatedDeltaUserDetails = call.receive<DeltaUserDetailsRequest>()
 
         val modifications = getModifications(callingUser, updatedDeltaUserDetails)
 
@@ -40,7 +40,7 @@ class EditUserDetailsController(
     // TODO 694 in this and the below there is duplicated code from the admin edit user controller
     private fun getModifications(
         currentUser: LdapUser,
-        newUser: UserService.DeltaUserDetails
+        newUser: DeltaUserDetailsRequest
     ): Array<ModificationItem> {
         var modifications = arrayOf<ModificationItem>()
 
