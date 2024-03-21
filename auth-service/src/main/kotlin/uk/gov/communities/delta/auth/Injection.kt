@@ -302,6 +302,14 @@ class Injection(
         ::MemberOfToDeltaRolesMapper,
     )
 
+    fun editOrganisationsController() = EditOrganisationsController(
+        userLookupService,
+        groupService,
+        organisationService,
+        accessGroupsService,
+        ::MemberOfToDeltaRolesMapper
+    )
+
     fun editAccessGroupsController() = EditAccessGroupsController(
         userLookupService,
         groupService,
