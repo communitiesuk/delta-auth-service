@@ -231,41 +231,34 @@ class EditAccessGroupsController(
     ) {
         fun getActiveDirectoryString() = LDAPConfig.DATAMART_DELTA_PREFIX + accessGroupName +
                 if (organisationCode == null) "" else "-$organisationCode"
-    }
 
-    open class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
-        AccessGroupAction(accessGroupName, organisationCode) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
-            if (other !is AddAccessGroupOrganisationAction) return false
+            if (other !is AccessGroupAction) return false
+            if (this.javaClass != other.javaClass) return false
 
             return this.accessGroupName == other.accessGroupName && this.organisationCode == other.organisationCode
         }
 
         override fun hashCode(): Int {
-            return javaClass.hashCode()
+            var result = javaClass.hashCode()
+            result = 31 * result + accessGroupName.hashCode()
+            result = 31 * result + (organisationCode?.hashCode() ?: 0)
+            return result
         }
     }
+
+    class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String) :
+        AccessGroupAction(accessGroupName, organisationCode)
 
     class AddAccessGroupAction(accessGroupName: String) :
-        AddAccessGroupOrganisationAction(accessGroupName, null)
+        AccessGroupAction(accessGroupName, null)
 
-    open class RemoveAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String?) :
-        AccessGroupAction(accessGroupName, organisationCode) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is RemoveAccessGroupOrganisationAction) return false
-
-            return this.accessGroupName == other.accessGroupName && this.organisationCode == other.organisationCode
-        }
-
-        override fun hashCode(): Int {
-            return javaClass.hashCode()
-        }
-    }
+    class RemoveAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String) :
+        AccessGroupAction(accessGroupName, organisationCode)
 
     class RemoveAccessGroupAction(accessGroupName: String) :
-        RemoveAccessGroupOrganisationAction(accessGroupName, null)
+        AccessGroupAction(accessGroupName, null)
 
     @Serializable
     data class DeltaUserAccessGroups(
