@@ -10,7 +10,6 @@ import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
@@ -21,6 +20,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -30,7 +30,7 @@ class AdminEmailControllerTest {
 
     @Test
     fun testAdminSendActivationEmail() = testSuspend {
-        testClient.post("/bearer/email/activation") {
+        testClient.post("/email/activation") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -45,7 +45,7 @@ class AdminEmailControllerTest {
 
     @Test
     fun testReadOnlyAdminSendActivationEmail() = testSuspend {
-        testClient.post("/bearer/email/activation") {
+        testClient.post("/email/activation") {
             headers {
                 append("Authorization", "Bearer ${readOnlyAdminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -62,7 +62,7 @@ class AdminEmailControllerTest {
     fun testAdminSendActivationEmailEnabledUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/email/activation") {
+                testClient.post("/email/activation") {
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -81,7 +81,7 @@ class AdminEmailControllerTest {
     fun testAdminSendActivationEmailAsNotAdmin() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/email/activation") {
+                testClient.post("/email/activation") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -100,7 +100,7 @@ class AdminEmailControllerTest {
     fun testAdminSendActivationEmailSSOUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/email/activation") {
+                testClient.post("/email/activation") {
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -117,7 +117,7 @@ class AdminEmailControllerTest {
 
     @Test
     fun testAdminSendResetPasswordEmail() = testSuspend {
-        testClient.post("/bearer/email/reset-password") {
+        testClient.post("/email/reset-password") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -132,7 +132,7 @@ class AdminEmailControllerTest {
 
     @Test
     fun testReadOnlyAdminSendResetPasswordEmail() = testSuspend {
-        testClient.post("/bearer/email/reset-password") {
+        testClient.post("/email/reset-password") {
             headers {
                 append("Authorization", "Bearer ${readOnlyAdminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -149,7 +149,7 @@ class AdminEmailControllerTest {
     fun testAdminSendResetPasswordEmailDisabledUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/email/reset-password") {
+                testClient.post("/email/reset-password") {
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -168,7 +168,7 @@ class AdminEmailControllerTest {
     fun testAdminSendResetPasswordEmailNotAdmin() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/email/reset-password") {
+                testClient.post("/email/reset-password") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -187,7 +187,7 @@ class AdminEmailControllerTest {
     fun testAdminSendResetPasswordEmailSSOUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/email/reset-password") {
+                testClient.post("/email/reset-password") {
                     headers {
                         append("Authorization", "Bearer ${adminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -305,16 +305,11 @@ class AdminEmailControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            controller,
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/email") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }

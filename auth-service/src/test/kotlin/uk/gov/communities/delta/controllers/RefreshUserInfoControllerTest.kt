@@ -16,10 +16,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
-import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
-import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
@@ -27,6 +24,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -37,7 +35,7 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testUserInfoEndpoint() = testSuspend {
-        testClient.get("/bearer/user-info") {
+        testClient.get("/user-info") {
             headers {
                 append("Authorization", "Bearer ${session.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -56,7 +54,7 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testInvalidBearerToken() = testSuspend {
-        testClient.get("/bearer/user-info") {
+        testClient.get("/user-info") {
             headers {
                 append("Authorization", "Bearer invalid_token")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -125,16 +123,11 @@ class RefreshUserInfoControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            controller,
-                            adminEmailController,
-                            mockk<FetchUserAuditController>(relaxed = true),
-                            mockk<AdminUserCreationController>(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/user-info") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }

@@ -15,7 +15,6 @@ import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.Before
 import org.junit.BeforeClass
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.EditRolesController
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -24,6 +23,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -33,7 +33,7 @@ import kotlin.test.assertEquals
 class EditRolesControllerTest {
     @Test
     fun testEditRolesForUser() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${externalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -56,7 +56,7 @@ class EditRolesControllerTest {
     fun testExternalUserCannotRequestInternalRole() {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/roles") {
+                testClient.post("/roles") {
                     headers {
                         append("Authorization", "Bearer ${externalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -74,7 +74,7 @@ class EditRolesControllerTest {
 
     @Test
     fun testInternalUserCanRequestInternalRole() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${internalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -119,7 +119,7 @@ class EditRolesControllerTest {
 
     @Test
     fun testSendingCurrentRolesHasNoEffect() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${internalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -136,7 +136,7 @@ class EditRolesControllerTest {
     fun testInternalUserCannotRemoveAdminRole() {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/roles") {
+                testClient.post("/roles") {
                     headers {
                         append("Authorization", "Bearer ${internalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -268,16 +268,11 @@ class EditRolesControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            controller,
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/roles") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }

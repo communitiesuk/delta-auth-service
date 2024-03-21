@@ -4,6 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
@@ -11,7 +12,6 @@ import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
@@ -23,6 +23,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -94,7 +95,7 @@ class AdminEnableDisableUserControllerTest {
 
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/admin/enable-user") {
+                testClient.post("/admin/enable-user") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -141,7 +142,7 @@ class AdminEnableDisableUserControllerTest {
 
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/admin/disable-user") {
+                testClient.post("/admin/disable-user") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -156,7 +157,7 @@ class AdminEnableDisableUserControllerTest {
     }
 
     private suspend fun enableRequestAsAdminUser(user: LdapUser): HttpResponse {
-        return testClient.post("/bearer/admin/enable-user") {
+        return testClient.post("/admin/enable-user") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -166,7 +167,7 @@ class AdminEnableDisableUserControllerTest {
     }
 
     private suspend fun disableRequestAsAdminUser(user: LdapUser): HttpResponse {
-        return testClient.post("/bearer/admin/disable-user") {
+        return testClient.post("/admin/disable-user") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -243,16 +244,14 @@ class AdminEnableDisableUserControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            controller,
-                        )
+                        withBearerTokenAuth {
+                            post("/admin/enable-user") {
+                                controller.enableUser(call)
+                            }
+                            post("/admin/disable-user") {
+                                controller.disableUser(call)
+                            }
+                        }
                     }
                 }
             }

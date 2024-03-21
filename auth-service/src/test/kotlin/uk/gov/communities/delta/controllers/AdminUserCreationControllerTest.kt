@@ -19,7 +19,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.apache.commons.lang3.builder.EqualsBuilder
 import org.junit.*
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -28,6 +27,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -39,7 +39,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateUser() = testSuspend {
-        testClient.post("/bearer/create-user") {
+        testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
             headers {
@@ -75,7 +75,7 @@ class AdminUserCreationControllerTest {
         coEvery { userLookupService.lookupUserByCn(adminUser.cn) } throws NameNotFoundException()
         Assert.assertThrows(NameNotFoundException::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -91,7 +91,7 @@ class AdminUserCreationControllerTest {
     fun testNonAdminMakingRequest() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     headers {
                         append("Authorization", "Bearer ${userSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -107,7 +107,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateSSOUser() = testSuspend {
-        testClient.post("/bearer/create-user") {
+        testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_SSO_USER_EMAIL))
             headers {
@@ -134,7 +134,7 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateNotRequiredSSOUser() = testSuspend {
-        testClient.post("/bearer/create-user") {
+        testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_NOT_REQUIRED_SSO_USER))
             headers {
@@ -169,7 +169,7 @@ class AdminUserCreationControllerTest {
     fun testAdminCreateAlreadyExistingUser() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(OLD_STANDARD_USER_EMAIL))
                     headers {
@@ -188,7 +188,7 @@ class AdminUserCreationControllerTest {
     fun testAdminCreateInvalidEmail() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_INVALID_USER_EMAIL))
                     headers {
@@ -208,7 +208,7 @@ class AdminUserCreationControllerTest {
         coEvery { userService.createUser(any(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -227,7 +227,7 @@ class AdminUserCreationControllerTest {
         coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -246,7 +246,7 @@ class AdminUserCreationControllerTest {
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/create-user") {
+                testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
                     setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
                     headers {
@@ -469,16 +469,11 @@ class AdminUserCreationControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            controller,
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/create-user") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }
