@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDString
 import java.lang.Integer.parseInt
@@ -198,6 +199,10 @@ data class LdapUser(
     // Not required by Delta, but used internally
     @Transient val passwordLastSet: Instant? = null,
 )
+
+fun LdapUser.isInternal() : Boolean {
+    return this.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_INTERNAL_USER)
+}
 
 class InvalidLdapUserException(message: String) : Exception(message)
 

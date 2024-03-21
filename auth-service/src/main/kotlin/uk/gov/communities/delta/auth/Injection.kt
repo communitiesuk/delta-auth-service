@@ -291,7 +291,7 @@ class Injection(
         userLookupService,
         organisationService,
         accessGroupsService,
-        ::MemberOfToDeltaRolesMapper
+        ::MemberOfToDeltaRolesMapper,
     )
 
     fun editRolesController() = EditRolesController(
@@ -299,7 +299,15 @@ class Injection(
         groupService,
         organisationService,
         accessGroupsService,
-        ::MemberOfToDeltaRolesMapper
+        ::MemberOfToDeltaRolesMapper,
+    )
+
+    fun editAccessGroupsController() = EditAccessGroupsController(
+        userLookupService,
+        groupService,
+        organisationService,
+        accessGroupsService,
+        ::MemberOfToDeltaRolesMapper,
     )
 
     fun adminEnableDisableUserController() = AdminEnableDisableUserController(
