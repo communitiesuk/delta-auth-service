@@ -231,6 +231,17 @@ fun Route.oauthTokenRoute(oauthTokenController: OAuthTokenController) {
     }
 }
 
+fun Route.withBearerTokenAuth(routes: Route.() -> Unit) {
+    authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+        authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+            install(addClientIdToMDC)
+            install(addBearerSessionInfoToMDC)
+
+            routes()
+        }
+    }
+}
+
 fun Route.bearerTokenRoutes(
     refreshUserInfoController: RefreshUserInfoController,
     adminEmailController: AdminEmailController,
@@ -242,38 +253,36 @@ fun Route.bearerTokenRoutes(
     editAccessGroupsController: EditAccessGroupsController,
     adminEnableDisableUserController: AdminEnableDisableUserController,
 ) {
-    authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-        authenticate(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-            install(addClientIdToMDC)
-            install(addBearerSessionInfoToMDC)
-            route("/bearer/user-info") {
+    route("/bearer") {
+        withBearerTokenAuth {
+            route("/user-info") {
                 refreshUserInfoController.route(this)
             }
-            route("/bearer/user-audit") {
+            route("/user-audit") {
                 fetchUserAuditController.route(this)
             }
-            route("/bearer/create-user") {
+            route("/create-user") {
                 adminUserCreationController.route(this)
             }
-            route("/bearer/edit-user") {
+            route("/edit-user") {
                 adminEditUserController.route(this)
             }
-            route("/bearer/get-user") {
+            route("/get-user") {
                 adminGetUserController.route(this)
             }
-            route("/bearer/email") {
+            route("/email") {
                 adminEmailController.route(this)
             }
-            route("/bearer/roles") {
+            route("/roles") {
                 editRolesController.route(this)
             }
-            route("/bearer/access-groups") {
+            route("/access-groups") {
                 editAccessGroupsController.route(this)
             }
-            post("/bearer/admin/enable-user") {
+            post("/admin/enable-user") {
                 adminEnableDisableUserController.enableUser(call)
             }
-            post("/bearer/admin/disable-user") {
+            post("/admin/disable-user") {
                 adminEnableDisableUserController.disableUser(call)
             }
         }

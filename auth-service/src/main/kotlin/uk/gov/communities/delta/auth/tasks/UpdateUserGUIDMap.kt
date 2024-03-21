@@ -9,7 +9,9 @@ import javax.naming.directory.SearchControls
 import kotlin.time.Duration.Companion.minutes
 
 /*
- * Update the user_guid_map database table by reading all users from Active Directory in both old and new GUID mode
+ * Update the user_guid_map database table by reading all users from Active Directory in both old and new GUID mode.
+ * The migration to the new GUID format in Delta is now complete so this job is no longer run regularly,
+ * though we'll keep the code and table around for a short while.
  */
 class UpdateUserGUIDMap(
     private val ldapConfig: LDAPConfig,

@@ -15,7 +15,6 @@ import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.Before
 import org.junit.BeforeClass
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.EditRolesController
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -24,6 +23,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -33,13 +33,13 @@ import kotlin.test.assertEquals
 class EditRolesControllerTest {
     @Test
     fun testEditRolesForUser() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${externalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"roles\": [\"data-providers\"]}")
+            setBody("{\"addToRoles\": [\"data-providers\"], \"removeFromRoles\": [\"data-certifiers\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers", any(), null) }
@@ -53,43 +53,102 @@ class EditRolesControllerTest {
     }
 
     @Test
-    fun testExternalUserCannotRequestInternalRole() = testSuspend {
+    fun testExternalUserCannotRequestInternalRole() {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/roles") {
+                testClient.post("/roles") {
                     headers {
                         append("Authorization", "Bearer ${externalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody("{\"roles\": [\"payments-reviewers\"]}")
+                    setBody("{\"addToRoles\": [\"payments-reviewers\"], \"removeFromRoles\": []}")
                 }
             }
         }.apply {
             assertEquals("illegal_role", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            confirmVerified(groupService)
         }
     }
 
     @Test
     fun testInternalUserCanRequestInternalRole() = testSuspend {
-        testClient.post("/bearer/roles") {
+        testClient.post("/roles") {
             headers {
                 append("Authorization", "Bearer ${internalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"roles\": [\"payments-reviewers\"]}")
+            setBody("{\"addToRoles\": [\"payments-reviewers\"], \"removeFromRoles\": [\"data-certifiers\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers", any(), null) }
             coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers-orgCode1", any(), null) }
             coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers-orgCode2", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(internalUser.cn, internalUser.dn, "datamart-delta-data-certifiers-orgCode2", any(), null) }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    internalUser.cn,
+                    internalUser.dn,
+                    "datamart-delta-data-certifiers",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    internalUser.cn,
+                    internalUser.dn,
+                    "datamart-delta-data-certifiers-orgCode1",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    internalUser.cn,
+                    internalUser.dn,
+                    "datamart-delta-data-certifiers-orgCode2",
+                    any(),
+                    null
+                )
+            }
+            confirmVerified(groupService)
+        }
+    }
+
+    @Test
+    fun testSendingCurrentRolesHasNoEffect() = testSuspend {
+        testClient.post("/roles") {
+            headers {
+                append("Authorization", "Bearer ${internalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody("{\"addToRoles\": [\"data-certifiers\"], \"removeFromRoles\": [\"data-providers\"]}")
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            confirmVerified(groupService)
+        }
+    }
+
+    @Test
+    fun testInternalUserCannotRemoveAdminRole() {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/roles") {
+                    headers {
+                        append("Authorization", "Bearer ${internalUserSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody("{\"addToRoles\": [\"payments-reviewers\"], \"removeFromRoles\": [\"dataset-admins\"]}")
+                }
+            }
+        }.apply {
+            assertEquals("illegal_role", errorCode)
+            assertEquals("illegal_role (403 Forbidden) Not permitted to remove role dataset-admins", message)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
             confirmVerified(groupService)
         }
     }
@@ -174,6 +233,8 @@ class EditRolesControllerTest {
                 "datamart-delta-role-1",
                 "datamart-delta-role-1-orgCode1",
                 "datamart-delta-role-1-orgCode2",
+                "datamart-delta-dataset-admins-1",
+                "datamart-delta-dataset-admins-orgCode1",
             ),
             mobile = "0123456789",
             telephone = "0987654321",
@@ -207,17 +268,11 @@ class EditRolesControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            controller,
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/roles") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }

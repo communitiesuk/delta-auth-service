@@ -12,7 +12,6 @@ import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.EditAccessGroupsController
 import uk.gov.communities.delta.auth.controllers.internal.EditAccessGroupsController.*
@@ -22,6 +21,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -31,7 +31,7 @@ import kotlin.test.assertTrue
 class EditAccessGroupsControllerTest {
     @Test
     fun testUserCanUpdateAccessGroups() = testSuspend {
-        testClient.post("/bearer/access-groups") {
+        testClient.post("/access-groups") {
             headers {
                 append("Authorization", "Bearer ${externalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -89,7 +89,7 @@ class EditAccessGroupsControllerTest {
 
     @Test
     fun testAccessGroupsForUnselectedOrgsAreNotRemoved() = testSuspend {
-        testClient.post("/bearer/access-groups") {
+        testClient.post("/access-groups") {
             headers {
                 append("Authorization", "Bearer ${externalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -180,7 +180,7 @@ class EditAccessGroupsControllerTest {
     fun internalUserCannotUpdateGroupsWithEnableInternalUserFalse() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/access-groups") {
+                testClient.post("/access-groups") {
                     headers {
                         append("Authorization", "Bearer ${internalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -202,7 +202,7 @@ class EditAccessGroupsControllerTest {
     fun userCannotUpdateGroupsWithEnableOnlineRegistrationFalse() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/access-groups") {
+                testClient.post("/access-groups") {
                     headers {
                         append("Authorization", "Bearer ${externalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -224,7 +224,7 @@ class EditAccessGroupsControllerTest {
     fun userCannotRequestGroupsThatDoNotExist() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/bearer/access-groups") {
+                testClient.post("/access-groups") {
                     headers {
                         append("Authorization", "Bearer ${externalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -365,17 +365,11 @@ class EditAccessGroupsControllerTest {
                         }
                     }
                     routing {
-                        bearerTokenRoutes(
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            mockk(relaxed = true),
-                            controller,
-                            mockk(relaxed = true),
-                        )
+                        withBearerTokenAuth {
+                            route("/access-groups") {
+                                controller.route(this)
+                            }
+                        }
                     }
                 }
             }

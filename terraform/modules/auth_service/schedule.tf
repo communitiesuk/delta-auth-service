@@ -8,10 +8,6 @@ locals {
       cron     = "10 0 * * ? *" // Ten past midnight
       timezone = "Europe/London"
     }
-    UpdateUserGUIDMap = {
-      cron     = "10 0 * * ? *" // Ten past midnight
-      timezone = "Europe/London"
-    }
   }
 }
 
