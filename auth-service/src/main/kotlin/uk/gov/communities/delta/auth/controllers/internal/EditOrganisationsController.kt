@@ -8,9 +8,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
-import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 
 class EditOrganisationsController(
@@ -27,8 +25,9 @@ class EditOrganisationsController(
         route.post { updateUserOrganisations(call) }
     }
 
-    // This endpoint takes a list of organisation codes which should contain all and only the organisations of which
-    // the user should be a member after the execution of the endpoint
+    // This endpoint takes a list of organisation codes which should contain all and only the domain organisations of which
+    // the user should be a member after the execution of the endpoint. Note that if the user is a member of any organisations
+    // not in their domain, these will NOT be affected by this endpoint.
     private suspend fun updateUserOrganisations(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
@@ -36,18 +35,22 @@ class EditOrganisationsController(
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().userSelectedOrgs
         val userDomainOrgs =
-            if (callingUser.email == null) mapOf() else organisationService.findAllByDomain(callingUser.email)
-                .associateBy { it.code }
-        validateOrganisationRequest(requestedOrganisations, userDomainOrgs)
+            if (callingUser.email == null) setOf() else organisationService.findAllByDomain(callingUser.email)
+                .associateBy { it.code }.keys
 
-        val existingOrganisations = getExistingOrganisationsForUser(callingUser)
-
-        val orgsToAdd = requestedOrganisations.toSet().minus(existingOrganisations.toSet())
-        val orgsToRemove = existingOrganisations.toSet().minus(requestedOrganisations.toSet())
-
-        val userRoles = memberOfToDeltaRolesMapperFactory(
+        val mapperResult = memberOfToDeltaRolesMapperFactory(
             callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
-        ).map(callingUser.memberOfCNs).systemRoles
+        ).map(callingUser.memberOfCNs)
+        val allUserOrgs = mapperResult.organisations.map { it.code }.toSet()
+
+        val userNonDomainOrgs = allUserOrgs.minus(userDomainOrgs)
+        validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
+
+        val userRoles = mapperResult.systemRoles
+        val existingDomainOrganisations = mapperResult.organisations.map { it.code }.toSet().intersect(userDomainOrgs)
+
+        val orgsToAdd = requestedOrganisations.toSet().minus(existingDomainOrganisations.toSet())
+        val orgsToRemove = existingDomainOrganisations.toSet().minus(requestedOrganisations.toSet())
 
         for (org in orgsToAdd) {
             for (role in userRoles) {
@@ -58,7 +61,7 @@ class EditOrganisationsController(
 
         for (org in orgsToRemove) {
             for (group in callingUser.memberOfCNs) {
-                if (group.endsWith(org)) {
+                if (group.endsWith("-$org")) {
                     groupService.removeUserFromGroup(
                         callingUser.cn,
                         callingUser.dn,
@@ -73,17 +76,12 @@ class EditOrganisationsController(
         return call.respond(mapOf("message" to "Organisations have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
     }
 
-    private fun getExistingOrganisationsForUser(callingUser: LdapUser) = callingUser.memberOfCNs
-        .filter { it.startsWith(DeltaConfig.DATAMART_DELTA_USER) }
-        .map { it.removePrefix(DeltaConfig.DATAMART_DELTA_USER) }
-        .filter { it.isNotEmpty() }
-        .map { it.removePrefix("-") }
-
-    private fun validateOrganisationRequest(
+    fun validateOrganisationRequest(
         requestedOrganisations: List<String>,
-        userDomainOrgs: Map<String, Organisation>
+        userDomainOrgs: Set<String>,
+        userNonDomainOrgs: Set<String>
     ) {
-        if (requestedOrganisations.isEmpty()) {
+        if (requestedOrganisations.isEmpty() && userNonDomainOrgs.isEmpty()) {
             throw ApiError(
                 HttpStatusCode.Forbidden,
                 "zero_organisations",
@@ -91,7 +89,7 @@ class EditOrganisationsController(
             )
         }
         for (org in requestedOrganisations) {
-            if (!userDomainOrgs.containsKey(org)) {
+            if (!userDomainOrgs.contains(org)) {
                 throw ApiError(
                     HttpStatusCode.Forbidden,
                     "non_domain_organisation",

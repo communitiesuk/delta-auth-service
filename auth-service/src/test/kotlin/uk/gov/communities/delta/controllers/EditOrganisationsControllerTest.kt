@@ -80,46 +80,16 @@ class EditOrganisationsControllerTest {
     }
 
     @Test
-    fun userCannotRemoveAllOrganisations() = testSuspend {
-        Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                testClient.post("/organisations") {
-                    headers {
-                        append("Authorization", "Bearer ${testUserSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                    contentType(ContentType.Application.Json)
-                    setBody("{\"userSelectedOrgs\": []}")
-                }
+    fun userIsNotRemovedFromNonDomainOrganisations() = testSuspend {
+        testClient.post("/organisations") {
+            headers {
+                append("Authorization", "Bearer ${testUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
+            contentType(ContentType.Application.Json)
+            setBody("{\"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\"]}")
         }.apply {
-            assertEquals("zero_organisations", errorCode)
-            assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
             coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
-            confirmVerified(groupService)
-        }
-    }
-
-    @Test
-    fun userCannotUpdateNonDomainOrganisations() = testSuspend {
-        Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                testClient.post("/organisations") {
-                    headers {
-                        append("Authorization", "Bearer ${testUserSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                    contentType(ContentType.Application.Json)
-                    setBody("{\"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\", \"orgCode4\"]}")
-                }
-            }
-        }.apply {
-            assertEquals("non_domain_organisation", errorCode)
-            assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
-            confirmVerified(groupService)
         }
     }
 
@@ -192,6 +162,42 @@ class EditOrganisationsControllerTest {
         }
     }
 
+    @Test
+    fun userCannotRemoveAllOrganisations() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                val requestedOrganisations = listOf<String>()
+                val userDomainOrgs = setOf("domainOrg")
+                val userNonDomainOrgs = setOf<String>()
+                controller.validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
+            }
+        }.apply {
+            assertEquals("zero_organisations", errorCode)
+        }
+    }
+
+    @Test
+    fun userCanRemoveAllDomainOrganisationsIfMemberOfNonDomainOrganisation() = testSuspend {
+        val requestedOrganisations = listOf<String>()
+        val userDomainOrgs = setOf("domainOrg")
+        val userNonDomainOrgs = setOf("nonDomainOrg")
+        controller.validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
+    }
+
+    @Test
+    fun userCannotUpdateNonDomainOrganisations() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                val requestedOrganisations = listOf("nonDomainOrg")
+                val userDomainOrgs = setOf("domainOrg")
+                val userNonDomainOrgs = setOf("nonDomainOrg")
+                controller.validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
+            }
+        }.apply {
+            assertEquals("non_domain_organisation", errorCode)
+        }
+    }
+
     @Before
     fun resetMocks() {
         clearAllMocks()
@@ -206,6 +212,7 @@ class EditOrganisationsControllerTest {
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
+            OrganisationNameAndCode("orgCode4", "Organisation Name 4"),
         )
         coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
             AccessGroup("access-group-1", null, null, true, true),
@@ -243,9 +250,11 @@ class EditOrganisationsControllerTest {
                 DeltaConfig.DATAMART_DELTA_USER,
                 "datamart-delta-user-orgCode1",
                 "datamart-delta-user-orgCode2",
+                "datamart-delta-user-orgCode4",
                 "datamart-delta-data-certifiers",
                 "datamart-delta-data-certifiers-orgCode1",
                 "datamart-delta-data-certifiers-orgCode2",
+                "datamart-delta-data-certifiers-orgCode4",
                 "datamart-delta-access-group-1",
                 "datamart-delta-access-group-1-orgCode1",
                 "datamart-delta-access-group-2",
