@@ -33,7 +33,7 @@ class EditOrganisationsController(
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
         logger.atInfo().log("Updating organisations for user {}", session.userCn)
 
-        val requestedOrganisations = call.receive<DeltaUserOrganisations>().userSelectedOrgs
+        val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
         val userDomainOrgs =
             if (callingUser.email == null) setOf() else organisationService.findAllByDomain(callingUser.email)
                 .associateBy { it.code }.keys
@@ -101,6 +101,6 @@ class EditOrganisationsController(
 
     @Serializable
     data class DeltaUserOrganisations(
-        val userSelectedOrgs: List<String>,
+        val selectedDomainOrganisationCodes: List<String>,
     )
 }

@@ -10,7 +10,6 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
-import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.EditOrganisationsController
@@ -35,7 +34,7 @@ class EditOrganisationsControllerTest {
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"userSelectedOrgs\": [\"orgCode1\", \"orgCode3\"]}")
+            setBody("{\"selectedDomainOrganisationCodes\": [\"orgCode1\", \"orgCode3\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
@@ -87,7 +86,7 @@ class EditOrganisationsControllerTest {
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\"]}")
+            setBody("{\"selectedDomainOrganisationCodes\": [\"orgCode1\", \"orgCode2\"]}")
         }.apply {
             coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
         }
@@ -101,7 +100,7 @@ class EditOrganisationsControllerTest {
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\", \"orgCode3\"]}")
+            setBody("{\"selectedDomainOrganisationCodes\": [\"orgCode1\", \"orgCode2\", \"orgCode3\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
@@ -132,7 +131,7 @@ class EditOrganisationsControllerTest {
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"userSelectedOrgs\": [\"orgCode1\"]}")
+            setBody("{\"selectedDomainOrganisationCodes\": [\"orgCode1\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
@@ -163,14 +162,12 @@ class EditOrganisationsControllerTest {
     }
 
     @Test
-    fun userCannotRemoveAllOrganisations() = testSuspend {
+    fun userCannotRemoveAllOrganisations() {
         Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                val requestedOrganisations = listOf<String>()
-                val userDomainOrgs = setOf("domainOrg")
-                val userNonDomainOrgs = setOf<String>()
-                controller.validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
-            }
+            val requestedOrganisations = listOf<String>()
+            val userDomainOrgs = setOf("domainOrg")
+            val userNonDomainOrgs = setOf<String>()
+            controller.validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
         }.apply {
             assertEquals("zero_organisations", errorCode)
         }
@@ -185,14 +182,12 @@ class EditOrganisationsControllerTest {
     }
 
     @Test
-    fun userCannotUpdateNonDomainOrganisations() = testSuspend {
+    fun userCannotUpdateNonDomainOrganisations() {
         Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                val requestedOrganisations = listOf("nonDomainOrg")
-                val userDomainOrgs = setOf("domainOrg")
-                val userNonDomainOrgs = setOf("nonDomainOrg")
-                controller.validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
-            }
+            val requestedOrganisations = listOf("nonDomainOrg")
+            val userDomainOrgs = setOf("domainOrg")
+            val userNonDomainOrgs = setOf("nonDomainOrg")
+            controller.validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
         }.apply {
             assertEquals("non_domain_organisation", errorCode)
         }
