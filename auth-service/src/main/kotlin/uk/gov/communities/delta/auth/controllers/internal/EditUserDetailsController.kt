@@ -1,11 +1,15 @@
 package uk.gov.communities.delta.auth.controllers.internal
 
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserLookupService
@@ -29,36 +33,38 @@ class EditUserDetailsController(
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
         logger.atInfo().log("Updating details for user {}", session.userCn)
 
-        // TODO 694 do we want not to receive this whole object? only a few things are listed as updatable
-        val updatedDeltaUserDetails = call.receive<DeltaUserDetailsRequest>()
+        val updatedDeltaUserDetails = call.receive<DeltaUserMyDetails>()
+
+        if (!updatedDeltaUserDetails.telephone.isNullOrEmpty() && !updatedDeltaUserDetails.telephone.matches(Regex("^[0-9]+\$"))) {
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "non_numeric_telephone_number",
+                "Telephone number must contain only numeric characters 0-9"
+            )
+        }
 
         val modifications = getModifications(callingUser, updatedDeltaUserDetails)
 
         userService.updateUser(callingUser, modifications, null, call)
+
+        return call.respond(mapOf("message" to "Details have been updated."))
     }
 
-    // TODO 694 in this and the below there is duplicated code from the admin edit user controller
     private fun getModifications(
         currentUser: LdapUser,
-        newUser: DeltaUserDetailsRequest
+        newUser:DeltaUserMyDetails
     ): Array<ModificationItem> {
         var modifications = arrayOf<ModificationItem>()
 
         getModificationItem("sn", currentUser.lastName, newUser.lastName)?.let { modifications += it }
         getModificationItem("givenName", currentUser.firstName, newUser.firstName)?.let { modifications += it }
-        getModificationItem("comment", currentUser.comment, newUser.comment)?.let { modifications += it }
         getModificationItem("telephoneNumber", currentUser.telephone, newUser.telephone)?.let { modifications += it }
-        getModificationItem("mobile", currentUser.mobile, newUser.mobile)?.let { modifications += it }
-        getModificationItem(
-            "description",
-            currentUser.reasonForAccess,
-            newUser.reasonForAccess
-        )?.let { modifications += it }
         getModificationItem("title", currentUser.positionInOrganisation, newUser.position)?.let { modifications += it }
 
         return modifications
     }
 
+    // TODO 694 this should be commonised with the AdminEditUserController version, but where does the common version go?
     private fun getModificationItem(
         parameterName: String,
         currentValue: String?,
@@ -73,5 +79,14 @@ class EditUserDetailsController(
             else
                 ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute(parameterName, newValue))
         } else null
+    }
+
+    @Serializable
+    data class DeltaUserMyDetails(
+        @SerialName("lastName") val lastName: String,
+        @SerialName("firstName") val firstName: String,
+        @SerialName("telephone") val telephone: String? = null,
+        @SerialName("position") val position: String? = null,
+    ) {
     }
 }

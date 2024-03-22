@@ -53,10 +53,28 @@ class UserService(
         try {
             updateUserOnAD(ldapUser.dn, modifications)
         } catch (e: Exception) {
-            logger.atError().addKeyValue("UserDN", ldapUser.dn).log("Error creating user", e)
+            logger.atError().addKeyValue("UserDN", ldapUser.dn).log("Error updating user", e)
             throw e
         }
         auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, getAuditData(modifications))
+    }
+
+    suspend fun updateUsername(
+        ldapUser: LdapUser,
+        username: String,
+        triggeringAdminSession: OAuthSession?,
+        call: ApplicationCall,
+    ) {
+        // TODO 694 does this need any special handling? !/@ substitution?
+        val usernameModification = ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("id", username))
+        val modificationArray = arrayOf(usernameModification)
+        try {
+            updateUserOnAD(ldapUser.dn, modificationArray)
+        } catch (e: Exception) {
+            logger.atError().addKeyValue("UserDN", ldapUser.dn).log("Error changing username", e)
+            throw e
+        }
+        auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, getAuditData(modificationArray))
     }
 
     private suspend fun auditUserCreation(

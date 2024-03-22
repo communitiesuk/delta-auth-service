@@ -205,6 +205,8 @@ fun Route.internalRoutes(injection: Injection) {
     val editRolesController = injection.editRolesController()
     val editOrganisationsController = injection.editOrganisationsController()
     val editAccessGroupsController = injection.editAccessGroupsController()
+    val editUserDetailsController = injection.editUserDetailsController()
+    val editUsernameController = injection.editUsernameController()
     val adminEnableDisableUserController = injection.adminEnableDisableUserController()
 
     route("/auth-internal") {
@@ -222,6 +224,8 @@ fun Route.internalRoutes(injection: Injection) {
             editRolesController,
             editOrganisationsController,
             editAccessGroupsController,
+            editUserDetailsController,
+            editUsernameController,
             adminEnableDisableUserController,
         )
     }
@@ -254,6 +258,8 @@ fun Route.bearerTokenRoutes(
     editRolesController: EditRolesController,
     editOrganisationsController: EditOrganisationsController,
     editAccessGroupsController: EditAccessGroupsController,
+    editUserDetailsController: EditUserDetailsController,
+    editUsernameController: EditUsernameController,
     adminEnableDisableUserController: AdminEnableDisableUserController,
 ) {
     route("/bearer") {
@@ -287,6 +293,12 @@ fun Route.bearerTokenRoutes(
             }
             route("/organisations") {
                 editOrganisationsController.route(this)
+            }
+            route("/user-details") {
+                editUserDetailsController.route(this)
+            }
+            route("/username") {
+                editUsernameController.route(this)
             }
             post("/admin/enable-user") {
                 adminEnableDisableUserController.enableUser(call)
