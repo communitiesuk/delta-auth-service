@@ -9,10 +9,7 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
-import uk.gov.communities.delta.auth.services.GroupService
-import uk.gov.communities.delta.auth.services.OAuthSession
-import uk.gov.communities.delta.auth.services.OrganisationService
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 
 class EditOrganisationsController(
     private val userLookupService: UserLookupService,
@@ -35,9 +32,7 @@ class EditOrganisationsController(
         logger.atInfo().log("Updating organisations for user {}", session.userCn)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
-        val userDomainOrgCodes =
-            if (callingUser.email == null) setOf() else organisationService.findAllByDomain(callingUser.email)
-                .associateBy { it.code }.keys
+        val userDomainOrgCodes = organisationService.findAllByEmail(callingUser.email).map { it.code }.toSet()
 
         val allUserOrgCodes = callingUserRoles.organisations.map { it.code }.toSet()
 

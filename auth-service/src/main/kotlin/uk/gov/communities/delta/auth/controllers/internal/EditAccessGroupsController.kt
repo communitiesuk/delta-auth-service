@@ -13,6 +13,7 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.repositories.isInternal
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.emailToDomain
 
 class EditAccessGroupsController(
     private val userLookupService: UserLookupService,
@@ -84,9 +85,7 @@ class EditAccessGroupsController(
         callingUser: LdapUser,
         selectedOrgs: Set<String>
     ) {
-        val userDomainOrgs =
-            if (callingUser.email == null) listOf() else organisationService.findAllByDomain(callingUser.email)
-                .map { it.code }
+        val userDomainOrgs = organisationService.findAllByEmail(callingUser.email).map { it.code }.toSet()
         for (org in selectedOrgs) {
             if (!userDomainOrgs.contains(org)) {
                 throw ApiError(
