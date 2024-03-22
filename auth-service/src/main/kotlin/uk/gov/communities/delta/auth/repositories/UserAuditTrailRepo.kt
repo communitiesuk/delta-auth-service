@@ -10,6 +10,7 @@ import java.sql.Timestamp
 
 class UserAuditTrailRepo {
     enum class AuditAction(val action: String) {
+        // Modifying or removing an existing action requires a database migration to update old records
         FORM_LOGIN("form_login"),
         SSO_LOGIN("sso_login"),
         RESET_PASSWORD_EMAIL("reset_password_email"),
