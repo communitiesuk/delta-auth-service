@@ -203,6 +203,7 @@ fun Route.internalRoutes(injection: Injection) {
     val adminEditUserController = injection.adminEditUserController()
     val adminGetUserController = injection.adminGetUserController()
     val editRolesController = injection.editRolesController()
+    val editOrganisationsController = injection.editOrganisationsController()
     val editAccessGroupsController = injection.editAccessGroupsController()
     val adminEnableDisableUserController = injection.adminEnableDisableUserController()
 
@@ -219,6 +220,7 @@ fun Route.internalRoutes(injection: Injection) {
             adminEditUserController,
             adminGetUserController,
             editRolesController,
+            editOrganisationsController,
             editAccessGroupsController,
             adminEnableDisableUserController,
         )
@@ -250,6 +252,7 @@ fun Route.bearerTokenRoutes(
     adminEditUserController: AdminEditUserController,
     adminGetUserController: AdminGetUserController,
     editRolesController: EditRolesController,
+    editOrganisationsController: EditOrganisationsController,
     editAccessGroupsController: EditAccessGroupsController,
     adminEnableDisableUserController: AdminEnableDisableUserController,
 ) {
@@ -278,6 +281,9 @@ fun Route.bearerTokenRoutes(
             }
             route("/access-groups") {
                 editAccessGroupsController.route(this)
+            }
+            route("/organisations") {
+                editOrganisationsController.route(this)
             }
             post("/admin/enable-user") {
                 adminEnableDisableUserController.enableUser(call)
