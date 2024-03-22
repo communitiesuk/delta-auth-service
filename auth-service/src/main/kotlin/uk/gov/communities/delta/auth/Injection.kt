@@ -318,6 +318,16 @@ class Injection(
         ::MemberOfToDeltaRolesMapper,
     )
 
+    fun editUserDetailsController() = EditUserDetailsController(
+        userLookupService,
+        userService,
+    )
+
+    fun editUsernameController() = EditUsernameController(
+        userLookupService,
+        userService,
+    )
+
     fun adminEnableDisableUserController() = AdminEnableDisableUserController(
         azureADSSOConfig,
         userLookupService,
