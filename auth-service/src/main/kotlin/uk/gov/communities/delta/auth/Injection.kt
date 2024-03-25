@@ -242,7 +242,6 @@ class Injection(
         organisationService,
         ::MemberOfToDeltaRolesMapper,
         oauthSessionService,
-        dbPool,
         userAuditService
     )
 

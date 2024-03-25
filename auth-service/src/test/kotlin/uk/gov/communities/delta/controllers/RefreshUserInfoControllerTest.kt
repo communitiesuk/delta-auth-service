@@ -4,20 +4,23 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.plugins.callid.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
+import uk.gov.communities.delta.auth.bearerTokenRoutes
+import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
@@ -65,14 +68,57 @@ class RefreshUserInfoControllerTest {
         }
     }
 
+    @Test
+    fun testImpersonateUserEndpoint() = testSuspend {
+        testClient.post("/bearer/user-impersonate?userToImpersonate=${userToImpersonate.cn}") {
+            headers {
+                append("Authorization", "Bearer ${adminSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val response = Json.parseToJsonElement(bodyAsText()).jsonObject
+            assertEquals("Admin With Impersonated Groups SAML Token", response["saml_token"].toString().trim('"'))
+            assertEquals("adminUser", response["delta_ldap_user"]!!.jsonObject["cn"].toString().trim('"'))
+            assert(
+                response["delta_user_roles"]!!.jsonObject["systemRoles"]!!.jsonArray.any<JsonElement> {
+                    it.jsonObject["name"]!!.jsonPrimitive.content == "read-only-admin"
+                }
+            )
+        }
+    }
+
+    @Test(expected = ApiError::class)
+    fun testImpersonateUserEndpointAsNonAdmin() = testSuspend {
+        testClient.post("/bearer/user-impersonate?userToImpersonate=${userToImpersonate.cn}") {
+            headers {
+                append("Authorization", "Bearer ${session.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+        }.apply {
+            assertEquals(HttpStatusCode.Forbidden, status)
+        }
+    }
+
     companion object {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
         private lateinit var controller: RefreshUserInfoController
 
         private val client = testServiceClient()
+        private val call = mockk<ApplicationCall>()
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(2, "adminUser", client, "adminAccessToken", Instant.now(), "trace", false)
         private val user = testLdapUser(cn = "user", memberOfCNs = listOf("datamart-delta-user-dclg"))
+        private val adminUser = testLdapUser(cn = "adminUser", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
+        private val userToImpersonate =
+            testLdapUser(
+                cn = "userToImpersonate",
+                memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN)
+            )
+        private val adminImpersonatingUser =
+            testLdapUser(cn = "adminUser", memberOfCNs = userToImpersonate.memberOfCNs)
 
         @BeforeClass
         @JvmStatic
@@ -86,7 +132,11 @@ class RefreshUserInfoControllerTest {
             val dbPool = mockk<DbPool>()
             val userAuditService = mockk<UserAuditService>()
 
+
+
             coEvery { userLookupService.lookupUserByCn(session.userCn) } answers { user }
+            coEvery { userLookupService.lookupUserByCn(adminSession.userCn) } answers { adminUser }
+            coEvery { userLookupService.lookupUserByCn(userToImpersonate.cn) } answers { userToImpersonate }
             every {
                 samlTokenService.generate(
                     client.samlCredential,
@@ -95,13 +145,50 @@ class RefreshUserInfoControllerTest {
                     any()
                 )
             } answers { "SAML Token" }
+            every {
+                samlTokenService.generate(
+                    client.samlCredential,
+                    adminUser,
+                    adminSession.createdAt,
+                    any()
+                )
+            } answers { "Admin SAML Token" }
+            every {
+                samlTokenService.generate(
+                    client.samlCredential,
+                    adminImpersonatingUser,
+                    adminSession.createdAt,
+                    any()
+                )
+            } answers { "Admin With Impersonated Groups SAML Token" }
             coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
             coEvery { organisationService.findAllNamesAndCodes() }.returns(
                 listOf(OrganisationNameAndCode("dclg", "The Department"))
             )
             coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
             coEvery { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
+            coEvery {
+                oauthSessionService.retrieveFomAuthToken(
+                    adminSession.authToken,
+                    client
+                )
+            } answers { adminSession }
+            coEvery {
+                oauthSessionService.updateWithImpersonatedCn(
+                    adminSession.id,
+                    userToImpersonate.cn,
+                )
+            } just runs
             coEvery { adminEmailController.route(any()) } just runs
+            coEvery { dbPool.useConnectionNonBlocking("impersonate_user") {} } just runs
+            coEvery {
+                userAuditService.insertImpersonatingUserAuditRow(
+                    adminSession,
+                    userToImpersonate.cn,
+                    any()
+                )
+            } just runs
+            coEvery { call.respond(any()) } just runs
 
             controller = RefreshUserInfoController(
                 userLookupService,
@@ -110,10 +197,10 @@ class RefreshUserInfoControllerTest {
                 organisationService,
                 ::MemberOfToDeltaRolesMapper,
                 oauthSessionService,
-                dbPool,
                 userAuditService
             )
             testApp = TestApplication {
+                install(CallId) { generate(4) }
                 application {
                     configureSerialization()
                     authentication {

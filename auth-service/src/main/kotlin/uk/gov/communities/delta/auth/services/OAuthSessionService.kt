@@ -11,7 +11,6 @@ import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.auth.utils.hashBase64String
 import uk.gov.communities.delta.auth.utils.randomBase64
-import java.sql.Connection
 import java.sql.Timestamp
 import java.time.Instant
 import kotlin.time.Duration.Companion.hours
@@ -94,13 +93,15 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
     }
 
     @Blocking
-    fun updateWithImpersonatedCn(sessionId: Int, impersonatedUserCn: String, dbConnection: Connection) {
-        val stmt = dbConnection.prepareStatement("UPDATE delta_session SET impersonated_user_cn = ? WHERE id = ?")
-        stmt.setString(1, impersonatedUserCn)
-        stmt.setInt(2, sessionId)
-        val result = stmt.executeUpdate()
-        if (result != 1) throw Exception("Expected to change only 1 row but was $result")
-        dbConnection.commit()
+    fun updateWithImpersonatedCn(sessionId: Int, impersonatedUserCn: String) {
+        dbPool.useConnectionBlocking("impersonate_user") {
+            val stmt = it.prepareStatement("UPDATE delta_session SET impersonated_user_cn = ? WHERE id = ?")
+            stmt.setString(1, impersonatedUserCn)
+            stmt.setInt(2, sessionId)
+            val result = stmt.executeUpdate()
+            if (result != 1) throw Exception("Expected to change only 1 row but was $result")
+            it.commit()
+        }
     }
 
     @Blocking

@@ -6,13 +6,14 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.response.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
-import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
@@ -24,7 +25,6 @@ class RefreshUserInfoController(
     private val organisationService: OrganisationService,
     private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
     private val oAuthSessionService: OAuthSessionService,
-    private val dbPool: DbPool,
     private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -73,11 +73,10 @@ class RefreshUserInfoController(
         )
         val userInfoResponse = getUserInfo(call, originalUserWithImpersonatedRoles)
         userInfoResponse.impersonatedUserCn = impersonatedUsersCn
-        dbPool.useConnectionNonBlocking("impersonate_user") {
+        withContext(Dispatchers.IO) {
             oAuthSessionService.updateWithImpersonatedCn(
                 session.id,
-                impersonatedUsersCn,
-                dbPool.connection()
+                impersonatedUsersCn
             )
         }
         userAuditService.insertImpersonatingUserAuditRow(session, impersonatedUsersCn, call.callId!!)
