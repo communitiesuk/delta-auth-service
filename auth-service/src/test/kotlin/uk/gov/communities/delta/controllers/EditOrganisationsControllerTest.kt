@@ -210,7 +210,7 @@ class EditOrganisationsControllerTest {
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
             OrganisationNameAndCode("orgCode4", "Organisation Name 4"),
         )
-        coEvery { organisationService.findAllByDomain(testUser.email!!) } returns listOf(
+        coEvery { organisationService.findAllByEmail(testUser.email) } returns listOf(
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),

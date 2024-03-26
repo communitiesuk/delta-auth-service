@@ -72,7 +72,7 @@ class EditUserDetailsControllerTest {
             }
         }.apply {
             assertEquals("non_numeric_telephone_number", errorCode)
-            coVerify(exactly = 0) { userService.updateUsername(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
         }
     }
 

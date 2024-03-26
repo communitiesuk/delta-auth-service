@@ -17,6 +17,7 @@ class UserService(
     private val ldapServiceUserBind: LdapServiceUserBind,
     private val userLookupService: UserLookupService,
     private val userAuditService: UserAuditService,
+    private val ldapConfig: LDAPConfig,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -59,22 +60,28 @@ class UserService(
         auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, getAuditData(modifications))
     }
 
-    suspend fun updateUsername(
+    suspend fun updateEmail(
         ldapUser: LdapUser,
-        username: String,
+        newEmail: String,
         triggeringAdminSession: OAuthSession?,
         call: ApplicationCall,
     ) {
-        // TODO 694 does this need any special handling? !/@ substitution?
-        val usernameModification = ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("id", username))
-        val modificationArray = arrayOf(usernameModification)
+        val derivedCn = newEmail.replace("@", "!")
+        val newDn = ldapConfig.deltaUserDnFormat.format(derivedCn)
         try {
-            updateUserOnAD(ldapUser.dn, modificationArray)
+            val emailModification = ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("mail", newEmail))
+            val modificationArray = arrayOf(emailModification)
+            ldapServiceUserBind.useServiceUserBind {
+                it.rename(ldapUser.dn, newDn)
+                it.modifyAttributes(newDn, modificationArray)
+                logger.atInfo().addKeyValue("NewDN", newDn).addKeyValue("OldDN", ldapUser.dn).log("Username updated")
+            }
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", ldapUser.dn).log("Error changing username", e)
             throw e
         }
-        auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, getAuditData(modificationArray))
+        val auditMap = mapOf("mail" to newEmail, "Dn" to newDn)
+        auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, auditMap)
     }
 
     private suspend fun auditUserCreation(

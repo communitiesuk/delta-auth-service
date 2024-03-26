@@ -99,7 +99,7 @@ class Injection(
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper
     )
-    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService)
+    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig)
 
     private val emailService = EmailService(
         emailConfig,
@@ -296,15 +296,17 @@ class Injection(
         userLookupService,
     )
 
-    fun editRolesController() = EditRolesController(
+    fun adminEditEmailController() = AdminEditEmailController(
         userLookupService,
-        groupService,
+        userService,
     )
 
-    fun editOrganisationsController() = EditOrganisationsController(
+    fun adminEnableDisableUserController() = AdminEnableDisableUserController(
+        azureADSSOConfig,
         userLookupService,
-        groupService,
-        organisationService,
+        userService,
+        setPasswordTokenService,
+        userAuditService,
     )
 
     fun editAccessGroupsController() = EditAccessGroupsController(
@@ -320,16 +322,7 @@ class Injection(
         userService,
     )
 
-    fun editUsernameController() = EditUsernameController(
-        userLookupService,
-        userService,
-    )
+    fun editRolesController() = EditRolesController(userLookupService, groupService)
 
-    fun adminEnableDisableUserController() = AdminEnableDisableUserController(
-        azureADSSOConfig,
-        userLookupService,
-        userService,
-        setPasswordTokenService,
-        userAuditService,
-    )
+    fun editOrganisationsController() = EditOrganisationsController(userLookupService, groupService, organisationService)
 }
