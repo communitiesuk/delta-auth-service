@@ -11,6 +11,7 @@ import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.getModificationItem
 import javax.naming.NameNotFoundException
 import javax.naming.directory.BasicAttribute
 import javax.naming.directory.DirContext
@@ -115,22 +116,6 @@ class AdminEditUserController(
         getModificationItem("title", currentUser.positionInOrganisation, newUser.position)?.let { modifications += it }
 
         return modifications
-    }
-
-    private fun getModificationItem(
-        parameterName: String,
-        currentValue: String?,
-        newValue: String?
-    ): ModificationItem? {
-        return if (!currentValue.equals(newValue)) {
-            if (currentValue.isNullOrEmpty())
-                if (newValue.isNullOrEmpty()) null
-                else ModificationItem(DirContext.ADD_ATTRIBUTE, BasicAttribute(parameterName, newValue))
-            else if (newValue.isNullOrEmpty())
-                ModificationItem(DirContext.REMOVE_ATTRIBUTE, BasicAttribute(parameterName))
-            else
-                ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute(parameterName, newValue))
-        } else null
     }
 
 }

@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.utils.getModificationItem
 import javax.naming.directory.BasicAttribute
 import javax.naming.directory.DirContext
 import javax.naming.directory.ModificationItem
@@ -62,23 +63,6 @@ class EditUserDetailsController(
         getModificationItem("title", currentUser.positionInOrganisation, newUser.position)?.let { modifications += it }
 
         return modifications
-    }
-
-    // TODO 694 this should be commonised with the AdminEditUserController version, but where does the common version go?
-    private fun getModificationItem(
-        parameterName: String,
-        currentValue: String?,
-        newValue: String?
-    ): ModificationItem? {
-        return if (!currentValue.equals(newValue)) {
-            if (currentValue.isNullOrEmpty())
-                if (newValue.isNullOrEmpty()) null
-                else ModificationItem(DirContext.ADD_ATTRIBUTE, BasicAttribute(parameterName, newValue))
-            else if (newValue.isNullOrEmpty())
-                ModificationItem(DirContext.REMOVE_ATTRIBUTE, BasicAttribute(parameterName))
-            else
-                ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute(parameterName, newValue))
-        } else null
     }
 
     @Serializable
