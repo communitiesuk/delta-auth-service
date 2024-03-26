@@ -13,7 +13,7 @@ import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.controllers.internal.EditUsernameController
+import uk.gov.communities.delta.auth.controllers.internal.AdminEditEmailController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -26,41 +26,66 @@ import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
 
-class EditUsernameControllerTest {
+class AdminEditEmailControllerTest {
     @Test
-    fun userCanUpdateUsername() = testSuspend {
-        testClient.post("/username") {
+    fun canUpdateEmailForUser() = testSuspend {
+        testClient.post("/admin/update-user-email") {
             headers {
-                append("Authorization", "Bearer ${testUserSession.authToken}")
+                append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
             contentType(ContentType.Application.Json)
-            setBody("{\"username\": \"toast!user.com\"}")
+            setBody("{\"userToEditCn\": \"test!user.com\", " +
+                "\"newEmail\": \"toast!user.com\"}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                userService.updateUsername(testUser, "toast!user.com", null, any())
+                userService.updateEmail(userToUpdate, "toast!user.com", adminSession, any())
             }
             confirmVerified(userService)
         }
     }
 
     @Test
-    fun userCannotChooseBlankUsername() = testSuspend {
+    fun nonAdminCannotUpdateEmail() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/username") {
+                testClient.post("/admin/update-user-email") {
                     headers {
-                        append("Authorization", "Bearer ${testUserSession.authToken}")
+                        append("Authorization", "Bearer ${nonAdminSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody("{\"username\": \"\"}")
+                    setBody("{\"userToEditCn\": \"test!user.com\", " +
+                        "\"newEmail\": \"toast!user.com\"}")
+                }
+            }
+        }.apply {
+            assertEquals("forbidden", errorCode)
+            coVerify(exactly = 0) {
+                userService.updateEmail(any(), any(), any(), any())
+            }
+            confirmVerified(userService)
+        }
+    }
+
+    @Test
+    fun cannotUpdateToBlankEmail() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/admin/update-user-email") {
+                    headers {
+                        append("Authorization", "Bearer ${adminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody("{\"userToEditCn\": \"test!user.com\", " +
+                        "\"newEmail\": \"\"}")
                 }
             }
         }.apply {
             assertEquals("empty_username", errorCode)
-            coVerify(exactly = 0) { userService.updateUsername(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateEmail(any(), any(), any(), any()) }
         }
     }
 
@@ -69,18 +94,26 @@ class EditUsernameControllerTest {
         clearAllMocks()
         coEvery {
             oauthSessionService.retrieveFomAuthToken(
-                testUserSession.authToken,
+                adminSession.authToken,
                 client
             )
-        } answers { testUserSession }
-        coEvery { userLookupService.lookupUserByCn(testUser.cn) } returns testUser
-        coEvery { userService.updateUsername(testUser, any(), null, any()) } just runs
+        } answers { adminSession }
+        coEvery {
+            oauthSessionService.retrieveFomAuthToken(
+                nonAdminSession.authToken,
+                client
+            )
+        } answers { nonAdminSession }
+        coEvery { userLookupService.lookupUserByCn(userToUpdate.cn) } returns userToUpdate
+        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
+        coEvery { userLookupService.lookupUserByCn(nonAdminUser.cn) } returns nonAdminUser
+        coEvery { userService.updateEmail(userToUpdate, any(), any(), any()) } just runs
     }
 
     companion object {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
-        private lateinit var controller: EditUsernameController
+        private lateinit var controller: AdminEditEmailController
 
         private val oauthSessionService = mockk<OAuthSessionService>()
 
@@ -89,23 +122,24 @@ class EditUsernameControllerTest {
 
         private val client = testServiceClient()
 
-        private val testUser = testLdapUser(
+        private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
+        private val nonAdminUser = testLdapUser(cn = "nonadmin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER))
+
+        private val userToUpdate = testLdapUser(
             cn = "test!user.com",
             email = "test@user.com",
             memberOfCNs = listOf(
                 DeltaConfig.DATAMART_DELTA_USER,
             ),
-            mobile = "0123456789",
-            telephone = "0987654321",
         )
 
-        private val testUserSession =
-            OAuthSession(1, testUser.cn, client, "testUserToken", Instant.now(), "trace", false)
+        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)
+        private val nonAdminSession = OAuthSession(1, nonAdminUser.cn, client, "nonAdminToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic
         fun setup() {
-            controller = EditUsernameController(
+            controller = AdminEditEmailController(
                 userLookupService,
                 userService,
             )
@@ -125,7 +159,7 @@ class EditUsernameControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/username") {
+                            route("/admin/update-user-email") {
                                 controller.route(this)
                             }
                         }

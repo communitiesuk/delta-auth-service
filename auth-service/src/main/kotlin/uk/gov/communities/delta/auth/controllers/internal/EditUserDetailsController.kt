@@ -71,6 +71,5 @@ class EditUserDetailsController(
         @SerialName("firstName") val firstName: String,
         @SerialName("telephone") val telephone: String? = null,
         @SerialName("position") val position: String? = null,
-    ) {
-    }
+    )
 }

@@ -92,7 +92,7 @@ class Injection(
     val userAuditTrailRepo = UserAuditTrailRepo()
     val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
 
-    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService)
+    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig)
     private val accessGroupsService = AccessGroupsService(ldapServiceUserBind, ldapConfig)
     private val groupService = GroupService(ldapServiceUserBind, ldapConfig, userAuditService)
     private val emailRepository = EmailRepository(emailConfig)
@@ -294,6 +294,19 @@ class Injection(
         ::MemberOfToDeltaRolesMapper,
     )
 
+    fun adminEditEmailController() = AdminEditEmailController(
+        userLookupService,
+        userService,
+    )
+
+    fun adminEnableDisableUserController() = AdminEnableDisableUserController(
+        azureADSSOConfig,
+        userLookupService,
+        userService,
+        setPasswordTokenService,
+        userAuditService,
+    )
+
     fun editRolesController() = EditRolesController(
         userLookupService,
         groupService,
@@ -321,18 +334,5 @@ class Injection(
     fun editUserDetailsController() = EditUserDetailsController(
         userLookupService,
         userService,
-    )
-
-    fun editUsernameController() = EditUsernameController(
-        userLookupService,
-        userService,
-    )
-
-    fun adminEnableDisableUserController() = AdminEnableDisableUserController(
-        azureADSSOConfig,
-        userLookupService,
-        userService,
-        setPasswordTokenService,
-        userAuditService,
     )
 }
