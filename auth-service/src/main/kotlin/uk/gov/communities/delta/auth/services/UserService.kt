@@ -10,6 +10,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.utils.randomBase64
 import java.io.UnsupportedEncodingException
@@ -328,6 +329,31 @@ class UserService(
         constructor(
             ldapConfig: LDAPConfig,
             deltaUserDetails: DeltaUserDetails,
+            ssoClient: AzureADSSOClient?,
+        ) {
+            val ssoUser = ssoClient?.required ?: false
+            this.ldapConfig = ldapConfig
+            this.cn = LDAPConfig.emailToCN(deltaUserDetails.email)
+            this.givenName = deltaUserDetails.firstName
+            this.sn = deltaUserDetails.lastName
+            this.mail = deltaUserDetails.email
+            this.userAccountControl = accountFlags(ssoUser)
+            this.dn = cnToDN(cn)
+            this.userPrincipalName = cnToPrincipalName(cn)
+            this.notificationStatus = "active"
+            this.password = if (ssoUser) randomBase64(18) else null
+            this.comment = if (deltaUserDetails.comment.isNullOrEmpty()) null else deltaUserDetails.comment
+            this.telephone = if (deltaUserDetails.telephone.isNullOrEmpty()) null else deltaUserDetails.telephone
+            this.mobile = if (deltaUserDetails.mobile.isNullOrEmpty()) null else deltaUserDetails.mobile
+            this.position = if (deltaUserDetails.position.isNullOrEmpty()) null else deltaUserDetails.position
+            this.reasonForAccess =
+                if (deltaUserDetails.reasonForAccess.isNullOrEmpty()) null else deltaUserDetails.reasonForAccess
+
+        }
+
+        constructor(
+            ldapConfig: LDAPConfig,
+            deltaUserDetails: DeltaUserDetailsRequest,
             ssoClient: AzureADSSOClient?,
         ) {
             val ssoUser = ssoClient?.required ?: false

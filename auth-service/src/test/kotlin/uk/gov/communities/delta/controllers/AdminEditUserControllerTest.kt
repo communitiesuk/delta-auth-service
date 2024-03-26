@@ -22,6 +22,7 @@ import org.junit.Before
 import org.junit.BeforeClass
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEditUserController
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserPermissionsRequestMapper
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -253,11 +254,12 @@ class AdminEditUserControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var controller: AdminEditUserController
 
-        private val oauthSessionService = mockk<OAuthSessionService>()
-
-        private val userLookupService = mockk<UserLookupService>()
-        private val userService = mockk<UserService>()
-        private val groupService = mockk<GroupService>()
+        private lateinit var oauthSessionService: OAuthSessionService
+        private lateinit var userLookupService: UserLookupService
+        private lateinit var userService: UserService
+        private lateinit var groupService: GroupService
+        private lateinit var organisationService: OrganisationService
+        private lateinit var accessGroupsService: AccessGroupsService
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
@@ -344,10 +346,21 @@ class AdminEditUserControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
+            oauthSessionService = mockk<OAuthSessionService>()
+            userLookupService = mockk<UserLookupService>()
+            userService = mockk<UserService>()
+            groupService = mockk<GroupService>()
+            organisationService = mockk<OrganisationService>()
+            accessGroupsService = mockk<AccessGroupsService>()
+
+            val requestBodyMapper = DeltaUserPermissionsRequestMapper(
+                organisationService, accessGroupsService
+            )
             controller = AdminEditUserController(
                 userLookupService,
                 userService,
                 groupService,
+                requestBodyMapper,
             )
 
             testApp = TestApplication {

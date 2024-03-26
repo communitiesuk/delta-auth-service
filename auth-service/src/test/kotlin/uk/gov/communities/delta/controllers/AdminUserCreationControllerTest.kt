@@ -21,6 +21,9 @@ import org.apache.commons.lang3.builder.EqualsBuilder
 import org.junit.*
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserPermissions
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserPermissionsRequestMapper
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -316,6 +319,8 @@ class AdminUserCreationControllerTest {
         private val groupService = mockk<GroupService>()
         private val emailService = mockk<EmailService>()
         private val setPasswordTokenService = mockk<SetPasswordTokenService>()
+        private val organisationService = mockk<OrganisationService>()
+        private val accessGroupsService = mockk<AccessGroupsService>()
 
         private val user = slot<UserService.ADUser>()
 
@@ -452,7 +457,8 @@ class AdminUserCreationControllerTest {
                 userService,
                 groupService,
                 emailService,
-                setPasswordTokenService
+                setPasswordTokenService,
+                DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService)
             )
 
             testApp = TestApplication {
