@@ -5,6 +5,7 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
@@ -22,6 +23,7 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.dbintegration.UserAuditServiceTest.Companion.call
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -366,8 +368,14 @@ class EditUserAccessGroupsControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/access-groups") {
-                                controller.route(this)
+                            post("/access-groups") {
+                                controller.updateUserAccessGroups(call)
+                            }
+                            post("/access-groups/add") {
+                                controller.addUserToAccessGroup(call)
+                            }
+                            post("/access-groups/remove") {
+                                controller.removeUserFromAccessGroup(call)
                             }
                         }
                     }
