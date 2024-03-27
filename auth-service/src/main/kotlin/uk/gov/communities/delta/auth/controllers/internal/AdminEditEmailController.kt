@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
@@ -52,7 +53,7 @@ class AdminEditEmailController(
 
     @Serializable
     data class DeltaEmailChangeRequest(
-        val userToEditCn: String,
-        val newEmail: String,
+        @SerialName("userToEditCn") val userToEditCn: String,
+        @SerialName("newEmail") val newEmail: String,
     )
 }
