@@ -362,7 +362,7 @@ class AdminUserCreationControllerTest {
                 "0987654321",
                 "test position",
                 null,
-                arrayOf("datamart-delta-access-group-2", "datamart-delta-access-group-1"),
+                listOf("datamart-delta-access-group-2", "datamart-delta-access-group-1"),
                 arrayOf("datamart-delta-access-group-2"),
                 mapOf("datamart-delta-access-group-2" to arrayOf("orgCode1", "orgCode2")),
                 arrayOf("datamart-delta-role-1", "datamart-delta-role-2"),
