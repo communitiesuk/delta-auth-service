@@ -20,6 +20,7 @@ class AdminEditUserController(
     private val userLookupService: UserLookupService,
     private val userService: UserService,
     private val groupService: GroupService,
+    private val deltaUserPermissionsRequestMapper: DeltaUserPermissionsRequestMapper,
 ) : AdminUserController(userLookupService) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -47,16 +48,26 @@ class AdminEditUserController(
             )
         }
 
-        val updatedDeltaUserDetails = call.receive<UserService.DeltaUserDetails>()
+        val updatedDeltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
 
-        if (updatedDeltaUserDetails.id.replace("@", "!") != cn) throw ApiError(
+        if (updatedDeltaUserDetailsRequest.id.replace("@", "!") != cn) throw ApiError(
             HttpStatusCode.BadRequest,
             "username_changed",
             "Username has been changed"
         )
 
-        val modifications = getModifications(currentUser, updatedDeltaUserDetails)
-        val updatedUserGroups = updatedDeltaUserDetails.getGroups()
+        val updatedPermissions = try {
+            deltaUserPermissionsRequestMapper.deltaRequestToUserPermissions(updatedDeltaUserDetailsRequest)
+        } catch (e: DeltaUserPermissions.Companion.BadInput) {
+            throw ApiError(
+                HttpStatusCode.BadRequest,
+                "bad_request",
+                e.message!!,
+                "Requested permissions are invalid: ${e.message}"
+            )
+        }
+        val modifications = getModifications(currentUser, updatedDeltaUserDetailsRequest)
+        val updatedUserGroups = updatedPermissions.getADGroupCNs()
         val groupsToAddToUser = updatedUserGroups.filter { it !in currentUser.memberOfCNs && editableGroup(it) }
         val groupsToRemoveFromUser = currentUser.memberOfCNs.filter { it !in updatedUserGroups && editableGroup(it) }
 
@@ -87,7 +98,7 @@ class AdminEditUserController(
 
     private fun getModifications(
         currentUser: LdapUser,
-        newUser: UserService.DeltaUserDetails
+        newUser: DeltaUserDetailsRequest
     ): Array<ModificationItem> {
         var modifications = arrayOf<ModificationItem>()
 

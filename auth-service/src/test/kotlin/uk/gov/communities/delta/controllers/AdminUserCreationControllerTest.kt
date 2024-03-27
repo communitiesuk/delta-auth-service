@@ -21,6 +21,8 @@ import org.apache.commons.lang3.builder.EqualsBuilder
 import org.junit.*
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserPermissionsRequestMapper
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -289,6 +291,14 @@ class AdminUserCreationControllerTest {
         coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } just runs
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "passwordToken"
+        coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
+            OrganisationNameAndCode("orgCode1", "Org 1"), OrganisationNameAndCode("orgCode2", "Org 2")
+        )
+        @Suppress("BooleanLiteralArgument")
+        coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
+            AccessGroup("access-group-1", "STATS", "access group 1", false, false),
+            AccessGroup("access-group-2", "STATS", "access group 2", false, false),
+        )
     }
 
     companion object {
@@ -316,6 +326,8 @@ class AdminUserCreationControllerTest {
         private val groupService = mockk<GroupService>()
         private val emailService = mockk<EmailService>()
         private val setPasswordTokenService = mockk<SetPasswordTokenService>()
+        private val organisationService = mockk<OrganisationService>()
+        private val accessGroupsService = mockk<AccessGroupsService>()
 
         private val user = slot<UserService.ADUser>()
 
@@ -339,15 +351,15 @@ class AdminUserCreationControllerTest {
                     "\"accessGroups\":[\"datamart-delta-access-group-2\",\"datamart-delta-access-group-1\"]," +
                     "\"accessGroupDelegates\":[\"datamart-delta-access-group-2\"]," +
                     "\"accessGroupOrganisations\":{\"datamart-delta-access-group-2\":[\"orgCode1\", \"orgCode2\"]}," +
-                    "\"roles\":[\"datamart-delta-role-1\",\"datamart-delta-role-2\"]," +
+                    "\"roles\":[\"datamart-delta-data-providers\",\"datamart-delta-data-certifiers\"]," +
                     "\"externalRoles\":[]," +
                     "\"organisations\":[\"orgCode1\", \"orgCode2\"]," +
                     "\"comment\":\"test comment\"}"
             )
         }
 
-        private fun getDeltaUserDetails(email: String): UserService.DeltaUserDetails {
-            return UserService.DeltaUserDetails(
+        private fun getDeltaUserDetails(email: String): DeltaUserDetailsRequest {
+            return DeltaUserDetailsRequest(
                 "",
                 false,
                 email,
@@ -357,12 +369,12 @@ class AdminUserCreationControllerTest {
                 "0987654321",
                 "test position",
                 null,
-                arrayOf("datamart-delta-access-group-2", "datamart-delta-access-group-1"),
-                arrayOf("datamart-delta-access-group-2"),
-                mapOf("datamart-delta-access-group-2" to arrayOf("orgCode1", "orgCode2")),
-                arrayOf("datamart-delta-role-1", "datamart-delta-role-2"),
-                emptyArray(),
-                arrayOf("orgCode1", "orgCode2"),
+                listOf("datamart-delta-access-group-2", "datamart-delta-access-group-1"),
+                listOf("datamart-delta-access-group-2"),
+                mapOf("datamart-delta-access-group-2" to listOf("orgCode1", "orgCode2")),
+                listOf("datamart-delta-data-providers", "datamart-delta-data-certifiers"),
+                emptyList(),
+                listOf("orgCode1", "orgCode2"),
                 "test comment",
                 null
             )
@@ -391,19 +403,19 @@ class AdminUserCreationControllerTest {
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-delegate-access-group-2", any(), adminSession)
             }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-role-2", any(), adminSession) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-data-certifiers", any(), adminSession) }
             coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-role-2-orgCode1", any(), adminSession)
+                groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode1", any(), adminSession)
             }
             coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-role-2-orgCode2", any(), adminSession)
+                groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode2", any(), adminSession)
             }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-role-1", any(), adminSession) }
+            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-data-providers", any(), adminSession) }
             coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-role-1-orgCode1", any(), adminSession)
+                groupService.addUserToGroup(any(), "datamart-delta-data-providers-orgCode1", any(), adminSession)
             }
             coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-role-1-orgCode2", any(), adminSession)
+                groupService.addUserToGroup(any(), "datamart-delta-data-providers-orgCode2", any(), adminSession)
             }
             coVerify(exactly = 14) { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) }
         }
@@ -452,7 +464,8 @@ class AdminUserCreationControllerTest {
                 userService,
                 groupService,
                 emailService,
-                setPasswordTokenService
+                setPasswordTokenService,
+                DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService)
             )
 
             testApp = TestApplication {
