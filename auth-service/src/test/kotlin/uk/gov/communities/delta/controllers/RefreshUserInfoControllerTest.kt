@@ -16,7 +16,6 @@ import kotlinx.serialization.json.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-import uk.gov.communities.delta.auth.bearerTokenRoutes
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
@@ -70,7 +69,7 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testImpersonateUserEndpoint() = testSuspend {
-        testClient.post("/bearer/user-impersonate?userToImpersonate=${userToImpersonate.cn}") {
+        testClient.post("/user-impersonate?userToImpersonate=${userToImpersonate.cn}") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -90,7 +89,7 @@ class RefreshUserInfoControllerTest {
 
     @Test(expected = ApiError::class)
     fun testImpersonateUserEndpointAsNonAdmin() = testSuspend {
-        testClient.post("/bearer/user-impersonate?userToImpersonate=${userToImpersonate.cn}") {
+        testClient.post("/user-impersonate?userToImpersonate=${userToImpersonate.cn}") {
             headers {
                 append("Authorization", "Bearer ${session.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
@@ -219,6 +218,9 @@ class RefreshUserInfoControllerTest {
                         withBearerTokenAuth {
                             route("/user-info") {
                                 controller.route(this)
+                            }
+                            post("/user-impersonate") {
+                                controller.impersonateUser(call)
                             }
                         }
                     }
