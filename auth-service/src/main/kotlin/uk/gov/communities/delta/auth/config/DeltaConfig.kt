@@ -21,6 +21,7 @@ class DeltaConfig(
         const val DATAMART_DELTA_REPORT_USERS = LDAPConfig.DATAMART_DELTA_PREFIX + "report-users"
         const val DATAMART_DELTA_ADMIN = LDAPConfig.DATAMART_DELTA_PREFIX + "admin"
         const val DATAMART_DELTA_INTERNAL_USER = LDAPConfig.DATAMART_DELTA_PREFIX + "user-dclg"
+        const val DATAMART_DELTA_READ_ONLY_ADMIN = LDAPConfig.DATAMART_DELTA_PREFIX + "read-only-admin"
     }
 
     fun log(logger: LoggingEventBuilder) {
