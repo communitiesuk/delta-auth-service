@@ -422,25 +422,24 @@ class UserService(
         }
     }
 
-    @Serializable
     data class DeltaUserDetails(
-        @SerialName("id") val id: String, //This is the username in email form
-        @SerialName("enabled") val enabled: Boolean, //Always false for user creation - not used anywhere yet
-        @SerialName("email") val email: String,
-        @SerialName("lastName") val lastName: String,
-        @SerialName("firstName") val firstName: String,
-        @SerialName("telephone") val telephone: String? = null,
-        @SerialName("mobile") val mobile: String? = null,
-        @SerialName("position") val position: String? = null,
-        @SerialName("reasonForAccess") val reasonForAccess: String? = null,
-        @SerialName("accessGroups") val accessGroups: Array<String>,
-        @SerialName("accessGroupDelegates") val accessGroupDelegates: Array<String>,
-        @SerialName("accessGroupOrganisations") val accessGroupOrganisations: Map<String, Array<String>>,
-        @SerialName("roles") val roles: Array<String>,
-        @SerialName("externalRoles") val externalRoles: Array<String>, //Not used anywhere yet - S151 Officer related
-        @SerialName("organisations") val organisations: Array<String>,
-        @SerialName("comment") val comment: String? = null,
-        @SerialName("classificationType") val classificationType: String? = null, //Not used anywhere yet
+        val id: String, //This is the username in email form
+        val enabled: Boolean, //Always false for user creation - not used anywhere yet
+        val email: String,
+        val lastName: String,
+        val firstName: String,
+        val telephone: String? = null,
+        val mobile: String? = null,
+        val position: String? = null,
+        val reasonForAccess: String? = null,
+        val accessGroups: Array<String>,
+        val accessGroupDelegates: Array<String>,
+        val accessGroupOrganisations: Map<String, Array<String>>,
+        val roles: Array<String>,
+        val externalRoles: Array<String>, //Not used anywhere yet - S151 Officer related
+        val organisations: Array<String>,
+        val comment: String? = null,
+        val classificationType: String? = null, //Not used anywhere yet
     ) {
         fun getGroups(): List<String> {
             val groups = mutableListOf<String>()
