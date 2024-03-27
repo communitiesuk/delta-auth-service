@@ -3,6 +3,8 @@ package uk.gov.communities.delta.auth.repositories
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.utils.io.core.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.flywaydb.core.Flyway
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
@@ -33,6 +35,18 @@ class DbPool(private val config: DatabaseConfig) : Closeable {
         }
         return logger.timed(action) {
             connection().use(block)
+        }
+    }
+
+    @OptIn(ExperimentalContracts::class)
+    suspend fun <R> useConnectionNonBlocking(action: String, block: (Connection) -> R): R {
+        contract {
+            callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+        }
+        return withContext(Dispatchers.IO) {
+            logger.timed(action) {
+                connection().use(block)
+            }
         }
     }
 

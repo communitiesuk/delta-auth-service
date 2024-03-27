@@ -240,7 +240,9 @@ class Injection(
         samlTokenService,
         accessGroupsService,
         organisationService,
-        ::MemberOfToDeltaRolesMapper
+        ::MemberOfToDeltaRolesMapper,
+        oauthSessionService,
+        userAuditService
     )
 
     fun adminEmailController() = AdminEmailController(

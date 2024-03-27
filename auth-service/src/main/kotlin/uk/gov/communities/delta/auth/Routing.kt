@@ -264,6 +264,9 @@ fun Route.bearerTokenRoutes(
             route("/user-audit") {
                 fetchUserAuditController.route(this)
             }
+            post("/user-impersonate") {
+                refreshUserInfoController.impersonateUser(call)
+            }
             route("/create-user") {
                 adminUserCreationController.route(this)
             }

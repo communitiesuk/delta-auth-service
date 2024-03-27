@@ -39,6 +39,15 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         )
     }
 
+
+    suspend fun insertImpersonatingUserAuditRow(session: OAuthSession, impersonatedUserCn: String, requestId: String) {
+        insertAuditRow(
+            UserAuditTrailRepo.AuditAction.IMPERSONATE_USER, session.userCn, null, requestId, Json.encodeToString(
+                ImpersonateUserAuditData(impersonatedUserCn)
+            )
+        )
+    }
+
     val userFormLoginAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORM_LOGIN)
     val resetPasswordEmailAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
     val adminResetPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
@@ -103,4 +112,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
 
     @Serializable
     private data class SSOLoginAuditData(val ssoClientId: String, val azureUserObjectId: String)
+
+    @Serializable
+    private data class ImpersonateUserAuditData(val impersonatedUserCn: String)
 }

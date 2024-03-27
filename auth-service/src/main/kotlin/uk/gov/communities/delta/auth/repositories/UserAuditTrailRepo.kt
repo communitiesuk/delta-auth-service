@@ -23,6 +23,7 @@ class UserAuditTrailRepo {
         USER_UPDATE("user_update"),
         USER_ENABLE_BY_ADMIN("user_enable_by_admin"),
         USER_DISABLE_BY_ADMIN("user_disable_by_admin"),
+        IMPERSONATE_USER("impersonate_user"),
         ;
 
         companion object {

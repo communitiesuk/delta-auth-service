@@ -22,7 +22,8 @@ data class OAuthSession(
     val authToken: String,
     val createdAt: Instant,
     val traceId: String,
-    val isSso: Boolean
+    val isSso: Boolean,
+    val impersonatedUserCn: String? = null,
 ) : Principal {
     fun expired(timeSource: TimeSource) =
         createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
@@ -85,8 +86,21 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
                 authToken = token,
                 createdAt = now,
                 traceId = authCode.traceId,
-                isSso = authCode.isSso
+                isSso = authCode.isSso,
+                impersonatedUserCn = null,
             )
+        }
+    }
+
+    @Blocking
+    fun updateWithImpersonatedCn(sessionId: Int, impersonatedUserCn: String) {
+        dbPool.useConnectionBlocking("impersonate_user") {
+            val stmt = it.prepareStatement("UPDATE delta_session SET impersonated_user_cn = ? WHERE id = ?")
+            stmt.setString(1, impersonatedUserCn)
+            stmt.setInt(2, sessionId)
+            val result = stmt.executeUpdate()
+            if (result != 1) throw Exception("Expected to change only 1 row but was $result")
+            it.commit()
         }
     }
 
@@ -95,7 +109,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
         return dbPool.useConnectionBlocking("Read delta_session") {
             val stmt =
                 it.prepareStatement(
-                    "SELECT id, username, client_id, created_at, trace_id, is_sso " +
+                    "SELECT id, username, client_id, created_at, trace_id, is_sso, impersonated_user_cn " +
                             "FROM delta_session WHERE auth_token_hash = ? AND client_id = ?"
                 )
             stmt.setBytes(1, hashBase64String(authToken))
@@ -113,7 +127,8 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
                     authToken = authToken,
                     createdAt = result.getTimestamp("created_at").toInstant(),
                     traceId = result.getString("trace_id"),
-                    isSso = result.getBoolean("is_sso")
+                    isSso = result.getBoolean("is_sso"),
+                    impersonatedUserCn = result.getString("impersonated_user_cn"),
                 )
             }
         }
