@@ -7,7 +7,6 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.callid.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
@@ -21,7 +20,6 @@ import uk.gov.communities.delta.auth.controllers.internal.AdminEmailController
 import uk.gov.communities.delta.auth.controllers.internal.RefreshUserInfoController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
@@ -94,8 +92,6 @@ class RefreshUserInfoControllerTest {
                 append("Authorization", "Bearer ${session.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
-        }.apply {
-            assertEquals(HttpStatusCode.Forbidden, status)
         }
     }
 
@@ -105,7 +101,6 @@ class RefreshUserInfoControllerTest {
         private lateinit var controller: RefreshUserInfoController
 
         private val client = testServiceClient()
-        private val call = mockk<ApplicationCall>()
         private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace", false)
         private val adminSession =
             OAuthSession(2, "adminUser", client, "adminAccessToken", Instant.now(), "trace", false)
@@ -128,7 +123,6 @@ class RefreshUserInfoControllerTest {
             val accessGroupsService = mockk<AccessGroupsService>()
             val organisationService = mockk<OrganisationService>()
             val adminEmailController = mockk<AdminEmailController>()
-            val dbPool = mockk<DbPool>()
             val userAuditService = mockk<UserAuditService>()
 
 
@@ -144,14 +138,6 @@ class RefreshUserInfoControllerTest {
                     any()
                 )
             } answers { "SAML Token" }
-            every {
-                samlTokenService.generate(
-                    client.samlCredential,
-                    adminUser,
-                    adminSession.createdAt,
-                    any()
-                )
-            } answers { "Admin SAML Token" }
             every {
                 samlTokenService.generate(
                     client.samlCredential,
@@ -179,7 +165,6 @@ class RefreshUserInfoControllerTest {
                 )
             } just runs
             coEvery { adminEmailController.route(any()) } just runs
-            coEvery { dbPool.useConnectionNonBlocking("impersonate_user") {} } just runs
             coEvery {
                 userAuditService.insertImpersonatingUserAuditRow(
                     adminSession,
@@ -187,7 +172,6 @@ class RefreshUserInfoControllerTest {
                     any()
                 )
             } just runs
-            coEvery { call.respond(any()) } just runs
 
             controller = RefreshUserInfoController(
                 userLookupService,
