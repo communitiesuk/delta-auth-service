@@ -29,6 +29,8 @@ class EditAccessGroupsController(
         route.post { updateUserAccessGroups(call) }
     }
 
+    // This endpoint takes a single user cn and single access group cn and assigns the user to that access group.
+    // It does not assign the user any organisations for that access group.
     suspend fun addUserToAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
@@ -52,8 +54,13 @@ class EditAccessGroupsController(
             call,
             null,
         )
+
+        return call.respond(mapOf("message" to "User ${targetUser.cn} added to access  ${targetGroupName}."))
     }
 
+
+    // This endpoint takes a single user cn and single access group cn and removes the user from that access group,
+    // including any organisation groups for that access group.
     suspend fun removeUserFromAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
@@ -70,7 +77,7 @@ class EditAccessGroupsController(
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
         validateRemoveAccessGroupRequest(targetGroupName, callingUser, targetUser, allAccessGroups.map { it.name })
 
-        for (groupName in callingUser.memberOfCNs) {
+        for (groupName in targetUser.memberOfCNs) {
             if (groupName.startsWith(targetGroupADName)) {
                 groupService.removeUserFromGroup(
                     targetUser.cn,
@@ -81,61 +88,8 @@ class EditAccessGroupsController(
                 )
             }
         }
-    }
 
-    private fun validateRemoveAccessGroupRequest(
-        groupName: String,
-        callingUser: LdapUser,
-        targetUser: LdapUser,
-        allAccessGroupNames: List<String>
-    ) {
-        validateGroupExistenceAndUserAuthority(allAccessGroupNames, groupName, callingUser)
-
-        if (!targetUser.memberOfCNs.contains(groupName)) {
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "already_group_member",
-                "Attempted to remove a user from a group they are not member of: $groupName",
-            )
-        }
-    }
-
-    private fun validateAddAccessGroupRequest(
-        groupName: String,
-        callingUser: LdapUser,
-        targetUser: LdapUser,
-        allAccessGroupNames: List<String>,
-    ) {
-        validateGroupExistenceAndUserAuthority(allAccessGroupNames, groupName, callingUser)
-
-        if (targetUser.memberOfCNs.contains(groupName)) {
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "already_group_member",
-                "Attempted to add a user to group they are already member of: $groupName",
-            )
-        }
-    }
-
-    private fun validateGroupExistenceAndUserAuthority(
-        allAccessGroupNames: List<String>,
-        groupName: String,
-        callingUser: LdapUser
-    ) {
-        if (!allAccessGroupNames.contains(groupName)) {
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "nonexistent_group",
-                "Attempted to assign user to access group that does not exist: $groupName",
-            )
-        }
-        if (!callingUser.isInternal()) {
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "non_internal_user_adding_user_to_access_group",
-                "Non-internal user attempted to add a user to access group: $groupName",
-            )
-        }
+        return call.respond(mapOf("message" to "User ${targetUser.cn} removed from access group ${targetGroupName}."))
     }
 
     // This endpoint takes a map of access groups or organisations and a list of organisations. The map should contain all
@@ -172,6 +126,61 @@ class EditAccessGroupsController(
         executeAccessGroupActions(accessGroupActions, null, callingUser, call)
 
         return call.respond(mapOf("message" to "Access groups have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
+    }
+
+    fun validateAddAccessGroupRequest(
+        groupName: String,
+        callingUser: LdapUser,
+        targetUser: LdapUser,
+        allAccessGroupNames: List<String>,
+    ) {
+        validateGroupExistenceAndUserAuthority(allAccessGroupNames, groupName, callingUser)
+
+        if (targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + groupName)) {
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "already_group_member",
+                "Attempted to add a user to group they are already member of: $groupName",
+            )
+        }
+    }
+
+    fun validateRemoveAccessGroupRequest(
+        groupName: String,
+        callingUser: LdapUser,
+        targetUser: LdapUser,
+        allAccessGroupNames: List<String>
+    ) {
+        validateGroupExistenceAndUserAuthority(allAccessGroupNames, groupName, callingUser)
+
+        if (!targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + groupName)) {
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "already_group_member",
+                "Attempted to remove a user from a group they are not member of: $groupName",
+            )
+        }
+    }
+
+    private fun validateGroupExistenceAndUserAuthority(
+        allAccessGroupNames: List<String>,
+        groupName: String,
+        callingUser: LdapUser
+    ) {
+        if (!allAccessGroupNames.contains(groupName)) {
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "nonexistent_group",
+                "Attempted to assign or remove user to/from access group that does not exist: $groupName",
+            )
+        }
+        if (!callingUser.isInternal()) {
+            throw ApiError(
+                HttpStatusCode.Forbidden,
+                "non_internal_user_altering_access_group_membership",
+                "Non-internal user attempted to add or remove a user to/from access group: $groupName",
+            )
+        }
     }
 
     private suspend fun validateUpdateAccessGroupsRequest(
