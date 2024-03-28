@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.emailToDomain
 
 class EditOrganisationsController(
     private val userLookupService: UserLookupService,
@@ -34,9 +35,7 @@ class EditOrganisationsController(
         logger.atInfo().log("Updating organisations for user {}", session.userCn)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
-        val userDomainOrgs =
-            if (callingUser.email == null) setOf() else organisationService.findAllByDomain(callingUser.email)
-                .associateBy { it.code }.keys
+        val userDomainOrgs = organisationService.findAllByEmail(callingUser.email).map { it.code }.toSet()
 
         val mapperResult = memberOfToDeltaRolesMapperFactory(
             callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()

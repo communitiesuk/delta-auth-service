@@ -5,6 +5,7 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.testing.*
 import io.ktor.server.routing.*
@@ -22,6 +23,7 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.dbintegration.UserAuditServiceTest.Companion.call
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -39,11 +41,11 @@ class EditAccessGroupsControllerTest {
             contentType(ContentType.Application.Json)
             setBody(
                 "{" +
-                        "\"accessGroupsRequest\": {" +
-                        "\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], " +
-                        "\"datamart-delta-access-group-2\": [\"orgCode2\"]}" +
-                        ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\", \"orgCode3\"]" +
-                        "}"
+                    "\"accessGroupsRequest\": {" +
+                    "\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], " +
+                    "\"datamart-delta-access-group-2\": [\"orgCode2\"]}" +
+                    ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\", \"orgCode3\"]" +
+                    "}"
             )
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -97,9 +99,9 @@ class EditAccessGroupsControllerTest {
             contentType(ContentType.Application.Json)
             setBody(
                 "{" +
-                        "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": []}" +
-                        ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\"]" +
-                        "}"
+                    "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode1\", \"orgCode2\"], \"datamart-delta-access-group-2\": []}" +
+                    ", \"userSelectedOrgs\": [\"orgCode1\", \"orgCode2\"]" +
+                    "}"
             )
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -135,7 +137,7 @@ class EditAccessGroupsControllerTest {
     }
 
     @Test
-    fun accessGroupIsAddedIfUserIsntAlreadyMember() = testSuspend {
+    fun accessGroupIsAddedIfUserIsntAlreadyMember() {
         val accessGroupsRequestMap = mapOf("ag1" to listOf("org1"))
         val currentAccessGroupsMap = mapOf<String, List<String>>()
         val selectedOrgs = setOf("org1")
@@ -151,7 +153,7 @@ class EditAccessGroupsControllerTest {
     }
 
     @Test
-    fun accessGroupIsRemovedIfUserIsMemberOfNoOrgsForIt() = testSuspend {
+    fun accessGroupIsRemovedIfUserIsMemberOfNoOrgsForIt() {
         val accessGroupsRequestMap = mapOf("ag1" to listOf<String>())
         val currentAccessGroupsMap = mapOf("ag1" to listOf("org1"))
         val selectedOrgs = setOf("org1")
@@ -167,7 +169,7 @@ class EditAccessGroupsControllerTest {
     }
 
     @Test
-    fun accessGroupIsNotRemovedIfUserIsMemberInUnselectedOrg() = testSuspend {
+    fun accessGroupIsNotRemovedIfUserIsMemberInUnselectedOrg() {
         val accessGroupsRequestMap = mapOf("ag1" to listOf<String>())
         val currentAccessGroupsMap = mapOf("ag1" to listOf("org2"))
         val selectedOrgs = setOf("org1")
@@ -242,6 +244,139 @@ class EditAccessGroupsControllerTest {
         }
     }
 
+    @Test
+    fun userCanAddOtherToAccessGroup() = testSuspend {
+        testClient.post("/access-groups/add") {
+            headers {
+                append("Authorization", "Bearer ${internalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(
+                "{" +
+                    "\"userToEditCn\": \"${externalUser.cn}\"" +
+                    ", \"accessGroupName\": \"access-group-3\"" +
+                    "}"
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-3",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 0) {
+                groupService.removeUserFromGroup(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            }
+            confirmVerified(groupService)
+        }
+    }
+
+    @Test
+    fun nonInternalUserCannotAddOtherToAccessGroup() {
+        Assert.assertThrows(ApiError::class.java) {
+            val targetGroupName = "access-group-3"
+            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
+            controller.validateAddAccessGroupRequest(targetGroupName, externalUser, internalUser, allGroups)
+        }.apply {
+            assertEquals("non_internal_user_altering_access_group_membership", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+        }
+    }
+
+    @Test
+    fun cannotAddUserToGroupTheyAreAlreadyIn() {
+        Assert.assertThrows(ApiError::class.java) {
+            val targetGroupName = "access-group-1"
+            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
+            controller.validateAddAccessGroupRequest(targetGroupName, internalUser, externalUser, allGroups)
+        }.apply {
+            assertEquals("already_group_member", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+        }
+    }
+
+    @Test
+    fun userCanRemoveOtherFromAccessGroup() = testSuspend {
+        testClient.post("/access-groups/remove") {
+            headers {
+                append("Authorization", "Bearer ${internalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(
+                "{" +
+                    "\"userToEditCn\": \"${externalUser.cn}\"" +
+                    ", \"accessGroupName\": \"access-group-2\"" +
+                    "}"
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-2",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-2-orgCode1",
+                    any(),
+                    null
+                )
+            }
+            coVerify(exactly = 0) {
+                groupService.addUserToGroup(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            }
+            confirmVerified(groupService)
+        }
+    }
+
+    @Test
+    fun nonInternalUserCannotRemoveOtherFromAccessGroup() {
+        Assert.assertThrows(ApiError::class.java) {
+            val targetGroupName = "access-group-1"
+            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
+            controller.validateRemoveAccessGroupRequest(targetGroupName, externalUser, internalUser, allGroups)
+        }.apply {
+            assertEquals("non_internal_user_altering_access_group_membership", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+        }
+    }
+
+    @Test
+    fun cannotRemoveUserFromGroupTheyAreNotIn() {
+        Assert.assertThrows(ApiError::class.java) {
+            val targetGroupName = "access-group-3"
+            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
+            controller.validateRemoveAccessGroupRequest(targetGroupName, internalUser, externalUser, allGroups)
+        }.apply {
+            assertEquals("already_group_member", errorCode)
+            assertEquals(HttpStatusCode.Forbidden, statusCode)
+        }
+    }
+
     @Before
     fun resetMocks() {
         clearAllMocks()
@@ -269,7 +404,7 @@ class EditAccessGroupsControllerTest {
             AccessGroup("access-group-2", null, null, true, false),
             AccessGroup("access-group-3", null, null, false, true),
         )
-        coEvery { organisationService.findAllByDomain(externalUser.email!!) } returns listOf(
+        coEvery { organisationService.findAllByEmail(externalUser.email) } returns listOf(
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),
@@ -366,8 +501,14 @@ class EditAccessGroupsControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/access-groups") {
-                                controller.route(this)
+                            post("/access-groups") {
+                                controller.updateUserAccessGroups(call)
+                            }
+                            post("/access-groups/add") {
+                                controller.addUserToAccessGroup(call)
+                            }
+                            post("/access-groups/remove") {
+                                controller.removeUserFromAccessGroup(call)
                             }
                         }
                     }

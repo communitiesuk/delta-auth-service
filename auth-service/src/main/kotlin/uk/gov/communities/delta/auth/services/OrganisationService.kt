@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.utils.emailToDomain
 import uk.gov.communities.delta.auth.utils.timedSuspend
 import java.time.LocalDate
 import kotlin.time.Duration.Companion.seconds
@@ -37,6 +38,14 @@ data class OrganisationNameAndCode(
 
 class OrganisationService(private val httpClient: HttpClient, private val deltaConfig: DeltaConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    suspend fun findAllByEmail(email: String?): List<Organisation> {
+        if (email == null || !email.contains("@")) {
+            return listOf()
+        }
+        val domain = emailToDomain(email)
+        return findAllByDomain(domain)
+    }
 
     suspend fun findAllByDomain(domain: String): List<Organisation> {
         return logger.timedSuspend(

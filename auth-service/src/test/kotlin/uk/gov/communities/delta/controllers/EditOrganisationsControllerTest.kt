@@ -214,7 +214,7 @@ class EditOrganisationsControllerTest {
             AccessGroup("access-group-2", null, null, true, false),
             AccessGroup("access-group-3", null, null, false, true),
         )
-        coEvery { organisationService.findAllByDomain(testUser.email!!) } returns listOf(
+        coEvery { organisationService.findAllByEmail(testUser.email) } returns listOf(
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),
