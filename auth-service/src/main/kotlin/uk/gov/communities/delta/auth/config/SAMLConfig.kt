@@ -7,7 +7,6 @@ import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.util.io.pem.PemObject
 import org.opensaml.security.x509.BasicX509Credential
 import org.slf4j.LoggerFactory
-import org.springframework.core.io.ClassPathResource
 import java.io.ByteArrayInputStream
 import java.io.Reader
 import java.io.StringReader
@@ -83,7 +82,7 @@ class SAMLConfig private constructor() {
         }
 
         private fun resourceToString(path: String): String {
-            val inputStream = Objects.requireNonNull(ClassPathResource(path).inputStream)
+            val inputStream = Objects.requireNonNull(this::class.java.getResourceAsStream(path))
             return inputStream.readAllBytes().toString(StandardCharsets.UTF_8)
         }
 
@@ -94,4 +93,3 @@ class SAMLConfig private constructor() {
         }
     }
 }
-

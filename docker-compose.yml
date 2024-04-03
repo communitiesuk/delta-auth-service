@@ -12,6 +12,7 @@ services:
       # Requires a tunnel open to the test environment Active Directory
       DELTA_LDAP_URL: "ldap://host.docker.internal:2389"
       DATABASE_URL: "jdbc:postgresql://db:5432/postgres"
+      DELTA_MARKLOGIC_LDAP_AUTH_APP_SERVICE: "http://host.docker.internal:8030/"
     profiles:
       - app
   db:

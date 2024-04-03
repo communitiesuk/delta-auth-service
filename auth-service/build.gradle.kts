@@ -27,6 +27,10 @@ tasks {
 
 repositories {
     mavenCentral()
+    maven {
+        // For OpenSAML, which is currently maintained by Shibboleth with new versions no longer being published to Maven Central
+        url = uri("https://build.shibboleth.net/maven/releases/")
+    }
 }
 
 dependencies {
@@ -67,8 +71,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.3")
 
     // OpenSAML
-    implementation("org.opensaml:opensaml-core:4.0.1")
-    implementation("org.opensaml:opensaml-saml-impl:4.0.1")
+    implementation("org.opensaml:opensaml-core:4.3.0")
+    implementation("org.opensaml:opensaml-saml-impl:4.3.0")
 
     // Database
     implementation("org.postgresql:postgresql:42.7.1")
