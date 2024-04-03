@@ -4,19 +4,16 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.DeltaSystemRole
+import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper
+import uk.gov.communities.delta.auth.services.UserLookupService
 import javax.naming.NameNotFoundException
 
 class AdminGetUserController(
     private val userLookupService: UserLookupService,
-    private val organisationService: OrganisationService,
-    private val accessGroupsService: AccessGroupsService,
-    private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
 ) : AdminUserController(userLookupService) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -32,22 +29,14 @@ class AdminGetUserController(
 
         val cn = call.request.queryParameters["userCn"]!!
         logger.atInfo().log("Getting info for user $cn")
-        val user: LdapUser
+        val user: UserLookupService.UserWithRoles
         try {
-            user = userLookupService.lookupUserByCn(cn)
+            user = userLookupService.lookupUserByCNAndLoadRoles(cn)
         } catch (e: NameNotFoundException) {
+            logger.warn("User not found $cn")
             return call.respond(HttpStatusCode.NotFound, "User not found")
         }
-        coroutineScope {
-            val allOrganisations = async { organisationService.findAllNamesAndCodes() }
-            val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
-
-            val roles = memberOfToDeltaRolesMapperFactory(
-                user.cn, allOrganisations.await(), allAccessGroups.await()
-            ).map(user.memberOfCNs)
-            call.respond(UserWithRoles(user, roles))
-        }
-
+        call.respond(UserWithRoles(user.user, user.roles))
     }
 
     @Serializable

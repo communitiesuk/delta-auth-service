@@ -1,22 +1,21 @@
 package uk.gov.communities.delta.auth.services
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import javax.naming.NameNotFoundException
 
 class UserLookupService(
-    private val config: Configuration,
+    private val userDnFormat: String,
     private val ldapServiceUserBind: LdapServiceUserBind,
     private val ldapRepository: LdapRepository,
+    private val organisationService: OrganisationService,
+    private val accessGroupsService: AccessGroupsService,
+    private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    data class Configuration(
-        val userDnFormat: String,
-        val bindUserDn: String,
-        val bindUserPassword: String,
-    )
 
     suspend fun userExists(cn: String): Boolean {
         return try {
@@ -28,7 +27,7 @@ class UserLookupService(
     }
 
     suspend fun lookupUserByCn(cn: String): LdapUser {
-        val dn = config.userDnFormat.format(cn)
+        val dn = userDnFormat.format(cn)
         return lookupUserByDN(dn)
     }
 
@@ -38,4 +37,21 @@ class UserLookupService(
             ldapRepository.mapUserFromContext(it, dn)
         }
     }
+
+    suspend fun lookupUserByCNAndLoadRoles(cn: String): UserWithRoles = coroutineScope {
+        val user = async { lookupUserByCn(cn) }
+        val allOrganisations = async { organisationService.findAllNamesAndCodes() }
+        val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
+
+        val awaitedUser = user.await()
+        val roles = memberOfToDeltaRolesMapperFactory(
+            cn,
+            allOrganisations.await(),
+            allAccessGroups.await()
+        ).map(awaitedUser.memberOfCNs)
+
+        UserWithRoles(awaitedUser, roles)
+    }
+
+    data class UserWithRoles(val user: LdapUser, val roles: MemberOfToDeltaRolesMapper.Roles)
 }

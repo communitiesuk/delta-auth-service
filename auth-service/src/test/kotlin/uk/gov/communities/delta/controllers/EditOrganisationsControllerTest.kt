@@ -10,6 +10,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.EditOrganisationsController
@@ -20,6 +21,7 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -202,23 +204,29 @@ class EditOrganisationsControllerTest {
                 client
             )
         } answers { testUserSession }
-        coEvery { userLookupService.lookupUserByCn(testUser.cn) } returns testUser
         coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
             OrganisationNameAndCode("orgCode4", "Organisation Name 4"),
         )
-        coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
-            AccessGroup("access-group-1", null, null, true, true),
-            AccessGroup("access-group-2", null, null, true, false),
-            AccessGroup("access-group-3", null, null, false, true),
-        )
         coEvery { organisationService.findAllByDomain(testUser.email!!) } returns listOf(
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),
         )
+        @Suppress("BooleanLiteralArgument") val accessGroups = listOf(
+            AccessGroup("access-group-1", null, null, true, true),
+            AccessGroup("access-group-2", null, null, true, false),
+            AccessGroup("access-group-3", null, null, false, true),
+        )
+        mockUserLookupService(
+            userLookupService,
+            listOf(testUser),
+            runBlocking { organisationService.findAllNamesAndCodes() },
+            accessGroups,
+        )
+
         coEvery { groupService.addUserToGroup(testUser.cn, testUser.dn, any(), any(), null) } just runs
         coEvery { groupService.removeUserFromGroup(testUser.cn, testUser.dn, any(), any(), null) } just runs
     }
@@ -233,8 +241,6 @@ class EditOrganisationsControllerTest {
         private val userLookupService = mockk<UserLookupService>()
         private val groupService = mockk<GroupService>()
         private val organisationService = mockk<OrganisationService>()
-        private val accessGroupsService = mockk<AccessGroupsService>()
-        private val memberOfToDeltaRolesMapper = ::MemberOfToDeltaRolesMapper
 
         private val client = testServiceClient()
 
@@ -271,8 +277,6 @@ class EditOrganisationsControllerTest {
                 userLookupService,
                 groupService,
                 organisationService,
-                accessGroupsService,
-                memberOfToDeltaRolesMapper,
             )
 
             testApp = TestApplication {
