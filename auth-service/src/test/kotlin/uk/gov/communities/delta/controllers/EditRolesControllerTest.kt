@@ -24,6 +24,7 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -158,18 +159,7 @@ class EditRolesControllerTest {
         clearAllMocks()
         coEvery { oauthSessionService.retrieveFomAuthToken(externalUserSession.authToken, client) } answers { externalUserSession }
         coEvery { oauthSessionService.retrieveFomAuthToken(internalUserSession.authToken, client) } answers { internalUserSession }
-        coEvery { userLookupService.lookupUserByCn(externalUser.cn) } returns externalUser
-        coEvery { userLookupService.lookupUserByCn(internalUser.cn) } returns internalUser
-        coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
-            OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
-            OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
-            OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
-        )
-        coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
-            AccessGroup("access-group-1", null, null, true, false),
-            AccessGroup("access-group-2", "statistics", null, true, false),
-            AccessGroup("access-group-3", null, null, true, false),
-        )
+        mockUserLookupService(userLookupService, listOf(internalUser, externalUser), organisations, accessGroups)
         coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
         coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
         coEvery { groupService.addUserToGroup(internalUser.cn, externalUser.dn, any(), any(), null)} just runs
@@ -185,9 +175,19 @@ class EditRolesControllerTest {
 
         private val userLookupService = mockk<UserLookupService>()
         private val groupService = mockk<GroupService>()
-        private val organisationService = mockk<OrganisationService>()
-        private val accessGroupsService = mockk<AccessGroupsService>()
-        private val memberOfToDeltaRolesMapper = ::MemberOfToDeltaRolesMapper
+
+        private val organisations = listOf(
+            OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
+            OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
+            OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
+        )
+
+        @Suppress("BooleanLiteralArgument")
+        private val accessGroups = listOf(
+            AccessGroup("access-group-1", null, null, true, false),
+            AccessGroup("access-group-2", "statistics", null, true, false),
+            AccessGroup("access-group-3", null, null, true, false),
+        )
 
         private val client = testServiceClient()
 
@@ -249,9 +249,6 @@ class EditRolesControllerTest {
             controller = EditRolesController(
                 userLookupService,
                 groupService,
-                organisationService,
-                accessGroupsService,
-                memberOfToDeltaRolesMapper,
             )
 
             testApp = TestApplication {

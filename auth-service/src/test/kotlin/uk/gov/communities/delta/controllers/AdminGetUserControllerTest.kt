@@ -27,10 +27,10 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import javax.naming.NameNotFoundException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -99,20 +99,20 @@ class AdminGetUserControllerTest {
             oauthSessionService.retrieveFomAuthToken(readOnlyAdminSession.authToken, client)
         } answers { readOnlyAdminSession }
         coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
-        coEvery { userLookupService.lookupUserByCn(readOnlyAdminUser.cn) } returns readOnlyAdminUser
-        coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
-        coEvery { userLookupService.lookupUserByCn(NON_EXISTENT_USER_CN) } throws NameNotFoundException()
-        coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
+        val organisations = listOf(
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
         )
-        coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
+        val accessGroups = listOf(
             AccessGroup("access-group-1", null, null, true, false),
             AccessGroup("access-group-2", "statistics", null, true, false),
             AccessGroup("access-group-3", null, null, true, false),
+        )
+        mockUserLookupService(
+            userLookupService,
+            listOf(adminUser, readOnlyAdminUser, regularUser, user),
+            organisations, accessGroups
         )
     }
 
@@ -124,9 +124,6 @@ class AdminGetUserControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val userLookupService = mockk<UserLookupService>()
-        private val organisationService = mockk<OrganisationService>()
-        private val accessGroupsService = mockk<AccessGroupsService>()
-        private val memberOfToDeltaRolesMapper = ::MemberOfToDeltaRolesMapper
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
@@ -221,9 +218,6 @@ class AdminGetUserControllerTest {
         fun setup() {
             controller = AdminGetUserController(
                 userLookupService,
-                organisationService,
-                accessGroupsService,
-                memberOfToDeltaRolesMapper,
             )
 
             testApp = TestApplication {

@@ -10,6 +10,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig.Companion.DATAMART_DELTA_PREFIX
+import uk.gov.communities.delta.auth.repositories.LdapUser
 
 typealias MemberOfToDeltaRolesMapperFactory = (
     username: String,
@@ -240,3 +241,6 @@ object DeltaSystemRoleSerializer : KSerializer<DeltaSystemRole> {
  * We should be able to get rid of this distinction at some point, but for now Delta expects it.
  */
 val DELTA_EXTERNAL_ROLES = hashSetOf("section-151-officers")
+
+@Serializable
+data class LdapUserWithRoles(val user: LdapUser, val roles: MemberOfToDeltaRolesMapper.Roles)

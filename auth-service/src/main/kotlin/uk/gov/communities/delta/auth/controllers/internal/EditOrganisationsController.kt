@@ -9,14 +9,15 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.GroupService
+import uk.gov.communities.delta.auth.services.OAuthSession
+import uk.gov.communities.delta.auth.services.OrganisationService
+import uk.gov.communities.delta.auth.services.UserLookupService
 
 class EditOrganisationsController(
     private val userLookupService: UserLookupService,
     private val groupService: GroupService,
     private val organisationService: OrganisationService,
-    private val accessGroupsService: AccessGroupsService,
-    private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -30,30 +31,27 @@ class EditOrganisationsController(
     // not in their domain, these will NOT be affected by this endpoint.
     private suspend fun updateUserOrganisations(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val (callingUser, callingUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
         logger.atInfo().log("Updating organisations for user {}", session.userCn)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
-        val userDomainOrgs =
+        val userDomainOrgCodes =
             if (callingUser.email == null) setOf() else organisationService.findAllByDomain(callingUser.email)
                 .associateBy { it.code }.keys
 
-        val mapperResult = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
-        ).map(callingUser.memberOfCNs)
-        val allUserOrgs = mapperResult.organisations.map { it.code }.toSet()
+        val allUserOrgCodes = callingUserRoles.organisations.map { it.code }.toSet()
 
-        val userNonDomainOrgs = allUserOrgs.minus(userDomainOrgs)
-        validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
+        val userNonDomainOrgCodes = allUserOrgCodes.minus(userDomainOrgCodes)
+        val existingDomainOrgCodes = allUserOrgCodes.intersect(userDomainOrgCodes)
 
-        val userRoles = mapperResult.systemRoles
-        val existingDomainOrganisations = mapperResult.organisations.map { it.code }.toSet().intersect(userDomainOrgs)
+        validateOrganisationRequest(requestedOrganisations, userDomainOrgCodes, userNonDomainOrgCodes)
 
-        val orgsToAdd = requestedOrganisations.toSet().minus(existingDomainOrganisations.toSet())
-        val orgsToRemove = existingDomainOrganisations.toSet().minus(requestedOrganisations.toSet())
+        // Validation includes checking requested organisations is a subset of domain organisations, so these will be too
+        val orgsToAdd = requestedOrganisations.toSet().minus(existingDomainOrgCodes.toSet())
+        val orgsToRemove = existingDomainOrgCodes.toSet().minus(requestedOrganisations.toSet())
 
         for (org in orgsToAdd) {
-            for (role in userRoles) {
+            for (role in callingUserRoles.systemRoles) {
                 val roleGroupString = role.role.adCn(org)
                 groupService.addUserToGroup(callingUser.cn, callingUser.dn, roleGroupString, call, null)
             }

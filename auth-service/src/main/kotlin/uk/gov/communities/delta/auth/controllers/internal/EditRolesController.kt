@@ -16,9 +16,6 @@ import uk.gov.communities.delta.auth.services.*
 class EditRolesController(
     private val userLookupService: UserLookupService,
     private val groupService: GroupService,
-    private val organisationService: OrganisationService,
-    private val accessGroupsService: AccessGroupsService,
-    private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
     ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -34,26 +31,24 @@ class EditRolesController(
         val session = call.principal<OAuthSession>()!!
         val request = call.receive<DeltaUserRolesRequest>()
 
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val (callingUser, callingUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
         logger.atInfo().log("Request to update own roles for user ${session.userCn}")
 
         checkRequestedRolesArePermitted(request, callingUser)
 
-        val currentUserPermissions = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), accessGroupsService.getAllAccessGroups()
-        ).map(callingUser.memberOfCNs)
-        val systemRoles = currentUserPermissions.systemRoles
-        val userOrgs = currentUserPermissions.organisations
+        val userSystemRoles = callingUserRoles.systemRoles
+        val userOrganisations = callingUserRoles.organisations
 
-        val rolesToAdd = request.addToRoles.toSet().minus(systemRoles.map { it.role }.toSet())
-        val groupCNsToAdd = rolesToAdd.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
+        val rolesToAdd = request.addToRoles.toSet().minus(userSystemRoles.map { it.role }.toSet())
+        val groupCNsToAdd = rolesToAdd.flatMap { role -> userOrganisations.map { org -> role.adCn(org.code) } } +
                 rolesToAdd.map { it.adCn() }
         val groupCNsToAddFilteredForNonMembership = groupCNsToAdd.filter { !callingUser.memberOfCNs.contains(it) }
 
         val rolesToRemove = request.removeFromRoles
-        val groupCNsToRemove = rolesToRemove.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
+        val groupCNsToRemove = rolesToRemove.flatMap { role -> userOrganisations.map { org -> role.adCn(org.code) } } +
                 rolesToRemove.map { it.adCn() }
-        val groupCNsToRemoveFilteredForMembership = groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
+        val groupCNsToRemoveFilteredForMembership =
+            groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
 
         logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAddFilteredForNonMembership")
         groupCNsToAddFilteredForNonMembership

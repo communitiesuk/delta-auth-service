@@ -77,22 +77,12 @@ class Injection(
     private val samlTokenService = SAMLTokenService()
     private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
     private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
-    private val userLookupService = UserLookupService(
-        UserLookupService.Configuration(
-            ldapConfig.deltaUserDnFormat,
-            ldapConfig.authServiceUserDn,
-            ldapConfig.authServiceUserPassword,
-        ),
-        ldapServiceUserBind,
-        ldapRepository,
-    )
 
     val dbPool = DbPool(databaseConfig)
 
     val userAuditTrailRepo = UserAuditTrailRepo()
     val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
 
-    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService)
     private val accessGroupsService = AccessGroupsService(ldapServiceUserBind, ldapConfig)
     private val groupService = GroupService(ldapServiceUserBind, ldapConfig, userAuditService)
     private val emailRepository = EmailRepository(emailConfig)
@@ -100,6 +90,16 @@ class Injection(
     val setPasswordTokenService = SetPasswordTokenService(dbPool, TimeSource.System)
     val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
     val organisationService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
+
+    private val userLookupService = UserLookupService(
+        ldapConfig.deltaUserDnFormat,
+        ldapServiceUserBind,
+        ldapRepository,
+        organisationService,
+        accessGroupsService,
+        ::MemberOfToDeltaRolesMapper
+    )
+    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService)
 
     private val emailService = EmailService(
         emailConfig,
@@ -294,25 +294,17 @@ class Injection(
 
     fun adminGetUserController() = AdminGetUserController(
         userLookupService,
-        organisationService,
-        accessGroupsService,
-        ::MemberOfToDeltaRolesMapper,
     )
 
     fun editRolesController() = EditRolesController(
         userLookupService,
         groupService,
-        organisationService,
-        accessGroupsService,
-        ::MemberOfToDeltaRolesMapper,
     )
 
     fun editOrganisationsController() = EditOrganisationsController(
         userLookupService,
         groupService,
         organisationService,
-        accessGroupsService,
-        ::MemberOfToDeltaRolesMapper
     )
 
     fun editAccessGroupsController() = EditAccessGroupsController(
