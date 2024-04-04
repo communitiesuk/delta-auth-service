@@ -4,11 +4,9 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
-import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.DeltaSystemRole
-import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper
+import uk.gov.communities.delta.auth.services.LdapUserWithRoles
 import uk.gov.communities.delta.auth.services.UserLookupService
 import javax.naming.NameNotFoundException
 
@@ -29,16 +27,13 @@ class AdminGetUserController(
 
         val cn = call.request.queryParameters["userCn"]!!
         logger.atInfo().log("Getting info for user $cn")
-        val user: UserLookupService.UserWithRoles
+        val user: LdapUserWithRoles
         try {
             user = userLookupService.lookupUserByCNAndLoadRoles(cn)
         } catch (e: NameNotFoundException) {
             logger.warn("User not found $cn")
             return call.respond(HttpStatusCode.NotFound, "User not found")
         }
-        call.respond(UserWithRoles(user.user, user.roles))
+        call.respond(LdapUserWithRoles(user.user, user.roles))
     }
-
-    @Serializable
-    data class UserWithRoles(val user: LdapUser, val roles: MemberOfToDeltaRolesMapper.Roles)
 }

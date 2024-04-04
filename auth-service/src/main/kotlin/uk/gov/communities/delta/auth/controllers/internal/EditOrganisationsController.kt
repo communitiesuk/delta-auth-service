@@ -31,22 +31,22 @@ class EditOrganisationsController(
     // not in their domain, these will NOT be affected by this endpoint.
     private suspend fun updateUserOrganisations(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
+        val (callingUser, callingUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
         logger.atInfo().log("Updating organisations for user {}", session.userCn)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
         val userDomainOrgs =
-            if (callingUser.user.email == null) setOf() else organisationService.findAllByDomain(callingUser.user.email)
+            if (callingUser.email == null) setOf() else organisationService.findAllByDomain(callingUser.email)
                 .associateBy { it.code }.keys
 
-        val allUserOrgs = callingUser.roles.organisations.map { it.code }.toSet()
+        val allUserOrgs = callingUserRoles.organisations.map { it.code }.toSet()
 
         val userNonDomainOrgs = allUserOrgs.minus(userDomainOrgs)
         validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
 
-        val userRoles = callingUser.roles.systemRoles
+        val userRoles = callingUserRoles.systemRoles
         val existingDomainOrganisations =
-            callingUser.roles.organisations.map { it.code }.toSet().intersect(userDomainOrgs)
+            callingUserRoles.organisations.map { it.code }.toSet().intersect(userDomainOrgs)
 
         val orgsToAdd = requestedOrganisations.toSet().minus(existingDomainOrganisations.toSet())
         val orgsToRemove = existingDomainOrganisations.toSet().minus(requestedOrganisations.toSet())
@@ -54,16 +54,16 @@ class EditOrganisationsController(
         for (org in orgsToAdd) {
             for (role in userRoles) {
                 val roleGroupString = role.role.adCn(org)
-                groupService.addUserToGroup(callingUser.user.cn, callingUser.user.dn, roleGroupString, call, null)
+                groupService.addUserToGroup(callingUser.cn, callingUser.dn, roleGroupString, call, null)
             }
         }
 
         for (org in orgsToRemove) {
-            for (group in callingUser.user.memberOfCNs) {
+            for (group in callingUser.memberOfCNs) {
                 if (group.endsWith("-$org")) {
                     groupService.removeUserFromGroup(
-                        callingUser.user.cn,
-                        callingUser.user.dn,
+                        callingUser.cn,
+                        callingUser.dn,
                         group,
                         call,
                         null

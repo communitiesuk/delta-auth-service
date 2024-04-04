@@ -38,7 +38,7 @@ class UserLookupService(
         }
     }
 
-    suspend fun lookupUserByCNAndLoadRoles(cn: String): UserWithRoles = coroutineScope {
+    suspend fun lookupUserByCNAndLoadRoles(cn: String): LdapUserWithRoles = coroutineScope {
         val user = async { lookupUserByCn(cn) }
         val allOrganisations = async { organisationService.findAllNamesAndCodes() }
         val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
@@ -50,8 +50,6 @@ class UserLookupService(
             allAccessGroups.await()
         ).map(awaitedUser.memberOfCNs)
 
-        UserWithRoles(awaitedUser, roles)
+        LdapUserWithRoles(awaitedUser, roles)
     }
-
-    data class UserWithRoles(val user: LdapUser, val roles: MemberOfToDeltaRolesMapper.Roles)
 }

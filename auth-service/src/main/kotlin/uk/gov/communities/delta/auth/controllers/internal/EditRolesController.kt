@@ -31,35 +31,35 @@ class EditRolesController(
         val session = call.principal<OAuthSession>()!!
         val request = call.receive<DeltaUserRolesRequest>()
 
-        val callingUser = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
+        val (callingUser, callingUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
         logger.atInfo().log("Request to update own roles for user ${session.userCn}")
 
-        checkRequestedRolesArePermitted(request, callingUser.user)
+        checkRequestedRolesArePermitted(request, callingUser)
 
-        val systemRoles = callingUser.roles.systemRoles
-        val userOrgs = callingUser.roles.organisations
+        val userSystemRoles = callingUserRoles.systemRoles
+        val userOrganisations = callingUserRoles.organisations
 
-        val rolesToAdd = request.addToRoles.toSet().minus(systemRoles.map { it.role }.toSet())
-        val groupCNsToAdd = rolesToAdd.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
+        val rolesToAdd = request.addToRoles.toSet().minus(userSystemRoles.map { it.role }.toSet())
+        val groupCNsToAdd = rolesToAdd.flatMap { role -> userOrganisations.map { org -> role.adCn(org.code) } } +
                 rolesToAdd.map { it.adCn() }
-        val groupCNsToAddFilteredForNonMembership = groupCNsToAdd.filter { !callingUser.user.memberOfCNs.contains(it) }
+        val groupCNsToAddFilteredForNonMembership = groupCNsToAdd.filter { !callingUser.memberOfCNs.contains(it) }
 
         val rolesToRemove = request.removeFromRoles
-        val groupCNsToRemove = rolesToRemove.flatMap { role -> userOrgs.map { org -> role.adCn(org.code) } } +
+        val groupCNsToRemove = rolesToRemove.flatMap { role -> userOrganisations.map { org -> role.adCn(org.code) } } +
                 rolesToRemove.map { it.adCn() }
         val groupCNsToRemoveFilteredForMembership =
-            groupCNsToRemove.filter { callingUser.user.memberOfCNs.contains(it) }
+            groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
 
         logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAddFilteredForNonMembership")
         groupCNsToAddFilteredForNonMembership
             .forEach {
-                groupService.addUserToGroup(callingUser.user.cn, callingUser.user.dn, it, call, null)
+                groupService.addUserToGroup(callingUser.cn, callingUser.dn, it, call, null)
             }
 
         logger.atInfo().log("Revoking user ${session.userCn} groups $groupCNsToRemoveFilteredForMembership")
         groupCNsToRemoveFilteredForMembership
             .forEach {
-                groupService.removeUserFromGroup(callingUser.user.cn, callingUser.user.dn, it, call, null)
+                groupService.removeUserFromGroup(callingUser.cn, callingUser.dn, it, call, null)
             }
 
         return call.respond(mapOf("message" to "Roles have been updated. Any changes to your roles or access groups will take effect the next time you log in."))

@@ -2,10 +2,7 @@ package uk.gov.communities.delta.helper
 
 import io.mockk.coEvery
 import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.services.AccessGroup
-import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper
-import uk.gov.communities.delta.auth.services.OrganisationNameAndCode
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.*
 import javax.naming.NameNotFoundException
 
 fun mockUserLookupService(
@@ -25,7 +22,7 @@ fun mockUserLookupService(
                 user.cn
             )
         } coAnswers {
-            UserLookupService.UserWithRoles(
+            LdapUserWithRoles(
                 user,
                 MemberOfToDeltaRolesMapper(
                     user.cn, organisations, accessGroups
