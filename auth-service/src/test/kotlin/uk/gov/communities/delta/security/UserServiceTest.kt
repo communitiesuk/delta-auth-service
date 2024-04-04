@@ -13,6 +13,7 @@ import org.junit.Test
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
+import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import java.time.Instant
@@ -45,7 +46,7 @@ class UserServiceTest {
     private val auditData = slot<String>()
     private val adminSession =
         OAuthSession(1, "adminUserCN", mockk(relaxed = true), "adminAccessToken", Instant.now(), "trace", false)
-    private val testUserDetails = UserService.DeltaUserDetails(
+    private val testUserDetails = DeltaUserDetailsRequest(
         userEmail,
         false,
         userEmail,
@@ -55,12 +56,12 @@ class UserServiceTest {
         "0987654321",
         "test position",
         null,
-        arrayOf("datamart-delta-access-group-1", "datamart-delta-access-group-2"),
-        arrayOf("datamart-delta-access-group-2"),
-        mapOf("datamart-delta-access-group-2" to arrayOf("orgCode1", "orgCode2")),
-        arrayOf("datamart-delta-role-1", "datamart-delta-role-2"),
-        emptyArray(),
-        arrayOf("orgCode1", "orgCode2"),
+        listOf("datamart-delta-access-group-1", "datamart-delta-access-group-2"),
+        listOf("datamart-delta-access-group-2"),
+        mapOf("datamart-delta-access-group-2" to listOf("orgCode1", "orgCode2")),
+        listOf("datamart-delta-role-1", "datamart-delta-role-2"),
+        emptyList(),
+        listOf("orgCode1", "orgCode2"),
         "test comment",
         null
     )
@@ -330,28 +331,5 @@ class UserServiceTest {
     fun testPasswordCreation() = testSuspend {
         val adUser = UserService.ADUser(ldapConfig, registration, requiredSSOClient)
         assertEquals(18 * 8 / 6, adUser.password!!.length)
-    }
-
-    @Test
-    fun testGetGroupsFromUserDetails() = testSuspend {
-        val groups = testUserDetails.getGroups()
-        val expectedGroups = arrayOf(
-            "datamart-delta-user",
-            "datamart-delta-access-group-1",
-            "datamart-delta-access-group-2",
-            "datamart-delta-delegate-access-group-2",
-            "datamart-delta-access-group-2-orgCode1",
-            "datamart-delta-access-group-2-orgCode2",
-            "datamart-delta-role-1",
-            "datamart-delta-role-1-orgCode1",
-            "datamart-delta-role-1-orgCode2",
-            "datamart-delta-role-2",
-            "datamart-delta-role-2-orgCode1",
-            "datamart-delta-role-2-orgCode2",
-            "datamart-delta-user-orgCode1",
-            "datamart-delta-user-orgCode2",
-        )
-        expectedGroups.forEach { assertContains(groups, it) }
-        assertEquals(expectedGroups.size, groups.size)
     }
 }

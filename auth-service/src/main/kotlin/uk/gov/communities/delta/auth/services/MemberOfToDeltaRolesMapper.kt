@@ -216,6 +216,7 @@ enum class DeltaSystemRole(val adRoleName: String, val classification: DeltaSyst
 
     companion object {
         val ROLE_NAME_MAP = DeltaSystemRole.entries.associateBy { it.adRoleName }
+        fun fromString(str: String) = ROLE_NAME_MAP[str]
     }
 }
 

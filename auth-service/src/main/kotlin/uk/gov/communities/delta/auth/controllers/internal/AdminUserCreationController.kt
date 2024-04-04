@@ -23,6 +23,7 @@ class AdminUserCreationController(
     private val groupService: GroupService,
     private val emailService: EmailService,
     private val setPasswordTokenService: SetPasswordTokenService,
+    private val deltaUserPermissionsRequestMapper: DeltaUserPermissionsRequestMapper,
 ) : AdminUserController(userLookupService) {
     private val emailAddressChecker = EmailAddressChecker()
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -35,14 +36,14 @@ class AdminUserCreationController(
         // Get calling user from call
         val session = getSessionIfUserHasPermittedRole(arrayOf(DeltaSystemRole.ADMIN), call)
 
-        val deltaUserDetails = call.receive<UserService.DeltaUserDetails>()
+        val deltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
 
         val ssoClient = ssoConfig.ssoClients.firstOrNull {
-            deltaUserDetails.email.lowercase().endsWith(it.emailDomain)
+            deltaUserDetailsRequest.email.lowercase().endsWith(it.emailDomain)
         }
         val adUser = UserService.ADUser(
             ldapConfig,
-            deltaUserDetails,
+            deltaUserDetailsRequest,
             ssoClient,
         )
 
@@ -66,6 +67,25 @@ class AdminUserCreationController(
                 "This email is invalid. Please check it was entered correctly"
             )
         }
+        val userPermissions = try {
+            deltaUserPermissionsRequestMapper.deltaRequestToUserPermissions(deltaUserDetailsRequest)
+        } catch (e: DeltaUserPermissions.Companion.BadInput) {
+            throw ApiError(
+                HttpStatusCode.BadRequest,
+                "bad_request",
+                e.message!!,
+                "Requested permissions are invalid: ${e.message}"
+            )
+        }
+        if (userPermissions.roles.contains(DeltaSystemRole.ADMIN)) {
+            throw ApiError(
+                HttpStatusCode.UnprocessableEntity,
+                "admin_role_forbidden",
+                "Cannot assign admin role",
+                "Cannot assign admin role",
+            )
+        }
+
         try {
             userService.createUser(adUser, ssoClient, session, call)
         } catch (e: Exception) {
@@ -79,7 +99,7 @@ class AdminUserCreationController(
         }
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
         try {
-            deltaUserDetails.getGroups().forEach {
+            userPermissions.getADGroupCNs().forEach {
                 groupService.addUserToGroup(adUser, it, call, session)
             }
         } catch (e: Exception) {
