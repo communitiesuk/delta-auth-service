@@ -35,24 +35,23 @@ class EditOrganisationsController(
         logger.atInfo().log("Updating organisations for user {}", session.userCn)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
-        val userDomainOrgs =
+        val userDomainOrgCodes =
             if (callingUser.email == null) setOf() else organisationService.findAllByDomain(callingUser.email)
                 .associateBy { it.code }.keys
 
-        val allUserOrgs = callingUserRoles.organisations.map { it.code }.toSet()
+        val allUserOrgCodes = callingUserRoles.organisations.map { it.code }.toSet()
 
-        val userNonDomainOrgs = allUserOrgs.minus(userDomainOrgs)
-        validateOrganisationRequest(requestedOrganisations, userDomainOrgs, userNonDomainOrgs)
+        val userNonDomainOrgCodes = allUserOrgCodes.minus(userDomainOrgCodes)
+        val existingDomainOrgCodes = allUserOrgCodes.intersect(userDomainOrgCodes)
 
-        val userRoles = callingUserRoles.systemRoles
-        val existingDomainOrganisations =
-            callingUserRoles.organisations.map { it.code }.toSet().intersect(userDomainOrgs)
+        validateOrganisationRequest(requestedOrganisations, userDomainOrgCodes, userNonDomainOrgCodes)
 
-        val orgsToAdd = requestedOrganisations.toSet().minus(existingDomainOrganisations.toSet())
-        val orgsToRemove = existingDomainOrganisations.toSet().minus(requestedOrganisations.toSet())
+        // Validation includes checking requested organisations is a subset of domain organisations, so these will be too
+        val orgsToAdd = requestedOrganisations.toSet().minus(existingDomainOrgCodes.toSet())
+        val orgsToRemove = existingDomainOrgCodes.toSet().minus(requestedOrganisations.toSet())
 
         for (org in orgsToAdd) {
-            for (role in userRoles) {
+            for (role in callingUserRoles.systemRoles) {
                 val roleGroupString = role.role.adCn(org)
                 groupService.addUserToGroup(callingUser.cn, callingUser.dn, roleGroupString, call, null)
             }
