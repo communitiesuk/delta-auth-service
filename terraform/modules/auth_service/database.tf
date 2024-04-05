@@ -43,7 +43,7 @@ resource "aws_db_instance" "auth_service" {
   instance_class              = var.db_instance_type
   engine                      = "postgres"
   engine_version              = "16.1"
-  allow_major_version_upgrade = true
+  allow_major_version_upgrade = false
   allocated_storage           = 10 # GB
   storage_encrypted           = true
   kms_key_id                  = aws_kms_key.auth_service.arn
