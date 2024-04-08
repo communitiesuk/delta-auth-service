@@ -60,30 +60,29 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.2")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.4")
 
     //Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.4.14")
+    implementation("ch.qos.logback:logback-classic:1.5.3")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.8.0")
 
     // OpenSAML
     implementation("org.opensaml:opensaml-core:4.3.0")
     implementation("org.opensaml:opensaml-saml-impl:4.3.0")
 
     // Database
-    implementation("org.postgresql:postgresql:42.7.1")
+    implementation("org.postgresql:postgresql:42.7.3")
     implementation("com.zaxxer:HikariCP:5.1.0") // Connection pool
-    // Flyway 10 doesn't support postgres 14, we'll need to update postgres before upgrading
     implementation("org.flywaydb:flyway-core:9.22.3") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation("io.mockk:mockk:1.13.10")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
