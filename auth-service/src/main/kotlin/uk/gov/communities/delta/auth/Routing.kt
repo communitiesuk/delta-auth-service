@@ -255,7 +255,7 @@ fun Route.bearerTokenRoutes(
     adminUserCreationController: AdminUserCreationController,
     adminEditUserController: AdminEditUserController,
     adminGetUserController: AdminGetUserController,
-    adminEditEmailController: AdminEditEmailController,
+    adminEditUserEmailController: AdminEditUserEmailController,
     adminEnableDisableUserController: AdminEnableDisableUserController,
     editRolesController: EditRolesController,
     editOrganisationsController: EditOrganisationsController,
@@ -286,7 +286,7 @@ fun Route.bearerTokenRoutes(
                 adminEmailController.route(this)
             }
             route("/admin/update-user-email") {
-                adminEditEmailController.route(this)
+                adminEditUserEmailController.route(this)
             }
             post("/admin/enable-user") {
                 adminEnableDisableUserController.enableUser(call)

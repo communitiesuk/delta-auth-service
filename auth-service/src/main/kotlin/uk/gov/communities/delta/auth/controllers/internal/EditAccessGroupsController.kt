@@ -45,17 +45,22 @@ class EditAccessGroupsController(
             .log("Adding user {} to access group {}", targetUser.cn, targetGroupADName)
 
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
-        validateAddAccessGroupRequest(targetGroupName, callingUser, targetUser, allAccessGroups.map { it.name })
+        validateGroupExistenceAndUserAuthority(allAccessGroups.map { it.name }, targetGroupName, callingUser)
 
-        groupService.addUserToGroup(
-            targetUser.cn,
-            targetUser.dn,
-            targetGroupADName,
-            call,
-            null,
-        )
-
-        return call.respond(mapOf("message" to "User ${targetUser.cn} added to access  ${targetGroupName}."))
+        if (targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName)) {
+            logger.atWarn()
+                .log("User {} already member of access group {}", targetUser.cn, targetGroupADName)
+            return call.respond(mapOf("message" to "User ${targetUser.cn} already member of access group ${targetGroupName}."))
+        } else {
+            groupService.addUserToGroup(
+                targetUser.cn,
+                targetUser.dn,
+                targetGroupADName,
+                call,
+                session,
+            )
+            return call.respond(mapOf("message" to "User ${targetUser.cn} added to access group ${targetGroupName}."))
+        }
     }
 
 
@@ -75,21 +80,26 @@ class EditAccessGroupsController(
             .log("Removing user {} from access group {}", targetUser.cn, targetGroupADName)
 
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
-        validateRemoveAccessGroupRequest(targetGroupName, callingUser, targetUser, allAccessGroups.map { it.name })
+        validateGroupExistenceAndUserAuthority(allAccessGroups.map { it.name }, targetGroupName, callingUser)
 
-        for (groupName in targetUser.memberOfCNs) {
-            if (groupName.startsWith(targetGroupADName)) {
-                groupService.removeUserFromGroup(
-                    targetUser.cn,
-                    targetUser.dn,
-                    groupName,
-                    call,
-                    null,
-                )
+        if (targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName)) {
+            for (groupName in targetUser.memberOfCNs) {
+                if (groupName.startsWith(targetGroupADName)) {
+                    groupService.removeUserFromGroup(
+                        targetUser.cn,
+                        targetUser.dn,
+                        groupName,
+                        call,
+                        session,
+                    )
+                }
             }
+            return call.respond(mapOf("message" to "User ${targetUser.cn} removed from access group ${targetGroupName}."))
+        } else {
+            logger.atWarn()
+                .log("User {} already not member of access group {}", targetUser.cn, targetGroupADName)
+            return call.respond(mapOf("message" to "User ${targetUser.cn} already not member of access group ${targetGroupName}."))
         }
-
-        return call.respond(mapOf("message" to "User ${targetUser.cn} removed from access group ${targetGroupName}."))
     }
 
     // This endpoint takes a map of access groups or organisations and a list of organisations. The map should contain all
@@ -128,48 +138,14 @@ class EditAccessGroupsController(
         return call.respond(mapOf("message" to "Access groups have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
     }
 
-    fun validateAddAccessGroupRequest(
-        groupName: String,
-        callingUser: LdapUser,
-        targetUser: LdapUser,
-        allAccessGroupNames: List<String>,
-    ) {
-        validateGroupExistenceAndUserAuthority(allAccessGroupNames, groupName, callingUser)
-
-        if (targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + groupName)) {
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "already_group_member",
-                "Attempted to add a user to group they are already member of: $groupName",
-            )
-        }
-    }
-
-    fun validateRemoveAccessGroupRequest(
-        groupName: String,
-        callingUser: LdapUser,
-        targetUser: LdapUser,
-        allAccessGroupNames: List<String>
-    ) {
-        validateGroupExistenceAndUserAuthority(allAccessGroupNames, groupName, callingUser)
-
-        if (!targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + groupName)) {
-            throw ApiError(
-                HttpStatusCode.Forbidden,
-                "already_group_member",
-                "Attempted to remove a user from a group they are not member of: $groupName",
-            )
-        }
-    }
-
-    private fun validateGroupExistenceAndUserAuthority(
+    fun validateGroupExistenceAndUserAuthority(
         allAccessGroupNames: List<String>,
         groupName: String,
         callingUser: LdapUser
     ) {
         if (!allAccessGroupNames.contains(groupName)) {
             throw ApiError(
-                HttpStatusCode.Forbidden,
+                HttpStatusCode.BadRequest,
                 "nonexistent_group",
                 "Attempted to assign or remove user to/from access group that does not exist: $groupName",
             )
@@ -226,7 +202,7 @@ class EditAccessGroupsController(
         for (requestedAccessGroup in accessGroupRequestMap) {
             val accessGroupData = allAccessGroupsMap.getOrElse(requestedAccessGroup.key) {
                 throw ApiError(
-                    HttpStatusCode.Forbidden,
+                    HttpStatusCode.BadRequest,
                     "nonexistent_group",
                     "Request contained an access group that does not exist: "
                         + requestedAccessGroup.key,

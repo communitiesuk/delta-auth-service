@@ -237,7 +237,7 @@ class EditUserAccessGroupsControllerTest {
             }
         }.apply {
             assertEquals("nonexistent_group", errorCode)
-            assertEquals(HttpStatusCode.Forbidden, statusCode)
+            assertEquals(HttpStatusCode.BadRequest, statusCode)
             coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
             coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             confirmVerified(groupService)
@@ -266,7 +266,7 @@ class EditUserAccessGroupsControllerTest {
                     externalUser.dn,
                     "datamart-delta-access-group-3",
                     any(),
-                    null
+                    internalUserSession
                 )
             }
             coVerify(exactly = 0) {
@@ -287,21 +287,9 @@ class EditUserAccessGroupsControllerTest {
         Assert.assertThrows(ApiError::class.java) {
             val targetGroupName = "access-group-3"
             val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
-            controller.validateAddAccessGroupRequest(targetGroupName, externalUser, internalUser, allGroups)
+            controller.validateGroupExistenceAndUserAuthority(allGroups, targetGroupName, externalUser)
         }.apply {
             assertEquals("non_internal_user_altering_access_group_membership", errorCode)
-            assertEquals(HttpStatusCode.Forbidden, statusCode)
-        }
-    }
-
-    @Test
-    fun cannotAddUserToGroupTheyAreAlreadyIn() {
-        Assert.assertThrows(ApiError::class.java) {
-            val targetGroupName = "access-group-1"
-            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
-            controller.validateAddAccessGroupRequest(targetGroupName, internalUser, externalUser, allGroups)
-        }.apply {
-            assertEquals("already_group_member", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
         }
     }
@@ -328,7 +316,7 @@ class EditUserAccessGroupsControllerTest {
                     externalUser.dn,
                     "datamart-delta-access-group-2",
                     any(),
-                    null
+                    internalUserSession
                 )
             }
             coVerify(exactly = 1) {
@@ -337,7 +325,7 @@ class EditUserAccessGroupsControllerTest {
                     externalUser.dn,
                     "datamart-delta-access-group-2-orgCode1",
                     any(),
-                    null
+                    internalUserSession
                 )
             }
             coVerify(exactly = 0) {
@@ -358,21 +346,9 @@ class EditUserAccessGroupsControllerTest {
         Assert.assertThrows(ApiError::class.java) {
             val targetGroupName = "access-group-1"
             val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
-            controller.validateRemoveAccessGroupRequest(targetGroupName, externalUser, internalUser, allGroups)
+            controller.validateGroupExistenceAndUserAuthority(allGroups, targetGroupName, externalUser)
         }.apply {
             assertEquals("non_internal_user_altering_access_group_membership", errorCode)
-            assertEquals(HttpStatusCode.Forbidden, statusCode)
-        }
-    }
-
-    @Test
-    fun cannotRemoveUserFromGroupTheyAreNotIn() {
-        Assert.assertThrows(ApiError::class.java) {
-            val targetGroupName = "access-group-3"
-            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
-            controller.validateRemoveAccessGroupRequest(targetGroupName, internalUser, externalUser, allGroups)
-        }.apply {
-            assertEquals("already_group_member", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
         }
     }
@@ -409,10 +385,10 @@ class EditUserAccessGroupsControllerTest {
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),
         )
-        coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), null) } just runs
-        coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), null) } just runs
-        coEvery { groupService.addUserToGroup(internalUser.cn, externalUser.dn, any(), any(), null) } just runs
-        coEvery { groupService.removeUserFromGroup(internalUser.cn, externalUser.dn, any(), any(), null) } just runs
+        coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), any()) } just runs
+        coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(internalUser.cn, externalUser.dn, any(), any(), any()) } just runs
+        coEvery { groupService.removeUserFromGroup(internalUser.cn, externalUser.dn, any(), any(), any()) } just runs
     }
 
     companion object {

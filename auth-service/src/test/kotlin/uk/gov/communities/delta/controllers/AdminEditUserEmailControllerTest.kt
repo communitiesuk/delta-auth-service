@@ -13,7 +13,7 @@ import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.controllers.internal.AdminEditEmailController
+import uk.gov.communities.delta.auth.controllers.internal.AdminEditUserEmailController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -26,7 +26,7 @@ import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
 
-class AdminEditEmailControllerTest {
+class AdminEditUserEmailControllerTest {
     @Test
     fun canUpdateEmailForUser() = testSuspend {
         testClient.post("/admin/update-user-email") {
@@ -113,7 +113,7 @@ class AdminEditEmailControllerTest {
     companion object {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
-        private lateinit var controller: AdminEditEmailController
+        private lateinit var controller: AdminEditUserEmailController
 
         private val oauthSessionService = mockk<OAuthSessionService>()
 
@@ -139,7 +139,7 @@ class AdminEditEmailControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            controller = AdminEditEmailController(
+            controller = AdminEditUserEmailController(
                 userLookupService,
                 userService,
             )

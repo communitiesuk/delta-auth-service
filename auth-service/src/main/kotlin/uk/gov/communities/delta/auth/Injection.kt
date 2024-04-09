@@ -296,7 +296,7 @@ class Injection(
         userLookupService,
     )
 
-    fun adminEditEmailController() = AdminEditEmailController(
+    fun adminEditEmailController() = AdminEditUserEmailController(
         userLookupService,
         userService,
     )
