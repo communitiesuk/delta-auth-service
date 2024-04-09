@@ -36,11 +36,11 @@ class AdminEditUserEmailControllerTest {
             }
             contentType(ContentType.Application.Json)
             setBody("{\"userToEditCn\": \"test!user.com\", " +
-                "\"newEmail\": \"toast!user.com\"}")
+                "\"newEmail\": \"toast@user.com\"}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                userService.updateEmail(userToUpdate, "toast!user.com", adminSession, any())
+                userService.updateEmail(userToUpdate, "toast@user.com", adminSession, any())
             }
             confirmVerified(userService)
         }
