@@ -29,28 +29,48 @@ class EditAccessGroupsController(
         route.post { updateUserAccessGroups(call) }
     }
 
-    // This endpoint takes a single user cn and single access group cn and assigns the user to that access group.
-    // It does not assign the user any organisations for that access group.
+    // This endpoint takes a single user cn, single access group cn and a list of organisation codes.
+    // It will assign the user to that access group and the given list of organisations for that access group.
     suspend fun addUserToAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
 
-        val addGroupRequest = call.receive<DeltaUserSingleAccessGroup>()
+        val addGroupRequest = call.receive<DeltaUserSingleAccessGroupOrganisationsRequest>()
         val targetUser = userLookupService.lookupUserByCn(addGroupRequest.userToEditCn)
 
         val targetGroupName = addGroupRequest.accessGroupName
-        val targetGroupADName = LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName
+        val targetOrganisationCodes = addGroupRequest.organisationCodes
 
-        logger.atInfo()
-            .log("Adding user {} to access group {}", targetUser.cn, targetGroupADName)
+        val targetGroupADName = getGroupADName(targetGroupName, null)
+
+        if (targetOrganisationCodes.isEmpty()) {
+            logger.atInfo()
+                .log("Adding user {} to access group {}", targetUser.cn, targetGroupADName)
+        } else {
+            logger.atInfo()
+                .log(
+                    "Adding user {} to access group {} and organisations {}",
+                    targetUser.cn,
+                    targetGroupADName,
+                    targetOrganisationCodes
+                )
+        }
 
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
-        validateGroupExistenceAndUserAuthority(allAccessGroups.map { it.name }, targetGroupName, callingUser)
+        val allOrganisationCodes = organisationService.findAllNamesAndCodes().map { it.code }
+        validateSingleGroupRequest(
+            allAccessGroups.map { it.name },
+            targetGroupName,
+            callingUser
+        )
+        validateOrganisationRequest(
+            allOrganisationCodes,
+            targetOrganisationCodes
+        )
 
-        if (targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName)) {
+        if (targetUser.memberOfCNs.contains(targetGroupADName)) {
             logger.atWarn()
                 .log("User {} already member of access group {}", targetUser.cn, targetGroupADName)
-            return call.respond(mapOf("message" to "User ${targetUser.cn} already member of access group ${targetGroupName}."))
         } else {
             groupService.addUserToGroup(
                 targetUser.cn,
@@ -59,30 +79,51 @@ class EditAccessGroupsController(
                 call,
                 session,
             )
-            return call.respond(mapOf("message" to "User ${targetUser.cn} added to access group ${targetGroupName}."))
         }
+        targetOrganisationCodes.forEach {
+            val targetGroupOrgADName = getGroupADName(targetGroupName, it)
+            if (targetUser.memberOfCNs.contains(targetGroupOrgADName)) {
+                logger.atWarn()
+                    .log("User {} already member of access group {}", targetUser.cn, targetGroupOrgADName)
+            } else {
+                groupService.addUserToGroup(
+                    targetUser.cn,
+                    targetUser.dn,
+                    targetGroupOrgADName,
+                    call,
+                    session,
+                )
+            }
+        }
+
+        return call.respond(mapOf("message" to "User ${targetUser.cn} added to access group $targetGroupName and organisations ${targetOrganisationCodes}."))
     }
 
 
-    // This endpoint takes a single user cn and single access group cn and removes the user from that access group,
-    // including any organisation groups for that access group.
+    // This endpoint takes a single user cn and a single access group cn.
+    // It will remove the user from the given access group, including any organisation associations.
     suspend fun removeUserFromAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
 
-        val removeGroupRequest = call.receive<DeltaUserSingleAccessGroup>()
+        val removeGroupRequest = call.receive<DeltaUserSingleAccessGroupRequest>()
         val targetUser = userLookupService.lookupUserByCn(removeGroupRequest.userToEditCn)
 
         val targetGroupName = removeGroupRequest.accessGroupName
-        val targetGroupADName = LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName
+
+        val targetGroupADName = getGroupADName(targetGroupName, null)
 
         logger.atInfo()
             .log("Removing user {} from access group {}", targetUser.cn, targetGroupADName)
 
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
-        validateGroupExistenceAndUserAuthority(allAccessGroups.map { it.name }, targetGroupName, callingUser)
+        validateSingleGroupRequest(
+            allAccessGroups.map { it.name },
+            targetGroupName,
+            callingUser
+        )
 
-        if (targetUser.memberOfCNs.contains(LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName)) {
+        if (targetUser.memberOfCNs.contains(targetGroupADName)) {
             for (groupName in targetUser.memberOfCNs) {
                 if (groupName.startsWith(targetGroupADName)) {
                     groupService.removeUserFromGroup(
@@ -138,7 +179,7 @@ class EditAccessGroupsController(
         return call.respond(mapOf("message" to "Access groups have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
     }
 
-    fun validateGroupExistenceAndUserAuthority(
+    fun validateSingleGroupRequest(
         allAccessGroupNames: List<String>,
         groupName: String,
         callingUser: LdapUser
@@ -155,6 +196,19 @@ class EditAccessGroupsController(
                 HttpStatusCode.Forbidden,
                 "non_internal_user_altering_access_group_membership",
                 "Non-internal user attempted to add or remove a user to/from access group: $groupName",
+            )
+        }
+    }
+
+    private fun validateOrganisationRequest(
+        allOrganisationCodes: List<String>,
+        orgCodes: List<String>
+    ) {
+        if (orgCodes.isNotEmpty() && !allOrganisationCodes.containsAll(orgCodes)) {
+            throw ApiError(
+                HttpStatusCode.BadRequest,
+                "nonexistent_organisation",
+                "Attempted to assign or remove user to/from access group organisation that does not exist",
             )
         }
     }
@@ -288,21 +342,29 @@ class EditAccessGroupsController(
         for (action in accessGroupActions) {
             if (action is AddAccessGroupAction || action is AddAccessGroupOrganisationAction) {
                 logger.atInfo()
-                    .log("Adding user {} to access group {}", userToAdd.cn, action.getActiveDirectoryString())
+                    .log(
+                        "Adding user {} to access group {}",
+                        userToAdd.cn,
+                        getGroupADName(action.accessGroupName, action.organisationCode)
+                    )
                 groupService.addUserToGroup(
                     userToAdd.cn,
                     userToAdd.dn,
-                    action.getActiveDirectoryString(),
+                    getGroupADName(action.accessGroupName, action.organisationCode),
                     call,
                     adminSession
                 )
             } else if (action is RemoveAccessGroupAction || action is RemoveAccessGroupOrganisationAction) {
                 logger.atInfo()
-                    .log("Removing user {} from access group {}", userToAdd.cn, action.getActiveDirectoryString())
+                    .log(
+                        "Removing user {} from access group {}",
+                        userToAdd.cn,
+                        getGroupADName(action.accessGroupName, action.organisationCode)
+                    )
                 groupService.removeUserFromGroup(
                     userToAdd.cn,
                     userToAdd.dn,
-                    action.getActiveDirectoryString(),
+                    getGroupADName(action.accessGroupName, action.organisationCode),
                     call,
                     adminSession
                 )
@@ -322,9 +384,6 @@ class EditAccessGroupsController(
         val accessGroupName: String,
         val organisationCode: String?,
     ) {
-        fun getActiveDirectoryString() = LDAPConfig.DATAMART_DELTA_PREFIX + accessGroupName +
-            if (organisationCode == null) "" else "-$organisationCode"
-
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is AccessGroupAction) return false
@@ -340,6 +399,9 @@ class EditAccessGroupsController(
             return result
         }
     }
+
+    private fun getGroupADName(targetGroupName: String, targetOrganisationCode: String?) =
+        LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName + if (targetOrganisationCode.isNullOrEmpty()) "" else "-$targetOrganisationCode"
 
     class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String) :
         AccessGroupAction(accessGroupName, organisationCode)
@@ -360,8 +422,15 @@ class EditAccessGroupsController(
     )
 
     @Serializable
-    data class DeltaUserSingleAccessGroup(
+    data class DeltaUserSingleAccessGroupRequest(
         @SerialName("userToEditCn") val userToEditCn: String,
         @SerialName("accessGroupName") val accessGroupName: String,
+    )
+
+    @Serializable
+    data class DeltaUserSingleAccessGroupOrganisationsRequest(
+        @SerialName("userToEditCn") val userToEditCn: String,
+        @SerialName("accessGroupName") val accessGroupName: String,
+        @SerialName("organisationCodes") val organisationCodes: List<String>,
     )
 }

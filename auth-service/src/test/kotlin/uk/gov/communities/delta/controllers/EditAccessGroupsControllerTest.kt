@@ -23,14 +23,13 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
-import uk.gov.communities.delta.dbintegration.UserAuditServiceTest.Companion.call
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class EditUserAccessGroupsControllerTest {
+class EditAccessGroupsControllerTest {
     @Test
     fun testUserCanUpdateAccessGroups() = testSuspend {
         testClient.post("/access-groups") {
@@ -256,7 +255,7 @@ class EditUserAccessGroupsControllerTest {
                 "{" +
                     "\"userToEditCn\": \"${externalUser.cn}\"" +
                     ", \"accessGroupName\": \"access-group-3\"" +
-                    "}"
+                    ", \"organisationCodes\": [\"orgCode1\", \"orgCode2\"]}"
             )
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -269,13 +268,22 @@ class EditUserAccessGroupsControllerTest {
                     internalUserSession
                 )
             }
-            coVerify(exactly = 0) {
-                groupService.removeUserFromGroup(
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-3-orgCode1",
                     any(),
+                    internalUserSession
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser.cn,
+                    externalUser.dn,
+                    "datamart-delta-access-group-3-orgCode2",
                     any(),
-                    any(),
-                    any(),
-                    any()
+                    internalUserSession
                 )
             }
             confirmVerified(groupService)
@@ -283,11 +291,11 @@ class EditUserAccessGroupsControllerTest {
     }
 
     @Test
-    fun nonInternalUserCannotAddOtherToAccessGroup() {
+    fun nonInternalUserCannotMakeSingleGroupRequest() {
         Assert.assertThrows(ApiError::class.java) {
             val targetGroupName = "access-group-3"
             val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
-            controller.validateGroupExistenceAndUserAuthority(allGroups, targetGroupName, externalUser)
+            controller.validateSingleGroupRequest(allGroups, targetGroupName, externalUser)
         }.apply {
             assertEquals("non_internal_user_altering_access_group_membership", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
@@ -305,8 +313,7 @@ class EditUserAccessGroupsControllerTest {
             setBody(
                 "{" +
                     "\"userToEditCn\": \"${externalUser.cn}\"" +
-                    ", \"accessGroupName\": \"access-group-2\"" +
-                    "}"
+                    ", \"accessGroupName\": \"access-group-2\"}"
             )
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -338,18 +345,6 @@ class EditUserAccessGroupsControllerTest {
                 )
             }
             confirmVerified(groupService)
-        }
-    }
-
-    @Test
-    fun nonInternalUserCannotRemoveOtherFromAccessGroup() {
-        Assert.assertThrows(ApiError::class.java) {
-            val targetGroupName = "access-group-1"
-            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
-            controller.validateGroupExistenceAndUserAuthority(allGroups, targetGroupName, externalUser)
-        }.apply {
-            assertEquals("non_internal_user_altering_access_group_membership", errorCode)
-            assertEquals(HttpStatusCode.Forbidden, statusCode)
         }
     }
 
