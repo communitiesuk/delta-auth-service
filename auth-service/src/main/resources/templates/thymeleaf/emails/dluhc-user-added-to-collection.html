@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC DELTA: User has been added to collection')}">
+    <title>DLUHC DELTA: user has been added to collection</title>
+</head>
+<body>
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="userFullName" type="java.lang.String" */-->
+<!--/*@thymesVar id="userEmailAddress" type="java.lang.String" */-->
+<!--/*@thymesVar id="accessGroupName" type="java.lang.String" */-->
+<!--/*@thymesVar id="actingUserEmail" type="java.lang.String" */-->
+
+<p>
+    This is to notify you that <span th:text="${userFullName}">#userFullName#</span>
+    (<span th:text="${userEmailAddress}">user@example.com</span>)
+    has
+    <span
+        th:text="${actingUserEmail == userEmailAddress} ? 'added themselves to this collection' : 'been added to this collection by ' + ${actingUserEmail}"></span>.
+</p>
+
+<p>
+    This email is being sent to all delegated administrators and lead testers for <span th:text="${accessGroupName}">#accessGroupName#</span>.
+    Please contact <a th:href="'mailto:' + ${userEmailAddress}"><span
+    th:text="${userFullName}">#userFullName#</span></a>
+    or <a href="mailto:DELTAAdmin@levellingup.gov.uk">DELTAAdmin@levellingup.gov.uk</a> if you think that they should
+    not have access to this collection.
+</p>
+
+<p>
+    If you have any questions or need help please email the DLUHC Service Desk on <a
+    href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a> or call
+    0203 829 0743.
+</p>
+<p>
+    DELTA can be accessed at <a th:href="@{${deltaUrl}}">DELTA</a>.
+</p>
+<p>
+    Regards,
+</p>
+<p>
+    <strong>DELTA System</strong>
+</p>
+<div th:replace="~{fragments/template.html :: disclaimer}"></div>
+</body>
+</html>

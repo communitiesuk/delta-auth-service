@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.DeltaSystemRole
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserLookupService
@@ -22,10 +23,10 @@ open class AdminUserController(
         getSessionIfUserHasPermittedRole(permittedRoles, call)
     }
 
-    protected suspend fun getSessionIfUserHasPermittedRole(
+    protected suspend fun getSessionAndUserIfUserHasPermittedRole(
         permittedRoles: Array<DeltaSystemRole>,
         call: ApplicationCall
-    ): OAuthSession {
+    ): Pair<OAuthSession, LdapUser> {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
         val roleCns = permittedRoles.map { it.adCn() }
@@ -40,6 +41,13 @@ open class AdminUserController(
                 "You do not have the necessary permissions to do this"
             )
         }
-        return session
+        return Pair(session, callingUser)
+    }
+
+    protected suspend fun getSessionIfUserHasPermittedRole(
+        permittedRoles: Array<DeltaSystemRole>,
+        call: ApplicationCall
+    ): OAuthSession {
+        return getSessionAndUserIfUserHasPermittedRole(permittedRoles, call).first
     }
 }

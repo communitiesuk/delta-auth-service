@@ -68,6 +68,15 @@ class AdminUserCreationControllerTest {
                     any()
                 )
             }
+            verify {
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(NEW_STANDARD_USER_EMAIL, "testFirst testLast"),
+                    adminUser,
+                    emptyList(),
+                    any(),
+                )
+            }
+            confirmVerified(emailService, groupService, userService, accessGroupDCLGMembershipUpdateEmailService)
             assertEquals("{\"message\":\"User created successfully\"}", bodyAsText())
         }
     }
@@ -299,6 +308,14 @@ class AdminUserCreationControllerTest {
             AccessGroup("access-group-1", "STATS", "access group 1", false, false),
             AccessGroup("access-group-2", "STATS", "access group 2", false, false),
         )
+        every {
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } just runs
     }
 
     companion object {
@@ -320,7 +337,7 @@ class AdminUserCreationControllerTest {
                 return PasswordAuthentication("", "")
             }
         }
-        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "")
+        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "", false, emptyList())
         private val userLookupService = mockk<UserLookupService>()
         private val userService = mockk<UserService>()
         private val groupService = mockk<GroupService>()
@@ -328,6 +345,7 @@ class AdminUserCreationControllerTest {
         private val setPasswordTokenService = mockk<SetPasswordTokenService>()
         private val organisationService = mockk<OrganisationService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
+        private val accessGroupDCLGMembershipUpdateEmailService = mockk<AccessGroupDCLGMembershipUpdateEmailService>()
 
         private val user = slot<UserService.ADUser>()
 
@@ -465,7 +483,8 @@ class AdminUserCreationControllerTest {
                 groupService,
                 emailService,
                 setPasswordTokenService,
-                DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService)
+                DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService),
+                accessGroupDCLGMembershipUpdateEmailService,
             )
 
             testApp = TestApplication {

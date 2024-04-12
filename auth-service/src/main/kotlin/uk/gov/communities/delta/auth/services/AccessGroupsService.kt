@@ -21,7 +21,6 @@ data class AccessGroup(
     val isDelegate: Boolean? = null,
 )
 
-
 class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, val config: LDAPConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)
 

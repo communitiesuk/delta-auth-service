@@ -439,6 +439,7 @@ class EditAccessGroupsControllerTest {
         private val organisationService = mockk<OrganisationService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
         private val memberOfToDeltaRolesMapper = ::MemberOfToDeltaRolesMapper
+        private val accessGroupDCLGMembershipUpdateEmailService = mockk<AccessGroupDCLGMembershipUpdateEmailService>()
 
         private val client = testServiceClient()
 
@@ -496,6 +497,7 @@ class EditAccessGroupsControllerTest {
                 organisationService,
                 accessGroupsService,
                 memberOfToDeltaRolesMapper,
+                accessGroupDCLGMembershipUpdateEmailService,
             )
 
             testApp = TestApplication {

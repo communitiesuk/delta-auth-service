@@ -21,6 +21,7 @@ class EditAccessGroupsController(
     private val organisationService: OrganisationService,
     private val accessGroupsService: AccessGroupsService,
     private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
+    private val accessGroupDCLGMembershipUpdateEmailService: AccessGroupDCLGMembershipUpdateEmailService,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -49,7 +50,7 @@ class EditAccessGroupsController(
             targetOrganisationCodes
         )
 
-        validateAccessGroupExists(targetGroupName)
+        val accessGroup = validateAccessGroupExists(targetGroupName)
         validateUserInOrganisations(targetUserRoles, targetOrganisationCodes)
 
         val targetGroupADName = getGroupOrgADName(targetGroupName, null)
@@ -64,14 +65,14 @@ class EditAccessGroupsController(
                 session,
             )
         }
-        targetOrganisationCodes.forEach {
-            val targetGroupOrgADName = getGroupOrgADName(targetGroupName, it)
+        targetOrganisationCodes.forEach { orgCode ->
+            val targetGroupOrgADName = getGroupOrgADName(targetGroupName, orgCode)
             if (targetUser.memberOfCNs.contains(targetGroupOrgADName)) {
                 logger.warn(
                     "User {} already member of (access group, organisation) ({}, {})",
                     targetUser.cn,
                     targetGroupName,
-                    it
+                    orgCode,
                 )
             } else {
                 groupService.addUserToGroup(
@@ -81,6 +82,14 @@ class EditAccessGroupsController(
                     call,
                     session,
                 )
+                if (orgCode == "dclg") {
+                    accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+                        AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(targetUser),
+                        callingUser,
+                        accessGroup.prefixedName,
+                        accessGroup.registrationDisplayName,
+                    )
+                }
             }
         }
 
@@ -181,7 +190,12 @@ class EditAccessGroupsController(
 
         if (accessGroupActions.isEmpty()) return call.respond(mapOf("message" to "No changes made."))
 
-        executeAccessGroupActions(accessGroupActions, null, callingUser, call)
+        executeAccessGroupActions(
+            accessGroupActions,
+            callingUser,
+            call,
+            allAccessGroups.associateBy { it.prefixedName },
+        )
 
         return call.respond(mapOf("message" to "Collection groups updated."))
     }
@@ -327,36 +341,42 @@ class EditAccessGroupsController(
 
     private suspend fun executeAccessGroupActions(
         accessGroupActions: Set<AccessGroupAction>,
-        adminSession: OAuthSession?,
-        userToAdd: LdapUser,
+        user: LdapUser,
         call: ApplicationCall,
+        allAccessGroups: Map<String, AccessGroup>,
     ) {
         for (action in accessGroupActions) {
             if (action is AddAccessGroupAction || action is AddAccessGroupOrganisationAction) {
                 logger.info(
                         "Adding user {} to access group {}",
-                        userToAdd.cn,
+                    user.cn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
-                    )
+                )
                 groupService.addUserToGroup(
-                    userToAdd.cn,
-                    userToAdd.dn,
+                    user.cn,
+                    user.dn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
-                    adminSession
+                    null,
                 )
+                if (action is AddAccessGroupOrganisationAction && action.organisationCode == "dclg") {
+                    accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+                        AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user), user,
+                        action.accessGroupName, allAccessGroups[action.accessGroupName]!!.registrationDisplayName
+                    )
+                }
             } else if (action is RemoveAccessGroupAction || action is RemoveAccessGroupOrganisationAction) {
                 logger.info(
                         "Removing user {} from access group {}",
-                        userToAdd.cn,
+                    user.cn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                     )
                 groupService.removeUserFromGroup(
-                    userToAdd.cn,
-                    userToAdd.dn,
+                    user.cn,
+                    user.dn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
-                    adminSession
+                    null,
                 )
             }
         }
