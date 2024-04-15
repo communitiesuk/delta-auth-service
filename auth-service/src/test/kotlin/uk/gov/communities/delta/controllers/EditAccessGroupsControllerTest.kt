@@ -215,8 +215,6 @@ class EditAccessGroupsControllerTest {
         }.apply {
             assertEquals("external_user_non_online_registration_group", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             confirmVerified(groupService)
         }
     }
@@ -237,8 +235,6 @@ class EditAccessGroupsControllerTest {
         }.apply {
             assertEquals("nonexistent_group", errorCode)
             assertEquals(HttpStatusCode.BadRequest, statusCode)
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
             confirmVerified(groupService)
         }
     }
@@ -333,15 +329,6 @@ class EditAccessGroupsControllerTest {
                     "datamart-delta-access-group-2-orgCode1",
                     any(),
                     internalUserSession
-                )
-            }
-            coVerify(exactly = 0) {
-                groupService.addUserToGroup(
-                    any(),
-                    any(),
-                    any(),
-                    any(),
-                    any()
                 )
             }
             confirmVerified(groupService)

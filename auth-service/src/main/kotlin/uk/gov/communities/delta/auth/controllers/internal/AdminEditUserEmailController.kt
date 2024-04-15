@@ -35,8 +35,6 @@ class AdminEditUserEmailController(
 
         val userToEdit = userLookupService.lookupUserByCn(requestData.userToEditCn)
 
-        logger.atInfo().log("Updating email and username for user {}", userToEdit.cn)
-
         validateEmail(requestedEmail)
         logger.atInfo().addKeyValue("oldUserEmail", userToEdit.email)
             .addKeyValue("oldUserCN", userToEdit.cn)
