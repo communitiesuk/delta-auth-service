@@ -514,7 +514,7 @@ class EditAccessGroupsControllerTest {
                     routing {
                         withBearerTokenAuth {
                             post("/access-groups") {
-                                controller.updateUserAccessGroups(call)
+                                controller.updateCurrentUserAccessGroups(call)
                             }
                             post("/access-groups/add") {
                                 controller.addUserToAccessGroup(call)

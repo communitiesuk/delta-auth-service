@@ -26,7 +26,7 @@ class EditAccessGroupsController(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun route(route: Route) {
-        route.post { updateUserAccessGroups(call) }
+        route.post { updateCurrentUserAccessGroups(call) }
     }
 
     // This endpoint takes a single user cn, single access group cn and a list of organisation codes.
@@ -152,7 +152,7 @@ class EditAccessGroupsController(
     // associated organisations, groups the user has not selected should contain an empty list.
     // A list of all "userSelectedOrgs" (organisation codes) that the access group request refers to should be provided as well,
     // membership of (access group, organisation) will be ignored for organisations not in this list.
-    suspend fun updateUserAccessGroups(call: ApplicationCall) {
+    suspend fun updateCurrentUserAccessGroups(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
         logger.info("Updating access groups for user {}", session.userCn)
@@ -179,9 +179,11 @@ class EditAccessGroupsController(
         val currentAccessGroups = deltaRolesForUser.accessGroups.associateBy({ it.name }, { it.organisationIds })
         val accessGroupActions = generateAccessGroupActions(accessGroupRequestMap, currentAccessGroups, selectedOrgs)
 
+        if (accessGroupActions.isEmpty()) return call.respond(mapOf("message" to "No changes made."))
+
         executeAccessGroupActions(accessGroupActions, null, callingUser, call)
 
-        return call.respond(mapOf("message" to "Access groups have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
+        return call.respond(mapOf("message" to "Collection groups updated."))
     }
 
     fun validateIsInternalUser(callingUser: LdapUser) {
