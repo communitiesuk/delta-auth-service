@@ -147,10 +147,11 @@ class EditAccessGroupsController(
         }
     }
 
-    // This endpoint takes a map of access groups or organisations and a list of organisations. The map should contain all
+    // This endpoint takes a map of access group names to lists of organisation codes. The map should contain all
     // access groups the user could potentially assign themselves to. Groups the user has selected should contain a list of
-    // associated organisations, groups the user has not selected should contain an empty list. The list of organisations
-    // should contain the organisations the user has chosen to be part of from the organisations available to them.
+    // associated organisations, groups the user has not selected should contain an empty list.
+    // A list of all "userSelectedOrgs" (organisation codes) that the access group request refers to should be provided as well,
+    // membership of (access group, organisation) will be ignored for organisations not in this list.
     suspend fun updateUserAccessGroups(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
@@ -162,20 +163,20 @@ class EditAccessGroupsController(
         val selectedOrgs = requestBodyObject.userSelectedOrgs.toSet()
         val accessGroupRequestMap = stripDatamartPrefixFromKeys(requestBodyObject.accessGroupsRequest)
 
+        val deltaRolesForUser = memberOfToDeltaRolesMapperFactory(
+            callingUser.cn, organisationService.findAllNamesAndCodes(), allAccessGroups
+        ).map(callingUser.memberOfCNs)
+
         validateUpdateAccessGroupsRequest(
             accessGroupRequestMap,
             selectedOrgs,
             allAccessGroups,
             userIsInternal,
-            callingUser
+            callingUser,
+            deltaRolesForUser,
         )
 
-        val deltaRolesForUser = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), allAccessGroups
-        ).map(callingUser.memberOfCNs)
-        val currentAccessGroups = deltaRolesForUser.accessGroups.associateBy({ it.name },
-            { it.organisationIds })
-
+        val currentAccessGroups = deltaRolesForUser.accessGroups.associateBy({ it.name }, { it.organisationIds })
         val accessGroupActions = generateAccessGroupActions(accessGroupRequestMap, currentAccessGroups, selectedOrgs)
 
         executeAccessGroupActions(accessGroupActions, null, callingUser, call)
@@ -198,7 +199,8 @@ class EditAccessGroupsController(
         selectedOrgs: Set<String>,
         allAccessGroups: List<AccessGroup>,
         userIsInternal: Boolean,
-        callingUser: LdapUser
+        callingUser: LdapUser,
+        callingUserRoles: MemberOfToDeltaRolesMapper.Roles
     ) {
         validateAccessGroupRequest(
             accessGroupRequestMap,
@@ -206,11 +208,12 @@ class EditAccessGroupsController(
             selectedOrgs,
             userIsInternal
         )
-        validateOrganisationRequest(callingUser, selectedOrgs)
+        validateOrganisationRequest(callingUser, callingUserRoles, selectedOrgs)
     }
 
     private suspend fun validateOrganisationRequest(
         callingUser: LdapUser,
+        callingUserRoles: MemberOfToDeltaRolesMapper.Roles,
         selectedOrgs: Set<String>
     ) {
         val userDomainOrgs = organisationService.findAllByEmail(callingUser.email).map { it.code }.toSet()
@@ -220,6 +223,13 @@ class EditAccessGroupsController(
                     HttpStatusCode.Forbidden,
                     "user_non_domain_organisation",
                     "User attempted to assign self to an organisation not in their domain: $org",
+                )
+            }
+            if (!callingUserRoles.organisations.any { it.code == org }) {
+                throw ApiError(
+                    HttpStatusCode.BadRequest,
+                    "user_not_member_of_selected_organisation",
+                    "Organisation $org selected, but user is not a member of that organisation",
                 )
             }
         }

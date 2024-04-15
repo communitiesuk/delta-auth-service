@@ -137,7 +137,7 @@ class EditAccessGroupsControllerTest {
     }
 
     @Test
-    fun accessGroupIsAddedIfUserIsntAlreadyMember() {
+    fun accessGroupIsAddedIfUserIsNotAlreadyMember() {
         val accessGroupsRequestMap = mapOf("ag1" to listOf("org1"))
         val currentAccessGroupsMap = mapOf<String, List<String>>()
         val selectedOrgs = setOf("org1")
@@ -235,6 +235,26 @@ class EditAccessGroupsControllerTest {
             }
         }.apply {
             assertEquals("nonexistent_group", errorCode)
+            assertEquals(HttpStatusCode.BadRequest, statusCode)
+            confirmVerified(groupService)
+        }
+    }
+
+    @Test
+    fun userCannotAddToOrganisationsNotAMemberOf() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/access-groups") {
+                    headers {
+                        append("Authorization", "Bearer ${externalUserSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody("{\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"orgCode4\"]}, \"userSelectedOrgs\": [\"orgCode4\"]}")
+                }
+            }
+        }.apply {
+            assertEquals("user_not_member_of_selected_organisation", errorCode)
             assertEquals(HttpStatusCode.BadRequest, statusCode)
             confirmVerified(groupService)
         }
@@ -381,6 +401,7 @@ class EditAccessGroupsControllerTest {
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
+            OrganisationNameAndCode("orgCode4", "Organisation Name 4"),
         )
         @Suppress("BooleanLiteralArgument")
         coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
@@ -392,6 +413,7 @@ class EditAccessGroupsControllerTest {
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),
+            Organisation("orgCode4", "Organisation Name 4"),
         )
         mockUserLookupService(
             userLookupService,
