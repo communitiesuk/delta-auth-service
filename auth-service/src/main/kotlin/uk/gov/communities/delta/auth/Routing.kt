@@ -202,10 +202,12 @@ fun Route.internalRoutes(injection: Injection) {
     val adminUserCreationController = injection.adminUserCreationController()
     val adminEditUserController = injection.adminEditUserController()
     val adminGetUserController = injection.adminGetUserController()
+    val adminEditEmailController = injection.adminEditEmailController()
+    val adminEnableDisableUserController = injection.adminEnableDisableUserController()
     val editRolesController = injection.editRolesController()
     val editOrganisationsController = injection.editOrganisationsController()
     val editAccessGroupsController = injection.editAccessGroupsController()
-    val adminEnableDisableUserController = injection.adminEnableDisableUserController()
+    val editUserDetailsController = injection.editUserDetailsController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController)
@@ -219,10 +221,12 @@ fun Route.internalRoutes(injection: Injection) {
             adminUserCreationController,
             adminEditUserController,
             adminGetUserController,
+            adminEditEmailController,
+            adminEnableDisableUserController,
             editRolesController,
             editOrganisationsController,
             editAccessGroupsController,
-            adminEnableDisableUserController,
+            editUserDetailsController,
         )
     }
 }
@@ -251,10 +255,12 @@ fun Route.bearerTokenRoutes(
     adminUserCreationController: AdminUserCreationController,
     adminEditUserController: AdminEditUserController,
     adminGetUserController: AdminGetUserController,
+    adminEditUserEmailController: AdminEditUserEmailController,
+    adminEnableDisableUserController: AdminEnableDisableUserController,
     editRolesController: EditRolesController,
     editOrganisationsController: EditOrganisationsController,
     editAccessGroupsController: EditAccessGroupsController,
-    adminEnableDisableUserController: AdminEnableDisableUserController,
+    editUserDetailsController: EditUserDetailsController,
 ) {
     route("/bearer") {
         withBearerTokenAuth {
@@ -279,20 +285,32 @@ fun Route.bearerTokenRoutes(
             route("/email") {
                 adminEmailController.route(this)
             }
-            route("/roles") {
-                editRolesController.route(this)
-            }
-            route("/access-groups") {
-                editAccessGroupsController.route(this)
-            }
-            route("/organisations") {
-                editOrganisationsController.route(this)
+            route("/admin/update-user-email") {
+                adminEditUserEmailController.route(this)
             }
             post("/admin/enable-user") {
                 adminEnableDisableUserController.enableUser(call)
             }
             post("/admin/disable-user") {
                 adminEnableDisableUserController.disableUser(call)
+            }
+            route("/roles") {
+                editRolesController.route(this)
+            }
+            post("/access-groups") {
+                editAccessGroupsController.updateUserAccessGroups(call)
+            }
+            post("/access-groups/add") {
+                editAccessGroupsController.addUserToAccessGroup(call)
+            }
+            post("/access-groups/remove") {
+                editAccessGroupsController.removeUserFromAccessGroup(call)
+            }
+            route("/organisations") {
+                editOrganisationsController.route(this)
+            }
+            route("/user-details") {
+                editUserDetailsController.route(this)
             }
         }
     }

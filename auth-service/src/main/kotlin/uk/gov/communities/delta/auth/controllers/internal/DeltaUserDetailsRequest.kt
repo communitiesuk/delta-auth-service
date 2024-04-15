@@ -18,7 +18,7 @@ class DeltaUserPermissionsRequestMapper(
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
             DeltaUserPermissions.fromUserDetailsRequest(
                 userDetailsRequest,
-                allAccessGroups.await().associateBy { it.name },
+                allAccessGroups.await().associateBy { it.prefixedName },
                 allOrganisations.await().associateBy { it.code },
             )
         }
