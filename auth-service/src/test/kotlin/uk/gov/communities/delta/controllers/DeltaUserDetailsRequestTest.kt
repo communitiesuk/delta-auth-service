@@ -73,7 +73,7 @@ class DeltaUserDetailsRequestTest {
     fun testMapsRequestToPermissions() {
         val result = DeltaUserPermissions.fromUserDetailsRequest(
             exampleRequest,
-            accessGroups.associateBy { it.name },
+            accessGroups.associateBy { it.prefixedName },
             organisations.associateBy { it.code }
         )
 
@@ -94,7 +94,7 @@ class DeltaUserDetailsRequestTest {
     fun testRejectsInvalidAccessGroup() {
         DeltaUserPermissions.fromUserDetailsRequest(
             exampleRequest.copy(accessGroups = exampleRequest.accessGroups + "datamart-delta-invalid-group"),
-            accessGroups.associateBy { it.name },
+            accessGroups.associateBy { it.prefixedName },
             organisations.associateBy { it.code }
         )
     }
@@ -103,7 +103,7 @@ class DeltaUserDetailsRequestTest {
     fun testRejectsInvalidSystemRole() {
         DeltaUserPermissions.fromUserDetailsRequest(
             exampleRequest.copy(roles = listOf("datamart-delta-invalid-role")),
-            accessGroups.associateBy { it.name },
+            accessGroups.associateBy { it.prefixedName },
             organisations.associateBy { it.code }
         )
     }
@@ -112,7 +112,7 @@ class DeltaUserDetailsRequestTest {
     fun testRejectsInvalidOrganisation() {
         DeltaUserPermissions.fromUserDetailsRequest(
             exampleRequest.copy(organisations = exampleRequest.organisations + "invalidOrg"),
-            accessGroups.associateBy { it.name },
+            accessGroups.associateBy { it.prefixedName },
             organisations.associateBy { it.code }
         )
     }
@@ -121,7 +121,7 @@ class DeltaUserDetailsRequestTest {
     fun testRejectsAccessGroupInMapNotList() {
         DeltaUserPermissions.fromUserDetailsRequest(
             exampleRequest.copy(accessGroupOrganisations = mapOf("datamart-delta-access-group-3" to emptyList())),
-            accessGroups.associateBy { it.name },
+            accessGroups.associateBy { it.prefixedName },
             organisations.associateBy { it.code }
         )
     }
@@ -130,7 +130,7 @@ class DeltaUserDetailsRequestTest {
     fun testRejectsOrganisationInAccessGroupMapNotMember() {
         DeltaUserPermissions.fromUserDetailsRequest(
             exampleRequest.copy(accessGroupOrganisations = mapOf("datamart-delta-access-group-2" to listOf("orgCode3"))),
-            accessGroups.associateBy { it.name },
+            accessGroups.associateBy { it.prefixedName },
             organisations.associateBy { it.code }
         )
     }
@@ -139,7 +139,7 @@ class DeltaUserDetailsRequestTest {
     fun testRejectsDelegateNotMemberOfAccessGroup() {
         DeltaUserPermissions.fromUserDetailsRequest(
             exampleRequest.copy(accessGroupDelegates = listOf("datamart-delta-access-group-3")),
-            accessGroups.associateBy { it.name },
+            accessGroups.associateBy { it.prefixedName },
             organisations.associateBy { it.code }
         )
     }

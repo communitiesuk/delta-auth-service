@@ -47,7 +47,7 @@ class MemberOfToDeltaRolesMapper(
     private val organisationIdSuffixes =
         allOrganisations.map { "-${it.code}" }.sortedByDescending { it.length }.toList()
     private val organisationsMap = allOrganisations.associateBy { it.code }
-    private val allAccessGroupsMap = allAccessGroups.associateBy { it.name }
+    private val allAccessGroupsMap = allAccessGroups.associateBy { it.prefixedName }
 
     fun map(memberOf: List<String>): Roles {
         val roles = memberOf

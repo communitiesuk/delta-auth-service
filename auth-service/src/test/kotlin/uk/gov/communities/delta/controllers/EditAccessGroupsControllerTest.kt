@@ -23,6 +23,7 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -241,6 +242,7 @@ class EditAccessGroupsControllerTest {
 
     @Test
     fun userCanAddOtherToAccessGroup() = testSuspend {
+        coEvery { accessGroupsService.getAccessGroup("access-group-3") } returns mockk<AccessGroup>()
         testClient.post("/access-groups/add") {
             headers {
                 append("Authorization", "Bearer ${internalUserSession.authToken}")
@@ -287,11 +289,33 @@ class EditAccessGroupsControllerTest {
     }
 
     @Test
+    fun cannotAddUserToInvalidAccessGroup() {
+        coEvery { accessGroupsService.getAccessGroup(any()) } returns null
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/access-groups/add") {
+                    headers {
+                        append("Authorization", "Bearer ${internalUserSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        "{" +
+                            "\"userToEditCn\": \"${externalUser.cn}\"" +
+                            ", \"accessGroupName\": \"invalid-group\"" +
+                            ", \"organisationCodes\": [\"orgCode1\", \"orgCode2\"]}"
+                    )
+                }
+            }
+        }.apply {
+            assertEquals("nonexistent_group", errorCode)
+        }
+    }
+
+    @Test
     fun nonInternalUserCannotMakeSingleGroupRequest() {
         Assert.assertThrows(ApiError::class.java) {
-            val targetGroupName = "access-group-3"
-            val allGroups = listOf("access-group-1", "access-group-2", "access-group-3")
-            controller.validateSingleGroupRequest(allGroups, targetGroupName, externalUser)
+            controller.validateIsInternalUser(externalUser)
         }.apply {
             assertEquals("non_internal_user_altering_access_group_membership", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
@@ -300,6 +324,7 @@ class EditAccessGroupsControllerTest {
 
     @Test
     fun userCanRemoveOtherFromAccessGroup() = testSuspend {
+        coEvery { accessGroupsService.getAccessGroup("access-group-2") } returns mockk<AccessGroup>()
         testClient.post("/access-groups/remove") {
             headers {
                 append("Authorization", "Bearer ${internalUserSession.authToken}")
@@ -357,6 +382,7 @@ class EditAccessGroupsControllerTest {
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
         )
+        @Suppress("BooleanLiteralArgument")
         coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
             AccessGroup("access-group-1", null, null, true, true),
             AccessGroup("access-group-2", null, null, true, false),
@@ -366,6 +392,12 @@ class EditAccessGroupsControllerTest {
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),
+        )
+        mockUserLookupService(
+            userLookupService,
+            listOf(internalUser, externalUser),
+            runBlocking { organisationService.findAllNamesAndCodes() },
+            runBlocking { accessGroupsService.getAllAccessGroups() },
         )
         coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), any()) } just runs
         coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), any()) } just runs
