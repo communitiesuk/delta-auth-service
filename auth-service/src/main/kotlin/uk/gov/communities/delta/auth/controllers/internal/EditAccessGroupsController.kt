@@ -5,7 +5,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
-import io.ktor.server.routing.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -25,10 +24,6 @@ class EditAccessGroupsController(
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    fun route(route: Route) {
-        route.post { updateCurrentUserAccessGroups(call) }
-    }
 
     // This endpoint takes a single user cn, single access group cn and a list of organisation codes.
     // It will assign the user to that access group and the given list of organisations for that access group.
@@ -86,7 +81,7 @@ class EditAccessGroupsController(
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
                         AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(targetUser),
                         callingUser,
-                        accessGroup.prefixedName,
+                        accessGroup.name,
                         accessGroup.registrationDisplayName,
                     )
                 }
@@ -134,12 +129,11 @@ class EditAccessGroupsController(
     }
 
     private suspend fun validateAccessGroupExists(accessGroupName: String) =
-        accessGroupsService.getAccessGroup(accessGroupName)
-            ?: throw ApiError(
-                HttpStatusCode.BadRequest,
-                "nonexistent_group",
-                "Access group does not exist: $accessGroupName",
-            )
+        accessGroupsService.getAccessGroup(accessGroupName) ?: throw ApiError(
+            HttpStatusCode.BadRequest,
+            "nonexistent_group",
+            "Access group does not exist: $accessGroupName",
+        )
 
     private fun validateUserInOrganisations(
         targetUserRoles: MemberOfToDeltaRolesMapper.Roles,
@@ -219,18 +213,13 @@ class EditAccessGroupsController(
         callingUserRoles: MemberOfToDeltaRolesMapper.Roles
     ) {
         validateAccessGroupRequest(
-            accessGroupRequestMap,
-            allAccessGroups,
-            selectedOrgs,
-            userIsInternal
+            accessGroupRequestMap, allAccessGroups, selectedOrgs, userIsInternal
         )
         validateOrganisationRequest(callingUser, callingUserRoles, selectedOrgs)
     }
 
     private suspend fun validateOrganisationRequest(
-        callingUser: LdapUser,
-        callingUserRoles: MemberOfToDeltaRolesMapper.Roles,
-        selectedOrgs: Set<String>
+        callingUser: LdapUser, callingUserRoles: MemberOfToDeltaRolesMapper.Roles, selectedOrgs: Set<String>
     ) {
         val userDomainOrgs = organisationService.findAllByEmail(callingUser.email).map { it.code }.toSet()
         for (org in selectedOrgs) {
@@ -264,8 +253,7 @@ class EditAccessGroupsController(
                 throw ApiError(
                     HttpStatusCode.BadRequest,
                     "nonexistent_group",
-                    "Request contained an access group that does not exist: "
-                        + requestedAccessGroup.key,
+                    "Request contained an access group that does not exist: " + requestedAccessGroup.key,
                 )
             }
 
@@ -273,8 +261,7 @@ class EditAccessGroupsController(
                 throw ApiError(
                     HttpStatusCode.Forbidden,
                     "internal_user_non_internal_group",
-                    "Request for internal user contained a group not enabled for internal users: "
-                        + requestedAccessGroup.key,
+                    "Request for internal user contained a group not enabled for internal users: " + requestedAccessGroup.key,
                 )
             }
 
@@ -282,8 +269,7 @@ class EditAccessGroupsController(
                 throw ApiError(
                     HttpStatusCode.Forbidden,
                     "external_user_non_online_registration_group",
-                    "Request for external user contained a group not enabled for online registration: "
-                        + requestedAccessGroup.key,
+                    "Request for external user contained a group not enabled for online registration: " + requestedAccessGroup.key,
                 )
             }
 
@@ -348,7 +334,7 @@ class EditAccessGroupsController(
         for (action in accessGroupActions) {
             if (action is AddAccessGroupAction || action is AddAccessGroupOrganisationAction) {
                 logger.info(
-                        "Adding user {} to access group {}",
+                    "Access group self update: Adding user {} to access group {}",
                     user.cn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
@@ -361,16 +347,18 @@ class EditAccessGroupsController(
                 )
                 if (action is AddAccessGroupOrganisationAction && action.organisationCode == "dclg") {
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
-                        AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user), user,
-                        action.accessGroupName, allAccessGroups[action.accessGroupName]!!.registrationDisplayName
+                        AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user),
+                        user,
+                        action.accessGroupName,
+                        allAccessGroups[action.accessGroupName]!!.registrationDisplayName
                     )
                 }
             } else if (action is RemoveAccessGroupAction || action is RemoveAccessGroupOrganisationAction) {
                 logger.info(
-                        "Removing user {} from access group {}",
+                    "Access group self update: Removing user {} from access group {}",
                     user.cn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
-                    )
+                )
                 groupService.removeUserFromGroup(
                     user.cn,
                     user.dn,
@@ -416,14 +404,12 @@ class EditAccessGroupsController(
     class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String) :
         AccessGroupAction(accessGroupName, organisationCode)
 
-    class AddAccessGroupAction(accessGroupName: String) :
-        AccessGroupAction(accessGroupName, null)
+    class AddAccessGroupAction(accessGroupName: String) : AccessGroupAction(accessGroupName, null)
 
     class RemoveAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String) :
         AccessGroupAction(accessGroupName, organisationCode)
 
-    class RemoveAccessGroupAction(accessGroupName: String) :
-        AccessGroupAction(accessGroupName, null)
+    class RemoveAccessGroupAction(accessGroupName: String) : AccessGroupAction(accessGroupName, null)
 
     @Serializable
     data class DeltaUserOwnAccessGroups(

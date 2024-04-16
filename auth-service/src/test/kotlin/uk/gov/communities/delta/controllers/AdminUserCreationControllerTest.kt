@@ -70,10 +70,19 @@ class AdminUserCreationControllerTest {
             }
             verify {
                 accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
-                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(NEW_STANDARD_USER_EMAIL, "testFirst testLast"),
+                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(
+                        NEW_STANDARD_USER_EMAIL,
+                        "testFirst testLast"
+                    ),
                     adminUser,
                     emptyList(),
-                    any(),
+                    setOf(
+                        AccessGroupRole("access-group-1", "access group 1", "STATS", emptyList(), false),
+                        AccessGroupRole(
+                            "access-group-2", "access group 2", "STATS",
+                            listOf("orgCode1", "orgCode2"), true
+                        ),
+                    ),
                 )
             }
             confirmVerified(emailService, groupService, userService, accessGroupDCLGMembershipUpdateEmailService)
@@ -353,8 +362,10 @@ class AdminUserCreationControllerTest {
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
+        private val userSession =
+            OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
 
         private fun getUserDetailsJson(email: String): JsonElement {
             return Json.parseToJsonElement(
@@ -421,14 +432,28 @@ class AdminUserCreationControllerTest {
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-delegate-access-group-2", any(), adminSession)
             }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-data-certifiers", any(), adminSession) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    any(),
+                    "datamart-delta-data-certifiers",
+                    any(),
+                    adminSession
+                )
+            }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode1", any(), adminSession)
             }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode2", any(), adminSession)
             }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-data-providers", any(), adminSession) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    any(),
+                    "datamart-delta-data-providers",
+                    any(),
+                    adminSession
+                )
+            }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-data-providers-orgCode1", any(), adminSession)
             }

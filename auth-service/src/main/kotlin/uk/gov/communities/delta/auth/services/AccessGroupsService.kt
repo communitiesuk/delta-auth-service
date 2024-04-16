@@ -18,8 +18,9 @@ data class AccessGroup(
     val registrationDisplayName: String?,
     val enableOnlineRegistration: Boolean,
     val enableInternalUser: Boolean,
-    val isDelegate: Boolean? = null,
-)
+) {
+    val name = prefixedName.removePrefix(DATAMART_DELTA_PREFIX)
+}
 
 class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, val config: LDAPConfig) {
     private val logger = LoggerFactory.getLogger(javaClass)

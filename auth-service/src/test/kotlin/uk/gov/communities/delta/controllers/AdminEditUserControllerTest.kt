@@ -45,7 +45,8 @@ class AdminEditUserControllerTest {
     fun testAdminUpdateUser() = testSuspend {
         coEvery {
             accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
-                AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user.email!!, user.fullName), adminUser, any(), any()
+                AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user.email!!, user.fullName),
+                adminUser, any(), any()
             )
         } just runs
         testClient.post("/edit-user?userCn=${user.cn}") {
@@ -99,6 +100,12 @@ class AdminEditUserControllerTest {
             coVerify(exactly = expectedRemovedGroups.size) {
                 groupService.removeUserFromGroup(user.cn, user.dn, any(), any(), adminSession)
             }
+            coVerify(exactly = 1) {
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user), adminUser, any(), any()
+                )
+            }
+            confirmVerified(userService, groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -279,7 +286,11 @@ class AdminEditUserControllerTest {
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val disabledAdminUser =
-            testLdapUser(cn = "disabledAdmin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN), accountEnabled = false)
+            testLdapUser(
+                cn = "disabledAdmin",
+                memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN),
+                accountEnabled = false
+            )
         private val readOnlyAdminUser =
             testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaSystemRole.READ_ONLY_ADMIN.adCn()))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
@@ -341,20 +352,20 @@ class AdminEditUserControllerTest {
         private fun getUserDetailsJson(email: String): JsonElement {
             return Json.parseToJsonElement(
                 "{\"id\":\"$email\"," +
-                        "\"enabled\":false," +
-                        "\"email\":\"$email\"," +
-                        "\"lastName\":\"Surname Two\"," +
-                        "\"firstName\":\"Test\"," +
-                        "\"telephone\":\"\"," +
-                        "\"mobile\":\"0123456789\"," +
-                        "\"position\":\"test position\"," +
-                        "\"accessGroups\":[\"datamart-delta-access-group-1\",\"datamart-delta-access-group-2\"]," +
-                        "\"accessGroupDelegates\":[\"datamart-delta-access-group-2\"]," +
-                        "\"accessGroupOrganisations\":{\"datamart-delta-access-group-2\":[\"orgCode2\", \"orgCode3\"]}," +
-                        "\"roles\":[\"datamart-delta-data-providers\",\"datamart-delta-data-certifiers\"]," +
-                        "\"externalRoles\":[]," +
-                        "\"organisations\":[\"orgCode2\", \"orgCode3\"]," +
-                        "\"comment\":\"\"}"
+                    "\"enabled\":false," +
+                    "\"email\":\"$email\"," +
+                    "\"lastName\":\"Surname Two\"," +
+                    "\"firstName\":\"Test\"," +
+                    "\"telephone\":\"\"," +
+                    "\"mobile\":\"0123456789\"," +
+                    "\"position\":\"test position\"," +
+                    "\"accessGroups\":[\"datamart-delta-access-group-1\",\"datamart-delta-access-group-2\"]," +
+                    "\"accessGroupDelegates\":[\"datamart-delta-access-group-2\"]," +
+                    "\"accessGroupOrganisations\":{\"datamart-delta-access-group-2\":[\"orgCode2\", \"orgCode3\"]}," +
+                    "\"roles\":[\"datamart-delta-data-providers\",\"datamart-delta-data-certifiers\"]," +
+                    "\"externalRoles\":[]," +
+                    "\"organisations\":[\"orgCode2\", \"orgCode3\"]," +
+                    "\"comment\":\"\"}"
             )
         }
 
