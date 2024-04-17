@@ -298,7 +298,7 @@ fun Route.bearerTokenRoutes(
                 editRolesController.route(this)
             }
             post("/access-groups") {
-                editAccessGroupsController.updateUserAccessGroups(call)
+                editAccessGroupsController.updateCurrentUserAccessGroups(call)
             }
             post("/access-groups/add") {
                 editAccessGroupsController.addUserToAccessGroup(call)

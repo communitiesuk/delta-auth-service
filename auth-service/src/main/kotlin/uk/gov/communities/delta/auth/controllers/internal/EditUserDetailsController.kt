@@ -40,7 +40,8 @@ class EditUserDetailsController(
             throw ApiError(
                 HttpStatusCode.Forbidden,
                 "non_numeric_telephone_number",
-                "Telephone number must contain only numeric characters 0-9"
+                "Telephone number must contain only numeric characters 0-9",
+                "Telephone number must contain only numeric characters 0-9",
             )
         }
 
