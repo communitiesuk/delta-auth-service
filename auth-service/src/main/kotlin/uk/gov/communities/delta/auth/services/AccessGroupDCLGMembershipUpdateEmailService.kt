@@ -4,7 +4,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.slf4j.MDCContext
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.repositories.LdapUser
@@ -25,7 +27,7 @@ class AccessGroupDCLGMembershipUpdateEmailService(
     private val ldapConfig: LDAPConfig,
     private val emailService: EmailService,
     private val emailConfig: EmailConfig,
-) : CoroutineScope {
+) {
     private val supervisorJob = SupervisorJob()
     private val logger = LoggerFactory.getLogger(javaClass)
     private val emailChecker = EmailAddressChecker()
@@ -44,9 +46,6 @@ class AccessGroupDCLGMembershipUpdateEmailService(
     data class UpdatedUser(val email: String, val name: String) {
         constructor(user: LdapUser) : this(user.email ?: user.cn.replace('!', '@'), user.fullName)
     }
-
-    override val coroutineContext: CoroutineContext
-        get() = Dispatchers.IO + supervisorJob
 
     fun sendNotificationEmailsForUserAddedToDCLGGroup(
         user: UpdatedUser,
@@ -83,7 +82,10 @@ class AccessGroupDCLGMembershipUpdateEmailService(
     }
 
     private fun launchSendEmailJob(user: UpdatedUser, actingUser: LdapUser, addedGroups: Collection<AccessGroup>) {
-        launch {
+        val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
+        mdcContextMap["backgroundJob"] = "SendAccessGroupDCLGMembershipUpdateEmail"
+
+        CoroutineScope(supervisorJob + Dispatchers.IO + MDCContext(mdcContextMap)).launch {
             try {
                 for (group in addedGroups) {
                     sendEmailsForChangeToAccessGroup(group, user, actingUser.email ?: actingUser.cn)
@@ -113,7 +115,13 @@ class AccessGroupDCLGMembershipUpdateEmailService(
             return
         }
 
-        emailService.sendDLUHCUserAddedToUserGroupEmail(user.email, user.name, changeByUserEmail, usersToEmail, group.emailDisplayName())
+        emailService.sendDLUHCUserAddedToUserGroupEmail(
+            user.email,
+            user.name,
+            changeByUserEmail,
+            usersToEmail,
+            group.emailDisplayName()
+        )
     }
 
     private suspend fun recipientsForAccessGroup(group: AccessGroup): List<EmailRecipient> {
