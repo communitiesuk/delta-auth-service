@@ -297,7 +297,7 @@ fun Route.bearerTokenRoutes(
             post("/admin/disable-user") {
                 adminEnableDisableUserController.disableUser(call)
             }
-            route("/update-user-notifications") {
+            route("/admin/update-notification-status") {
                 adminEditUserNotificationStatusController.route(this)
             }
             route("/roles") {
