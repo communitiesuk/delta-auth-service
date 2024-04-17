@@ -84,6 +84,28 @@ class UserService(
         auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, auditMap)
     }
 
+    suspend fun updateNotificationStatus(
+        ldapUser: LdapUser,
+        notificationsActive: Boolean,
+        triggeringAdminSession: OAuthSession?,
+        call: ApplicationCall,
+    ) {
+        val newStatus = if (notificationsActive) "active" else "inactive"
+        try {
+            val statusModification = ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("st", newStatus))
+            val modificationArray = arrayOf(statusModification)
+            ldapServiceUserBind.useServiceUserBind {
+                it.modifyAttributes(ldapUser.dn, modificationArray)
+                logger.atInfo().addKeyValue("NewSt", newStatus).log("Notification status updated")
+            }
+        } catch (e: Exception) {
+            logger.atError().addKeyValue("UserSt", newStatus).log("Error changing notification status", e)
+            throw e
+        }
+        val auditMap = mapOf("st" to newStatus)
+        auditUserUpdate(ldapUser.cn, triggeringAdminSession, call, auditMap)
+    }
+
     private suspend fun auditUserCreation(
         userCN: String,
         ssoClient: AzureADSSOClient?,
