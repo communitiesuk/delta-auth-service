@@ -32,7 +32,7 @@ fun originHeaderCheck(serviceUrl: String, deltaConfig: DeltaConfig) = createRout
                     ThymeleafContent(
                         "error.html", mapOf(
                             "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                            "title" to "DELTA | Error",
+                            "title" to "Delta | Error",
                             "heading" to "Error",
                             "message" to "Origin header check failed. If you are using Internet Explorer please try another browser",
                             "requestId" to call.callId!!,

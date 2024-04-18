@@ -68,7 +68,7 @@ module "auth_service" {
   mail_settings = {
     smtp_host        = "email-smtp.eu-west-1.amazonaws.com"
     smtp_port        = "465"
-    from_name        = "DELTA System"
+    from_name        = "Delta System"
     from_address     = "delta@datacollection.levellingup.gov.uk"
     reply_to_name    = "DLUHC Digital Services"
     reply_to_address = "no-reply@levellingup.gov.uk"

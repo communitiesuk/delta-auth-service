@@ -48,7 +48,7 @@ class EmailService(
         sendTemplateEmail(
             "already-a-user",
             contacts,
-            "DLUHC DELTA - Existing Account",
+            "DLUHC Delta - Existing Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -84,7 +84,7 @@ class EmailService(
         sendTemplateEmail(
             "new-user",
             contacts,
-            "DLUHC DELTA - New User Account",
+            "DLUHC Delta - New User Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -113,7 +113,7 @@ class EmailService(
                 emailAddress,
                 emailConfig
             ),
-            "DLUHC DELTA - No User Account",
+            "DLUHC Delta - No User Account",
             mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)
         )
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent no-user-account email")
@@ -139,7 +139,7 @@ class EmailService(
         sendTemplateEmail(
             "not-yet-enabled-user",
             contacts,
-            "DLUHC DELTA - Set Your Password",
+            "DLUHC Delta - Set Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -174,7 +174,7 @@ class EmailService(
         sendTemplateEmail(
             "password-never-set",
             contacts,
-            "DLUHC DELTA - Set Password",
+            "DLUHC Delta - Set Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "setPasswordUrl" to getSetPasswordURL(
@@ -216,7 +216,7 @@ class EmailService(
         sendTemplateEmail(
             "reset-password",
             contacts,
-            "DLUHC DELTA - Reset Your Password",
+            "DLUHC Delta - Reset Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,

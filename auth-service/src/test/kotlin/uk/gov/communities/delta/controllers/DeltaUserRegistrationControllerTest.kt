@@ -218,7 +218,7 @@ class DeltaUserRegistrationControllerTest {
 
     private fun assertFormPage(bodyAsText: String, status: HttpStatusCode) {
         assertEquals(HttpStatusCode.OK, status)
-        assertContains(bodyAsText, "Enter your details in the form below to request a new user account for DELTA")
+        assertContains(bodyAsText, "Enter your details in the form below to request a new user account for Delta")
     }
 
     private fun assertRedirectsToDelta(status: HttpStatusCode, headers: Headers, emailAddress: String) {
