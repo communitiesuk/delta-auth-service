@@ -224,7 +224,7 @@ fun <T> InitialLdapContext.searchPaged(
             searchResult.next().attributes.let(mapper)?.let { accumulatedResults.add(it) }
         } while (searchResult.hasMore())
 
-        pagedResultsCookie = responseControls?.filterIsInstance(PagedResultsResponseControl::class.java)
+        pagedResultsCookie = responseControls?.filterIsInstance<PagedResultsResponseControl>()
             ?.firstOrNull()?.cookie
         requestControls = arrayOf(PagedResultsControl(pageSize, pagedResultsCookie, Control.CRITICAL))
     } while (pagedResultsCookie != null)

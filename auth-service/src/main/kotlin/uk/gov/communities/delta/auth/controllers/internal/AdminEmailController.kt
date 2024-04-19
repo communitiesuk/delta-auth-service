@@ -80,17 +80,17 @@ class AdminEmailController(
         checkUserHasPermittedRole(rolesThatCanSendPasswordEmails, call)
 
         if (!receivingUser.accountEnabled) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("User not enabled")
+            logger.atWarn().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("User not enabled")
             throw ApiError(
                 HttpStatusCode.BadRequest,
                 "not_enabled",
                 "User not enabled on reset password email request",
-                "User not enabled"
+                "User must be enabled to send password reset email",
             )
         }
 
         if (isRequiredSSOUser(receivingUser)) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
+            logger.atWarn().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
                 .log("Trying to send reset password to SSO User")
             throw ApiError(
                 HttpStatusCode.BadRequest,

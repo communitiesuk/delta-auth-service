@@ -118,11 +118,11 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             call.respondStatusPage(errorPage, deltaWebsiteUrl)
         }
         exception(HttpNotFound404PageException::class) { call, ex ->
-            logger.error("StatusPages NotFoundException", ex)
+            logger.warn("StatusPages NotFoundException", ex)
             call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl)
         }
         exception(ApiError::class) { call, ex ->
-            logger.error("StatusPages API Error {}", keyValue("errorCode", ex.errorCode), ex)
+            logger.warn("StatusPages API Error {}", keyValue("errorCode", ex.errorCode), ex)
             call.apiErrorResponse(ex)
         }
     }

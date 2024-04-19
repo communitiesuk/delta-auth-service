@@ -2,6 +2,7 @@ package uk.gov.communities.delta.auth.utils
 
 import org.jetbrains.annotations.Blocking
 import org.slf4j.Logger
+import kotlin.coroutines.cancellation.CancellationException
 
 @Suppress("DuplicatedCode")
 @Blocking
@@ -15,8 +16,9 @@ fun <T> Logger.timed(
         block()
     } catch (e: Exception) {
         this.atWarn()
+            .addKeyValue("timedAction", action)
             .addKeyValue("durationMs", System.currentTimeMillis() - startTime)
-            .log("Timed action {} failed", action, e)
+            .log(if (e is CancellationException) "Timed action cancelled" else "Timed action failed", action, e)
         throw e
     }
     this.atInfo()
