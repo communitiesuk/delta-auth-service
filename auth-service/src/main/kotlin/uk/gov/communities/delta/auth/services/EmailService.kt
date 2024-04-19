@@ -247,7 +247,7 @@ class EmailService(
         sendTemplateEmail(
             "user-added-to-dclg-in-access-group",
             EmailContacts(recipients, emailConfig),
-            "DLUHC Delta: User has been added to collection '$accessGroupDisplayName'",
+            "DLUHC Delta: User has been added to collection group '$accessGroupDisplayName'",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFullName" to userName,

@@ -1,9 +1,5 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: User has been added to collection')}">
-    <title>DLUHC Delta: User has been added to collection</title>
-</head>
-<body>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
 <!--/*@thymesVar id="userFullName" type="java.lang.String" */-->
@@ -11,14 +7,19 @@
 <!--/*@thymesVar id="accessGroupName" type="java.lang.String" */-->
 <!--/*@thymesVar id="actingUserEmail" type="java.lang.String" */-->
 
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: User has been added to collection group \'' + ${accessGroupName} + '\'')}">
+    <title>DLUHC Delta: User has been added to collection group 'Some Access Group (some-access-group)'</title>
+</head>
+<body>
+
 <p>
     This is to notify you that <span th:text="${userFullName}">#userFullName#</span>
     (<span th:text="${userEmailAddress}">user@example.com</span>)
     has
     <span
         th:text="${actingUserEmail == userEmailAddress}
-        ? 'added themselves to the ' + ${accessGroupName} + ' collection'
-        : 'been added to the ' + ${accessGroupName} + ' collection by ' + ${actingUserEmail}"></span>.
+        ? 'added themselves to the ' + ${accessGroupName} + ' collection group'
+        : 'been added to the ' + ${accessGroupName} + ' collection group by ' + ${actingUserEmail}"></span>.
 </p>
 
 <p>
