@@ -44,7 +44,7 @@ class AdminEditUserControllerTest {
     @Test
     fun testAdminUpdateUser() = testSuspend {
         coEvery {
-            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
                 AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user.email!!, user.fullName),
                 adminUser, any(), any()
             )
@@ -101,7 +101,7 @@ class AdminEditUserControllerTest {
                 groupService.removeUserFromGroup(user.cn, user.dn, any(), any(), adminSession)
             }
             coVerify(exactly = 1) {
-                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
                     AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user), adminUser, any(), any()
                 )
             }

@@ -13,7 +13,6 @@ import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.repositories.searchPaged
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import javax.naming.directory.SearchControls
-import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 /*
@@ -21,6 +20,11 @@ import kotlin.time.Duration.Companion.seconds
  * The recipients are the Lead Testers and Dataset Admins for that Access Group, see recipientsForAccessGroup below.
  * The emails are sent asynchronously from a separate coroutine.
  * See ticket DT-696 for details.
+ *
+ * When a user is updated either sendNotificationEmailsForChangeToUserAccessGroups should be called with both the
+ * previous and new access groups,
+ * or sendNotificationEmailsForUserAddedToDCLGInAccessGroup should be called for each access group where the user was
+ * assigned the dclg organisation for the access group.
  */
 class AccessGroupDCLGMembershipUpdateEmailService(
     private val ldapServiceUserBind: LdapServiceUserBind,
@@ -47,7 +51,7 @@ class AccessGroupDCLGMembershipUpdateEmailService(
         constructor(user: LdapUser) : this(user.email ?: user.cn.replace('!', '@'), user.fullName)
     }
 
-    fun sendNotificationEmailsForUserAddedToDCLGGroup(
+    fun sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
         user: UpdatedUser,
         actingUser: LdapUser,
         addedDclgAccessGroupName: String,
@@ -62,7 +66,7 @@ class AccessGroupDCLGMembershipUpdateEmailService(
         )
     }
 
-    fun sendNotificationEmailsForUserChange(
+    fun sendNotificationEmailsForChangeToUserAccessGroups(
         user: UpdatedUser,
         actingUser: LdapUser,
         previousAccessGroups: Collection<AccessGroupRole>,
@@ -115,7 +119,7 @@ class AccessGroupDCLGMembershipUpdateEmailService(
             return
         }
 
-        emailService.sendDLUHCUserAddedToUserGroupEmail(
+        emailService.sendEmailForUserAddedToDCLGInAccessGroup(
             user.email,
             user.name,
             changeByUserEmail,

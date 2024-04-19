@@ -85,7 +85,7 @@ class AdminEditUserController(
 
         logger.atInfo().log("User $cn successfully updated")
 
-        accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+        accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
             AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(userToUpdate),
             callingUser,
             userToUpdateRoles.accessGroups,

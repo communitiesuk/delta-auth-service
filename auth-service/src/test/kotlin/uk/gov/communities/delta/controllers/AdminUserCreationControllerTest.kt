@@ -69,7 +69,7 @@ class AdminUserCreationControllerTest {
                 )
             }
             verify {
-                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
                     AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(
                         NEW_STANDARD_USER_EMAIL,
                         "testFirst testLast"
@@ -318,7 +318,7 @@ class AdminUserCreationControllerTest {
             AccessGroup("access-group-2", "STATS", "access group 2", false, false),
         )
         every {
-            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
                 any(),
                 any(),
                 any(),

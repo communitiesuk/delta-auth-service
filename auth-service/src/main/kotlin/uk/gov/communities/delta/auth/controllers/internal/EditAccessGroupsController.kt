@@ -78,7 +78,7 @@ class EditAccessGroupsController(
                     session,
                 )
                 if (orgCode == "dclg") {
-                    accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+                    accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                         AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(targetUser),
                         callingUser,
                         accessGroup.name,
@@ -346,7 +346,7 @@ class EditAccessGroupsController(
                     null,
                 )
                 if (action is AddAccessGroupOrganisationAction && action.organisationCode == "dclg") {
-                    accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+                    accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                         AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user),
                         user,
                         action.accessGroupName,

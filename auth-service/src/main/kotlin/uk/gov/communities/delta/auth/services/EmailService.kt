@@ -237,7 +237,7 @@ class EmailService(
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
     }
 
-    suspend fun sendDLUHCUserAddedToUserGroupEmail(
+    suspend fun sendEmailForUserAddedToDCLGInAccessGroup(
         userEmail: String,
         userName: String,
         actingUserEmail: String,
@@ -245,7 +245,7 @@ class EmailService(
         accessGroupDisplayName: String,
     ) {
         sendTemplateEmail(
-            "dluhc-user-added-to-collection",
+            "user-added-to-dclg-in-access-group",
             EmailContacts(recipients, emailConfig),
             "DLUHC DELTA: user has been added to collection '$accessGroupDisplayName'",
             mapOf(

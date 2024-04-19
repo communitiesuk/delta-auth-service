@@ -92,7 +92,7 @@ class EditAccessGroupsControllerTest {
     @Test
     fun testUpdateAddDCLGAccessGroup() = testSuspend {
         every {
-            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                 any(),
                 any(),
                 any(),
@@ -123,7 +123,7 @@ class EditAccessGroupsControllerTest {
                 )
             }
             verify(exactly = 1) {
-                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                     AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(internalUser),
                     internalUser,
                     "access-group-3",
@@ -382,7 +382,7 @@ class EditAccessGroupsControllerTest {
             "datamart-delta-access-group-3", "STATS", "access group 3", false, false
         )
         every {
-            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                 any(), any(), any(), any()
             )
         } just runs
@@ -410,7 +410,7 @@ class EditAccessGroupsControllerTest {
                 )
             }
             verify(exactly = 1) {
-                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGGroup(
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                     AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(internalUser),
                     internalUser,
                     "access-group-3",

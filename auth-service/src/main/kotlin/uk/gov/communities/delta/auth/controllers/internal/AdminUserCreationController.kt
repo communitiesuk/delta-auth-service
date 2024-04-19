@@ -135,7 +135,7 @@ class AdminUserCreationController(
             )
         }
 
-        accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserChange(
+        accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
             AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(adUser.mail, "${adUser.givenName} ${adUser.sn}"),
             callingUser,
             emptyList(),
