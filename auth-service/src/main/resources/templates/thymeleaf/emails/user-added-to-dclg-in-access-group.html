@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/template.html :: email-head (title='DLUHC DELTA: User has been added to collection')}">
-    <title>DLUHC DELTA: user has been added to collection</title>
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: User has been added to collection')}">
+    <title>DLUHC Delta: User has been added to collection</title>
 </head>
 <body>
 
@@ -16,7 +16,9 @@
     (<span th:text="${userEmailAddress}">user@example.com</span>)
     has
     <span
-        th:text="${actingUserEmail == userEmailAddress} ? 'added themselves to this collection' : 'been added to this collection by ' + ${actingUserEmail}"></span>.
+        th:text="${actingUserEmail == userEmailAddress}
+        ? 'added themselves to the ' + ${accessGroupName} + ' collection'
+        : 'been added to the ' + ${accessGroupName} + ' collection by ' + ${actingUserEmail}"></span>.
 </p>
 
 <p>
@@ -33,13 +35,13 @@
     0203 829 0743.
 </p>
 <p>
-    DELTA can be accessed at <a th:href="@{${deltaUrl}}">DELTA</a>.
+    Delta can be accessed at <a th:href="${deltaUrl}" th:text="${deltaUrl}">https://delta</a>.
 </p>
 <p>
     Regards,
 </p>
 <p>
-    <strong>DELTA System</strong>
+    <strong>Delta System</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>
 </body>

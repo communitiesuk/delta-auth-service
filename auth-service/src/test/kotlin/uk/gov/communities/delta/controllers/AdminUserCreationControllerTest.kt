@@ -318,12 +318,8 @@ class AdminUserCreationControllerTest {
             AccessGroup("access-group-2", "STATS", "access group 2", false, false),
         )
         every {
-            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
-                any(),
-                any(),
-                any(),
-                any()
-            )
+            accessGroupDCLGMembershipUpdateEmailService
+                .sendNotificationEmailsForChangeToUserAccessGroups(any(), any(), any(), any())
         } just runs
     }
 

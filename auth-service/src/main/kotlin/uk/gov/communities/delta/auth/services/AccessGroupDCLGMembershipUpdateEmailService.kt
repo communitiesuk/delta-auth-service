@@ -54,15 +54,15 @@ class AccessGroupDCLGMembershipUpdateEmailService(
     fun sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
         user: UpdatedUser,
         actingUser: LdapUser,
-        addedDclgAccessGroupName: String,
-        addedDclgAccessGroupDisplayName: String?,
+        addedDCLGAccessGroupName: String,
+        addedDCLGAccessGroupDisplayName: String?,
     ) {
         if (!emailConfig.dclgAccessGroupUpdateNotificationsEnabled) {
             return
         }
 
         launchSendEmailJob(
-            user, actingUser, listOf(AccessGroup(addedDclgAccessGroupName, addedDclgAccessGroupDisplayName))
+            user, actingUser, listOf(AccessGroup(addedDCLGAccessGroupName, addedDCLGAccessGroupDisplayName))
         )
     }
 
@@ -76,10 +76,10 @@ class AccessGroupDCLGMembershipUpdateEmailService(
             return
         }
 
-        val previousDclgGroups = previousAccessGroups.filter { it.organisationIds.contains("dclg") }.toSet()
-        val newDclgGroups = newAccessGroups.filter { it.organisationIds.contains("dclg") }.toSet()
+        val previousDCLGGroups = previousAccessGroups.filter { it.organisationIds.contains("dclg") }.toSet()
+        val newDCLGGroups = newAccessGroups.filter { it.organisationIds.contains("dclg") }.toSet()
 
-        val newGroups = newDclgGroups - previousDclgGroups
+        val newGroups = newDCLGGroups - previousDCLGGroups
         if (newGroups.isEmpty()) return
 
         launchSendEmailJob(user, actingUser, newGroups.map { AccessGroup(it.name, it.displayName) })
@@ -92,7 +92,7 @@ class AccessGroupDCLGMembershipUpdateEmailService(
         CoroutineScope(supervisorJob + Dispatchers.IO + MDCContext(mdcContextMap)).launch {
             try {
                 for (group in addedGroups) {
-                    sendEmailsForChangeToAccessGroup(group, user, actingUser.email ?: actingUser.cn)
+                    sendEmailsForAddedToDCLGInAccessGroup(group, user, actingUser.email ?: actingUser.cn)
                 }
             } catch (e: Exception) {
                 logger.error(
@@ -105,7 +105,7 @@ class AccessGroupDCLGMembershipUpdateEmailService(
         }
     }
 
-    private suspend fun sendEmailsForChangeToAccessGroup(
+    private suspend fun sendEmailsForAddedToDCLGInAccessGroup(
         group: AccessGroup,
         user: UpdatedUser,
         changeByUserEmail: String,
