@@ -2,7 +2,6 @@ package uk.gov.communities.delta.auth.controllers.internal
 
 import io.ktor.http.*
 import io.ktor.server.application.*
-import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -24,6 +23,7 @@ class AdminUserCreationController(
     private val emailService: EmailService,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val deltaUserPermissionsRequestMapper: DeltaUserPermissionsRequestMapper,
+    private val accessGroupDCLGMembershipUpdateEmailService: AccessGroupDCLGMembershipUpdateEmailService,
 ) : AdminUserController(userLookupService) {
     private val emailAddressChecker = EmailAddressChecker()
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -34,7 +34,7 @@ class AdminUserCreationController(
 
     private suspend fun createUser(call: ApplicationCall) {
         // Get calling user from call
-        val session = getSessionIfUserHasPermittedRole(arrayOf(DeltaSystemRole.ADMIN), call)
+        val (session, callingUser) = getSessionAndUserIfUserHasPermittedRole(arrayOf(DeltaSystemRole.ADMIN), call)
 
         val deltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
 
@@ -122,7 +122,7 @@ class AdminUserCreationController(
                 adUser.givenName,
                 setPasswordTokenService.createToken(adUser.cn),
                 adUser.cn,
-                call.principal<OAuthSession>()!!,
+                session,
                 EmailContacts(adUser.mail, adUser.getDisplayName(), emailConfig),
                 call
             )
@@ -134,6 +134,13 @@ class AdminUserCreationController(
                 "The user was made successfully but the activation email failed to send, please find the user and send a new activation email"
             )
         }
+
+        accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
+            AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(adUser.mail, "${adUser.givenName} ${adUser.sn}"),
+            callingUser,
+            emptyList(),
+            userPermissions.accessGroups
+        )
 
         return call.respond(mapOf("message" to "User created successfully"))
     }

@@ -13,8 +13,6 @@ import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.getModificationItem
 import javax.naming.NameNotFoundException
-import javax.naming.directory.BasicAttribute
-import javax.naming.directory.DirContext
 import javax.naming.directory.ModificationItem
 
 class AdminEditUserController(
@@ -22,6 +20,7 @@ class AdminEditUserController(
     private val userService: UserService,
     private val groupService: GroupService,
     private val deltaUserPermissionsRequestMapper: DeltaUserPermissionsRequestMapper,
+    private val accessGroupDCLGMembershipUpdateEmailService: AccessGroupDCLGMembershipUpdateEmailService,
 ) : AdminUserController(userLookupService) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -32,15 +31,15 @@ class AdminEditUserController(
 
     private suspend fun editUser(call: ApplicationCall) {
 
-        val session = getSessionIfUserHasPermittedRole(
+        val (session, callingUser) = getSessionAndUserIfUserHasPermittedRole(
             arrayOf(DeltaSystemRole.ADMIN), call
         )
 
         val cn = call.request.queryParameters["userCn"]!!
-        logger.atInfo().log("Updating user $cn")
-        val currentUser: LdapUser
-        try {
-            currentUser = userLookupService.lookupUserByCn(cn)
+        logger.atInfo().log("Request to update user {}", cn)
+
+        val (userToUpdate, userToUpdateRoles) = try {
+            userLookupService.lookupUserByCNAndLoadRoles(cn)
         } catch (e: NameNotFoundException) {
             throw ApiError(
                 HttpStatusCode.BadRequest,
@@ -67,24 +66,31 @@ class AdminEditUserController(
                 "Requested permissions are invalid: ${e.message}"
             )
         }
-        val modifications = getModifications(currentUser, updatedDeltaUserDetailsRequest)
+        val modifications = getModifications(userToUpdate, updatedDeltaUserDetailsRequest)
         val updatedUserGroups = updatedPermissions.getADGroupCNs()
-        val groupsToAddToUser = updatedUserGroups.filter { it !in currentUser.memberOfCNs && editableGroup(it) }
-        val groupsToRemoveFromUser = currentUser.memberOfCNs.filter { it !in updatedUserGroups && editableGroup(it) }
+        val groupsToAddToUser = updatedUserGroups.filter { it !in userToUpdate.memberOfCNs && editableGroup(it) }
+        val groupsToRemoveFromUser = userToUpdate.memberOfCNs.filter { it !in updatedUserGroups && editableGroup(it) }
 
         if (modifications.isEmpty() && groupsToAddToUser.isEmpty() && groupsToRemoveFromUser.isEmpty())
             return call.respond(mapOf("message" to "No changes were made to the user"))
 
-        if (modifications.isNotEmpty()) userService.updateUser(currentUser, modifications, session, call)
+        if (modifications.isNotEmpty()) userService.updateUser(userToUpdate, modifications, session, call)
 
         groupsToAddToUser.forEach {
-            groupService.addUserToGroup(currentUser.cn, currentUser.dn, it, call, session)
+            groupService.addUserToGroup(userToUpdate.cn, userToUpdate.dn, it, call, session)
         }
         groupsToRemoveFromUser.forEach {
-            groupService.removeUserFromGroup(currentUser.cn, currentUser.dn, it, call, session)
+            groupService.removeUserFromGroup(userToUpdate.cn, userToUpdate.dn, it, call, session)
         }
 
         logger.atInfo().log("User $cn successfully updated")
+
+        accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
+            AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(userToUpdate),
+            callingUser,
+            userToUpdateRoles.accessGroups,
+            updatedPermissions.accessGroups,
+        )
 
         return call.respond(mapOf("message" to "User profile has been updated. Any changes to their roles or access groups will take effect the next time they log in."))
     }

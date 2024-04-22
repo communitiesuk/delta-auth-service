@@ -195,11 +195,13 @@ class AdminGetUserControllerTest {
                             "\"externalRoles\":[]," +
                             "\"accessGroups\":[" +
                                 "{\"name\":\"access-group-2\"," +
+                                    "\"displayName\":null," +
                                     "\"classification\":\"statistics\"," +
                                     "\"organisationIds\":[\"orgCode2\"]," +
                                     "\"isDelegate\":false" +
                                 "}," +
                                 "{\"name\":\"access-group-3\"," +
+                                    "\"displayName\":null," +
                                     "\"classification\":null," +
                                     "\"organisationIds\":[\"orgCode1\"]," +
                                     "\"isDelegate\":true" +

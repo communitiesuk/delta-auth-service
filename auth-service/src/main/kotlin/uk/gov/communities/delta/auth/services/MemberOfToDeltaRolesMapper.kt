@@ -28,9 +28,6 @@ class MemberOfToDeltaRolesMapper(
     }
 
     @Serializable
-    data class AccessGroupRole(val name: String, val classification: String?, val organisationIds: List<String>, val isDelegate: Boolean)
-
-    @Serializable
     data class SystemRole(@SerialName("name") val role: DeltaSystemRole, val organisationIds: List<String>)
 
     @Serializable
@@ -100,9 +97,11 @@ class MemberOfToDeltaRolesMapper(
             },
             roleOrgIdsMap[RoleType.EXTERNAL]!!.entries.map { ExternalRole(it.key, it.value) },
             roleOrgIdsMap[RoleType.ACCESS_GROUP]!!.entries.map {
+                val accessGroup = allAccessGroupsMap[it.key]!!
                 AccessGroupRole(
                     it.key,
-                    allAccessGroupsMap[it.key]!!.classification,
+                    accessGroup.registrationDisplayName,
+                    accessGroup.classification,
                     it.value,
                     it.key in delegateAccessGroups,
                 )

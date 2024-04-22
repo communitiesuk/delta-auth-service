@@ -30,10 +30,10 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import javax.naming.NameNotFoundException
 import javax.naming.directory.DirContext
 import javax.naming.directory.ModificationItem
 import kotlin.test.Test
@@ -43,6 +43,12 @@ class AdminEditUserControllerTest {
 
     @Test
     fun testAdminUpdateUser() = testSuspend {
+        coEvery {
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
+                AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user.email!!, user.fullName),
+                adminUser, any(), any()
+            )
+        } just runs
         testClient.post("/edit-user?userCn=${user.cn}") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(user.email!!))
@@ -94,6 +100,12 @@ class AdminEditUserControllerTest {
             coVerify(exactly = expectedRemovedGroups.size) {
                 groupService.removeUserFromGroup(user.cn, user.dn, any(), any(), adminSession)
             }
+            coVerify(exactly = 1) {
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
+                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(user), adminUser, any(), any()
+                )
+            }
+            confirmVerified(userService, groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -237,16 +249,7 @@ class AdminEditUserControllerTest {
             oauthSessionService.retrieveFomAuthToken(readOnlyAdminSession.authToken, client)
         } answers { readOnlyAdminSession }
         coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
-        coEvery { userLookupService.lookupUserByCn(disabledAdminUser.cn) } returns disabledAdminUser
-        coEvery { userLookupService.lookupUserByCn(readOnlyAdminUser.cn) } returns readOnlyAdminUser
-        coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
-        coEvery { userLookupService.lookupUserByCn(unchangedUser.cn) } returns unchangedUser
-        coEvery { userLookupService.lookupUserByCn(NON_EXISTENT_USER_CN) } throws NameNotFoundException()
-        coEvery { userService.updateUser(user, capture(modifications), adminSession, any()) } just runs
-        coEvery { groupService.addUserToGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
-        coEvery { groupService.removeUserFromGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
+
         coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
             OrganisationNameAndCode("orgCode2", "Org 2"), OrganisationNameAndCode("orgCode3", "Org 3")
         )
@@ -256,6 +259,15 @@ class AdminEditUserControllerTest {
             AccessGroup("access-group-2", "STATS", "access group 2", false, false),
             AccessGroup("access-group-3", "STATS", "access group 3", false, false),
         )
+        mockUserLookupService(
+            userLookupService,
+            listOf(adminUser, disabledAdminUser, readOnlyAdminUser, regularUser, user, unchangedUser),
+            runBlocking { organisationService.findAllNamesAndCodes() },
+            runBlocking { accessGroupsService.getAllAccessGroups() }
+        )
+        coEvery { userService.updateUser(user, capture(modifications), adminSession, any()) } just runs
+        coEvery { groupService.addUserToGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
+        coEvery { groupService.removeUserFromGroup(user.cn, user.dn, any(), any(), adminSession) } just runs
     }
 
     companion object {
@@ -269,11 +281,16 @@ class AdminEditUserControllerTest {
         private lateinit var groupService: GroupService
         private lateinit var organisationService: OrganisationService
         private lateinit var accessGroupsService: AccessGroupsService
+        private lateinit var accessGroupDCLGMembershipUpdateEmailService: AccessGroupDCLGMembershipUpdateEmailService
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val disabledAdminUser =
-            testLdapUser(cn = "disabledAdmin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN), accountEnabled = false)
+            testLdapUser(
+                cn = "disabledAdmin",
+                memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN),
+                accountEnabled = false
+            )
         private val readOnlyAdminUser =
             testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaSystemRole.READ_ONLY_ADMIN.adCn()))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
@@ -335,20 +352,20 @@ class AdminEditUserControllerTest {
         private fun getUserDetailsJson(email: String): JsonElement {
             return Json.parseToJsonElement(
                 "{\"id\":\"$email\"," +
-                        "\"enabled\":false," +
-                        "\"email\":\"$email\"," +
-                        "\"lastName\":\"Surname Two\"," +
-                        "\"firstName\":\"Test\"," +
-                        "\"telephone\":\"\"," +
-                        "\"mobile\":\"0123456789\"," +
-                        "\"position\":\"test position\"," +
-                        "\"accessGroups\":[\"datamart-delta-access-group-1\",\"datamart-delta-access-group-2\"]," +
-                        "\"accessGroupDelegates\":[\"datamart-delta-access-group-2\"]," +
-                        "\"accessGroupOrganisations\":{\"datamart-delta-access-group-2\":[\"orgCode2\", \"orgCode3\"]}," +
-                        "\"roles\":[\"datamart-delta-data-providers\",\"datamart-delta-data-certifiers\"]," +
-                        "\"externalRoles\":[]," +
-                        "\"organisations\":[\"orgCode2\", \"orgCode3\"]," +
-                        "\"comment\":\"\"}"
+                    "\"enabled\":false," +
+                    "\"email\":\"$email\"," +
+                    "\"lastName\":\"Surname Two\"," +
+                    "\"firstName\":\"Test\"," +
+                    "\"telephone\":\"\"," +
+                    "\"mobile\":\"0123456789\"," +
+                    "\"position\":\"test position\"," +
+                    "\"accessGroups\":[\"datamart-delta-access-group-1\",\"datamart-delta-access-group-2\"]," +
+                    "\"accessGroupDelegates\":[\"datamart-delta-access-group-2\"]," +
+                    "\"accessGroupOrganisations\":{\"datamart-delta-access-group-2\":[\"orgCode2\", \"orgCode3\"]}," +
+                    "\"roles\":[\"datamart-delta-data-providers\",\"datamart-delta-data-certifiers\"]," +
+                    "\"externalRoles\":[]," +
+                    "\"organisations\":[\"orgCode2\", \"orgCode3\"]," +
+                    "\"comment\":\"\"}"
             )
         }
 
@@ -361,6 +378,7 @@ class AdminEditUserControllerTest {
             groupService = mockk<GroupService>()
             organisationService = mockk<OrganisationService>()
             accessGroupsService = mockk<AccessGroupsService>()
+            accessGroupDCLGMembershipUpdateEmailService = mockk<AccessGroupDCLGMembershipUpdateEmailService>()
 
             val requestBodyMapper = DeltaUserPermissionsRequestMapper(
                 organisationService, accessGroupsService
@@ -370,6 +388,7 @@ class AdminEditUserControllerTest {
                 userService,
                 groupService,
                 requestBodyMapper,
+                accessGroupDCLGMembershipUpdateEmailService,
             )
 
             testApp = TestApplication {

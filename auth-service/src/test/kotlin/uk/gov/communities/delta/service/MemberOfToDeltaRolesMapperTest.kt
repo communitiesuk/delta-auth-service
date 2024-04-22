@@ -1,9 +1,6 @@
 package uk.gov.communities.delta.service
 
-import uk.gov.communities.delta.auth.services.AccessGroup
-import uk.gov.communities.delta.auth.services.DeltaSystemRole
-import uk.gov.communities.delta.auth.services.MemberOfToDeltaRolesMapper
-import uk.gov.communities.delta.auth.services.OrganisationNameAndCode
+import uk.gov.communities.delta.auth.services.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -87,9 +84,9 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(
             listOf(
-                MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg"), false),
-                MemberOfToDeltaRolesMapper.AccessGroupRole("another-group", null, listOf(), false),
-                MemberOfToDeltaRolesMapper.AccessGroupRole("yet-another-group", null, listOf(), true),
+                AccessGroupRole("access-group", null, "STATS", listOf("dclg"), false),
+                AccessGroupRole("another-group", null, null, listOf(), false),
+                AccessGroupRole("yet-another-group", null, null, listOf(), true),
             ), result.accessGroups
         )
         assertEquals(listOf("dclg"), result.organisations.map { it.code })
@@ -128,7 +125,7 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(emptyList(), result.externalRoles)
         assertEquals(
             listOf(
-                MemberOfToDeltaRolesMapper.AccessGroupRole("access-group", "statistics", listOf("dclg", "E1234"), false)
+                AccessGroupRole("access-group", null, "STATS", listOf("dclg", "E1234"), false)
             ), result.accessGroups
         )
         assertEquals(listOf("dclg", "E1234"), result.organisations.map { it.code })
@@ -137,7 +134,7 @@ class MemberOfToDeltaRolesMapperTest {
     private fun mapper() = MemberOfToDeltaRolesMapper("username", organisations, accessGroups)
 
     private val accessGroups = listOf(
-        AccessGroup("access-group", "statistics", null, enableOnlineRegistration = false, enableInternalUser = false),
+        AccessGroup("access-group", "STATS", null, enableOnlineRegistration = false, enableInternalUser = false),
         AccessGroup("another-group", null, null, enableOnlineRegistration = false, enableInternalUser = false),
         AccessGroup("yet-another-group", null, null, enableOnlineRegistration = false, enableInternalUser = false)
     )

@@ -236,20 +236,54 @@ class EmailService(
 
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
     }
+
+    suspend fun sendEmailForUserAddedToDCLGInAccessGroup(
+        userEmail: String,
+        userName: String,
+        actingUserEmail: String,
+        recipients: List<EmailRecipient>,
+        accessGroupDisplayName: String,
+    ) {
+        sendTemplateEmail(
+            "user-added-to-dclg-in-access-group",
+            EmailContacts(recipients, emailConfig),
+            "DLUHC Delta: User has been added to collection group '$accessGroupDisplayName'",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "userFullName" to userName,
+                "userEmailAddress" to userEmail,
+                "actingUserEmail" to actingUserEmail,
+                "accessGroupName" to accessGroupDisplayName
+            )
+        )
+
+        logger.atInfo().addKeyValue("userEmail", userEmail).addKeyValue("accessGroupName", accessGroupDisplayName)
+            .log("Sent dluhc-user-added-to-collection email")
+    }
 }
 
+class EmailRecipient(val email: String, val name: String)
+
 class EmailContacts(
-    private val toEmail: String,
-    private val toName: String,
+    private val recipients: List<EmailRecipient>,
     emailConfig: EmailConfig,
 ) {
+    constructor(toEmail: String, toName: String, emailConfig: EmailConfig) : this(
+        listOf(
+            EmailRecipient(
+                toEmail,
+                toName
+            )
+        ), emailConfig
+    )
+
     private val fromEmail: String = emailConfig.fromEmailAddress
     private val fromName: String = emailConfig.fromEmailName
     private val replyToEmail: String = emailConfig.replyToEmailAddress
     private val replyToName: String = emailConfig.replyToEmailName
 
-    fun getTo(): Address {
-        return InternetAddress(toEmail, toName, "UTF-8")
+    fun getTo(): Array<Address> {
+        return recipients.map { InternetAddress(it.email, it.name, "UTF-8") }.toTypedArray()
     }
 
     fun getFrom(): Address {

@@ -6,6 +6,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.spi.LoggingEventBuilder
+import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
@@ -16,6 +17,8 @@ class EmailConfig(
     val fromEmailName: String,
     val replyToEmailAddress: String,
     val replyToEmailName: String,
+    val dclgAccessGroupUpdateNotificationsEnabled: Boolean,
+    val dclgAccessGroupUpdateAdditionalRecipients: List<String>,
 ) {
     companion object {
         fun fromEnv(): EmailConfig {
@@ -49,6 +52,19 @@ class EmailConfig(
             props["mail.smtp.timeout"] = 10.seconds.inWholeMilliseconds
             @Suppress("SpellCheckingInspection")
             props["mail.smtp.connectiontimeout"] = 10.seconds.inWholeMilliseconds
+
+            val accessGroupUpdatesRecipientsString = Env.getOptionalOrDevFallback(
+                "DCLG_ACCESS_GROUP_UPDATE_ADDITIONAL_RECIPIENTS",
+                "access-group-update@example.com"
+            ) ?: ""
+            val accessGroupUpdateRecipients = accessGroupUpdatesRecipientsString.split(";")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            val checker = EmailAddressChecker()
+            if (accessGroupUpdateRecipients.any { !checker.hasValidFormat(it) }) {
+                throw Exception("Invalid email format for DCLG_ACCESS_GROUP_UPDATE_ADDITIONAL_RECIPIENTS")
+            }
+
             return EmailConfig(
                 emailProps = props,
                 emailAuthenticator = authenticator,
@@ -59,6 +75,11 @@ class EmailConfig(
                     "testReplyTo@softwire.com"
                 ),
                 replyToEmailName = Env.getRequiredOrDevFallback("REPLY_TO_EMAIL_NAME", "Test Reply To Email"),
+                dclgAccessGroupUpdateNotificationsEnabled = Env.getOptionalOrDevFallback(
+                    "DCLG_ACCESS_GROUP_NOTIFICATIONS_ENABLED",
+                    "true"
+                ) == "true",
+                dclgAccessGroupUpdateAdditionalRecipients = accessGroupUpdateRecipients,
             )
         }
     }
