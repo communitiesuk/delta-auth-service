@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/template.html :: email-head (title='DLUHC DELTA: Registration request accepted')}">
-    <title>DLUHC DELTA: Registration request accepted</title>
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: Registration request accepted')}">
+    <title>DLUHC Delta: Registration request accepted</title>
 </head>
 
 <body>
@@ -14,7 +14,7 @@
 
 <p>
     Following your on-line request, you are receiving this email because you have requested a new user account on <a
-        th:href="@{${deltaUrl}}">DELTA</a>, the online data collection and grants administration system
+        th:href="@{${deltaUrl}}">Delta</a>, the online data collection and grants administration system
     of the Department for Levelling Up, Housing and Communities (DLUHC).
 </p>
 
@@ -23,12 +23,12 @@
 <p>Please click on the link below to set your password and activate your account.</p>
 
 <p>
-    <a th:href="@{${setPasswordUrl}}">Activate your DELTA account</a>. <b>This link is only valid for 24 hours so
+    <a th:href="@{${setPasswordUrl}}">Activate your Delta account</a>. <b>This link is only valid for 24 hours so
     please activate your
     account now</b>.
 </p>
 <p>
-    Please note the DELTA User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
+    Please note the Delta User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
     application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
 </p>
 <p>
@@ -40,7 +40,7 @@
     Regards
 </p>
 <p>
-    <strong>DLUHC DELTA Administrator</strong>
+    <strong>DLUHC Delta Administrator</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>
 </body>

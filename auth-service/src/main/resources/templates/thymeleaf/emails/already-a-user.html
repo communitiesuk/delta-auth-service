@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/template.html :: email-head (title='DLUHC DELTA: Account')}">
-    <title>DLUHC DELTA: Account</title>
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: Account')}">
+    <title>DLUHC Delta: Account</title>
 </head>
 <body>
 
@@ -10,22 +10,22 @@
 
 <p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
 
-<p>You are receiving this email because you have requested an account on <a th:href="@{${deltaUrl}}">DELTA</a>,
+<p>You are receiving this email because you have requested an account on <a th:href="@{${deltaUrl}}">Delta</a>,
     the online data collection and grants administration system of the Department for Levelling Up, Housing and
     Communities (DLUHC).</p>
 
 <p>
-    Our records show that you already have a DELTA account for this email address. If you have forgotten your DELTA
+    Our records show that you already have a Delta account for this email address. If you have forgotten your Delta
     password, you can reset it with following link.
 </p>
 <p>
     <a href="/delta/forgot-password">Forgotten Password</a>.
 </p>
 <p>
-    When you have logged in to DELTA please go to My Account to complete the set-up of your account.
+    When you have logged in to Delta please go to My Account to complete the set-up of your account.
 </p>
 <p>
-    Please note the DELTA User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
+    Please note the Delta User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
     application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
 </p>
 <p>
@@ -34,13 +34,13 @@
     0203 829 0743.
 </p>
 <p>
-    DELTA can be accessed at <a th:href="@{${deltaUrl}}">DELTA</a>
+    Delta can be accessed at <a th:href="@{${deltaUrl}}">Delta</a>
 </p>
 <p>
     Regards
 </p>
 <p>
-    <strong>DLUHC DELTA Administrator</strong>
+    <strong>DLUHC Delta Administrator</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>
 </body>

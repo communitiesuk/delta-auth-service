@@ -71,7 +71,7 @@ class RateLimitingTest {
         assertBlockedGetRequest(
             forwardedFor,
             "/delta/login?response_type=code&client_id=delta-website&state=1234",
-            "<title>DELTA | Sign in</title>"
+            "<title>Delta | Sign in</title>"
         )
         verify(exactly = 1) { rateLimitLoginCounter.increment(1.0) }
     }
@@ -90,7 +90,7 @@ class RateLimitingTest {
         assertBlockedGetRequest(
             forwardFor1,
             "/delta/login?response_type=code&client_id=delta-website&state=1234",
-            "<title>DELTA | Sign in</title>"
+            "<title>Delta | Sign in</title>"
         )
         assertSuccessfulGetRequest(forwardFor2, "/delta/login?response_type=code&client_id=delta-website&state=1234")
         verify(exactly = 1) { rateLimitLoginCounter.increment(1.0) }
@@ -102,7 +102,7 @@ class RateLimitingTest {
         for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardedFor, "/delta/register")
         }
-        assertBlockedGetRequest(forwardedFor, "/delta/register", "<title>DELTA | Register</title>")
+        assertBlockedGetRequest(forwardedFor, "/delta/register", "<title>Delta | Register</title>")
         verify(exactly = 1) { rateLimitRegistrationCounter.increment(1.0) }
     }
 

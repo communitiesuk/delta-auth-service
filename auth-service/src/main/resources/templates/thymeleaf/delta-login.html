@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html class="govuk-template " lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{fragments/template.html :: head (title='DELTA | Sign in')}">
-    <title>DELTA | Sign in</title>
+<head th:replace="~{fragments/template.html :: head (title='Delta | Sign in')}">
+    <title>Delta | Sign in</title>
 </head>
 
 <body class="govuk-template__body govuk-body">
@@ -24,7 +24,7 @@
 
 <div class="govuk-width-container ">
     <main class="govuk-main-wrapper " id="main-content" role="main">
-        <h1 class="govuk-heading-xl">Sign in to DELTA</h1>
+        <h1 class="govuk-heading-xl">Sign in to Delta</h1>
         <div class="govuk-error-summary" data-module="govuk-error-summary"
              th:if="${not #strings.isEmpty(errorMessage)}">
             <div role="alert">
@@ -62,7 +62,7 @@
                         You can <a href="/delta/forgot-password">reset your password here</a>
                     </p>
                     <button class="govuk-button" data-module="govuk-button" type="submit">
-                        Sign in to DELTA
+                        Sign in to Delta
                     </button>
                 </form>
             </div>
@@ -71,7 +71,7 @@
                 <h2 class="govuk-heading-m">Not a user?</h2>
                 <a class="govuk-button govuk-button--secondary" draggable="false" href="/delta/register"
                    role="button">
-                    Create DELTA account
+                    Create Delta account
                 </a>
                 <div th:if="${ssoClients.size() > 0}">
                     <h2 class="govuk-heading-m">DLUHC users</h2>
@@ -85,7 +85,7 @@
         </div>
         <div>
             <p>By signing in, you are confirming that you have read, understood and will comply with the requirements of
-                the <a th:href="${deltaUrl} + '/usage-policy'">DELTA usage policy</a></p>
+                the <a th:href="${deltaUrl} + '/usage-policy'">Delta usage policy</a></p>
             <p>If you need help or support please <a th:href="${deltaUrl} + '/contact-us'">contact us</a></p>
         </div>
     </main>

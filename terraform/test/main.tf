@@ -88,7 +88,7 @@ module "auth_service" {
   mail_settings = {
     smtp_host        = "mailhog.vpc.local"
     smtp_port        = "1025"
-    from_name        = "DELTA System (Test)"
+    from_name        = "Delta System (Test)"
     from_address     = "delta-test@datacollection.dluhc-dev.uk"
     reply_to_name    = "DLUHC Digital Services"
     reply_to_address = "no-reply@datacollection.dluhc-dev.uk"
