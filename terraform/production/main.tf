@@ -31,6 +31,10 @@ data "terraform_remote_state" "common_infra" {
 locals {
   environment                    = "production"
   cloudwatch_log_expiration_days = 731
+  dclg_access_group_notification_settings = {
+    enabled                     = false
+    additional_recipient_emails = []
+  }
 }
 
 module "auth_service" {
@@ -74,4 +78,5 @@ module "auth_service" {
     reply_to_address = "no-reply@levellingup.gov.uk"
     smtp_secret_name = "tf-smtp-ses-user-delta-app-${local.environment}"
   }
+  dclg_access_group_notification_settings = local.dclg_access_group_notification_settings
 }

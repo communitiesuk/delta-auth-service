@@ -124,6 +124,13 @@ variable "mail_settings" {
   })
 }
 
+variable "dclg_access_group_notification_settings" {
+  type = object({
+    enabled                     = bool
+    additional_recipient_emails = list(string)
+  })
+}
+
 locals {
   auth_metrics_namespace = "${var.environment}/AuthService"
 }
