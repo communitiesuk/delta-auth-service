@@ -65,7 +65,7 @@ class AdminEditUserNotificationStatusControllerTest {
     }
 
     @Test
-    fun nonAdminCannotUpdateEmail() = testSuspend {
+    fun nonAdminCannotUpdateNotificationStatus() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/admin/update-notification-status") {
