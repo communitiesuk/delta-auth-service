@@ -314,6 +314,11 @@ class Injection(
         userAuditService,
     )
 
+    fun adminEditUserNotificationStatusController() = AdminEditUserNotificationStatusController(
+        userLookupService,
+        userService,
+    )
+
     fun editAccessGroupsController() = EditAccessGroupsController(
         userLookupService,
         groupService,
