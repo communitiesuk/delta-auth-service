@@ -314,6 +314,11 @@ class Injection(
         userAuditService,
     )
 
+    fun adminResetMfaTokenController() = AdminResetMfaTokenController(
+        userLookupService,
+        userService,
+    )
+
     fun editAccessGroupsController() = EditAccessGroupsController(
         userLookupService,
         groupService,

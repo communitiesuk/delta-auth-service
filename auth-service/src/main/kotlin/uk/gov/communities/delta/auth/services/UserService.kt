@@ -300,6 +300,23 @@ class UserService(
         }
     }
 
+    suspend fun resetMfaToken(userToReset: LdapUser, session: OAuthSession, call: ApplicationCall) {
+        // the TOTP secret is stored in the "unixHomeDirectory" Active Directory field
+        try {
+            val modificationItem = ModificationItem(DirContext.REMOVE_ATTRIBUTE, BasicAttribute("unixHomeDirectory", null))
+            val modificationArray = arrayOf(modificationItem)
+            ldapServiceUserBind.useServiceUserBind {
+                it.modifyAttributes(userToReset.dn, modificationArray)
+                logger.atInfo().addKeyValue("unixHomeDirectory", "").log("MFA token deleted")
+            }
+        } catch (e: Exception) {
+            logger.atError().addKeyValue("unixHomeDirectory", "").log("Error deleted MFA token", e)
+            throw e
+        }
+        val auditMap = mapOf("unixHomeDirectory" to "")
+        auditUserUpdate(userToReset.cn, session, call, auditMap)
+    }
+
     class ADUser {
         var ldapConfig: LDAPConfig
             private set
