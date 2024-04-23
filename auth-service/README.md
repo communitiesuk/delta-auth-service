@@ -22,7 +22,7 @@
       ```plaintext
       127.0.0.1 dluhctest.local
       ```
-    * If tunneling into the staging environment, you will nee a line for `dluhcdata.local` as well
+    * If tunneling into the staging environment, you will need a line for `dluhcdata.local` as well
  
 ## Run
 

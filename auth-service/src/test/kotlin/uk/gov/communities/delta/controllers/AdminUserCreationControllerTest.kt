@@ -68,6 +68,24 @@ class AdminUserCreationControllerTest {
                     any()
                 )
             }
+            verify {
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
+                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(
+                        NEW_STANDARD_USER_EMAIL,
+                        "testFirst testLast"
+                    ),
+                    adminUser,
+                    emptyList(),
+                    setOf(
+                        AccessGroupRole("access-group-1", "access group 1", "STATS", emptyList(), false),
+                        AccessGroupRole(
+                            "access-group-2", "access group 2", "STATS",
+                            listOf("orgCode1", "orgCode2"), true
+                        ),
+                    ),
+                )
+            }
+            confirmVerified(emailService, groupService, userService, accessGroupDCLGMembershipUpdateEmailService)
             assertEquals("{\"message\":\"User created successfully\"}", bodyAsText())
         }
     }
@@ -299,6 +317,10 @@ class AdminUserCreationControllerTest {
             AccessGroup("access-group-1", "STATS", "access group 1", false, false),
             AccessGroup("access-group-2", "STATS", "access group 2", false, false),
         )
+        every {
+            accessGroupDCLGMembershipUpdateEmailService
+                .sendNotificationEmailsForChangeToUserAccessGroups(any(), any(), any(), any())
+        } just runs
     }
 
     companion object {
@@ -320,7 +342,7 @@ class AdminUserCreationControllerTest {
                 return PasswordAuthentication("", "")
             }
         }
-        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "")
+        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "", false, emptyList())
         private val userLookupService = mockk<UserLookupService>()
         private val userService = mockk<UserService>()
         private val groupService = mockk<GroupService>()
@@ -328,6 +350,7 @@ class AdminUserCreationControllerTest {
         private val setPasswordTokenService = mockk<SetPasswordTokenService>()
         private val organisationService = mockk<OrganisationService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
+        private val accessGroupDCLGMembershipUpdateEmailService = mockk<AccessGroupDCLGMembershipUpdateEmailService>()
 
         private val user = slot<UserService.ADUser>()
 
@@ -335,8 +358,10 @@ class AdminUserCreationControllerTest {
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
+        private val userSession =
+            OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
 
         private fun getUserDetailsJson(email: String): JsonElement {
             return Json.parseToJsonElement(
@@ -403,14 +428,28 @@ class AdminUserCreationControllerTest {
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-delegate-access-group-2", any(), adminSession)
             }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-data-certifiers", any(), adminSession) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    any(),
+                    "datamart-delta-data-certifiers",
+                    any(),
+                    adminSession
+                )
+            }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode1", any(), adminSession)
             }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode2", any(), adminSession)
             }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-data-providers", any(), adminSession) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    any(),
+                    "datamart-delta-data-providers",
+                    any(),
+                    adminSession
+                )
+            }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(any(), "datamart-delta-data-providers-orgCode1", any(), adminSession)
             }
@@ -465,7 +504,8 @@ class AdminUserCreationControllerTest {
                 groupService,
                 emailService,
                 setPasswordTokenService,
-                DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService)
+                DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService),
+                accessGroupDCLGMembershipUpdateEmailService,
             )
 
             testApp = TestApplication {

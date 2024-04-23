@@ -85,7 +85,76 @@ class EditAccessGroupsControllerTest {
                     null
                 )
             }
-            confirmVerified(groupService)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
+        }
+    }
+
+    @Test
+    fun testUpdateAddDCLGAccessGroup() = testSuspend {
+        every {
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } just runs
+        testClient.post("/access-groups") {
+            headers {
+                append("Authorization", "Bearer ${internalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(
+                "{" +
+                    "\"accessGroupsRequest\": {\"datamart-delta-access-group-3\": [\"dclg\"]}" +
+                    ", \"userSelectedOrgs\": [\"dclg\"]" +
+                    "}"
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    internalUser.cn,
+                    internalUser.dn,
+                    "datamart-delta-access-group-3-dclg",
+                    any(),
+                    null
+                )
+            }
+            verify(exactly = 1) {
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
+                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(internalUser),
+                    internalUser,
+                    "access-group-3",
+                    "access group 3",
+                )
+            }
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
+        }
+    }
+
+    @Test
+    fun testCannotUpdateOrganisationsNotInEmailDomain() {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/access-groups") {
+                    headers {
+                        append("Authorization", "Bearer ${externalUserSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        "{" +
+                            "\"accessGroupsRequest\": {\"datamart-delta-access-group-1\": [\"not-in-domain\"]}" +
+                            ", \"userSelectedOrgs\": [\"not-in-domain\"]" +
+                            "}"
+                    )
+                }
+            }
+        }.apply {
+            assertEquals(errorCode, "user_non_domain_organisation")
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -132,7 +201,7 @@ class EditAccessGroupsControllerTest {
                     null
                 )
             }
-            confirmVerified(groupService)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -194,9 +263,7 @@ class EditAccessGroupsControllerTest {
         }.apply {
             assertEquals("internal_user_non_internal_group", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
-            confirmVerified(groupService)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -216,7 +283,7 @@ class EditAccessGroupsControllerTest {
         }.apply {
             assertEquals("external_user_non_online_registration_group", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
-            confirmVerified(groupService)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -236,7 +303,7 @@ class EditAccessGroupsControllerTest {
         }.apply {
             assertEquals("nonexistent_group", errorCode)
             assertEquals(HttpStatusCode.BadRequest, statusCode)
-            confirmVerified(groupService)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -304,7 +371,53 @@ class EditAccessGroupsControllerTest {
                     internalUserSession
                 )
             }
-            confirmVerified(groupService)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
+        }
+    }
+
+    @Test
+    fun testAddDCLGMembership() = testSuspend {
+        @Suppress("BooleanLiteralArgument")
+        coEvery { accessGroupsService.getAccessGroup("access-group-3") } returns AccessGroup(
+            "datamart-delta-access-group-3", "STATS", "access group 3", false, false
+        )
+        every {
+            accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
+                any(), any(), any(), any()
+            )
+        } just runs
+        testClient.post("/access-groups/add") {
+            headers {
+                append("Authorization", "Bearer ${internalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(
+                "{" +
+                    "\"userToEditCn\": \"${internalUser.cn}\"" +
+                    ", \"accessGroupName\": \"access-group-3\"" +
+                    ", \"organisationCodes\": [\"dclg\"]}"
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    internalUser.cn,
+                    internalUser.dn,
+                    "datamart-delta-access-group-3-dclg",
+                    any(),
+                    internalUserSession
+                )
+            }
+            verify(exactly = 1) {
+                accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
+                    AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(internalUser),
+                    internalUser,
+                    "access-group-3",
+                    "access group 3",
+                )
+            }
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -329,6 +442,7 @@ class EditAccessGroupsControllerTest {
             }
         }.apply {
             assertEquals("nonexistent_group", errorCode)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -376,7 +490,7 @@ class EditAccessGroupsControllerTest {
                     internalUserSession
                 )
             }
-            confirmVerified(groupService)
+            confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
 
@@ -402,18 +516,25 @@ class EditAccessGroupsControllerTest {
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
             OrganisationNameAndCode("orgCode3", "Organisation Name 3"),
             OrganisationNameAndCode("orgCode4", "Organisation Name 4"),
+            OrganisationNameAndCode("not-in-domain", "Organisation not in email domain"),
+            OrganisationNameAndCode("dclg", "The Department"),
         )
         @Suppress("BooleanLiteralArgument")
         coEvery { accessGroupsService.getAllAccessGroups() } returns listOf(
-            AccessGroup("access-group-1", null, null, true, true),
+            AccessGroup("access-group-1", null, "access group 1", true, true),
             AccessGroup("access-group-2", null, null, true, false),
-            AccessGroup("access-group-3", null, null, false, true),
+            AccessGroup("access-group-3", null, "access group 3", false, true),
         )
         coEvery { organisationService.findAllByEmail(externalUser.email) } returns listOf(
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
             Organisation("orgCode3", "Organisation Name 3"),
             Organisation("orgCode4", "Organisation Name 4"),
+        )
+        coEvery { organisationService.findAllByEmail(internalUser.email) } returns listOf(
+            Organisation("orgCode1", "Organisation Name 1"),
+            Organisation("orgCode2", "Organisation Name 2"),
+            Organisation("dclg", "The Department"),
         )
         mockUserLookupService(
             userLookupService,
@@ -439,6 +560,7 @@ class EditAccessGroupsControllerTest {
         private val organisationService = mockk<OrganisationService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
         private val memberOfToDeltaRolesMapper = ::MemberOfToDeltaRolesMapper
+        private val accessGroupDCLGMembershipUpdateEmailService = mockk<AccessGroupDCLGMembershipUpdateEmailService>()
 
         private val client = testServiceClient()
 
@@ -496,6 +618,7 @@ class EditAccessGroupsControllerTest {
                 organisationService,
                 accessGroupsService,
                 memberOfToDeltaRolesMapper,
+                accessGroupDCLGMembershipUpdateEmailService,
             )
 
             testApp = TestApplication {

@@ -34,7 +34,9 @@ class EmailServiceTest {
         "from@test.com",
         "FromName",
         "replyTo@test.com",
-        "ReplyToName"
+        "ReplyToName",
+        false,
+        emptyList(),
     )
     private val emailService = EmailService(
         emailConfig,

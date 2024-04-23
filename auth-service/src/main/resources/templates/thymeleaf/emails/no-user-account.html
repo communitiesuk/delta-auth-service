@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/template.html :: email-head (title='DLUHC DELTA: No User Account')}">
-    <title>DLUHC DELTA: No User Account</title>
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: No User Account')}">
+    <title>DLUHC Delta: No User Account</title>
 </head>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
 
 <body>
 <p> You are receiving this email because you tried to send a reset password link to this email address for
-    <a th:href="${deltaUrl}">DELTA</a>,
+    <a th:href="${deltaUrl}">Delta</a>,
     the online data collection system of the Department for Levelling Up, Housing and Communities (DLUHC).
 </p>
 
@@ -29,7 +29,7 @@
     Regards
 </p>
 <p>
-    <strong>DLUHC DELTA Administrator</strong>
+    <strong>DLUHC Delta Administrator</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>
 </body>

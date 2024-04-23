@@ -110,7 +110,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             val errorPage = StatusErrorPageDefinition(
                 HttpStatusCode.InternalServerError,
                 "user_visible_server_error",
-                "DELTA | ${ex.title}",
+                "Delta | ${ex.title}",
                 ex.title,
                 ex.userVisibleMessage,
                 showServiceDeskMessage = true,
@@ -118,11 +118,11 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             call.respondStatusPage(errorPage, deltaWebsiteUrl)
         }
         exception(HttpNotFound404PageException::class) { call, ex ->
-            logger.error("StatusPages NotFoundException", ex)
+            logger.warn("StatusPages NotFoundException", ex)
             call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl)
         }
         exception(ApiError::class) { call, ex ->
-            logger.error("StatusPages API Error {}", keyValue("errorCode", ex.errorCode), ex)
+            logger.warn("StatusPages API Error {}", keyValue("errorCode", ex.errorCode), ex)
             call.apiErrorResponse(ex)
         }
     }
@@ -149,14 +149,14 @@ private val statusErrorPageDefinitions = mapOf(
     HttpStatusCode.NotFound to StatusErrorPageDefinition(
         HttpStatusCode.NotFound,
         "not_found",
-        "DELTA | Not Found",
+        "Delta | Not Found",
         "Page not found",
         "This page does not exist"
     ),
     HttpStatusCode.InternalServerError to StatusErrorPageDefinition(
         HttpStatusCode.InternalServerError,
         "internal_server_error",
-        "DELTA | Error",
+        "Delta | Error",
         "Error",
         "Something went wrong",
         true

@@ -44,7 +44,7 @@ class DeltaLoginControllerTest {
     fun testLoginPage() = testSuspend {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertContains(bodyAsText(), "Sign in to DELTA")
+            assertContains(bodyAsText(), "Sign in to Delta")
         }
     }
 
@@ -69,7 +69,7 @@ class DeltaLoginControllerTest {
         val now = System.currentTimeMillis() / 1000
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234&ts=${now}").apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertContains(bodyAsText(), "Sign in to DELTA")
+            assertContains(bodyAsText(), "Sign in to Delta")
         }
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234&ts=${now - 2.hours.inWholeSeconds}").apply {
             assertEquals(HttpStatusCode.Found, status)

@@ -237,7 +237,7 @@ class DeltaSetPasswordControllerTest {
                 return PasswordAuthentication("", "")
             }
         }
-        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "")
+        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "", false, emptyList())
         private val setPasswordTokenService = mockk<SetPasswordTokenService>()
         private val emailService = mockk<EmailService>()
         private val userService = mockk<UserService>()

@@ -36,7 +36,7 @@ class EmailRepository(emailConfig: EmailConfig) {
         val content = templateEngine.process(template, context)
         logger.atInfo()
             .addKeyValue("emailTemplate", template)
-            .addKeyValue("emailTo", emailContacts.getTo())
+            .addKeyValue("emailTo", emailContacts.getTo().joinToString(";"))
             .addKeyValue("emailSubject", subject)
             .log("Sending email")
         try {
@@ -46,9 +46,7 @@ class EmailRepository(emailConfig: EmailConfig) {
                 emailContacts.getReplyTo()
             )
             msg.setRecipients(
-                Message.RecipientType.TO, arrayOf(
-                    emailContacts.getTo()
-                )
+                Message.RecipientType.TO, emailContacts.getTo()
             )
             msg.subject = subject
             msg.setText(content)

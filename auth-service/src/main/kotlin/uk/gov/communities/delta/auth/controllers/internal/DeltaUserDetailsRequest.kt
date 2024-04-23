@@ -28,10 +28,8 @@ class DeltaUserPermissionsRequestMapper(
 data class DeltaUserPermissions(
     val organisations: Set<OrganisationNameAndCode>,
     val roles: Set<DeltaSystemRole>,
-    val accessGroups: Set<UserAccessGroup>,
+    val accessGroups: Set<AccessGroupRole>,
 ) {
-    data class UserAccessGroup(val name: String, val organisationIds: List<String>, val isDelegate: Boolean)
-
     companion object {
         class BadInput(message: String) : Exception(message)
 
@@ -65,12 +63,16 @@ data class DeltaUserPermissions(
                 ?.let { throw BadInput("Cannot be delegate of access group $it without being a member") }
 
             val accessGroups = userDetailsRequest.accessGroups.map { prefixedAccessGroupName ->
+                val accessGroupName = prefixedAccessGroupName.removePrefix(LDAPConfig.DATAMART_DELTA_PREFIX)
+                val accessGroup = allAccessGroups[accessGroupName]!!
                 val accessGroupOrganisations = userDetailsRequest.accessGroupOrganisations[prefixedAccessGroupName]
                 accessGroupOrganisations?.find { agOrg -> !organisations.any { agOrg == it.code } }?.let {
                     throw BadInput("Cannot be member of organisation $it for access group $prefixedAccessGroupName as not member of organisation")
                 }
-                UserAccessGroup(
-                    prefixedAccessGroupName.removePrefix(LDAPConfig.DATAMART_DELTA_PREFIX),
+                AccessGroupRole(
+                    accessGroupName,
+                    accessGroup.registrationDisplayName,
+                    accessGroup.classification,
                     accessGroupOrganisations ?: emptyList(),
                     userDetailsRequest.accessGroupDelegates.contains(prefixedAccessGroupName)
                 )

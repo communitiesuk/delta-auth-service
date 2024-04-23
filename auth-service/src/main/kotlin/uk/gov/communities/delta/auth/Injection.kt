@@ -108,6 +108,9 @@ class Injection(
         emailRepository,
     )
 
+    private val accessGroupDCLGMembershipUpdateEmailService =
+        AccessGroupDCLGMembershipUpdateEmailService(ldapServiceUserBind, ldapConfig, emailService, emailConfig)
+
     val registrationService = RegistrationService(
         deltaConfig,
         emailConfig,
@@ -283,6 +286,7 @@ class Injection(
         emailService,
         setPasswordTokenService,
         deltaUserDetailsRequestMapper,
+        accessGroupDCLGMembershipUpdateEmailService
     )
 
     fun adminEditUserController() = AdminEditUserController(
@@ -290,6 +294,7 @@ class Injection(
         userService,
         groupService,
         deltaUserDetailsRequestMapper,
+        accessGroupDCLGMembershipUpdateEmailService,
     )
 
     fun adminGetUserController() = AdminGetUserController(
@@ -320,6 +325,7 @@ class Injection(
         organisationService,
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper,
+        accessGroupDCLGMembershipUpdateEmailService
     )
 
     fun editUserDetailsController() = EditUserDetailsController(

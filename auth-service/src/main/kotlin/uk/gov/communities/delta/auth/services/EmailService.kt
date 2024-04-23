@@ -48,7 +48,7 @@ class EmailService(
         sendTemplateEmail(
             "already-a-user",
             contacts,
-            "DLUHC DELTA - Existing Account",
+            "DLUHC Delta - Existing Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -84,7 +84,7 @@ class EmailService(
         sendTemplateEmail(
             "new-user",
             contacts,
-            "DLUHC DELTA - New User Account",
+            "DLUHC Delta - New User Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -113,7 +113,7 @@ class EmailService(
                 emailAddress,
                 emailConfig
             ),
-            "DLUHC DELTA - No User Account",
+            "DLUHC Delta - No User Account",
             mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)
         )
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent no-user-account email")
@@ -139,7 +139,7 @@ class EmailService(
         sendTemplateEmail(
             "not-yet-enabled-user",
             contacts,
-            "DLUHC DELTA - Set Your Password",
+            "DLUHC Delta - Set Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -174,7 +174,7 @@ class EmailService(
         sendTemplateEmail(
             "password-never-set",
             contacts,
-            "DLUHC DELTA - Set Password",
+            "DLUHC Delta - Set Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "setPasswordUrl" to getSetPasswordURL(
@@ -216,7 +216,7 @@ class EmailService(
         sendTemplateEmail(
             "reset-password",
             contacts,
-            "DLUHC DELTA - Reset Your Password",
+            "DLUHC Delta - Reset Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -236,20 +236,54 @@ class EmailService(
 
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
     }
+
+    suspend fun sendEmailForUserAddedToDCLGInAccessGroup(
+        userEmail: String,
+        userName: String,
+        actingUserEmail: String,
+        recipients: List<EmailRecipient>,
+        accessGroupDisplayName: String,
+    ) {
+        sendTemplateEmail(
+            "user-added-to-dclg-in-access-group",
+            EmailContacts(recipients, emailConfig),
+            "Delta: DLUHC user has been added to collection group '$accessGroupDisplayName'",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "userFullName" to userName,
+                "userEmailAddress" to userEmail,
+                "actingUserEmail" to actingUserEmail,
+                "accessGroupName" to accessGroupDisplayName
+            )
+        )
+
+        logger.atInfo().addKeyValue("userEmail", userEmail).addKeyValue("accessGroupName", accessGroupDisplayName)
+            .log("Sent dluhc-user-added-to-collection email")
+    }
 }
 
+class EmailRecipient(val email: String, val name: String)
+
 class EmailContacts(
-    private val toEmail: String,
-    private val toName: String,
+    private val recipients: List<EmailRecipient>,
     emailConfig: EmailConfig,
 ) {
+    constructor(toEmail: String, toName: String, emailConfig: EmailConfig) : this(
+        listOf(
+            EmailRecipient(
+                toEmail,
+                toName
+            )
+        ), emailConfig
+    )
+
     private val fromEmail: String = emailConfig.fromEmailAddress
     private val fromName: String = emailConfig.fromEmailName
     private val replyToEmail: String = emailConfig.replyToEmailAddress
     private val replyToName: String = emailConfig.replyToEmailName
 
-    fun getTo(): Address {
-        return InternetAddress(toEmail, toName, "UTF-8")
+    fun getTo(): Array<Address> {
+        return recipients.map { InternetAddress(it.email, it.name, "UTF-8") }.toTypedArray()
     }
 
     fun getFrom(): Address {
