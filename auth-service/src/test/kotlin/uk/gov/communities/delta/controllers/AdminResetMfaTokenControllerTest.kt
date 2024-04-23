@@ -31,6 +31,7 @@ import java.time.Instant
 import kotlin.test.assertEquals
 
 class AdminResetMfaTokenControllerTest {
+    
     @Test
     fun adminCanResetUserMfaToken() = testSuspend {
         testClient.post("/admin/reset-mfa-token") {
@@ -48,6 +49,7 @@ class AdminResetMfaTokenControllerTest {
             confirmVerified(userService)
         }
     }
+
     @Test
     fun nonAdminCannotResetUserMfaToken() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
