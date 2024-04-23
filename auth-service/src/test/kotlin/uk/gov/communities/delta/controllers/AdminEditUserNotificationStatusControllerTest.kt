@@ -165,7 +165,7 @@ class AdminEditUserNotificationStatusControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/admin/update-user-notifications") {
+                            route("/admin/update-notification-status") {
                                 controller.route(this)
                             }
                         }
