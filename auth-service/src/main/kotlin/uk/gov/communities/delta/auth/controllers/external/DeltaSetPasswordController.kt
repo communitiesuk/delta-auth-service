@@ -13,6 +13,7 @@ import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.PasswordChecker
+import java.util.*
 
 class DeltaSetPasswordController(
     private val deltaConfig: DeltaConfig,
@@ -83,6 +84,11 @@ class DeltaSetPasswordController(
     private suspend fun setPasswordPost(call: ApplicationCall) {
         val userCN = call.request.queryParameters["userCN"].orEmpty()
         val token = call.request.queryParameters["token"].orEmpty()
+        val userGUIDString = call.request.queryParameters["userGUID"].orEmpty()
+        // TODO DT-976 - remove lookup once Delta released and add error if empty
+        val userGUID =
+            if (userGUIDString.isEmpty()) userLookupService.lookupUserByCn(userCN).getUUID()
+            else UUID.fromString(userGUIDString)
 
         if (Strings.isNullOrEmpty(userCN)) throw SetPasswordException(
             "set_password_no_user_cn",
@@ -117,7 +123,7 @@ class DeltaSetPasswordController(
                     logger.atError().addKeyValue("UserDN", userDN).log("Error setting password for user", e)
                     throw e
                 }
-                userAuditService.setPasswordAudit(userCN, call)
+                userAuditService.setPasswordAudit(userCN, userGUID, call)
                 call.respondRedirect("/delta/set-password/success")
             }
         }

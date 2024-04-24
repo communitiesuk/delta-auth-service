@@ -39,7 +39,7 @@ class AdminEnableDisableUserController(
                 logger.atInfo().addKeyValue("targetUserCN", user.cn)
                     .log("Setting random password and enabling SSO user")
                 userService.setPasswordAndEnable(user.dn, randomBase64(18))
-                auditService.userEnableAudit(user.cn, session.userCn, call)
+                auditService.userEnableAudit(user.cn, user.getUUID(), session.userCn, session.userGUID, call)
                 return call.respond(mapOf("message" to "User ${user.cn} enabled"))
             } else {
                 throw ApiError(
@@ -53,7 +53,7 @@ class AdminEnableDisableUserController(
 
         logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Enabling user")
         userService.enableAccountAndNotifications(user.dn)
-        auditService.userEnableAudit(user.cn, session.userCn, call)
+        auditService.userEnableAudit(user.cn, user.getUUID(), session.userCn, session.userGUID, call)
 
         return call.respond(mapOf("message" to "User ${user.cn} enabled"))
     }
@@ -70,7 +70,7 @@ class AdminEnableDisableUserController(
 
         logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Disabling user")
         userService.disableAccountAndNotifications(user.dn)
-        auditService.userDisableAudit(user.cn, session.userCn, call)
+        auditService.userDisableAudit(user.cn, user.getUUID(), session.userCn, session.userGUID, call)
         // Clear any set password tokens so that they can't re-enable their account themselves
         setPasswordTokenService.clearTokenForUserCn(user.cn)
 

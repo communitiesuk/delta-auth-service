@@ -110,12 +110,12 @@ class DeltaSSOLoginController(
 
         val client = clientConfig.oauthClients.first { it.clientId == session.clientId }
         val authCode = authorizationCodeService.generateAndStore(
-            userCn = user.cn, client = client, traceId = call.callId!!, isSso = true
+            userCn = user.cn, userGUID = user.getUUID(), client = client, traceId = call.callId!!, isSso = true
         )
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         ssoLoginCounter.increment()
-        userAuditService.userSSOLoginAudit(authCode.userCn, ssoClient, jwt.userObjectId, call)
+        userAuditService.userSSOLoginAudit(authCode.userCn, authCode.userGUID, ssoClient, jwt.userObjectId, call)
         call.sessions.clear<LoginSessionCookie>()
         call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
     }

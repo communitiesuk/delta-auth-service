@@ -12,6 +12,7 @@ import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
+import java.util.*
 
 class AdminUserCreationController(
     private val ldapConfig: LDAPConfig,
@@ -86,8 +87,9 @@ class AdminUserCreationController(
             )
         }
 
+        val userGUID: UUID
         try {
-            userService.createUser(adUser, ssoClient, session, call)
+            userGUID = userService.createUser(adUser, ssoClient, session, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             throw ApiError(
@@ -100,7 +102,7 @@ class AdminUserCreationController(
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
         try {
             userPermissions.getADGroupCNs().forEach {
-                groupService.addUserToGroup(adUser, it, call, session)
+                groupService.addUserToGroup(adUser, userGUID, it, call, session)
             }
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to groups", e)
@@ -122,6 +124,7 @@ class AdminUserCreationController(
                 adUser.givenName,
                 setPasswordTokenService.createToken(adUser.cn),
                 adUser.cn,
+                userGUID,
                 session,
                 EmailContacts(adUser.mail, adUser.getDisplayName(), emailConfig),
                 call

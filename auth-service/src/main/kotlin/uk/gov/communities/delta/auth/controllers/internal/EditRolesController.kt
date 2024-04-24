@@ -53,13 +53,13 @@ class EditRolesController(
         logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAddFilteredForNonMembership")
         groupCNsToAddFilteredForNonMembership
             .forEach {
-                groupService.addUserToGroup(callingUser.cn, callingUser.dn, it, call, null)
+                groupService.addUserToGroup(callingUser.cn, callingUser.getUUID(), callingUser.dn, it, call, null)
             }
 
         logger.atInfo().log("Revoking user ${session.userCn} groups $groupCNsToRemoveFilteredForMembership")
         groupCNsToRemoveFilteredForMembership
             .forEach {
-                groupService.removeUserFromGroup(callingUser.cn, callingUser.dn, it, call, null)
+                groupService.removeUserFromGroup(callingUser.cn, callingUser.getUUID(), callingUser.dn, it, call, null)
             }
 
         return call.respond(mapOf("message" to "Roles have been updated. Any changes to your roles or access groups will take effect the next time you log in."))

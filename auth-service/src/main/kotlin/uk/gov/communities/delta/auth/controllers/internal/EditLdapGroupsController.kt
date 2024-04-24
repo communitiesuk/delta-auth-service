@@ -28,7 +28,7 @@ class EditLdapGroupsController(
         
         if (!user.memberOfCNs.contains(groupCn)) {
             logger.info("Adding User CN={} to group CN={}", userCn, groupCn)
-            groupService.addUserToGroup(user.cn, user.dn, groupCn, call, null)
+            groupService.addUserToGroup(user.cn, user.getUUID(), user.dn, groupCn, call, null)
         }
         call.response.status(HttpStatusCode.NoContent)
     }

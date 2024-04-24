@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Blocking
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
+import java.util.*
 import java.time.Instant
 
 class UserAuditTrailRepo {
@@ -92,19 +93,23 @@ class UserAuditTrailRepo {
         conn: Connection,
         action: AuditAction,
         userCn: String,
+        userGUID: UUID?,
         editingUserCn: String?,
+        editingUserGUID: UUID?,
         requestId: String,
         encodedActionData: String,
     ) {
         val stmt = conn.prepareStatement(
-            "INSERT INTO user_audit (action, timestamp, user_cn, editing_user_cn, request_id, action_data) VALUES " +
-                "(?, now(), ?, ?, ?, ? ::jsonb)"
+            "INSERT INTO user_audit (action, timestamp, user_cn, editing_user_cn, request_id, action_data, user_guid, editing_user_guid) VALUES " +
+                "(?, now(), ?, ?, ?, ? ::jsonb, ?, ?)"
         )
         stmt.setString(1, action.action)
         stmt.setString(2, userCn)
         stmt.setString(3, editingUserCn)
         stmt.setString(4, requestId)
         stmt.setString(5, encodedActionData)
+        stmt.setObject(6, userGUID)
+        stmt.setObject(7, editingUserGUID)
         stmt.executeUpdate()
     }
 

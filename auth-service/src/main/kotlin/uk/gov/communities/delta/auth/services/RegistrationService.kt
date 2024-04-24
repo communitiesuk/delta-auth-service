@@ -7,6 +7,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import java.util.*
 
 class RegistrationService(
     private val deltaConfig: DeltaConfig,
@@ -19,8 +20,8 @@ class RegistrationService(
     private val groupService: GroupService,
 ) {
     sealed class RegistrationResult
-    class UserCreated(val user: UserService.ADUser, val token: String) : RegistrationResult()
-    class SSOUserCreated(val userCN: String) : RegistrationResult()
+    class UserCreated(val user: UserService.ADUser, val token: String, val userGUID: UUID) : RegistrationResult()
+    class SSOUserCreated(val userCN: String, val userGUID: UUID) : RegistrationResult()
     class UserAlreadyExists(val user: UserService.ADUser) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
@@ -44,10 +45,11 @@ class RegistrationService(
             logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
             return UserAlreadyExists(adUser)
         }
+        val userGUID: UUID
         try {
-            userService.createUser(adUser, ssoClient, call.principal<OAuthSession>(), call, azureObjectId)
-            addUserToDefaultGroups(adUser, call)
-            addUserToOrganisations(adUser, organisations, call)
+            userGUID = userService.createUser(adUser, ssoClient, call.principal<OAuthSession>(), call, azureObjectId)
+            addUserToDefaultGroups(adUser, userGUID, call)
+            addUserToOrganisations(adUser, userGUID, organisations, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             return RegistrationFailure(e)
@@ -55,15 +57,15 @@ class RegistrationService(
 
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
         return if (ssoClient?.required == true)
-            SSOUserCreated(adUser.cn)
+            SSOUserCreated(adUser.cn, userGUID)
         else
-            UserCreated(adUser, setPasswordTokenService.createToken(adUser.cn))
+            UserCreated(adUser, setPasswordTokenService.createToken(adUser.cn), userGUID)
     }
 
-    private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser, call: ApplicationCall) {
+    private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser, userGUID: UUID, call: ApplicationCall) {
         try {
-            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null)
-            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_USER, call, null)
+            groupService.addUserToGroup(adUser, userGUID, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null)
+            groupService.addUserToGroup(adUser, userGUID, DeltaConfig.DATAMART_DELTA_USER, call, null)
             logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to default groups")
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to default groups", e)
@@ -77,6 +79,7 @@ class RegistrationService(
 
     private suspend fun addUserToOrganisations(
         adUser: UserService.ADUser,
+        userGUID: UUID,
         organisations: List<Organisation>,
         call: ApplicationCall
     ) {
@@ -86,6 +89,7 @@ class RegistrationService(
                 if (!it.retired) {
                     groupService.addUserToGroup(
                         adUser,
+                        userGUID,
                         organisationUserGroup(it.code),
                         call,
                         null,
@@ -118,6 +122,7 @@ class RegistrationService(
                     registrationResult.user.givenName,
                     registrationResult.token,
                     registrationResult.user.cn,
+                    registrationResult.userGUID,
                     null,
                     getEmailContacts(registrationResult.user),
                     call,

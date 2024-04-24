@@ -18,6 +18,7 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.services.*
+import java.util.*
 
 class RefreshUserInfoController(
     private val userLookupService: UserLookupService,
@@ -62,6 +63,11 @@ class RefreshUserInfoController(
         val session = call.principal<OAuthSession>()!!
         ensureNotAlreadyImpersonating(session)
         val impersonatedUsersCn = Strings.nullToEmpty(call.parameters["userToImpersonate"]).replace("@", "!")
+        val impersonatedUserGUIDString = call.request.queryParameters["userGUID"].orEmpty()
+        // TODO DT-976 - remove lookup once Delta released and add checks for empty?
+        val impersonatedUserGUID =
+            if (impersonatedUserGUIDString.isEmpty()) userLookupService.lookupUserByCn(impersonatedUsersCn).getUUID()
+            else UUID.fromString(impersonatedUserGUIDString)
         val originalUser = userLookupService.lookupUserByCn(session.userCn)
         if (!originalUser.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_ADMIN) || !originalUser.accountEnabled) {
             logger.atWarn().log("User does not have the necessary permissions to impersonate this user")
@@ -84,7 +90,12 @@ class RefreshUserInfoController(
                 impersonatedUsersCn
             )
         }
-        userAuditService.insertImpersonatingUserAuditRow(session, impersonatedUsersCn, call.callId!!)
+        userAuditService.insertImpersonatingUserAuditRow(
+            session,
+            impersonatedUsersCn,
+            impersonatedUserGUID,
+            call.callId!!
+        )
         call.respond(userInfoResponse)
     }
 

@@ -54,6 +54,7 @@ class EditAccessGroupsController(
         } else {
             groupService.addUserToGroup(
                 targetUser.cn,
+                targetUser.getUUID(),
                 targetUser.dn,
                 targetGroupADName,
                 call,
@@ -72,6 +73,7 @@ class EditAccessGroupsController(
             } else {
                 groupService.addUserToGroup(
                     targetUser.cn,
+                    targetUser.getUUID(),
                     targetUser.dn,
                     targetGroupOrgADName,
                     call,
@@ -114,6 +116,7 @@ class EditAccessGroupsController(
                 if (groupName.startsWith(targetGroupADName)) {
                     groupService.removeUserFromGroup(
                         targetUser.cn,
+                        targetUser.getUUID(),
                         targetUser.dn,
                         groupName,
                         call,
@@ -340,6 +343,7 @@ class EditAccessGroupsController(
                 )
                 groupService.addUserToGroup(
                     user.cn,
+                    user.getUUID(),
                     user.dn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
@@ -361,6 +365,7 @@ class EditAccessGroupsController(
                 )
                 groupService.removeUserFromGroup(
                     user.cn,
+                    user.getUUID(),
                     user.dn,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,

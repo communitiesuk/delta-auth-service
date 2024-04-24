@@ -15,6 +15,7 @@ import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.PasswordChecker
+import java.util.*
 
 class DeltaResetPasswordController(
     private val deltaConfig: DeltaConfig,
@@ -92,6 +93,11 @@ class DeltaResetPasswordController(
     private suspend fun resetPasswordPost(call: ApplicationCall) {
         val userCN = call.request.queryParameters["userCN"].orEmpty()
         val token = call.request.queryParameters["token"].orEmpty()
+        val userGUIDString = call.request.queryParameters["userGUID"].orEmpty()
+        // TODO DT-976 - remove lookup once Delta released and add error if empty
+        val userGUID =
+            if (userGUIDString.isEmpty()) userLookupService.lookupUserByCn(userCN).getUUID()
+            else UUID.fromString(userGUIDString)
 
         if (Strings.isNullOrEmpty(userCN)) throw ResetPasswordException(
             "reset_password_no_user_cn",
@@ -128,7 +134,7 @@ class DeltaResetPasswordController(
                 val userDN = String.format(ldapConfig.deltaUserDnFormat, tokenResult.userCN)
                 userService.resetPassword(userDN, newPassword)
                 logger.atInfo().addKeyValue("userCN", tokenResult.userCN).log("Password reset")
-                userAuditService.resetPasswordAudit(userCN, call)
+                userAuditService.resetPasswordAudit(userCN, userGUID, call)
                 call.respondRedirect("/delta/reset-password/success")
             }
         }

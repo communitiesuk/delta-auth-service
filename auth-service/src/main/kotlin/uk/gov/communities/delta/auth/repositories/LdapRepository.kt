@@ -198,7 +198,11 @@ data class LdapUser(
     val notificationStatus: String?,
     // Not required by Delta, but used internally
     @Transient val passwordLastSet: Instant? = null,
-)
+) {
+    fun getUUID(): UUID {
+        return UUID.fromString(javaUUIDObjectGuid)
+    }
+}
 
 fun LdapUser.isInternal() : Boolean {
     return this.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_INTERNAL_USER)

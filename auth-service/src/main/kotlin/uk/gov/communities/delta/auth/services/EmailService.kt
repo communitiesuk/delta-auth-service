@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.controllers.external.getSetPasswordURL
 import uk.gov.communities.delta.auth.repositories.EmailRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.utils.timed
+import java.util.*
 
 class EmailService(
     private val emailConfig: EmailConfig,
@@ -67,6 +68,7 @@ class EmailService(
             user.firstName,
             token,
             user.cn,
+            user.getUUID(),
             triggeringAdminSession,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call
@@ -77,6 +79,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
+        userGUID: UUID,
         triggeringAdminSession: OAuthSession?,
         contacts: EmailContacts,
         call: ApplicationCall,
@@ -97,10 +100,12 @@ class EmailService(
         )
         if (triggeringAdminSession != null) userAuditService.adminSetPasswordEmailAudit(
             userCN,
+            userGUID,
             triggeringAdminSession.userCn,
+            triggeringAdminSession.userGUID,
             call
         )
-        else userAuditService.setPasswordEmailAudit(userCN, call)
+        else userAuditService.setPasswordEmailAudit(userCN, userGUID, call)
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent new-user email")
     }
 
@@ -124,6 +129,7 @@ class EmailService(
             user.firstName,
             token,
             user.cn,
+            user.getUUID(),
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call,
         )
@@ -133,6 +139,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
+        userGUID: UUID,
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -150,7 +157,7 @@ class EmailService(
                 )
             )
         )
-        userAuditService.setPasswordEmailAudit(userCN, call)
+        userAuditService.setPasswordEmailAudit(userCN, userGUID, call)
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent not-yet-enabled-user email")
     }
 
@@ -159,6 +166,7 @@ class EmailService(
             user.firstName,
             token,
             user.cn,
+            user.getUUID(),
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call,
         )
@@ -168,6 +176,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
+        userGUID: UUID,
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -185,7 +194,7 @@ class EmailService(
                 "userFirstName" to firstName,
             )
         )
-        userAuditService.setPasswordEmailAudit(userCN, call)
+        userAuditService.setPasswordEmailAudit(userCN, userGUID, call)
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent password-never-set email")
     }
 
@@ -199,6 +208,7 @@ class EmailService(
             user.firstName,
             token,
             user.cn,
+            user.getUUID(),
             triggeringAdminSession,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call,
@@ -209,6 +219,7 @@ class EmailService(
         firstName: String,
         token: String,
         userCN: String,
+        userGUID: UUID,
         triggeringAdminSession: OAuthSession?,
         contacts: EmailContacts,
         call: ApplicationCall,
@@ -229,10 +240,12 @@ class EmailService(
         )
         if (triggeringAdminSession != null) userAuditService.adminResetPasswordEmailAudit(
             userCN,
+            userGUID,
             triggeringAdminSession.userCn,
+            triggeringAdminSession.userGUID,
             call
         )
-        else userAuditService.resetPasswordEmailAudit(userCN, call)
+        else userAuditService.resetPasswordEmailAudit(userCN, userGUID, call)
 
         logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
     }
