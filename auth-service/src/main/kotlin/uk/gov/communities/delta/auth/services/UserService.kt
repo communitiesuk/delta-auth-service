@@ -307,10 +307,10 @@ class UserService(
             val modificationArray = arrayOf(modificationItem)
             ldapServiceUserBind.useServiceUserBind {
                 it.modifyAttributes(userToReset.dn, modificationArray)
-                logger.atInfo().addKeyValue("unixHomeDirectory", "").log("MFA token deleted")
+                logger.atInfo().addKeyValue("userToResetCn", userToReset.cn).log("MFA token deleted")
             }
         } catch (e: Exception) {
-            logger.atError().addKeyValue("unixHomeDirectory", "").log("Error deleted MFA token", e)
+            logger.atError().addKeyValue("userToResetCn", userToReset.cn).log("Error deleting MFA token", e)
             throw e
         }
         val auditMap = mapOf("unixHomeDirectory" to "")
