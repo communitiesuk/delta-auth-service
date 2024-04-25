@@ -6,7 +6,8 @@ import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDString
+import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDSearchString
+import uk.gov.communities.delta.auth.utils.toGUIDString
 import java.lang.Integer.parseInt
 import java.time.Instant
 import java.util.*
@@ -19,6 +20,7 @@ import javax.naming.ldap.Control
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.ldap.PagedResultsControl
 import javax.naming.ldap.PagedResultsResponseControl
+import kotlin.time.Duration.Companion.seconds
 
 class LdapRepository(
     private val ldapConfig: LDAPConfig,
@@ -60,31 +62,26 @@ class LdapRepository(
         }
     }
 
-    @Blocking
-    fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
-        val attributes =
-            ctx.getAttributes(
-                userDn,
-                arrayOf(
-                    "cn",
-                    "memberOf",
-                    "mail",
-                    "unixHomeDirectory", // Delta TOTP secret
-                    "givenName",
-                    "sn",
-                    "userAccountControl",
-                    "objectGUID",
-                    "imported-guid",
-                    "telephoneNumber",
-                    "mobile",
-                    "title", // Delta "Position in organisation"
-                    "description", // Delta "Reason for access"
-                    "comment",
-                    "st",
-                    "pwdLastSet",
-                )
-            )
+    private val attributeNames = arrayOf(
+        "cn",
+        "memberOf",
+        "mail",
+        "unixHomeDirectory", // Delta TOTP secret
+        "givenName",
+        "sn",
+        "userAccountControl",
+        "objectGUID",
+        "imported-guid",
+        "telephoneNumber",
+        "mobile",
+        "title", // Delta "Position in organisation"
+        "description", // Delta "Reason for access"
+        "comment",
+        "st",
+        "pwdLastSet",
+    )
 
+    private fun getUserFromAttributes(attributes: Attributes): LdapUser {
         val cn = attributes.get("cn")?.get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
         val email = attributes.get("mail")?.get() as String?
         val totpSecret = attributes.get("unixHomeDirectory")?.get() as String?
@@ -114,7 +111,7 @@ class LdapRepository(
             match?.groups?.get(1)?.value
         }
         return LdapUser(
-            dn = userDn,
+            dn = ldapConfig.deltaUserDnFormat.format(cn), // TODO - use fetched version?
             cn = cn,
             memberOfCNs = memberOfGroupCNs,
             email = email,
@@ -133,6 +130,37 @@ class LdapRepository(
             notificationStatus = notificationStatus,
             passwordLastSet = passwordLastSet,
         )
+    }
+
+    @Blocking
+    fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
+        val attributes = ctx.getAttributes(userDn, attributeNames)
+        return getUserFromAttributes(attributes)
+    }
+
+    private val searchDn = ldapConfig.deltaUserDnFormat.removePrefix("CN=%s,")
+    private fun searchControls(): SearchControls {
+        val searchControls = SearchControls()
+        searchControls.searchScope = SearchControls.ONELEVEL_SCOPE
+        searchControls.timeLimit = 30.seconds.inWholeMilliseconds.toInt()
+        searchControls.returningAttributes = attributeNames
+        return searchControls
+    }
+
+    @Blocking
+    fun mapUserFromContext(ctx: InitialDirContext, userGUID: UUID): LdapUser {
+        val adGUIDString = userGUID.toActiveDirectoryGUIDSearchString()
+        val filter = "(objectGUID=$adGUIDString)"
+        val searchResults = ctx.search(searchDn, filter, searchControls())
+        // TODO - search in try catch?
+        val attributes = try {
+            searchResults.next().attributes
+        } catch (ex: NoSuchElementException) {
+            logger.atError().log("No user found with GUID $userGUID") // TODO - check format of log
+            throw ex
+        }
+        // TODO - check there wasn't another user found?
+        return getUserFromAttributes(attributes)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -172,7 +200,7 @@ fun Attributes.getMangledDeltaObjectGUID(): String {
 
 fun Attributes.getNewModeObjectGuidString(): String {
     val objectGuid = get("objectGUID").get() as ByteArray
-    return objectGuid.toActiveDirectoryGUIDString()
+    return objectGuid.toGUIDString()
 }
 
 @Serializable

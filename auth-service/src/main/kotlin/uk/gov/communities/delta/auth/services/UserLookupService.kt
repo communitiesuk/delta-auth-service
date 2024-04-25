@@ -5,6 +5,7 @@ import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
+import java.util.*
 import javax.naming.NameNotFoundException
 
 class UserLookupService(
@@ -35,6 +36,13 @@ class UserLookupService(
         logger.atInfo().addKeyValue("userDN", dn).log("Looking up user in AD")
         return ldapServiceUserBind.useServiceUserBind {
             ldapRepository.mapUserFromContext(it, dn)
+        }
+    }
+
+    suspend fun lookupUserByGUID(guid: UUID): LdapUser {
+        logger.atInfo().addKeyValue("userGUID", guid).log("Looking up user in AD")
+        return ldapServiceUserBind.useServiceUserBind {
+            ldapRepository.mapUserFromContext(it, guid)
         }
     }
 
