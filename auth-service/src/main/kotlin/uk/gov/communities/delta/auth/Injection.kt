@@ -74,11 +74,12 @@ class Injection(
         Runtime.getRuntime().addShutdownHook(Thread { close() })
     }
 
+    val dbPool = DbPool(databaseConfig)
+
     private val samlTokenService = SAMLTokenService()
+    private val deltaApiTokenService = DeltaApiTokenService(dbPool)
     private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
     private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
-
-    val dbPool = DbPool(databaseConfig)
 
     val userAuditTrailRepo = UserAuditTrailRepo()
     val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
@@ -238,6 +239,10 @@ class Injection(
         organisationService,
         ::MemberOfToDeltaRolesMapper
     )
+
+    fun externalDeltaApiTokenController() = ExternalDeltaApiTokenController(deltaApiTokenService)
+
+    fun internalDeltaApiTokenController() = InternalDeltaApiTokenController(deltaApiTokenService)
 
     fun refreshUserInfoController() = RefreshUserInfoController(
         userLookupService,

@@ -196,6 +196,8 @@ fun oauthClientCallbackRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoC
 fun Route.internalRoutes(injection: Injection) {
     val generateSAMLTokenController = injection.generateSAMLTokenController()
     val oauthTokenController = injection.internalOAuthTokenController()
+    val externalDeltaApiTokenController = injection.externalDeltaApiTokenController()
+    val internalDeltaApiTokenController = injection.internalDeltaApiTokenController()
     val refreshUserInfoController = injection.refreshUserInfoController()
     val fetchUserAuditController = injection.fetchUserAuditController()
     val adminEmailController = injection.adminEmailController()
@@ -214,6 +216,11 @@ fun Route.internalRoutes(injection: Injection) {
         serviceUserRoutes(generateSAMLTokenController)
 
         oauthTokenRoute(oauthTokenController)
+
+        deltaApiRoutes(
+            externalDeltaApiTokenController,
+            internalDeltaApiTokenController,
+        )
 
         bearerTokenRoutes(
             refreshUserInfoController,
@@ -236,6 +243,18 @@ fun Route.internalRoutes(injection: Injection) {
 fun Route.oauthTokenRoute(oauthTokenController: OAuthTokenController) {
     route("/token") {
         oauthTokenController.route(this)
+    }
+}
+
+fun Route.deltaApiRoutes(
+    externalDeltaApiTokenController: ExternalDeltaApiTokenController,
+    internalDeltaApiTokenController: InternalDeltaApiTokenController,
+) {
+    post("/delta-api/token") {
+        externalDeltaApiTokenController.createApiToken(call)
+    }
+    post("/internal/delta-api/validate") {
+        internalDeltaApiTokenController.validateApiRequest(call)
     }
 }
 
