@@ -151,3 +151,22 @@ Review the ${module.fargate.log_group_name} log group.
   alarm_actions     = [var.alarms_sns_topic_arn]
   ok_actions        = [var.alarms_sns_topic_arn]
 }
+
+resource "aws_cloudwatch_metric_alarm" "error_log_count_high" {
+  alarm_name          = "auth-${var.environment}-error-log-count-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = local.metric_error_log_filter
+  namespace           = local.auth_metrics_namespace
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 10
+  treat_missing_data  = "notBreaching"
+
+  alarm_description = <<EOF
+There are an unsually high number of errors being logged by the auth service.
+Review the ${module.fargate.log_group_name} log group, you may want to apply the filter "level = 'ERROR'".
+  EOF
+  alarm_actions     = [var.alarms_sns_topic_arn]
+  ok_actions        = [var.alarms_sns_topic_arn]
+}

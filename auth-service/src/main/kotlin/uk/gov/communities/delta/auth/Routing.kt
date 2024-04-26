@@ -205,6 +205,7 @@ fun Route.internalRoutes(injection: Injection) {
     val adminEditEmailController = injection.adminEditEmailController()
     val adminEnableDisableUserController = injection.adminEnableDisableUserController()
     val adminResetMfaTokenController = injection.adminResetMfaTokenController()
+    val adminEditUserNotificationStatusController = injection.adminEditUserNotificationStatusController()
     val editRolesController = injection.editRolesController()
     val editOrganisationsController = injection.editOrganisationsController()
     val editAccessGroupsController = injection.editAccessGroupsController()
@@ -225,6 +226,7 @@ fun Route.internalRoutes(injection: Injection) {
             adminEditEmailController,
             adminEnableDisableUserController,
             adminResetMfaTokenController,
+            adminEditUserNotificationStatusController,
             editRolesController,
             editOrganisationsController,
             editAccessGroupsController,
@@ -260,6 +262,7 @@ fun Route.bearerTokenRoutes(
     adminEditUserEmailController: AdminEditUserEmailController,
     adminEnableDisableUserController: AdminEnableDisableUserController,
     adminResetMfaTokenController: AdminResetMfaTokenController,
+    adminEditUserNotificationStatusController: AdminEditUserNotificationStatusController,
     editRolesController: EditRolesController,
     editOrganisationsController: EditOrganisationsController,
     editAccessGroupsController: EditAccessGroupsController,
@@ -299,6 +302,9 @@ fun Route.bearerTokenRoutes(
             }
             route("/admin/reset-mfa-token") {
                 adminResetMfaTokenController.route(this)
+            }
+            route("/admin/update-notification-status") {
+                adminEditUserNotificationStatusController.route(this)
             }
             route("/roles") {
                 editRolesController.route(this)
