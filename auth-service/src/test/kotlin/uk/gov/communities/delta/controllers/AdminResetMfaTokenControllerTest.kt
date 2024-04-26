@@ -116,6 +116,7 @@ class AdminResetMfaTokenControllerTest {
             memberOfCNs = listOf(
                 DeltaConfig.DATAMART_DELTA_USER,
             ),
+            deltaTOTPSecret = "TopOfThePops"
         )
 
         private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)
