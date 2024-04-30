@@ -121,6 +121,14 @@ module "fargate" {
       name  = "LDAP_DOMAIN_REALM"
       value = var.ldap_config.LDAP_DOMAIN_REALM
     },
+    {
+      name  = "DCLG_ACCESS_GROUP_NOTIFICATIONS_ENABLED"
+      value = var.dclg_access_group_notification_settings.enabled ? "true" : "false"
+    },
+    {
+      name  = "DCLG_ACCESS_GROUP_UPDATE_ADDITIONAL_RECIPIENTS"
+      value = join(";", var.dclg_access_group_notification_settings.additional_recipient_emails)
+    },
   ]
   secrets = [for s in [
     {

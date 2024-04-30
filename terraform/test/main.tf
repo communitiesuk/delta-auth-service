@@ -31,6 +31,10 @@ data "terraform_remote_state" "common_infra" {
 locals {
   environment                    = "test"
   cloudwatch_log_expiration_days = 30
+  dclg_access_group_notification_settings = {
+    enabled                     = true
+    additional_recipient_emails = ["Group-DLUHCDeltaDevNotifications+test@softwire.com"]
+  }
 }
 
 resource "random_password" "delta_website_local_dev_client_secret" {
@@ -81,6 +85,7 @@ module "auth_service" {
     LDAP_DOMAIN_REALM           = "dluhctest.local"
     ACCESS_GROUP_CONTAINER_DN   = "CN=datamart-delta,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
   }
+  dclg_access_group_notification_settings = local.dclg_access_group_notification_settings
 
   # Test environment only settings
   delta_website_local_dev_client_secret_arn = aws_secretsmanager_secret.delta_website_local_dev_client_secret.arn
