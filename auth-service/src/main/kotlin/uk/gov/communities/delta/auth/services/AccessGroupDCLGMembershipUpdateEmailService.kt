@@ -76,13 +76,14 @@ class AccessGroupDCLGMembershipUpdateEmailService(
             return
         }
 
-        val previousDCLGGroups = previousAccessGroups.filter { it.organisationIds.contains("dclg") }.toSet()
-        val newDCLGGroups = newAccessGroups.filter { it.organisationIds.contains("dclg") }.toSet()
+        val previousDCLGGroupNames = previousAccessGroups.filter { it.organisationIds.contains("dclg") }
+            .map { it.name }.toSet()
+        val newDCLGGroups = newAccessGroups.filter { it.organisationIds.contains("dclg") }
 
-        val newGroups = newDCLGGroups - previousDCLGGroups
-        if (newGroups.isEmpty()) return
+        val addedGroups = newDCLGGroups.filter { !previousDCLGGroupNames.contains(it.name) }
+        if (addedGroups.isEmpty()) return
 
-        launchSendEmailJob(user, actingUser, newGroups.map { AccessGroup(it.name, it.displayName) })
+        launchSendEmailJob(user, actingUser, addedGroups.map { AccessGroup(it.name, it.displayName) })
     }
 
     private fun launchSendEmailJob(user: UpdatedUser, actingUser: LdapUser, addedGroups: Collection<AccessGroup>) {
