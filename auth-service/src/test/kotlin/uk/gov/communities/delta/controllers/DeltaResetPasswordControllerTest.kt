@@ -166,7 +166,7 @@ class DeltaResetPasswordControllerTest {
             coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), null, any()) }
             coVerify(exactly = 1) { resetPasswordTokenService.createToken(userCN) }
             assertEquals(HttpStatusCode.OK, status)
-            assertContains(bodyAsText(), "Your password reset link has been email to you")
+            assertContains(bodyAsText(), "Your password reset link has been emailed to you")
         }
     }
 

@@ -121,7 +121,7 @@ class DeltaForgotPasswordControllerTest {
     }
 
     private fun assertSentEmailPage(bodyAsText: String) {
-        assertContains(bodyAsText, "Your password reset link has been email to you")
+        assertContains(bodyAsText, "Your password reset link has been emailed to you")
         assertContains(bodyAsText, "mailto:$userEmail")
     }
 
