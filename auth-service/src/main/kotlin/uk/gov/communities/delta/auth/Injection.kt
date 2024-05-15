@@ -77,7 +77,7 @@ class Injection(
     val dbPool = DbPool(databaseConfig)
 
     private val samlTokenService = SAMLTokenService()
-    private val deltaApiTokenService = DeltaApiTokenService(dbPool)
+    private val deltaApiTokenService = DeltaApiTokenService(dbPool, TimeSource.System)
     private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
     private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
 
@@ -240,9 +240,16 @@ class Injection(
         ::MemberOfToDeltaRolesMapper
     )
 
-    fun externalDeltaApiTokenController() = ExternalDeltaApiTokenController(deltaApiTokenService)
+    // TODO 836 find out why this is done this way and if I should do this here
+    fun externalDeltaApiTokenController(): ExternalDeltaApiTokenController {
+        val adLoginService = ADLdapLoginService(
+            ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
+            ldapRepository
+        )
+        return ExternalDeltaApiTokenController(deltaApiTokenService, adLoginService)
+    }
 
-    fun internalDeltaApiTokenController() = InternalDeltaApiTokenController(deltaApiTokenService)
+    fun internalDeltaApiTokenController() = InternalDeltaApiTokenController(deltaApiTokenService, samlTokenService, userLookupService)
 
     fun refreshUserInfoController() = RefreshUserInfoController(
         userLookupService,

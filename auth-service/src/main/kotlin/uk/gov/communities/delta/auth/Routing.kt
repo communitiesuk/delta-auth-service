@@ -250,11 +250,13 @@ fun Route.deltaApiRoutes(
     externalDeltaApiTokenController: ExternalDeltaApiTokenController,
     internalDeltaApiTokenController: InternalDeltaApiTokenController,
 ) {
-    post("/delta-api/token") {
-        externalDeltaApiTokenController.createApiToken(call)
+    route("/delta-api/oauth/token") {
+        externalDeltaApiTokenController.route(this)
     }
-    post("/internal/delta-api/validate") {
-        internalDeltaApiTokenController.validateApiRequest(call)
+    authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+        route("/internal/delta-api/validate") {
+            internalDeltaApiTokenController.route(this)
+        }
     }
 }
 

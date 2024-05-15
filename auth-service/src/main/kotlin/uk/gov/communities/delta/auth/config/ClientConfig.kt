@@ -34,6 +34,7 @@ class ClientConfig(val clients: List<Client>) {
             // so that we can develop delta against test without running the auth service locally
             val devDeltaWebsiteSecret =
                 Env.getOptionalOrDevFallback("CLIENT_SECRET_DELTA_WEBSITE_DEV", "dev-delta-website-client-secret")
+            val deltaApiSecret = Env.getRequiredOrDevFallback("CLIENT_SECRET_DELTA_API", "dev-api-client-secret")
             val samlCredentials = SAMLConfig.credentialsFromEnvironment()
 
             val marklogic =
@@ -62,7 +63,8 @@ class ClientConfig(val clients: List<Client>) {
                     "http://localhost:8080",
                 )
             }
-            return ClientConfig(listOfNotNull(marklogic, deltaWebsite, devDeltaWebsite, devDeltaWebsiteToTestEnvironment))
+            val deltaApi = Client("api", deltaApiSecret, samlCredentials)
+            return ClientConfig(listOfNotNull(marklogic, deltaWebsite, devDeltaWebsite, devDeltaWebsiteToTestEnvironment, deltaApi))
         }
     }
 
