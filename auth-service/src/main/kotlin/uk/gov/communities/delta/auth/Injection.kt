@@ -325,6 +325,12 @@ class Injection(
         userAuditService,
     )
 
+
+    fun adminResetMfaTokenController() = AdminResetMfaTokenController(
+        userLookupService,
+        userService,
+    )
+
     fun adminEditUserNotificationStatusController() = AdminEditUserNotificationStatusController(
         userLookupService,
         userService,

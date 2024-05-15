@@ -88,6 +88,8 @@ class EmailConfig(
         logger.addKeyValue("MAIL_SMTP_HOST", emailProps["mail.smtp.host"])
             .addKeyValue("MAIL_SMTP_PORT", emailProps["mail.smtp.port"])
             .addKeyValue("MAIL_SMTP_USERNAME", emailAuthenticator.toString())
+            .addKeyValue("DCLG_ACCESS_GROUP_NOTIFICATIONS_ENABLED", dclgAccessGroupUpdateNotificationsEnabled)
+            .addKeyValue("DCLG_ACCESS_GROUP_UPDATE_ADDITIONAL_RECIPIENTS", dclgAccessGroupUpdateAdditionalRecipients)
             .log("Email config")
     }
 }

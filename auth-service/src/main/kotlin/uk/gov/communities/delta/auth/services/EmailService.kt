@@ -258,6 +258,7 @@ class EmailService(
         )
 
         logger.atInfo().addKeyValue("userEmail", userEmail).addKeyValue("accessGroupName", accessGroupDisplayName)
+            .addKeyValue("emailRecipients", recipients.joinToString(";") { it.email })
             .log("Sent dluhc-user-added-to-collection email")
     }
 }
