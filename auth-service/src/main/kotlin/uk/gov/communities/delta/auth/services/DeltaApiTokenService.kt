@@ -16,7 +16,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.*
 
-// TODO 836 add logging
 class DeltaApiTokenService(
     private val dbPool: DbPool,
     private val timeSource: TimeSource
@@ -40,11 +39,9 @@ class DeltaApiTokenService(
     }
 
     fun createAndStoreApiToken(username: String, clientId: String): String {
-        // validate username and password and client stuff in controller
+        logger.atInfo().addKeyValue("clientId", clientId).log("Creating new API token for client")
         val apiToken = randomBase64(32)
-        // store token
         insertApiToken(apiToken, timeSource.now(), username, clientId)
-        // return token
         return apiToken
     }
 

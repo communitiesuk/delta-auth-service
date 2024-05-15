@@ -240,7 +240,6 @@ class Injection(
         ::MemberOfToDeltaRolesMapper
     )
 
-    // TODO 836 find out why this is done this way and if I should do this here
     fun externalDeltaApiTokenController(): ExternalDeltaApiTokenController {
         val adLoginService = ADLdapLoginService(
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),

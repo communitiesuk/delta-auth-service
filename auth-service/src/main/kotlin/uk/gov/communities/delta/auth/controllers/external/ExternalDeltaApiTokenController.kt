@@ -27,6 +27,11 @@ class ExternalDeltaApiTokenController(
     suspend fun createApiToken(call: ApplicationCall) {
         val requestPayload = call.receive<ApiTokenRequest>()
 
+        logger.atInfo()
+            .addKeyValue("userCn", requestPayload.username)
+            .addKeyValue("clientId", requestPayload.client_id)
+            .log("Received API token request")
+
         if (requestPayload.grant_type != "password") {
             throw ApiError(
                 HttpStatusCode.Forbidden,
@@ -35,8 +40,6 @@ class ExternalDeltaApiTokenController(
             )
         }
 
-        // TODO 836 check this takes a CN rather than an email (if it takes an email, rename things to match)
-        // TODO 836 also check whether keycloak takes an email
         val loginResult = ldapService.ldapLogin(requestPayload.username, requestPayload.password)
 
         if (loginResult !is IADLdapLoginService.LdapLoginSuccess ||

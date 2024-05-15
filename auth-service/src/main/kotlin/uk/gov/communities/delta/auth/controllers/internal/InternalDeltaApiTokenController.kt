@@ -36,8 +36,14 @@ class InternalDeltaApiTokenController(
     private suspend fun validateApiRequestAndReturnSamlToken(call: ApplicationCall) {
         val apiToken = call.receive<ApiValidationRequest>().token
 
+        logger.atInfo()
+            .log("Received API token to SAML token exchange request")
+
         val userWithTokenCn = tokenService.validateApiToken(apiToken)
         if (!userWithTokenCn.isNullOrEmpty()) {
+            logger.atInfo()
+                .addKeyValue("userCn", userWithTokenCn)
+                .log("Generating SAML token for user")
             val client = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME)!!
 
             val user = userLookupService.lookupUserByCn(userWithTokenCn)
