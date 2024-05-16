@@ -25,6 +25,7 @@ class UserAuditTrailRepo {
         USER_ENABLE_BY_ADMIN("user_enable_by_admin"),
         USER_DISABLE_BY_ADMIN("user_disable_by_admin"),
         IMPERSONATE_USER("impersonate_user"),
+        API_TOKEN_CREATE("create_api_token"),
         ;
 
         companion object {

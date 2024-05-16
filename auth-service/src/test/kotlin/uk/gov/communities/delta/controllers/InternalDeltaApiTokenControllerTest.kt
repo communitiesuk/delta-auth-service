@@ -11,15 +11,14 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import org.junit.AfterClass
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
+import org.junit.*
 import uk.gov.communities.delta.auth.config.Client
 import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.controllers.internal.InternalDeltaApiTokenController
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -52,6 +51,25 @@ class InternalDeltaApiTokenControllerTest {
                 samlTokenService.generate(serviceClient.samlCredential, testUser, any(), any())
             }
             confirmVerified(tokenService)
+        }
+    }
+
+    @Test
+    fun testInvalidApiToken() = testSuspend {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.post("/internal/delta-api/validate") {
+                    headers {
+                        append(HttpHeaders.Accept, "application/json")
+                        append("Delta-Client", "${serviceClient.clientId}:${serviceClient.clientSecret}")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody("{\"token\": \"invalid_token\"}")
+                }
+            }
+        }.apply {
+            assertEquals("invalid_api_token", errorCode)
+            confirmVerified(samlTokenService)
         }
     }
 

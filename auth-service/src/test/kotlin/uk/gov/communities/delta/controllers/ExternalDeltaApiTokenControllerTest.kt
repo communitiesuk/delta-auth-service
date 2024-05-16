@@ -39,7 +39,7 @@ class ExternalDeltaApiTokenControllerTest {
                 tokenService.validateApiClientIdAndSecret(validClientId, validClientSecret)
             }
             coVerify(exactly = 1) {
-                tokenService.createAndStoreApiToken(testUser.cn, validClientId)
+                tokenService.createAndStoreApiToken(testUser.cn, validClientId, any())
             }
             confirmVerified(tokenService)
         }
@@ -62,7 +62,7 @@ class ExternalDeltaApiTokenControllerTest {
             }
         }.apply {
             assertEquals("invalid_grant_type", errorCode)
-            coVerify(exactly = 0) { tokenService.createAndStoreApiToken(any(), any()) }
+            coVerify(exactly = 0) { tokenService.createAndStoreApiToken(any(), any(), any()) }
         }
     }
 
@@ -82,8 +82,8 @@ class ExternalDeltaApiTokenControllerTest {
                 }
             }
         }.apply {
-            assertEquals("invalid_credentials", errorCode)
-            coVerify(exactly = 0) { tokenService.createAndStoreApiToken(any(), any()) }
+            assertEquals("invalid_grant", errorCode)
+            coVerify(exactly = 0) { tokenService.createAndStoreApiToken(any(), any(), any()) }
         }
     }
 
@@ -103,8 +103,8 @@ class ExternalDeltaApiTokenControllerTest {
                 }
             }
         }.apply {
-            assertEquals("invalid_credentials", errorCode)
-            coVerify(exactly = 0) { tokenService.createAndStoreApiToken(any(), any()) }
+            assertEquals("invalid_client", errorCode)
+            coVerify(exactly = 0) { tokenService.createAndStoreApiToken(any(), any(), any()) }
         }
     }
 
@@ -116,7 +116,7 @@ class ExternalDeltaApiTokenControllerTest {
             testUser)
         coEvery { tokenService.validateApiClientIdAndSecret(any(), any()) } returns false
         coEvery { tokenService.validateApiClientIdAndSecret(validClientId, validClientSecret) } returns true
-        coEvery { tokenService.createAndStoreApiToken(any(), any()) } returns "newApiToken"
+        coEvery { tokenService.createAndStoreApiToken(any(), any(), any()) } returns "newApiToken"
     }
 
     companion object {

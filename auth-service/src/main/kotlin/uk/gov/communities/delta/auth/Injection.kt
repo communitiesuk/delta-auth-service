@@ -77,7 +77,6 @@ class Injection(
     val dbPool = DbPool(databaseConfig)
 
     private val samlTokenService = SAMLTokenService()
-    private val deltaApiTokenService = DeltaApiTokenService(dbPool, TimeSource.System)
     private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
     private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
 
@@ -101,6 +100,8 @@ class Injection(
         ::MemberOfToDeltaRolesMapper
     )
     private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig)
+
+    private val deltaApiTokenService = DeltaApiTokenService(dbPool, TimeSource.System, userLookupService, userAuditService)
 
     private val emailService = EmailService(
         emailConfig,

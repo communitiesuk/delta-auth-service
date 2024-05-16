@@ -34,24 +34,29 @@ class ExternalDeltaApiTokenController(
 
         if (requestPayload.grant_type != "password") {
             throw ApiError(
-                HttpStatusCode.Forbidden,
+                HttpStatusCode.BadRequest,
                 "invalid_grant_type",
                 "grant_type must be password",
             )
         }
 
-        val loginResult = ldapService.ldapLogin(requestPayload.username, requestPayload.password)
-
-        if (loginResult !is IADLdapLoginService.LdapLoginSuccess ||
-            !tokenService.validateApiClientIdAndSecret(requestPayload.client_id, requestPayload.client_secret)) {
+        if (!tokenService.validateApiClientIdAndSecret(requestPayload.client_id, requestPayload.client_secret)) {
             throw ApiError(
-                HttpStatusCode.Forbidden,
-                "invalid_credentials",
-                "user or client credentials not recognised",
+                HttpStatusCode.Unauthorized,
+                "invalid_client",
+                "client credentials not recognised",
             )
         }
 
-        val apiToken = tokenService.createAndStoreApiToken(requestPayload.username, requestPayload.client_id)
+        if (ldapService.ldapLogin(requestPayload.username, requestPayload.password) !is IADLdapLoginService.LdapLoginSuccess) {
+            throw ApiError(
+                HttpStatusCode.Unauthorized,
+                "invalid_grant",
+                "user credentials not recognised",
+            )
+        }
+
+        val apiToken = tokenService.createAndStoreApiToken(requestPayload.username, requestPayload.client_id, call)
         return call.respond(mapOf(
             "access_token" to apiToken,
             "expires_in" to (DeltaApiTokenService.API_TOKEN_EXPIRY_HOURS * 3600).toString(),

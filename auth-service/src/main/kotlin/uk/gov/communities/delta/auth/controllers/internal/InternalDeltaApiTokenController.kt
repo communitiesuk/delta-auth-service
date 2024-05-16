@@ -12,8 +12,6 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.ClientPrincipal
-import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
-import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.DeltaApiTokenService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import java.time.Instant
@@ -44,7 +42,7 @@ class InternalDeltaApiTokenController(
             logger.atInfo()
                 .addKeyValue("userCn", userWithTokenCn)
                 .log("Generating SAML token for user")
-            val client = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME)!!
+            val systemClient = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME)!!
 
             val user = userLookupService.lookupUserByCn(userWithTokenCn)
 
@@ -52,24 +50,35 @@ class InternalDeltaApiTokenController(
             val validTo = validFrom.plus(GenerateSAMLTokenController.SAML_TOKEN_EXPIRY_HOURS, ChronoUnit.HOURS)
                 .truncatedTo(ChronoUnit.SECONDS)
 
-            val token = samlTokenService.generate(client.client.samlCredential, user, validFrom, validTo)
+            val token = samlTokenService.generate(systemClient.client.samlCredential, user, validFrom, validTo)
 
             call.respond(
-                GenerateSAMLTokenController.GenerateSAMLTokenResponse(
+                GenerateApiSAMLTokenResponse(
                     username = user.cn,
                     token = token,
                     expiry = DateTimeFormatter.ISO_INSTANT.format(validTo),
+                    clientId = "ff",
+                    userGuid = user.javaUUIDObjectGuid,
                 )
             )
         }
         else {
             throw ApiError(
-                HttpStatusCode.Forbidden,
+                HttpStatusCode.Unauthorized,
                 "invalid_api_token",
                 "the api token is not valid or has expired",
             )
         }
     }
+
+    @Serializable
+    data class GenerateApiSAMLTokenResponse(
+        val username: String,
+        val token: String,
+        val expiry: String,
+        val clientId: String,
+        val userGuid: String?,
+    )
 
     @Serializable
     data class ApiValidationRequest(
