@@ -26,7 +26,7 @@ data class OAuthSession(
     val traceId: String,
     val isSso: Boolean,
     val impersonatedUserCn: String? = null,
-    val impersonatedUserGUID: UUID?,
+    val impersonatedUserGUID: UUID? = null,
 ) : Principal {
     fun expired(timeSource: TimeSource) =
         createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
