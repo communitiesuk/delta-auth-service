@@ -41,7 +41,7 @@ class UserService(
             throw e
         }
         auditUserCreation(
-            adUser.cn,
+            user.cn,
             user.getUUID(),
             ssoClient,
             triggeringAdminSession,
@@ -254,7 +254,7 @@ class UserService(
                 try {
                     it.createSubcontext(adUser.dn, attributes)
                     val user = ldapRepository.mapUserFromContext(it, adUser.dn)
-                    logger.atInfo().addKeyValue("UserDN", adUser.dn)
+                    logger.atInfo().addKeyValue("UserDN", user.dn)
                         .log("{} user created with GUID {}", if (enabled) "Enabled" else "Disabled", user.getUUID())
                     return@useServiceUserBind user
                 } catch (e: Exception) {
@@ -263,12 +263,6 @@ class UserService(
                 }
             }
         }
-    }
-
-    private fun getUserGUID(ctx: DirContext, userDN: String): UUID {
-        val attributes = ctx.getAttributes(userDN, arrayOf("objectGUID"))
-        val guidString = attributes.getNewModeObjectGuidString()
-        return UUID.fromString(guidString)
     }
 
     private suspend fun updateUserOnAD(
@@ -464,10 +458,6 @@ class UserService(
 
         private fun cnToPrincipalName(cn: String): String {
             return String.format("%s@%s", cn, ldapConfig.domainRealm)
-        }
-
-        fun getDisplayName(): String {
-            return "${this.givenName} ${this.sn}"
         }
 
         companion object {

@@ -51,8 +51,8 @@ class RegistrationService(
         val user: LdapUser
         try {
             user = userService.createUser(adUser, ssoClient, call.principal<OAuthSession>(), call, azureObjectId)
-            addUserToDefaultGroups(adUser, user.getUUID(), call)
-            addUserToOrganisations(adUser, user.getUUID(), organisations, call)
+            addUserToDefaultGroups(user, call)
+            addUserToOrganisations(user, organisations, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             return RegistrationFailure(e)
@@ -62,20 +62,20 @@ class RegistrationService(
         return if (ssoClient?.required == true)
             SSOUserCreated(user.cn, user.getUUID())
         else
-            UserCreated(user, setPasswordTokenService.createToken(adUser.cn, user.getUUID()))
+            UserCreated(user, setPasswordTokenService.createToken(user.cn, user.getUUID()))
     }
 
-    private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser, userGUID: UUID, call: ApplicationCall) {
+    private suspend fun addUserToDefaultGroups(user: LdapUser, call: ApplicationCall) {
         try {
             groupService.addUserToGroup(
-                adUser, userGUID, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null, userLookupService,
+                user, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null, userLookupService,
             )
             groupService.addUserToGroup(
-                adUser, userGUID, DeltaConfig.DATAMART_DELTA_USER, call, null, userLookupService
+                user, DeltaConfig.DATAMART_DELTA_USER, call, null, userLookupService
             )
-            logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to default groups")
+            logger.atInfo().addKeyValue("UserDN", user.dn).log("User added to default groups")
         } catch (e: Exception) {
-            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to default groups", e)
+            logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to default groups", e)
             throw e
         }
     }
@@ -85,34 +85,32 @@ class RegistrationService(
     }
 
     private suspend fun addUserToOrganisations(
-        adUser: UserService.ADUser,
-        userGUID: UUID,
+        user: LdapUser,
         organisations: List<Organisation>,
         call: ApplicationCall
     ) {
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("Adding user to domain organisations")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("Adding user to domain organisations")
         try {
             organisations.forEach {
                 if (!it.retired) {
                     groupService.addUserToGroup(
-                        adUser,
-                        userGUID,
+                        user,
                         organisationUserGroup(it.code),
                         call,
                         null,
                         userLookupService,
                     )
-                    logger.atInfo().addKeyValue("UserDN", adUser.dn)
+                    logger.atInfo().addKeyValue("UserDN", user.dn)
                         .log("Added user to domain organisation with code {}", it.code)
                 } else {
                     logger.info("Organisation {} is retired, with retirement date: {}", it.code, it.retirementDate)
                 }
             }
         } catch (e: Exception) {
-            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to domain organisations", e)
+            logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to domain organisations", e)
             throw e
         }
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to domain organisations")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("User added to domain organisations")
     }
 
     private fun getEmailContacts(user: LdapUser): EmailContacts {

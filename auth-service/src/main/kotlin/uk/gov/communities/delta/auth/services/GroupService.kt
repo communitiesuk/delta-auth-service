@@ -6,6 +6,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import java.util.*
 import javax.naming.NameNotFoundException
 import javax.naming.directory.*
@@ -52,14 +53,13 @@ class GroupService(
     }
 
     suspend fun addUserToGroup(
-        adUser: UserService.ADUser,
-        userGUID: UUID,
+        user: LdapUser,
         groupCN: String,
         call: ApplicationCall,
         triggeringAdminSession: OAuthSession?,
         userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
     ) {
-        addUserToGroup(adUser.cn, userGUID, adUser.dn, groupCN, call, triggeringAdminSession, userLookupService)
+        addUserToGroup(user.cn, user.getUUID(), user.dn, groupCN, call, triggeringAdminSession, userLookupService)
     }
 
     suspend fun addUserToGroup(

@@ -101,13 +101,13 @@ class AdminUserCreationController(
                 "An error occurred while creating the user, please try again"
             )
         }
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully created")
         try {
             userPermissions.getADGroupCNs().forEach {
-                groupService.addUserToGroup(adUser, user.getUUID(), it, call, session, userLookupService)
+                groupService.addUserToGroup(user, it, call, session, userLookupService)
             }
         } catch (e: Exception) {
-            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to groups", e)
+            logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to groups", e)
             throw ApiError(
                 HttpStatusCode.InternalServerError,
                 "error_adding_user_to_groups",
@@ -115,21 +115,21 @@ class AdminUserCreationController(
                 "The user was created but the details were not saved correctly, please find and edit the user to have the desired details."
             )
         }
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully added to all desired groups")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully added to all desired groups")
 
         if (ssoClient?.required == true) {
-            logger.atInfo().addKeyValue("UserDN", adUser.dn).log("SSO user created by admin, no email sent")
+            logger.atInfo().addKeyValue("UserDN", user.dn).log("SSO user created by admin, no email sent")
             return call.respond(mapOf("message" to "User created. Single Sign On (SSO) is enabled for this user based on their email domain. The account has been activated automatically, no email has been sent."))
         }
         try {
             emailService.sendSetPasswordEmail(
-                adUser.givenName,
-                setPasswordTokenService.createToken(adUser.cn, user.getUUID()),
-                adUser.cn,
+                user.firstName,
+                setPasswordTokenService.createToken(user.cn, user.getUUID()),
+                user.cn,
                 user.getUUID(),
                 session,
                 userLookupService,
-                EmailContacts(adUser.mail, adUser.getDisplayName(), emailConfig),
+                EmailContacts(user.email!!, user.fullName, emailConfig),
                 call
             )
         } catch (e: Exception) {
