@@ -57,6 +57,9 @@ class FetchUserAuditController(
                 "Page size must be positive"
             )
         }
+        // TODO DT-1022 - send GUID instead of CN
+        // TODO DT-976-2 - get GUID instead of CN (use Parameters.kt)
+        // TODO DT-976-2 - use GUID to get audit instead of cn
         val targetUserCn = parameters.getOrFail("cn")
         checkPermissions(session, targetUserCn)
 
@@ -153,6 +156,7 @@ class FetchUserAuditController(
     }
 
     private suspend fun checkPermissions(session: OAuthSession, targetUserCn: String) {
+        // TODO DT-976-2 - use GUID instead
         val callingUser = userLookupService.lookupCurrentUser(session)
 
         if (!userHasPermissionToReadAuditTrail(callingUser, targetUserCn)) {
