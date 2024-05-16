@@ -62,7 +62,7 @@ class EditRolesController(
         groupCNsToRemoveFilteredForMembership
             .forEach {
                 groupService.removeUserFromGroup(
-                    callingUser.cn, callingUser.getUUID(), callingUser.dn, it, call, null, userLookupService,
+                    callingUser, it, call, null, userLookupService,
                 )
             }
 

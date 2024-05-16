@@ -67,9 +67,7 @@ class EditOrganisationsController(
             for (group in callingUser.memberOfCNs) {
                 if (group.endsWith("-$org")) {
                     groupService.removeUserFromGroup(
-                        callingUser.cn,
-                        callingUser.getUUID(),
-                        callingUser.dn,
+                        callingUser,
                         group,
                         call,
                         null,

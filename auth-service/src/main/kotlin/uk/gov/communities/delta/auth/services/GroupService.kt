@@ -86,6 +86,16 @@ class GroupService(
     }
 
     suspend fun removeUserFromGroup(
+        user: LdapUser,
+        groupCN: String,
+        call: ApplicationCall,
+        triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
+    ) {
+        removeUserFromGroup(user.cn, user.getUUID(), user.dn, groupCN, call, triggeringAdminSession, userLookupService)
+    }
+
+    private suspend fun removeUserFromGroup(
         userCN: String,
         userGUID: UUID,
         userDN: String,

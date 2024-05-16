@@ -119,9 +119,7 @@ class EditAccessGroupsController(
             for (groupName in targetUser.memberOfCNs) {
                 if (groupName.startsWith(targetGroupADName)) {
                     groupService.removeUserFromGroup(
-                        targetUser.cn,
-                        targetUser.getUUID(),
-                        targetUser.dn,
+                        targetUser,
                         groupName,
                         call,
                         session,
@@ -370,9 +368,7 @@ class EditAccessGroupsController(
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.removeUserFromGroup(
-                    user.cn,
-                    user.getUUID(),
-                    user.dn,
+                    user,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
                     null,

@@ -76,7 +76,7 @@ class AdminEditUserController(
             groupService.addUserToGroup(userToUpdate.cn, userToUpdate.getUUID(), userToUpdate.dn, it, call, session, userLookupService)
         }
         groupsToRemoveFromUser.forEach {
-            groupService.removeUserFromGroup(userToUpdate.cn, userToUpdate.getUUID(), userToUpdate.dn, it, call, session, userLookupService)
+            groupService.removeUserFromGroup(userToUpdate, it, call, session, userLookupService)
         }
 
         logger.atInfo().log("User ${userToUpdate.getUUID()} successfully updated")
