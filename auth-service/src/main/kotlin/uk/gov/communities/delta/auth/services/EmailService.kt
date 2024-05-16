@@ -62,6 +62,7 @@ class EmailService(
         user: LdapUser,
         token: String,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
         call: ApplicationCall
     ) {
         sendSetPasswordEmail(
@@ -70,6 +71,7 @@ class EmailService(
             user.cn,
             user.getUUID(),
             triggeringAdminSession,
+            userLookupService,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call
         )
@@ -81,6 +83,7 @@ class EmailService(
         userCN: String,
         userGUID: UUID,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -102,7 +105,7 @@ class EmailService(
             userCN,
             userGUID,
             triggeringAdminSession.userCn,
-            triggeringAdminSession.userGUID,
+            triggeringAdminSession.getUserGUID(userLookupService),
             call
         )
         else userAuditService.setPasswordEmailAudit(userCN, userGUID, call)
@@ -202,6 +205,7 @@ class EmailService(
         user: LdapUser,
         token: String,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
         call: ApplicationCall
     ) {
         sendResetPasswordEmail(
@@ -210,6 +214,7 @@ class EmailService(
             user.cn,
             user.getUUID(),
             triggeringAdminSession,
+            userLookupService,
             EmailContacts(user.email!!, user.fullName, emailConfig),
             call,
         )
@@ -221,6 +226,7 @@ class EmailService(
         userCN: String,
         userGUID: UUID,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
         contacts: EmailContacts,
         call: ApplicationCall,
     ) {
@@ -242,7 +248,7 @@ class EmailService(
             userCN,
             userGUID,
             triggeringAdminSession.userCn,
-            triggeringAdminSession.userGUID,
+            triggeringAdminSession.getUserGUID(userLookupService),
             call
         )
         else userAuditService.resetPasswordEmailAudit(userCN, userGUID, call)

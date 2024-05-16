@@ -10,9 +10,9 @@ import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
-import java.util.*
 
 class AdminUserCreationController(
     private val ldapConfig: LDAPConfig,
@@ -48,15 +48,17 @@ class AdminUserCreationController(
             ssoClient,
         )
 
-        if (userLookupService.userExists(adUser.cn)) {
-            logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
-                .log("User being made by admin already exists")
-            throw ApiError(
-                HttpStatusCode.Conflict,
-                "user_already_exists",
-                "User already exists upon creation by admin",
-                "A user with this username already exists, you can edit that user via the users page"
-            )
+        when (userLookupService.userIfUserWithEmailExists(adUser.mail)) {
+            is LdapUser -> {
+                logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
+                    .log("User being made by admin already exists")
+                throw ApiError(
+                    HttpStatusCode.Conflict,
+                    "user_already_exists",
+                    "User already exists upon creation by admin",
+                    "A user with this username already exists, you can edit that user via the users page"
+                )
+            }
         }
         if (!emailAddressChecker.hasValidFormat(adUser.mail)) {
             logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
@@ -87,9 +89,9 @@ class AdminUserCreationController(
             )
         }
 
-        val userGUID: UUID
+        val user: LdapUser
         try {
-            userGUID = userService.createUser(adUser, ssoClient, session, call)
+            user = userService.createUser(adUser, ssoClient, session, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             throw ApiError(
@@ -102,7 +104,7 @@ class AdminUserCreationController(
         logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
         try {
             userPermissions.getADGroupCNs().forEach {
-                groupService.addUserToGroup(adUser, userGUID, it, call, session)
+                groupService.addUserToGroup(adUser, user.getUUID(), it, call, session, userLookupService)
             }
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to groups", e)
@@ -122,10 +124,11 @@ class AdminUserCreationController(
         try {
             emailService.sendSetPasswordEmail(
                 adUser.givenName,
-                setPasswordTokenService.createToken(adUser.cn),
+                setPasswordTokenService.createToken(adUser.cn, user.getUUID()),
                 adUser.cn,
-                userGUID,
+                user.getUUID(),
                 session,
+                userLookupService,
                 EmailContacts(adUser.mail, adUser.getDisplayName(), emailConfig),
                 call
             )

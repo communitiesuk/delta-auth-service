@@ -3,15 +3,13 @@ package uk.gov.communities.delta.auth.controllers.internal
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
-import io.ktor.server.util.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig.Companion.VALID_USERNAME_REGEX
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
 import uk.gov.communities.delta.auth.utils.randomBase64
-import javax.naming.NameNotFoundException
 
 class AdminEnableDisableUserController(
     private val ssoConfig: AzureADSSOConfig,
@@ -28,7 +26,12 @@ class AdminEnableDisableUserController(
     suspend fun enableUser(call: ApplicationCall) {
         val session = getSessionIfUserHasPermittedRole(allowedRoles, call)
 
-        val user = findUserFromCallParameter(call)
+        val user = getUserFromCallParameters(
+            call.parameters,
+            userLookupService,
+            "Something went wrong enabling the user, please try again",
+            "enable_user"
+        )
 
         if (user.accountEnabled) {
             return call.respond(mapOf("message" to "Account already enabled"))
@@ -39,7 +42,8 @@ class AdminEnableDisableUserController(
                 logger.atInfo().addKeyValue("targetUserCN", user.cn)
                     .log("Setting random password and enabling SSO user")
                 userService.setPasswordAndEnable(user.dn, randomBase64(18))
-                auditService.userEnableAudit(user.cn, user.getUUID(), session.userCn, session.userGUID, call)
+                val sessionUserGUID = session.getUserGUID(userLookupService)
+                auditService.userEnableAudit(user.cn, user.getUUID(), session.userCn, sessionUserGUID, call)
                 return call.respond(mapOf("message" to "User ${user.cn} enabled"))
             } else {
                 throw ApiError(
@@ -53,7 +57,13 @@ class AdminEnableDisableUserController(
 
         logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Enabling user")
         userService.enableAccountAndNotifications(user.dn)
-        auditService.userEnableAudit(user.cn, user.getUUID(), session.userCn, session.userGUID, call)
+        auditService.userEnableAudit(
+            user.cn,
+            user.getUUID(),
+            session.userCn,
+            session.getUserGUID(userLookupService),
+            call
+        )
 
         return call.respond(mapOf("message" to "User ${user.cn} enabled"))
     }
@@ -62,7 +72,12 @@ class AdminEnableDisableUserController(
     suspend fun disableUser(call: ApplicationCall) {
         val session = getSessionIfUserHasPermittedRole(allowedRoles, call)
 
-        val user = findUserFromCallParameter(call)
+        val user = getUserFromCallParameters(
+            call.parameters,
+            userLookupService,
+            "Something went wrong disabling the user, please try again",
+            "disable_user"
+        )
 
         if (!user.accountEnabled) {
             return call.respond(mapOf("message" to "Account already disabled"))
@@ -70,24 +85,15 @@ class AdminEnableDisableUserController(
 
         logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Disabling user")
         userService.disableAccountAndNotifications(user.dn)
-        auditService.userDisableAudit(user.cn, user.getUUID(), session.userCn, session.userGUID, call)
+        auditService.userDisableAudit(
+            user.cn, user.getUUID(), session.userCn,
+            session.getUserGUID(userLookupService),
+            call
+        )
         // Clear any set password tokens so that they can't re-enable their account themselves
         setPasswordTokenService.clearTokenForUserCn(user.cn)
 
         return call.respond(mapOf("message" to "User ${user.cn} disabled"))
-    }
-
-    private suspend fun findUserFromCallParameter(call: ApplicationCall): LdapUser {
-        val userCn = call.parameters.getOrFail("userCn")
-        if (!VALID_USERNAME_REGEX.matches(userCn)) {
-            throw ApiError(HttpStatusCode.BadRequest, "invalid_user_cn", "Invalid user cn $userCn")
-        }
-
-        return try {
-            userLookupService.lookupUserByCn(userCn)
-        } catch (e: NameNotFoundException) {
-            throw ApiError(HttpStatusCode.NotFound, "user_not_found", "User not found")
-        }
     }
 
     private fun LdapUser.isSSORequiredUser(): Boolean {

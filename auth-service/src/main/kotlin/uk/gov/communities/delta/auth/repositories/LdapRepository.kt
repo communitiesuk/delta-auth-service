@@ -1,11 +1,13 @@
 package uk.gov.communities.delta.auth.repositories
 
+import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDSearchString
 import uk.gov.communities.delta.auth.utils.toGUIDString
 import java.lang.Integer.parseInt
@@ -29,6 +31,8 @@ class LdapRepository(
     enum class ObjectGUIDMode {
         OLD_MANGLED, NEW_JAVA_UUID_STRING;
     }
+
+    class NoUserException(errorMessage: String) : ApiError(HttpStatusCode.BadRequest, "no_user", errorMessage)
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
@@ -64,6 +68,7 @@ class LdapRepository(
 
     private val attributeNames = arrayOf(
         "cn",
+        "distinguishedName",
         "memberOf",
         "mail",
         "unixHomeDirectory", // Delta TOTP secret
@@ -83,6 +88,8 @@ class LdapRepository(
 
     private fun getUserFromAttributes(attributes: Attributes): LdapUser {
         val cn = attributes.get("cn")?.get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
+        val dn = attributes.get("distinguishedName").get() as String?
+            ?: throw InvalidLdapUserException("No value for attribute dn")
         val email = attributes.get("mail")?.get() as String?
         val totpSecret = attributes.get("unixHomeDirectory")?.get() as String?
         val firstName = attributes.get("givenName")?.get() as String? ?: ""
@@ -111,7 +118,7 @@ class LdapRepository(
             match?.groups?.get(1)?.value
         }
         return LdapUser(
-            dn = ldapConfig.deltaUserDnFormat.format(cn), // TODO - use fetched version?
+            dn = dn,
             cn = cn,
             memberOfCNs = memberOfGroupCNs,
             email = email,
@@ -152,15 +159,18 @@ class LdapRepository(
         val adGUIDString = userGUID.toActiveDirectoryGUIDSearchString()
         val filter = "(objectGUID=$adGUIDString)"
         val searchResults = ctx.search(searchDn, filter, searchControls())
-        // TODO - search in try catch?
-        val attributes = try {
+        val attributes = if (searchResults.hasMore()) {
             searchResults.next().attributes
-        } catch (ex: NoSuchElementException) {
-            logger.atError().log("No user found with GUID $userGUID") // TODO - check format of log
-            throw ex
+        } else {
+            logger.atError().log("Couldn't find user with GUID $userGUID")
+            throw NoUserException("Couldn't find user with GUID $userGUID")
         }
-        // TODO - check there wasn't another user found?
-        return getUserFromAttributes(attributes)
+        return if (searchResults.hasMore()) {
+            logger.atError().log("Multiple users found with GUID $userGUID")
+            throw Exception("Multiple users found on GUID lookup")
+        } else {
+            getUserFromAttributes(attributes)
+        }
     }
 
     @Suppress("UNCHECKED_CAST")

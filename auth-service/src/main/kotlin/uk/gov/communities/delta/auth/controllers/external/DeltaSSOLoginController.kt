@@ -21,13 +21,13 @@ import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.HttpNotFound404PageException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
+import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import uk.gov.communities.delta.auth.utils.emailToDomain
-import javax.naming.NameNotFoundException
 
 /*
  * Authenticating users via Azure AD
@@ -157,14 +157,13 @@ class DeltaSSOLoginController(
     }
 
     private suspend fun lookupUserInAd(email: String): LdapUser? {
-        val cn = email.replace('@', '!')
         return try {
-            ldapLookupService.lookupUserByCn(cn)
-        } catch (e: NameNotFoundException) {
-            logger.info("User not found in Active Directory {}", keyValue("username", cn), e)
+            ldapLookupService.lookupUserByEmail(email)
+        } catch (e: LdapRepository.NoUserException) {
+            logger.info("User not found in Active Directory {}", keyValue("email", email), e)
             null
         } catch (e: Exception) {
-            logger.error("Failed to lookup user in AD after OAuth login {}", keyValue("username", cn), e)
+            logger.error("Failed to lookup user in AD after OAuth login {}", keyValue("email", email), e)
             throw e
         }
     }

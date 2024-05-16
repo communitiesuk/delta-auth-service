@@ -41,7 +41,8 @@ data class LDAPConfig(
         )
 
         val VALID_EMAIL_REGEX = Regex("^[\\w\\-+.']+@([\\w\\-']+\\.)+[\\w\\-]{2,4}$")
-        val VALID_USERNAME_REGEX = Regex("^[\\w\\-+.!']+$")
+        val VALID_USER_CN_REGEX = Regex("^[\\w\\-+.!']+$")
+        val VALID_USER_GUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
         const val DATAMART_DELTA_PREFIX = "datamart-delta-"
 
         fun emailToCN(email: String): String {

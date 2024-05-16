@@ -19,16 +19,21 @@ import kotlin.time.Duration.Companion.hours
 data class OAuthSession(
     val id: Int, // Our internal database id, no relation to the value of the SESSIONID cookie in Delta, or sessionId from Delta's logs
     val userCn: String,
-    val userGUID: UUID,
+    val userGUID: UUID?, // TODO DT-976-2 - make this not nullable
     val client: DeltaLoginEnabledClient,
     val authToken: String,
     val createdAt: Instant,
     val traceId: String,
     val isSso: Boolean,
     val impersonatedUserCn: String? = null,
+    val impersonatedUserGUID: UUID?,
 ) : Principal {
     fun expired(timeSource: TimeSource) =
         createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
+
+    suspend fun getUserGUID(userLookupService: UserLookupService): UUID {
+        return this.userGUID ?: userLookupService.lookupUserByCn(this.userCn).getUUID() // TODO DT-976-2 - no longer needed
+    }
 }
 
 interface IOAuthSessionService {
@@ -92,16 +97,18 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
                 traceId = authCode.traceId,
                 isSso = authCode.isSso,
                 impersonatedUserCn = null,
+                impersonatedUserGUID = null,
             )
         }
     }
 
     @Blocking
-    fun updateWithImpersonatedCn(sessionId: Int, impersonatedUserCn: String) {
+    fun updateWithImpersonatedCn(sessionId: Int, impersonatedUserCn: String, impersonatedUserGUID: UUID?) {
         dbPool.useConnectionBlocking("impersonate_user") {
-            val stmt = it.prepareStatement("UPDATE delta_session SET impersonated_user_cn = ? WHERE id = ?")
+            val stmt = it.prepareStatement("UPDATE delta_session SET impersonated_user_cn = ?, impersonated_user_guid = ? WHERE id = ?")
             stmt.setString(1, impersonatedUserCn)
-            stmt.setInt(2, sessionId)
+            stmt.setObject(2, impersonatedUserGUID)
+            stmt.setInt(3, sessionId)
             val result = stmt.executeUpdate()
             if (result != 1) throw Exception("Expected to change only 1 row but was $result")
             it.commit()
@@ -113,7 +120,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
         return dbPool.useConnectionBlocking("Read delta_session") {
             val stmt =
                 it.prepareStatement(
-                    "SELECT id, username, client_id, created_at, trace_id, is_sso, impersonated_user_cn, user_guid " +
+                    "SELECT id, username, client_id, created_at, trace_id, is_sso, impersonated_user_cn, user_guid, impersonated_user_guid " +
                             "FROM delta_session WHERE auth_token_hash = ? AND client_id = ?"
                 )
             stmt.setBytes(1, hashBase64String(authToken))
@@ -134,6 +141,7 @@ class OAuthSessionService(private val dbPool: DbPool, private val timeSource: Ti
                     traceId = result.getString("trace_id"),
                     isSso = result.getBoolean("is_sso"),
                     impersonatedUserCn = result.getString("impersonated_user_cn"),
+                    impersonatedUserGUID = result.getObject("impersonated_user_guid", UUID::class.java),
                 )
             }
         }

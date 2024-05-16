@@ -31,7 +31,7 @@ class EditOrganisationsController(
     // not in their domain, these will NOT be affected by this endpoint.
     private suspend fun updateUserOrganisations(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val (callingUser, callingUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
+        val (callingUser, callingUserRoles) = userLookupService.lookupCurrentUserAndLoadRoles(session)
         logger.atInfo().log("Updating organisations for user {}", session.userCn)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
@@ -57,7 +57,8 @@ class EditOrganisationsController(
                     callingUser.dn,
                     roleGroupString,
                     call,
-                    null
+                    null,
+                    userLookupService,
                 )
             }
         }
@@ -71,7 +72,8 @@ class EditOrganisationsController(
                         callingUser.dn,
                         group,
                         call,
-                        null
+                        null,
+                        userLookupService,
                     )
                 }
             }

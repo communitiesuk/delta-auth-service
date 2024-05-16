@@ -12,7 +12,7 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.getModificationItem
-import javax.naming.NameNotFoundException
+import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
 import javax.naming.directory.ModificationItem
 
 class AdminEditUserController(
@@ -35,22 +35,18 @@ class AdminEditUserController(
             arrayOf(DeltaSystemRole.ADMIN), call
         )
 
-        val cn = call.request.queryParameters["userCn"]!!
-        logger.atInfo().log("Request to update user {}", cn)
+        val userToUpdate = getUserFromCallParameters(
+            call.request.queryParameters,
+            userLookupService,
+            "Something went wrong, please try again",
+            "update_user_as_admin"
+        )
+        val userToUpdateRoles = userLookupService.loadUserRoles(userToUpdate).roles
 
-        val (userToUpdate, userToUpdateRoles) = try {
-            userLookupService.lookupUserByCNAndLoadRoles(cn)
-        } catch (e: NameNotFoundException) {
-            throw ApiError(
-                HttpStatusCode.BadRequest,
-                "no_existing_user",
-                "Attempting to update a user that doesn't exist",
-            )
-        }
-
+        logger.atInfo().log("Updating user with GUID ${userToUpdate.getUUID()}")
         val updatedDeltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
 
-        if (updatedDeltaUserDetailsRequest.id.replace("@", "!") != cn) throw ApiError(
+        if (updatedDeltaUserDetailsRequest.id.replace("@", "!") != userToUpdate.cn) throw ApiError(
             HttpStatusCode.BadRequest,
             "username_changed",
             "Username has been changed"
@@ -74,16 +70,16 @@ class AdminEditUserController(
         if (modifications.isEmpty() && groupsToAddToUser.isEmpty() && groupsToRemoveFromUser.isEmpty())
             return call.respond(mapOf("message" to "No changes were made to the user"))
 
-        if (modifications.isNotEmpty()) userService.updateUser(userToUpdate, modifications, session, call)
+        if (modifications.isNotEmpty()) userService.updateUser(userToUpdate, modifications, session, userLookupService, call)
 
         groupsToAddToUser.forEach {
-            groupService.addUserToGroup(userToUpdate.cn, userToUpdate.getUUID(), userToUpdate.dn, it, call, session)
+            groupService.addUserToGroup(userToUpdate.cn, userToUpdate.getUUID(), userToUpdate.dn, it, call, session, userLookupService)
         }
         groupsToRemoveFromUser.forEach {
-            groupService.removeUserFromGroup(userToUpdate.cn, userToUpdate.getUUID(), userToUpdate.dn, it, call, session)
+            groupService.removeUserFromGroup(userToUpdate.cn, userToUpdate.getUUID(), userToUpdate.dn, it, call, session, userLookupService)
         }
 
-        logger.atInfo().log("User $cn successfully updated")
+        logger.atInfo().log("User ${userToUpdate.getUUID()} successfully updated")
 
         accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
             AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(userToUpdate),

@@ -57,8 +57,9 @@ class GroupService(
         groupCN: String,
         call: ApplicationCall,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
     ) {
-        addUserToGroup(adUser.cn, userGUID, adUser.dn, groupCN, call, triggeringAdminSession)
+        addUserToGroup(adUser.cn, userGUID, adUser.dn, groupCN, call, triggeringAdminSession, userLookupService)
     }
 
     suspend fun addUserToGroup(
@@ -68,6 +69,7 @@ class GroupService(
         groupCN: String,
         call: ApplicationCall,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
     ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
@@ -80,7 +82,7 @@ class GroupService(
             it.modifyAttributes(groupDN, modificationItems)
             logger.atInfo().addKeyValue("UserDN", userDN).log("User added to group with dn {}", groupDN)
         }
-        auditAddingUserToGroup(userCN, userGUID, groupCN, triggeringAdminSession, call)
+        auditAddingUserToGroup(userCN, userGUID, groupCN, triggeringAdminSession, userLookupService, call)
     }
 
     suspend fun removeUserFromGroup(
@@ -90,6 +92,7 @@ class GroupService(
         groupCN: String,
         call: ApplicationCall,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
     ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
@@ -99,7 +102,7 @@ class GroupService(
             it.modifyAttributes(groupDN, modificationItems)
             logger.atInfo().addKeyValue("UserDN", userDN).log("User removed from group with dn {}", groupDN)
         }
-        auditRemovingUserFromGroup(userCN, userGUID, groupCN, triggeringAdminSession, call)
+        auditRemovingUserFromGroup(userCN, userGUID, groupCN, triggeringAdminSession, userLookupService, call)
     }
 
     private suspend fun auditAddingUserToGroup(
@@ -107,6 +110,7 @@ class GroupService(
         userGUID: UUID,
         groupCN: String,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
         call: ApplicationCall
     ) {
         val auditData = Json.encodeToString(AddedGroupAuditData(groupCN))
@@ -115,7 +119,7 @@ class GroupService(
                 userCN,
                 userGUID,
                 triggeringAdminSession.userCn,
-                triggeringAdminSession.userGUID,
+                triggeringAdminSession.getUserGUID(userLookupService),
                 call,
                 auditData
             )
@@ -128,6 +132,7 @@ class GroupService(
         userGUID: UUID,
         groupCN: String,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
         call: ApplicationCall
     ) {
         val auditData = Json.encodeToString(RemovedGroupAuditData(groupCN))
@@ -136,7 +141,7 @@ class GroupService(
                 userCN,
                 userGUID,
                 triggeringAdminSession.userCn,
-                triggeringAdminSession.userGUID,
+                triggeringAdminSession.getUserGUID(userLookupService),
                 call,
                 auditData
             )

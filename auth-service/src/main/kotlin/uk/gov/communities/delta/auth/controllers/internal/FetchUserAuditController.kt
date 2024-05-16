@@ -153,7 +153,7 @@ class FetchUserAuditController(
     }
 
     private suspend fun checkPermissions(session: OAuthSession, targetUserCn: String) {
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
 
         if (!userHasPermissionToReadAuditTrail(callingUser, targetUserCn)) {
             logger.atWarn()

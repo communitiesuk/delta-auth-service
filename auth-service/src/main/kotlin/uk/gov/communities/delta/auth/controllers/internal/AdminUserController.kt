@@ -28,7 +28,7 @@ open class AdminUserController(
         call: ApplicationCall
     ): Pair<OAuthSession, LdapUser> {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
         val roleCns = permittedRoles.map { it.adCn() }
 
         // Authenticate calling user

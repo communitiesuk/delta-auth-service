@@ -8,6 +8,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
 import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
+import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.repositories.getNewModeObjectGuidString
 import uk.gov.communities.delta.auth.utils.randomBase64
@@ -20,6 +21,7 @@ class UserService(
     private val userLookupService: UserLookupService,
     private val userAuditService: UserAuditService,
     private val ldapConfig: LDAPConfig,
+    private val ldapRepository: LdapRepository,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -30,9 +32,9 @@ class UserService(
         triggeringAdminSession: OAuthSession?,
         call: ApplicationCall,
         azureUserObjectId: String? = null,
-    ): UUID {
+    ): LdapUser {
         val attributes = getAttributes(adUser)
-        val userGUID = try {
+        val user = try {
             addUserToAD(adUser, attributes)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
@@ -40,19 +42,20 @@ class UserService(
         }
         auditUserCreation(
             adUser.cn,
-            userGUID,
+            user.getUUID(),
             ssoClient,
             triggeringAdminSession,
             call,
             getAuditData(attributes, ssoClient, azureUserObjectId),
         )
-        return userGUID
+        return user
     }
 
     suspend fun updateUser(
         ldapUser: LdapUser,
         modifications: Array<ModificationItem>,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService,
         call: ApplicationCall,
     ) {
         try {
@@ -61,7 +64,14 @@ class UserService(
             logger.atError().addKeyValue("UserDN", ldapUser.dn).log("Error updating user", e)
             throw e
         }
-        auditUserUpdate(ldapUser.cn, ldapUser.getUUID(), triggeringAdminSession, call, getAuditData(modifications))
+        auditUserUpdate(
+            ldapUser.cn,
+            ldapUser.getUUID(),
+            triggeringAdminSession,
+            userLookupService,
+            call,
+            getAuditData(modifications)
+        )
     }
 
     suspend fun updateEmail(
@@ -85,7 +95,7 @@ class UserService(
             throw e
         }
         val auditMap = mapOf("mail" to newEmail, "Dn" to newDn)
-        auditUserUpdate(ldapUser.cn, ldapUser.getUUID(), triggeringAdminSession, call, auditMap)
+        auditUserUpdate(ldapUser.cn, ldapUser.getUUID(), triggeringAdminSession, userLookupService, call, auditMap)
     }
 
     suspend fun updateNotificationStatus(
@@ -102,7 +112,7 @@ class UserService(
             logger.atInfo().addKeyValue("NewSt", newStatus).log("Notification status updated")
         }
         val auditMap = mapOf("st" to newStatus)
-        auditUserUpdate(ldapUser.cn, ldapUser.getUUID(), triggeringAdminSession, call, auditMap)
+        auditUserUpdate(ldapUser.cn, ldapUser.getUUID(), triggeringAdminSession, userLookupService, call, auditMap)
     }
 
     private suspend fun auditUserCreation(
@@ -120,7 +130,7 @@ class UserService(
                 userCN,
                 userGUID,
                 triggeringAdminSession.userCn,
-                triggeringAdminSession.userGUID,
+                triggeringAdminSession.getUserGUID(userLookupService),
                 call,
                 encodedAuditData
             )
@@ -128,7 +138,7 @@ class UserService(
                 userCN,
                 userGUID,
                 triggeringAdminSession.userCn,
-                triggeringAdminSession.userGUID,
+                triggeringAdminSession.getUserGUID(userLookupService),
                 call,
                 encodedAuditData
             )
@@ -144,6 +154,7 @@ class UserService(
         userCN: String,
         userGUID: UUID,
         triggeringAdminSession: OAuthSession?,
+        userLookupService: UserLookupService, // TODO DT-976-2 - remove and get from session
         call: ApplicationCall,
         auditData: Map<String, String>,
     ) {
@@ -153,7 +164,7 @@ class UserService(
                 userCN,
                 userGUID,
                 triggeringAdminSession.userCn,
-                triggeringAdminSession.userGUID,
+                triggeringAdminSession.getUserGUID(userLookupService),
                 call,
                 encodedAuditData
             )
@@ -234,7 +245,7 @@ class UserService(
         return attributes
     }
 
-    private suspend fun addUserToAD(adUser: ADUser, attributes: Attributes): UUID {
+    private suspend fun addUserToAD(adUser: ADUser, attributes: Attributes): LdapUser {
         val enabled = adUser.userAccountControl == ADUser.accountFlags(true)
         if (enabled && adUser.password == null) {
             throw Exception("Trying to create enabled user with no password")
@@ -242,10 +253,10 @@ class UserService(
             return ldapServiceUserBind.useServiceUserBind {
                 try {
                     it.createSubcontext(adUser.dn, attributes)
-                    val userGUID = getUserGUID(it, adUser.dn)
+                    val user = ldapRepository.mapUserFromContext(it, adUser.dn)
                     logger.atInfo().addKeyValue("UserDN", adUser.dn)
-                        .log("{} user created with GUID {}", if (enabled) "Enabled" else "Disabled", userGUID)
-                    return@useServiceUserBind userGUID
+                        .log("{} user created with GUID {}", if (enabled) "Enabled" else "Disabled", user.getUUID())
+                    return@useServiceUserBind user
                 } catch (e: Exception) {
                     logger.atError().addKeyValue("UserDN", adUser.dn).log("Problem creating user", e)
                     throw e
@@ -325,24 +336,24 @@ class UserService(
         }
     }
 
-    suspend fun resetPassword(userDN: String, password: String) {
+    suspend fun resetPassword(userGUID: UUID, password: String) {
         val modificationItems = arrayOf(
             ModificationItem(DirContext.REPLACE_ATTRIBUTE, ADUser.getPasswordAttribute(password)),
             // Unlock account if it is locked
             ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("lockoutTime", "0")),
         )
-        val accountEnabled = userLookupService.lookupUserByDN(userDN).accountEnabled
-        if (!accountEnabled) throw ResetPasswordException(
+        val user = userLookupService.lookupUserByGUID(userGUID)
+        if (!user.accountEnabled) throw ResetPasswordException(
             "disabled_user_on_password_reset",
-            "Trying to reset password for a disabled user $userDN",
+            "Trying to reset password for a disabled user ${user.dn}",
             "Your account is disabled, your password can not be reset. Please contact the service desk"
         )
         else ldapServiceUserBind.useServiceUserBind {
             try {
-                it.modifyAttributes(userDN, modificationItems)
-                logger.atInfo().addKeyValue("userDN", userDN).log("Password reset")
+                it.modifyAttributes(user.dn, modificationItems)
+                logger.atInfo().addKeyValue("userDN", user.dn).log("Password reset")
             } catch (e: Exception) {
-                logger.atError().addKeyValue("userDN", userDN).log("Error occurred on setting password", e)
+                logger.atError().addKeyValue("userDN", user.dn).log("Error occurred on setting password", e)
                 throw e
             }
         }
@@ -362,7 +373,7 @@ class UserService(
             throw e
         }
         val auditMap = mapOf("unixHomeDirectory" to "")
-        auditUserUpdate(userToReset.cn, userToReset.getUUID(), session, call, auditMap)
+        auditUserUpdate(userToReset.cn, userToReset.getUUID(), session, userLookupService, call, auditMap)
     }
 
     class ADUser {

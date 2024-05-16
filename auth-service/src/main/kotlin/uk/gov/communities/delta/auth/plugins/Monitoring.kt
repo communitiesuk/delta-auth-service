@@ -89,6 +89,7 @@ val addBearerSessionInfoToMDC = createRouteScopedPlugin("AddBearerSessionInfoToM
         val session = call.principal<OAuthSession>() ?: return@on proceed()
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
         mdcContextMap["username"] = session.userCn
+        // TODO DT-976-2 - once all sessions have a GUID log GUID instead of username
         mdcContextMap["oauthSession"] = session.id.toString()
         mdcContextMap["trace"] = session.traceId
         withContext(MDCContext(mdcContextMap)) {

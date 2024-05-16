@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.utils
 
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import java.nio.ByteBuffer
 import java.util.*
 import kotlin.text.HexFormat
@@ -31,7 +32,9 @@ fun UUID.toActiveDirectoryGUIDSearchString(): String {
 
 @OptIn(ExperimentalStdlibApi::class)
 fun String.toActiveDirectoryGUIDSearchString(): String {
-    // TODO - regex format check? (^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$)
+    if (LDAPConfig.VALID_USER_GUID_REGEX.matchEntire(this)==null){
+        throw IllegalArgumentException("GUID must have format 00112233-4455-6677-8899-aabbccddeeff")
+    }
     val hexBytesString = this.replace("-", "")
     val oldOrderBytes = hexBytesString.hexToByteArray()
 

@@ -90,7 +90,7 @@ class OAuthTokenController(
         withContext(Dispatchers.IO) {
             val authCode = authorizationCodeService.lookupAndInvalidate(code, client) ?: return@withContext null
             val session = oauthSessionService.create(authCode, client)
-            val user = userLookupService.lookupUserByCn(session.userCn)
+            val user = userLookupService.lookupCurrentUser(session)
             UserSession(session, user)
         }
 

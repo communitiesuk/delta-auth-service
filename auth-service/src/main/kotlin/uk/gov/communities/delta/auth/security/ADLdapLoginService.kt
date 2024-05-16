@@ -58,7 +58,7 @@ class ADLdapLoginService(
             return IADLdapLoginService.InvalidUsernameOrPassword
         }
 
-        if (!username.matches(LDAPConfig.VALID_USERNAME_REGEX)) {
+        if (!username.matches(LDAPConfig.VALID_USER_CN_REGEX)) {
             logger.atWarn().addKeyValue("username", username).log("Invalid username")
             return IADLdapLoginService.InvalidUsername
         }

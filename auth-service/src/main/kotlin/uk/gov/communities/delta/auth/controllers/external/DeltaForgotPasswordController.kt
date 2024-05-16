@@ -9,14 +9,13 @@ import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.deltaWebsiteLoginRoute
+import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.services.EmailService
 import uk.gov.communities.delta.auth.services.ResetPasswordTokenService
 import uk.gov.communities.delta.auth.services.SetPasswordTokenService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
-import javax.naming.NameNotFoundException
 
 class DeltaForgotPasswordController(
     private val deltaConfig: DeltaConfig,
@@ -71,13 +70,22 @@ class DeltaForgotPasswordController(
             )
         }
 
-        val userCN = LDAPConfig.emailToCN(emailAddress)
         try {
-            val user = userLookupService.lookupUserByCn(userCN)
-            if (!user.accountEnabled && setPasswordTokenService.passwordNeverSetForUserCN(userCN))
-                emailService.sendPasswordNeverSetEmail(user, setPasswordTokenService.createToken(user.cn), call)
-            else emailService.sendResetPasswordEmail(user, resetPasswordTokenService.createToken(user.cn), null, call)
-        } catch (e: NameNotFoundException) {
+            val user = userLookupService.lookupUserByEmail(emailAddress)
+            if (!user.accountEnabled && setPasswordTokenService.passwordNeverSetForUserCN(user.cn))
+                emailService.sendPasswordNeverSetEmail(
+                    user,
+                    setPasswordTokenService.createToken(user.cn, user.getUUID()),
+                    call
+                )
+            else emailService.sendResetPasswordEmail(
+                user,
+                resetPasswordTokenService.createToken(user.cn, user.getUUID()),
+                null,
+                userLookupService,
+                call
+            )
+        } catch (e: LdapRepository.NoUserException) {
             emailService.sendNoUserEmail(emailAddress)
         } catch (e: Exception) {
             logger.atError().addKeyValue("emailAddress", emailAddress)
