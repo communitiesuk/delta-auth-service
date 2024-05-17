@@ -59,30 +59,18 @@ class GroupService(
         triggeringAdminSession: OAuthSession?,
         userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
     ) {
-        addUserToGroup(user.cn, user.getUUID(), user.dn, groupCN, call, triggeringAdminSession, userLookupService)
-    }
-
-    suspend fun addUserToGroup(
-        userCN: String,
-        userGUID: UUID,
-        userDN: String,
-        groupCN: String,
-        call: ApplicationCall,
-        triggeringAdminSession: OAuthSession?,
-        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
-    ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
         if (!groupExists(groupDN)) {
             createGroup(groupCN)
         }
         ldapServiceUserBind.useServiceUserBind {
-            val member = BasicAttribute("member", userDN)
+            val member = BasicAttribute("member", user.dn)
             val modificationItems = arrayOf(ModificationItem(DirContext.ADD_ATTRIBUTE, member))
             it.modifyAttributes(groupDN, modificationItems)
-            logger.atInfo().addKeyValue("UserDN", userDN).log("User added to group with dn {}", groupDN)
+            logger.atInfo().addKeyValue("UserDN", user.dn).log("User added to group with dn {}", groupDN)
         }
-        auditAddingUserToGroup(userCN, userGUID, groupCN, triggeringAdminSession, userLookupService, call)
+        auditAddingUserToGroup(user.cn, user.getUUID(), groupCN, triggeringAdminSession, userLookupService, call)
     }
 
     suspend fun removeUserFromGroup(

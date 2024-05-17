@@ -51,15 +51,7 @@ class EditOrganisationsController(
         for (org in orgsToAdd) {
             for (role in callingUserRoles.systemRoles) {
                 val roleGroupString = role.role.adCn(org)
-                groupService.addUserToGroup(
-                    callingUser.cn,
-                    callingUser.getUUID(),
-                    callingUser.dn,
-                    roleGroupString,
-                    call,
-                    null,
-                    userLookupService,
-                )
+                groupService.addUserToGroup(callingUser, roleGroupString, call, null, userLookupService,)
             }
         }
 

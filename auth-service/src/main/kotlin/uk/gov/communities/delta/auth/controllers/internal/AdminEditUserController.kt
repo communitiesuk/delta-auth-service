@@ -73,7 +73,7 @@ class AdminEditUserController(
         if (modifications.isNotEmpty()) userService.updateUser(userToUpdate, modifications, session, userLookupService, call)
 
         groupsToAddToUser.forEach {
-            groupService.addUserToGroup(userToUpdate.cn, userToUpdate.getUUID(), userToUpdate.dn, it, call, session, userLookupService)
+            groupService.addUserToGroup(userToUpdate, it, call, session, userLookupService)
         }
         groupsToRemoveFromUser.forEach {
             groupService.removeUserFromGroup(userToUpdate, it, call, session, userLookupService)

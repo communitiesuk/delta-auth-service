@@ -53,9 +53,7 @@ class EditRolesController(
         logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAddFilteredForNonMembership")
         groupCNsToAddFilteredForNonMembership
             .forEach {
-                groupService.addUserToGroup(
-                    callingUser.cn, callingUser.getUUID(), callingUser.dn, it, call, null, userLookupService,
-                )
+                groupService.addUserToGroup(callingUser, it, call, null, userLookupService,)
             }
 
         logger.atInfo().log("Revoking user ${session.userCn} groups $groupCNsToRemoveFilteredForMembership")

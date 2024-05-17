@@ -53,15 +53,7 @@ class EditAccessGroupsController(
         if (targetUser.memberOfCNs.contains(targetGroupADName)) {
             logger.warn("User {} already member of access group {}", targetUser.cn, targetGroupADName)
         } else {
-            groupService.addUserToGroup(
-                targetUser.cn,
-                targetUser.getUUID(),
-                targetUser.dn,
-                targetGroupADName,
-                call,
-                session,
-                userLookupService,
-            )
+            groupService.addUserToGroup(targetUser, targetGroupADName, call, session, userLookupService,)
         }
         targetOrganisationCodes.forEach { orgCode ->
             val targetGroupOrgADName = getGroupOrgADName(targetGroupName, orgCode)
@@ -73,15 +65,7 @@ class EditAccessGroupsController(
                     orgCode,
                 )
             } else {
-                groupService.addUserToGroup(
-                    targetUser.cn,
-                    targetUser.getUUID(),
-                    targetUser.dn,
-                    targetGroupOrgADName,
-                    call,
-                    session,
-                    userLookupService,
-                )
+                groupService.addUserToGroup(targetUser, targetGroupOrgADName, call, session, userLookupService,)
                 if (orgCode == "dclg") {
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                         AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(targetUser),
@@ -345,9 +329,7 @@ class EditAccessGroupsController(
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.addUserToGroup(
-                    user.cn,
-                    user.getUUID(),
-                    user.dn,
+                    user,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
                     null,
