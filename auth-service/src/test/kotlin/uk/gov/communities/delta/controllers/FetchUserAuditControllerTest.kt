@@ -92,8 +92,8 @@ class FetchUserAuditControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals(
                 "{\"userAudit\":[{\"action\":\"sso_login\",\"timestamp\":\"1970-01-01T00:00:01Z\",\"userCN\":\"admin\"," +
-                        "\"editingUserCN\":null,\"requestId\":\"adminRequestId\"," +
-                        "\"actionData\":{\"azureObjectId\":\"oid\"}}]}",
+                    "\"editingUserCN\":null,\"requestId\":\"adminRequestId\"," +
+                    "\"actionData\":{\"azureObjectId\":\"oid\"}}],\"totalRecords\":50}",
                 bodyAsText()
             )
         }
@@ -128,8 +128,10 @@ class FetchUserAuditControllerTest {
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
+        private val userSession =
+            OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic
@@ -151,25 +153,31 @@ class FetchUserAuditControllerTest {
             coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
 
             // Audit info mocks
-            coEvery { userAuditService.getAuditForUser(regularUser.cn) } returns listOf(
-                UserAuditTrailRepo.UserAuditRow(
-                    UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL,
-                    Timestamp(0),
-                    regularUser.cn,
-                    adminUser.cn,
-                    "userRequestId",
-                    JsonObject(emptyMap())
-                )
+            val userAudit = UserAuditTrailRepo.UserAuditRow(
+                UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL,
+                Timestamp(0),
+                regularUser.cn,
+                adminUser.cn,
+                "userRequestId",
+                JsonObject(emptyMap())
             )
-            coEvery { userAuditService.getAuditForUser(adminUser.cn) } returns listOf(
-                UserAuditTrailRepo.UserAuditRow(
-                    UserAuditTrailRepo.AuditAction.SSO_LOGIN,
-                    Timestamp(1000),
-                    adminUser.cn,
-                    null,
-                    "adminRequestId",
-                    JsonObject(mapOf("azureObjectId" to JsonPrimitive("oid")))
-                )
+            coEvery { userAuditService.getAuditForUser(regularUser.cn) } returns listOf(userAudit)
+            coEvery { userAuditService.getAuditForUserPaged(regularUser.cn, 1, 100) } returns Pair(
+                listOf(userAudit),
+                50
+            )
+            val adminAudit = UserAuditTrailRepo.UserAuditRow(
+                UserAuditTrailRepo.AuditAction.SSO_LOGIN,
+                Timestamp(1000),
+                adminUser.cn,
+                null,
+                "adminRequestId",
+                JsonObject(mapOf("azureObjectId" to JsonPrimitive("oid")))
+            )
+            coEvery { userAuditService.getAuditForUser(adminUser.cn) } returns listOf(adminAudit)
+            coEvery { userAuditService.getAuditForUserPaged(adminUser.cn, 1, 100) } returns Pair(
+                listOf(adminAudit),
+                50
             )
 
             controller = FetchUserAuditController(

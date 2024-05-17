@@ -6,6 +6,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -24,34 +25,65 @@ class FetchUserAuditController(
     private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val pageSize = 100
+    private val defaultPageSize = 100
 
     fun route(route: Route) {
         route.get { call.getUserAuditJson() }
         route.get("/csv") { call.getUserAuditCSV() }
     }
 
+    @Serializable
+    data class UserAuditJsonResponse(val userAudit: List<JsonObject>, val totalRecords: Int)
+
     private suspend fun ApplicationCall.getUserAuditJson() {
         val session = principal<OAuthSession>()!!
-        val page = parameters["page"]?.toInt()
-        val audit = getUserAudit(session, parameters.getOrFail("cn"), page)
-        return respond(mapOf("userAudit" to audit.map {
-            JsonObject(
-                mapOf(
-                    "action" to JsonPrimitive(it.action.action),
-                    "timestamp" to JsonPrimitive(it.timestamp.toInstant().toString()),
-                    "userCN" to JsonPrimitive(it.userCn),
-                    "editingUserCN" to JsonPrimitive(it.editingUserCn),
-                    "requestId" to JsonPrimitive(it.requestId),
-                    "actionData" to it.actionData,
-                )
+        val page = (parameters["page"]?.toInt() ?: 1).apply {
+            if (this < 1) throw ApiError(
+                HttpStatusCode.BadRequest,
+                "bad_request",
+                "Page number must be positive"
             )
-        }))
+        }
+        val pageSize = (parameters["pageSize"]?.toInt() ?: defaultPageSize).apply {
+            if (this < 1) throw ApiError(
+                HttpStatusCode.BadRequest,
+                "bad_request",
+                "Page size must be positive"
+            )
+        }
+        val targetUserCn = parameters.getOrFail("cn")
+        checkPermissions(session, targetUserCn)
+
+        logger.atInfo().withSession(session).log("Audit trail page {} requested for {}", page, targetUserCn)
+        val (audit, totalRecords) = userAuditService.getAuditForUserPaged(targetUserCn, page, pageSize)
+
+        return respond(
+            UserAuditJsonResponse(
+                audit.map {
+                    JsonObject(
+                        mapOf(
+                            "action" to JsonPrimitive(it.action.action),
+                            "timestamp" to JsonPrimitive(it.timestamp.toInstant().toString()),
+                            "userCN" to JsonPrimitive(it.userCn),
+                            "editingUserCN" to JsonPrimitive(it.editingUserCn),
+                            "requestId" to JsonPrimitive(it.requestId),
+                            "actionData" to it.actionData,
+                        )
+                    )
+                },
+                totalRecords
+            )
+        )
     }
 
     private suspend fun ApplicationCall.getUserAuditCSV() {
         val session = principal<OAuthSession>()!!
-        val audit = getUserAudit(session, parameters.getOrFail("cn"))
+        val userCn = parameters.getOrFail("cn")
+        checkPermissions(session, userCn)
+
+        logger.atInfo().withSession(session).log("Audit trail page CSV requested for {}", userCn)
+
+        val audit = userAuditService.getAuditForUser(userCn)
         val csvString = buildCSVFromAudit(audit)
         respondBytes(csvString.toByteArray(), ContentType.Text.CSV)
     }
@@ -80,24 +112,13 @@ class FetchUserAuditController(
         return stringBuilder.toString()
     }
 
-    private suspend fun getUserAudit(
-        session: OAuthSession,
-        userCNParam: String,
-        page: Int? = null,
-    ): List<UserAuditTrailRepo.UserAuditRow> {
+    private suspend fun checkPermissions(session: OAuthSession, targetUserCn: String) {
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
 
-        if (!userHasPermissionToReadAuditTrail(callingUser, userCNParam)) {
+        if (!userHasPermissionToReadAuditTrail(callingUser, targetUserCn)) {
             logger.atWarn().withSession(session)
-                .log("User does not have permission to read audit log for {}", userCNParam)
-            throw AccessDeniedError("User does not have permission to read audit log for $userCNParam")
-        }
-
-        logger.atInfo().withSession(session).log("Audit trail requested for {}", userCNParam)
-        return if (page == null) {
-            userAuditService.getAuditForUser(userCNParam)
-        } else {
-            userAuditService.getAuditForUserPaged(userCNParam, page, pageSize)
+                .log("User does not have permission to read audit log for {}", targetUserCn)
+            throw AccessDeniedError("User does not have permission to read audit log for $targetUserCn")
         }
     }
 

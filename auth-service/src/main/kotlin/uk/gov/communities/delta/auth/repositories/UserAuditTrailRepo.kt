@@ -59,6 +59,19 @@ class UserAuditTrailRepo {
     }
 
     @Blocking
+    fun getAuditItemCount(conn: Connection, userCn: String): Int {
+        val stmt = conn.prepareStatement(
+            "SELECT COUNT(*) " +
+                "FROM user_audit " +
+                "WHERE user_cn = ?"
+        )
+        stmt.setString(1, userCn)
+        val resultSet = stmt.executeQuery()
+        resultSet.next()
+        return resultSet.getInt(1)
+    }
+
+    @Blocking
     fun insertAuditRow(
         conn: Connection,
         action: AuditAction,

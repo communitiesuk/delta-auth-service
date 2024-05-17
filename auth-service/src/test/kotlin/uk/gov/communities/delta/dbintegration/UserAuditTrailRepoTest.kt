@@ -41,6 +41,13 @@ class UserAuditTrailRepoTest {
         }
     }
 
+    @Test
+    fun testRecordCount() {
+        testDbPool.useConnectionBlocking("test_login_audit") {
+            assertEquals(2, repo.getAuditItemCount(it, "some.user!audit-test.com"))
+        }
+    }
+
     companion object {
         lateinit var repo: UserAuditTrailRepo
 
