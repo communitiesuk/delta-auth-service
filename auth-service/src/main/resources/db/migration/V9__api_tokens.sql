@@ -14,5 +14,3 @@ CREATE TABLE api_tokens
     created_by_client_id text      NOT NULL,
     CONSTRAINT fk_client_id FOREIGN KEY(created_by_client_id) REFERENCES api_clients(client_id)
 );
-
-CREATE UNIQUE INDEX token_hash_idx ON api_tokens (token_hash)

@@ -40,20 +40,18 @@ class DeltaApiTokenService(
         }
     }
 
-    suspend fun createAndStoreApiToken(username: String, clientId: String, call: ApplicationCall): String {
+    suspend fun createAndStoreApiToken(username: String, clientId: String, userGuid: String?, call: ApplicationCall): String {
         logger.atInfo().addKeyValue("clientId", clientId).log("Creating new API token for client")
         val apiToken = randomBase64(32)
-
-        val userGuid = userLookupService.lookupUserByCn(username).javaUUIDObjectGuid
 
         insertApiToken(apiToken, timeSource.now(), username, userGuid, clientId, call)
         return apiToken
     }
 
-    suspend fun validateApiToken(apiToken: String): String? {
+    suspend fun validateApiToken(apiToken: String): Triple<String, String, String?>? {
         return dbPool.useConnectionNonBlocking("Validate client id and secret") {
             val stmt = it.prepareStatement(
-                "SELECT created_at, created_by_user_cn, created_by_client_id FROM api_tokens " +
+                "SELECT created_at, created_by_user_cn, created_by_client_id, created_by_user_guid FROM api_tokens " +
                     "WHERE token_hash = ? AND created_at > ?"
             )
             stmt.setBytes(1, hashBase64String(apiToken))
@@ -63,7 +61,11 @@ class DeltaApiTokenService(
             if (!result.next()) {
                 null
             } else {
-                result.getString("created_by_user_cn")
+                Triple(
+                    result.getString("created_by_user_cn"),
+                    result.getString("created_by_client_id"),
+                    result.getString("created_by_user_guid")
+                )
             }
         }
     }

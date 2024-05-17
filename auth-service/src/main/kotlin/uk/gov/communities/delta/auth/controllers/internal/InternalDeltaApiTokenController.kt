@@ -37,32 +37,35 @@ class InternalDeltaApiTokenController(
         logger.atInfo()
             .log("Received API token to SAML token exchange request")
 
-        val userWithTokenCn = tokenService.validateApiToken(apiToken)
-        if (!userWithTokenCn.isNullOrEmpty()) {
+        val validationUserIdentifiers = tokenService.validateApiToken(apiToken)
+        if (validationUserIdentifiers != null) {
+            val (userCn, clientId, userGuid) = validationUserIdentifiers
             logger.atInfo()
-                .addKeyValue("userCn", userWithTokenCn)
+                .addKeyValue("userCn", userCn)
                 .log("Generating SAML token for user")
             val systemClient = call.principal<ClientPrincipal>(CLIENT_HEADER_AUTH_NAME)!!
-
-            val user = userLookupService.lookupUserByCn(userWithTokenCn)
 
             val validFrom = Instant.now().minus(10, ChronoUnit.MILLIS)
             val validTo = validFrom.plus(GenerateSAMLTokenController.SAML_TOKEN_EXPIRY_HOURS, ChronoUnit.HOURS)
                 .truncatedTo(ChronoUnit.SECONDS)
 
-            val token = samlTokenService.generate(systemClient.client.samlCredential, user, validFrom, validTo)
+            val token = samlTokenService.generate(
+                systemClient.client.samlCredential,
+                userLookupService.lookupUserByCn(userCn),
+                validFrom,
+                validTo
+            )
 
             call.respond(
                 GenerateApiSAMLTokenResponse(
-                    username = user.cn,
+                    username = userCn,
                     token = token,
                     expiry = DateTimeFormatter.ISO_INSTANT.format(validTo),
-                    clientId = "ff",
-                    userGuid = user.javaUUIDObjectGuid,
+                    clientId = clientId,
+                    userGuid = userGuid,
                 )
             )
-        }
-        else {
+        } else {
             throw ApiError(
                 HttpStatusCode.Unauthorized,
                 "invalid_api_token",

@@ -48,7 +48,10 @@ class ExternalDeltaApiTokenController(
             )
         }
 
-        if (ldapService.ldapLogin(requestPayload.username, requestPayload.password) !is IADLdapLoginService.LdapLoginSuccess) {
+        // we accept emails as well as CNs to match Keycloak
+        val userCn = requestPayload.username.replace('@', '!')
+        val loginResult = ldapService.ldapLogin(userCn, requestPayload.password)
+        if (loginResult !is IADLdapLoginService.LdapLoginSuccess) {
             throw ApiError(
                 HttpStatusCode.Unauthorized,
                 "invalid_grant",
@@ -56,7 +59,7 @@ class ExternalDeltaApiTokenController(
             )
         }
 
-        val apiToken = tokenService.createAndStoreApiToken(requestPayload.username, requestPayload.client_id, call)
+        val apiToken = tokenService.createAndStoreApiToken(userCn, requestPayload.client_id, loginResult.user.javaUUIDObjectGuid, call)
         return call.respond(mapOf(
             "access_token" to apiToken,
             "expires_in" to (DeltaApiTokenService.API_TOKEN_EXPIRY_HOURS * 3600).toString(),

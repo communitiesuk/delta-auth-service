@@ -13,6 +13,7 @@ import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import org.junit.*
 import uk.gov.communities.delta.auth.config.Client
@@ -43,7 +44,10 @@ class InternalDeltaApiTokenControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             val json = Json.parseToJsonElement(bodyAsText())
             assertNotNull(json.jsonObject["token"])
-            assertEquals(samlToken, json.jsonObject["token"]!!.toString().removePrefix("\"").removeSuffix("\""))
+            assertEquals(samlToken, extractJsonValue(json, "token"))
+            assertEquals(testUser.cn, extractJsonValue(json, "username"))
+            assertEquals(testUserClientId, extractJsonValue(json, "clientId"))
+            assertEquals(testUser.javaUUIDObjectGuid, extractJsonValue(json, "userGuid"))
             coVerify(exactly = 1) {
                 tokenService.validateApiToken(apiToken)
             }
@@ -77,7 +81,7 @@ class InternalDeltaApiTokenControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery { tokenService.validateApiToken(any()) } returns null
-        coEvery { tokenService.validateApiToken(apiToken)} returns testUser.cn
+        coEvery { tokenService.validateApiToken(apiToken)} returns Triple(testUser.cn, testUserClientId, testUser.javaUUIDObjectGuid)
         coEvery { userLookupService.lookupUserByCn(testUser.cn) } returns testUser
         coEvery { samlTokenService.generate(serviceClient.samlCredential, testUser, any(), any())} returns samlToken
     }
@@ -94,7 +98,8 @@ class InternalDeltaApiTokenControllerTest {
         private val apiToken = "valid_api_token"
         private val samlToken = "saml_token"
 
-        private val testUser = testLdapUser()
+        private val testUser = testLdapUser(javaUUIDObjectGuid = "testGuid")
+        private val testUserClientId = "client_id"
 
         private val serviceClient = Client("test-client", "test-secret", SAMLConfig.insecureHardcodedCredentials())
 
@@ -135,5 +140,9 @@ class InternalDeltaApiTokenControllerTest {
         fun tearDown() {
             testApp.stop()
         }
+    }
+
+    private fun extractJsonValue(json: JsonElement, elementName: String): String {
+        return json.jsonObject[elementName]!!.toString().removePrefix("\"").removeSuffix("\"")
     }
 }

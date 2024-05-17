@@ -33,10 +33,13 @@ class DeltaApiTokenServiceTest {
     @Test
     fun canCreateAndStoreAndValidateApiToken() = testSuspend {
         val userName = testUser.cn
+        val userGuid = testUser.javaUUIDObjectGuid
+        val userClientId = "valid_id"
         val fakeCall = mockk<ApplicationCall>()
-        val token = service.createAndStoreApiToken(userName, "valid_id", fakeCall)
+        val token = service.createAndStoreApiToken(userName, userClientId, userGuid, fakeCall)
         val result = service.validateApiToken(token)
-        assertEquals(userName, result)
+        assertEquals(Triple(userName, userClientId, userGuid), result)
+        coVerify { userAuditService.apiTokenCreationAudit(userName, any()) }
     }
 
     @Test
