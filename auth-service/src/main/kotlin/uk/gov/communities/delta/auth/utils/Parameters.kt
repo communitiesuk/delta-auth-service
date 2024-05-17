@@ -77,7 +77,7 @@ suspend fun getUserFromCallParameters(
         try {
             return userLookupService.lookupUserByCn(userCN)
         } catch (e: LdapRepository.NoUserException) {
-            throw ApiError(HttpStatusCode.NotFound, "user_not_found", "User not found")
+            throw ApiError(HttpStatusCode.BadRequest, "user_not_found", "User not found")
         }
     } else {
         if (!Strings.isNullOrEmpty(userCN)) throw UserVisibleServerError(
@@ -90,7 +90,7 @@ suspend fun getUserFromCallParameters(
         try {
             return userLookupService.lookupUserByGUID(userGUID)
         } catch (e: LdapRepository.NoUserException) {
-            throw ApiError(HttpStatusCode.NotFound, "user_not_found", "User not found")
+            throw ApiError(HttpStatusCode.BadRequest, "user_not_found", "User not found")
         }
     }
 }
