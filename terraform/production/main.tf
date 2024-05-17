@@ -32,8 +32,8 @@ locals {
   environment                    = "production"
   cloudwatch_log_expiration_days = 731
   dclg_access_group_notification_settings = {
-    enabled                     = false
-    additional_recipient_emails = []
+    enabled                     = true
+    additional_recipient_emails = ["Group-DLUHCDeltaNotifications@softwire.com", "DELTAadmin@levellingup.gov.uk", "DELTAStatSupport@levellingup.gov.uk"]
   }
 }
 
