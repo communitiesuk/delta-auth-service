@@ -5,6 +5,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
+import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -45,6 +46,16 @@ class UserAuditTrailRepoTest {
     fun testRecordCount() {
         testDbPool.useConnectionBlocking("test_login_audit") {
             assertEquals(2, repo.getAuditItemCount(it, "some.user!audit-test.com"))
+        }
+    }
+
+    @Test
+    fun testAllUserAudit() {
+        testDbPool.useConnectionBlocking("test_login_audit") { conn ->
+            val all = repo.getAuditForAllUsers(conn, Instant.now().minusSeconds(60), Instant.now().plusSeconds(10))
+            assertEquals(2, all.filter { it.userCn == "some.user!audit-test.com" }.size)
+            val allAfterNow = repo.getAuditForAllUsers(conn, Instant.now().plusSeconds(60), Instant.now().plusSeconds(100))
+            assertEquals(0, allAfterNow.size)
         }
     }
 

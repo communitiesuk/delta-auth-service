@@ -17,8 +17,13 @@ import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.withSession
 import uk.gov.communities.delta.auth.utils.csvRow
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 
 class FetchUserAuditController(
     private val userLookupService: UserLookupService,
@@ -30,6 +35,7 @@ class FetchUserAuditController(
     fun route(route: Route) {
         route.get { call.getUserAuditJson() }
         route.get("/csv") { call.getUserAuditCSV() }
+        route.get("/all-csv") { call.getAllUsersAuditCSV() }
     }
 
     @Serializable
@@ -54,7 +60,7 @@ class FetchUserAuditController(
         val targetUserCn = parameters.getOrFail("cn")
         checkPermissions(session, targetUserCn)
 
-        logger.atInfo().withSession(session).log("Audit trail page {} requested for {}", page, targetUserCn)
+        logger.atInfo().log("Audit trail page {} requested for {}", page, targetUserCn)
         val (audit, totalRecords) = userAuditService.getAuditForUserPaged(targetUserCn, page, pageSize)
 
         return respond(
@@ -81,11 +87,45 @@ class FetchUserAuditController(
         val userCn = parameters.getOrFail("cn")
         checkPermissions(session, userCn)
 
-        logger.atInfo().withSession(session).log("Audit trail page CSV requested for {}", userCn)
+        logger.atInfo().log("Audit trail CSV requested for user {}", userCn)
 
         val audit = userAuditService.getAuditForUser(userCn)
         val csvString = buildCSVFromAudit(audit)
         respondBytes(csvString.toByteArray(), ContentType.Text.CSV)
+    }
+
+    // CSV download of audited actions for all users between two dates
+    // GET /auth-internal/bearer/user-audit/all-csv?fromDate=2024-01-01&toDate=2024-01-05
+    // Dates range is inclusive, interpreted as Europe/London timezone
+    private suspend fun ApplicationCall.getAllUsersAuditCSV() {
+        val session = principal<OAuthSession>()!!
+        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        if (!callingUser.memberOfCNs.any { viewAuditAdminGroupCNs.contains(it) }) {
+            throw AccessDeniedError("User does not have permission to read all user audit log")
+        }
+        val fromDate = parameters.getDateParam("fromDate")
+        val toDate = parameters.getDateParam("toDate").plus(1, ChronoUnit.DAYS)
+
+        logger.atInfo().log("Audit trail CSV requested for all users from {} to {}", fromDate, toDate)
+
+        val audit = userAuditService.getAuditForAllUsers(fromDate, toDate)
+        val csvString = buildCSVFromAudit(audit)
+        respondBytes(csvString.toByteArray(), ContentType.Text.CSV)
+    }
+
+    private fun Parameters.getDateParam(name: String): Instant {
+        val date = this.getOrFail(name)
+        try {
+            return LocalDate.parse(date, DateTimeFormatter.ISO_LOCAL_DATE)
+                .atStartOfDay(ZoneId.of("Europe/London"))
+                .toInstant()
+        } catch (ex: DateTimeParseException) {
+            throw ApiError(
+                HttpStatusCode.BadRequest,
+                "bad_request",
+                "Invalid date parameter '$name', expected format yyyy-MM-dd"
+            )
+        }
     }
 
     private fun buildCSVFromAudit(audit: List<UserAuditTrailRepo.UserAuditRow>): String {
@@ -116,7 +156,7 @@ class FetchUserAuditController(
         val callingUser = userLookupService.lookupUserByCn(session.userCn)
 
         if (!userHasPermissionToReadAuditTrail(callingUser, targetUserCn)) {
-            logger.atWarn().withSession(session)
+            logger.atWarn()
                 .log("User does not have permission to read audit log for {}", targetUserCn)
             throw AccessDeniedError("User does not have permission to read audit log for $targetUserCn")
         }
