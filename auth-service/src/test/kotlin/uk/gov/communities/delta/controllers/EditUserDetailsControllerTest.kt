@@ -44,7 +44,7 @@ class EditUserDetailsControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                userService.updateUser(testUser, capture(modifications), null, any())
+                userService.updateUser(testUser, capture(modifications), null, userLookupService, any())
             }
 
             assertEquals(4, modifications.captured.size)
@@ -72,7 +72,7 @@ class EditUserDetailsControllerTest {
             }
         }.apply {
             assertEquals("non_numeric_telephone_number", errorCode)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
         }
     }
 
@@ -85,8 +85,8 @@ class EditUserDetailsControllerTest {
                 client
             )
         } answers { testUserSession }
-        coEvery { userLookupService.lookupUserByCn(testUser.cn) } returns testUser
-        coEvery { userService.updateUser(testUser, any(), null, any()) } just runs
+        coEvery { userLookupService.lookupCurrentUser(testUserSession) } returns testUser
+        coEvery { userService.updateUser(testUser, any(), null, userLookupService, any()) } just runs
     }
 
 
@@ -132,7 +132,7 @@ class EditUserDetailsControllerTest {
         }
 
         private val testUserSession =
-            OAuthSession(1, testUser.cn, client, "testUserToken", Instant.now(), "trace", false)
+            OAuthSession(1, testUser.cn, testUser.getUUID(), client, "testUserToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic

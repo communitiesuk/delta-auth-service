@@ -68,7 +68,7 @@ class AdminGetUserControllerTest {
             runBlocking {
                 testClient.get("/get-user?userCn=${user.cn}") {
                     headers {
-                        append("Authorization", "Bearer ${userSession.authToken}")
+                        append("Authorization", "Bearer ${regularUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                 }
@@ -98,7 +98,9 @@ class AdminGetUserControllerTest {
         coEvery {
             oauthSessionService.retrieveFomAuthToken(readOnlyAdminSession.authToken, client)
         } answers { readOnlyAdminSession }
-        coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
+        coEvery {
+            oauthSessionService.retrieveFomAuthToken(regularUserSession.authToken, client)
+        } answers { regularUserSession }
         val organisations = listOf(
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
@@ -111,8 +113,17 @@ class AdminGetUserControllerTest {
         )
         mockUserLookupService(
             userLookupService,
-            listOf(adminUser, readOnlyAdminUser, regularUser, user),
+            listOf(
+                Pair(adminUser, adminSession),
+                Pair(readOnlyAdminUser, readOnlyAdminSession),
+                Pair(regularUser, regularUserSession),
+                Pair(user, null)
+            ),
             organisations, accessGroups
+        )
+        coEvery { userLookupService.loadUserRoles(user) } returns LdapUserWithRoles(
+            user,
+            MemberOfToDeltaRolesMapper(user.cn, organisations, accessGroups).map(user.memberOfCNs)
         )
     }
 
@@ -131,10 +142,21 @@ class AdminGetUserControllerTest {
             testLdapUser(cn = "read-only-admin", memberOfCNs = listOf(DeltaSystemRole.READ_ONLY_ADMIN.adCn()))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(1, adminUser.cn, adminUser.getUUID(), client, "adminToken", Instant.now(), "trace", false)
         private val readOnlyAdminSession =
-            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminToken", Instant.now(), "trace", false)
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userToken", Instant.now(), "trace", false)
+            OAuthSession(
+                1,
+                readOnlyAdminUser.cn,
+                readOnlyAdminUser.getUUID(),
+                client,
+                "readOnlyAdminToken",
+                Instant.now(),
+                "trace",
+                false
+            )
+        private val regularUserSession =
+            OAuthSession(1, regularUser.cn, regularUser.getUUID(), client, "userToken", Instant.now(), "trace", false)
 
         private val user = testLdapUser(
             cn = "beingUpdated!user.com",
@@ -181,8 +203,8 @@ class AdminGetUserControllerTest {
                             "\"lastName\":\"Surname\"," +
                             "\"fullName\":\"Test Surname\"," +
                             "\"accountEnabled\":true," +
-                            "\"mangledDeltaObjectGuid\":\"mangled-id\"," +
-                            "\"javaUUIDObjectGuid\":null," +
+                            "\"mangledDeltaObjectGuid\":null," +
+                            "\"javaUUIDObjectGuid\":\"00112233-4455-6677-8899-aabbccddeeff\"," +
                             "\"telephone\":\"0987654321\"," +
                             "\"mobile\":\"0123456789\"," +
                             "\"positionInOrganisation\":null," +

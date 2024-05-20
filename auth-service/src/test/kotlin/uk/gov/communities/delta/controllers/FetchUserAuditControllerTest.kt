@@ -193,10 +193,12 @@ class FetchUserAuditControllerTest {
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
-        private val adminSession =
-            OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
-        private val userSession =
-            OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+        private val adminSession = OAuthSession(
+            1, adminUser.cn, adminUser.getUUID(), client, "adminAccessToken", Instant.now(), "trace", false
+        )
+        private val userSession = OAuthSession(
+            1, regularUser.cn, regularUser.getUUID(), client, "userAccessToken", Instant.now(), "trace", false
+        )
 
         @BeforeClass
         @JvmStatic
@@ -206,8 +208,10 @@ class FetchUserAuditControllerTest {
             userAuditService = mockk<UserAuditService>()
 
             // Auth mocks
+            coEvery { userLookupService.lookupCurrentUser(adminSession) } answers { adminUser }
+            coEvery { userLookupService.lookupCurrentUser(userSession) } answers { regularUser }
+            coEvery { userLookupService.lookupUserByCn(regularUser.cn) } answers { regularUser } // TODO DT-976-2 - get rid of these hopefully
             coEvery { userLookupService.lookupUserByCn(adminUser.cn) } answers { adminUser }
-            coEvery { userLookupService.lookupUserByCn(regularUser.cn) } answers { regularUser }
             coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
             coEvery {
                 oauthSessionService.retrieveFomAuthToken(

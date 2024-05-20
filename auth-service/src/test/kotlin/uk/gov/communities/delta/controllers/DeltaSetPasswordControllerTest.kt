@@ -18,6 +18,7 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.DeltaSetPasswordController
+import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
@@ -49,19 +50,17 @@ class DeltaSetPasswordControllerTest {
             }
     }
 
-
     @Test
     fun testSetPasswordPageNoParametersThrowsError() = testSuspend {
-        Assert.assertThrows(DeltaSetPasswordController.SetPasswordException::class.java) {
+        Assert.assertThrows(UserVisibleServerError::class.java) {
             runBlocking { testClient.get("/set-password") }
         }.apply {
-            assertEquals("set_password_no_token", errorCode)
+            assertEquals("set_password_no_user_cn_or_guid", errorCode)
         }
     }
 
     @Test
     fun testGetSetPasswordPageExpiredTokenSendsEmail() = testSuspend {
-        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
         testClient.get("/set-password?userCN=user%21example.com&token=expiredToken")
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -73,11 +72,11 @@ class DeltaSetPasswordControllerTest {
     @Test
     fun testSetPasswordSuccess() = testSuspend {
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/set-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { setPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
-            coVerify(exactly = 1) { userAuditService.setPasswordAudit(userCN, any()) }
+            coVerify(exactly = 1) { setPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
+            coVerify(exactly = 1) { userAuditService.setPasswordAudit(user.cn, user.getUUID(), any()) }
             assertSuccessPageRedirect(status, headers)
         }
     }
@@ -85,13 +84,13 @@ class DeltaSetPasswordControllerTest {
     @Test
     fun testSetPasswordValidationError() = testSuspend {
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/set-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", validPassword)
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { setPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
+            coVerify(exactly = 0) { setPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
         }
@@ -101,13 +100,13 @@ class DeltaSetPasswordControllerTest {
     fun testSetPasswordCommonPasswordError() = testSuspend {
         val badPassword = "qwerty123456"
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/set-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", badPassword)
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { setPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
+            coVerify(exactly = 0) { setPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
             assertFormPage(bodyAsText())
             assertContains(
                 bodyAsText(),
@@ -120,13 +119,13 @@ class DeltaSetPasswordControllerTest {
     fun testSetPasswordNameInPasswordError() = testSuspend {
         val badPassword = "userexample1"
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + validToken,
+            url = "/set-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", badPassword)
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { setPasswordTokenService.consumeTokenIfValid(validToken, userCN) }
+            coVerify(exactly = 0) { setPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
             assertFormPage(bodyAsText())
             assertContains(
                 bodyAsText(),
@@ -137,9 +136,8 @@ class DeltaSetPasswordControllerTest {
 
     @Test
     fun testPostSetPasswordExpiredToken() = testSuspend {
-        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
         testClient.submitForm(
-            url = "/set-password?userCN=" + userCN.encodeURLParameter() + "&token=" + expiredToken,
+            url = "/set-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + expiredToken,
             formParameters = parameters {
                 append("newPassword", validPassword)
                 append("confirmPassword", validPassword)
@@ -153,17 +151,17 @@ class DeltaSetPasswordControllerTest {
 
     @Test
     fun testPostResendActivationEmail() = testSuspend {
-        coEvery { userLookupService.lookupUserByCn(userCN) } returns testLdapUser()
+        coEvery { userLookupService.lookupUserByCn(user.cn) } returns testLdapUser()
         testClient.submitForm(
             url = "/set-password/expired",
             formParameters = parameters {
-                append("userCN", userCN)
+                append("userGUID", user.getUUID().toString())
                 append("token", expiredToken)
             }
         ).apply {
-            coVerify(exactly = 1) { setPasswordTokenService.consumeTokenIfValid(expiredToken, userCN) }
+            coVerify(exactly = 1) { setPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getUUID()) }
             coVerify(exactly = 1) { emailService.sendNotYetEnabledEmail(any(), any(), any()) }
-            coVerify(exactly = 1) { setPasswordTokenService.createToken(userCN) }
+            coVerify(exactly = 1) { setPasswordTokenService.createToken(user.cn, user.getUUID()) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your registration is pending your email activation")
         }
@@ -191,32 +189,34 @@ class DeltaSetPasswordControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            setPasswordTokenService.validateToken(validToken, userCN)
-        } returns PasswordTokenService.ValidToken(validToken, userCN)
+            setPasswordTokenService.validateToken(validToken, user.cn, user.getUUID())
+        } returns PasswordTokenService.ValidToken(validToken, user.getUUID())
         coEvery {
-            setPasswordTokenService.validateToken(expiredToken, userCN)
-        } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
+            setPasswordTokenService.validateToken(expiredToken, user.cn, user.getUUID())
+        } returns PasswordTokenService.ExpiredToken(expiredToken, user.getUUID())
         coEvery {
-            setPasswordTokenService.validateToken(invalidToken, userCN)
+            setPasswordTokenService.validateToken(invalidToken, user.cn, user.getUUID())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            setPasswordTokenService.validateToken("", any())
+            setPasswordTokenService.validateToken("", any(), any())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            setPasswordTokenService.consumeTokenIfValid(validToken, userCN)
-        } returns PasswordTokenService.ValidToken(validToken, userCN)
+            setPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID())
+        } returns PasswordTokenService.ValidToken(validToken, user.getUUID())
         coEvery {
-            setPasswordTokenService.consumeTokenIfValid(expiredToken, userCN)
-        } returns PasswordTokenService.ExpiredToken(expiredToken, userCN)
+            setPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getUUID())
+        } returns PasswordTokenService.ExpiredToken(expiredToken, user.getUUID())
         coEvery {
-            setPasswordTokenService.consumeTokenIfValid(invalidToken, userCN)
+            setPasswordTokenService.consumeTokenIfValid(invalidToken, user.cn, user.getUUID())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            setPasswordTokenService.consumeTokenIfValid("", any())
+            setPasswordTokenService.consumeTokenIfValid("", any(), any())
         } returns PasswordTokenService.NoSuchToken
-        coEvery { setPasswordTokenService.createToken(userCN) } returns "token"
-        coEvery { userService.setPasswordAndEnable(userDN, validPassword) } just runs
+        coEvery { setPasswordTokenService.createToken(user.cn, user.getUUID()) } returns "token"
+        coEvery { userService.setPasswordAndEnable(user.dn, validPassword) } just runs
         coEvery { emailService.sendNotYetEnabledEmail(any(), any(), any()) } just runs
+        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { userLookupService.lookupUserByGUID(user.getUUID()) } returns user
     }
 
     companion object {
@@ -227,9 +227,12 @@ class DeltaSetPasswordControllerTest {
         private const val validToken = "validToken"
         private const val invalidToken = "invalidToken"
         private const val expiredToken = "expiredToken"
-        private const val userCN = "user!example.com"
         private const val deltaUserDnFormat = "CN=%s"
-        private val userDN = String.format(deltaUserDnFormat, userCN)
+        private val user = testLdapUser(
+            cn = "user!example.com",
+            dn = String.format(deltaUserDnFormat, "user!example.com"),
+            email = "user@example.com"
+        )
         private val deltaConfig = DeltaConfig.fromEnv()
         private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
         private val authenticator: Authenticator = object : Authenticator() {

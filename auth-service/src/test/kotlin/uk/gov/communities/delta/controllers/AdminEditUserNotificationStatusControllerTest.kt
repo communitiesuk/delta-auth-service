@@ -19,6 +19,7 @@ import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.*
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -105,10 +106,14 @@ class AdminEditUserNotificationStatusControllerTest {
                 client
             )
         } answers { nonAdminSession }
-        coEvery { userLookupService.lookupUserByCn(fullAdminUser.cn) } returns fullAdminUser
-        coEvery { userLookupService.lookupUserByCn(readOnlyAdminUser.cn) } returns readOnlyAdminUser
-        coEvery { userLookupService.lookupUserByCn(nonAdminUser.cn) } returns nonAdminUser
-        coEvery { userLookupService.lookupUserByCn(userToUpdate.cn) } returns userToUpdate
+        mockUserLookupService(
+            userLookupService, listOf(
+                Pair(fullAdminUser, fullAdminSession),
+                Pair(readOnlyAdminUser, readOnlyAdminSession),
+                Pair(nonAdminUser, nonAdminSession),
+                Pair(userToUpdate, null)
+            ), organisations = listOf(), accessGroups = listOf()
+        )
         coEvery { userService.updateNotificationStatus(userToUpdate, any(), any(), any()) } just runs
     }
 
@@ -136,9 +141,36 @@ class AdminEditUserNotificationStatusControllerTest {
             ),
         )
 
-        private val fullAdminSession = OAuthSession(1, fullAdminUser.cn, client, "fullAdminToken", Instant.now(), "trace", false)
-        private val readOnlyAdminSession = OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminToken", Instant.now(), "trace", false)
-        private val nonAdminSession = OAuthSession(1, nonAdminUser.cn, client, "nonAdminToken", Instant.now(), "trace", false)
+        private val fullAdminSession = OAuthSession(
+            1,
+            fullAdminUser.cn,
+            fullAdminUser.getUUID(),
+            client,
+            "fullAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
+        private val readOnlyAdminSession = OAuthSession(
+            1,
+            readOnlyAdminUser.cn,
+            readOnlyAdminUser.getUUID(),
+            client,
+            "readOnlyAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
+        private val nonAdminSession = OAuthSession(
+            1,
+            nonAdminUser.cn,
+            nonAdminUser.getUUID(),
+            client,
+            "nonAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
 
         @BeforeClass
         @JvmStatic

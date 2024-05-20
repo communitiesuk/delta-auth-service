@@ -9,6 +9,7 @@ import uk.gov.communities.delta.dbintegration.testDbPool
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -21,13 +22,15 @@ class DeleteOldAuthCodesTest {
     }
     private val underTest = DeleteOldAuthCodes(testDbPool)
     private val authorizationCodeService = AuthorizationCodeService(testDbPool, timeSource)
+    private val oldUUID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")
+    private val newUUID = UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100")
 
     @Test
     fun deleteOldAuthCodesTest() = testSuspend {
         val newCode =
-            authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-new-user", testServiceClient(), "trace", false)
+            authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-new-user", newUUID,  testServiceClient(), "trace", false)
         time = { Instant.now().minus(2, ChronoUnit.DAYS) }
-        authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-old-user", testServiceClient(), "old-trace", false)
+        authorizationCodeService.generateAndStore("DeleteOldAuthCodesTest-old-user", oldUUID, testServiceClient(), "old-trace", false)
         time = { Instant.now() }
 
         testDbPool.useConnectionBlocking("test") {
@@ -50,8 +53,9 @@ class DeleteOldAuthCodesTest {
 
     private fun countOldAuthCodes(): Int {
         return testDbPool.useConnectionBlocking("test") {
-            val resultSet = it.createStatement()
-                .executeQuery("SELECT COUNT(*) FROM authorization_code WHERE username = 'DeleteOldAuthCodesTest-old-user'")
+            val stmt = it.prepareStatement("SELECT COUNT(*) FROM authorization_code WHERE username = 'DeleteOldAuthCodesTest-old-user' AND user_guid = ?")
+            stmt.setObject(1, oldUUID)
+            val resultSet = stmt.executeQuery()
             resultSet.next()
             resultSet.getInt(1)
         }

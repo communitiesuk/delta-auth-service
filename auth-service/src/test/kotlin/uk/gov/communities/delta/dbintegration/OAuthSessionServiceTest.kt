@@ -8,6 +8,7 @@ import uk.gov.communities.delta.auth.services.OAuthSessionService
 import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -21,7 +22,7 @@ class OAuthSessionServiceTest {
 
     @Test
     fun testLookupInvalidClientFails() = testSuspend {
-        val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace", false)
+        val authCode = AuthCode("code", "userCn", userGUID, client, Instant.now(), "trace", false)
         val createResult = service.create(authCode, client)
 
         val result = service.retrieveFomAuthToken(createResult.authToken, testServiceClient("wrong-client"))
@@ -30,7 +31,7 @@ class OAuthSessionServiceTest {
 
     @Test
     fun testCreateAndRetrieveSession() = testSuspend {
-        val authCode = AuthCode("code", "userCn", client, Instant.now(), "trace", false)
+        val authCode = AuthCode("code", "userCn", userGUID, client, Instant.now(), "trace", false)
         val createResult = service.create(authCode, client)
 
         assertNotNull(createResult.id)
@@ -48,6 +49,7 @@ class OAuthSessionServiceTest {
 
     companion object {
         lateinit var service: OAuthSessionService
+        private val userGUID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")
         val client = testServiceClient()
 
         @BeforeClass

@@ -38,8 +38,12 @@ class AdminEmailControllerTest {
             parameter("userEmail", disabledReceivingUserEmail)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { emailService.sendSetPasswordEmail(disabledReceivingUser, any(), adminSession, any()) }
-            coVerify(exactly = 1) { setPasswordTokenService.createToken(disabledReceivingUser.cn) }
+            coVerify(exactly = 1) {
+                emailService.sendSetPasswordEmail(disabledReceivingUser, any(), adminSession, userLookupService, any())
+            }
+            coVerify(exactly = 1) {
+                setPasswordTokenService.createToken(disabledReceivingUser.cn, disabledReceivingUser.getUUID())
+            }
         }
     }
 
@@ -53,8 +57,14 @@ class AdminEmailControllerTest {
             parameter("userEmail", disabledReceivingUserEmail)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { emailService.sendSetPasswordEmail(disabledReceivingUser, any(), readOnlyAdminSession, any()) }
-            coVerify(exactly = 1) { setPasswordTokenService.createToken(disabledReceivingUser.cn) }
+            coVerify(exactly = 1) {
+                emailService.sendSetPasswordEmail(
+                    disabledReceivingUser, any(), readOnlyAdminSession, userLookupService, any()
+                )
+            }
+            coVerify(exactly = 1) {
+                setPasswordTokenService.createToken(disabledReceivingUser.cn, disabledReceivingUser.getUUID())
+            }
         }
     }
 
@@ -73,8 +83,8 @@ class AdminEmailControllerTest {
         }.apply {
             assertEquals("already_enabled", errorCode)
         }
-        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any(), any()) }
     }
 
     @Test
@@ -92,8 +102,8 @@ class AdminEmailControllerTest {
         }.apply {
             assertEquals("forbidden", errorCode)
         }
-        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any(), any()) }
     }
 
     @Test
@@ -111,8 +121,8 @@ class AdminEmailControllerTest {
         }.apply {
             assertEquals("no_emails_to_sso_users", errorCode)
         }
-        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any(), any()) }
     }
 
     @Test
@@ -125,8 +135,12 @@ class AdminEmailControllerTest {
             parameter("userEmail", enabledReceivingUserEmail)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", adminSession, any()) }
-            coVerify(exactly = 1) { resetPasswordTokenService.createToken(any()) }
+            coVerify(exactly = 1) {
+                emailService.sendResetPasswordEmail(
+                    enabledReceivingUser, "token", adminSession, userLookupService, any()
+                )
+            }
+            coVerify(exactly = 1) { resetPasswordTokenService.createToken(any(), any()) }
         }
     }
 
@@ -140,8 +154,12 @@ class AdminEmailControllerTest {
             parameter("userEmail", enabledReceivingUserEmail)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", readOnlyAdminSession, any()) }
-            coVerify(exactly = 1) { resetPasswordTokenService.createToken(any()) }
+            coVerify(exactly = 1) {
+                emailService.sendResetPasswordEmail(
+                    enabledReceivingUser, "token", readOnlyAdminSession, userLookupService, any()
+                )
+            }
+            coVerify(exactly = 1) { resetPasswordTokenService.createToken(any(), any()) }
         }
     }
 
@@ -160,8 +178,8 @@ class AdminEmailControllerTest {
         }.apply {
             assertEquals("not_enabled", errorCode)
         }
-        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any(), any()) }
     }
 
     @Test
@@ -179,8 +197,8 @@ class AdminEmailControllerTest {
         }.apply {
             assertEquals("forbidden", errorCode)
         }
-        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any(), any()) }
     }
 
     @Test
@@ -198,8 +216,8 @@ class AdminEmailControllerTest {
         }.apply {
             assertEquals("no_emails_to_sso_users", errorCode)
         }
-        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any()) }
+        coVerify(exactly = 0) { emailService.sendResetPasswordEmail(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { resetPasswordTokenService.createToken(any(), any()) }
     }
 
     @Before
@@ -219,19 +237,35 @@ class AdminEmailControllerTest {
                 client
             )
         } answers { readOnlyAdminSession }
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
-        coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
-        coEvery { userLookupService.lookupUserByCn(readOnlyAdminUser.cn) } returns readOnlyAdminUser
-        coEvery { userLookupService.lookupUserByCn(enabledReceivingUser.cn) } returns enabledReceivingUser
-        coEvery { userLookupService.lookupUserByCn(enabledReceivingSSOUser.cn) } returns enabledReceivingSSOUser
-        coEvery { userLookupService.lookupUserByCn(disabledReceivingUser.cn) } returns disabledReceivingUser
-        coEvery { userLookupService.lookupUserByCn(disabledReceivingSSOUser.cn) } returns disabledReceivingSSOUser
-        coEvery { resetPasswordTokenService.createToken(any()) } returns "token"
-        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
-        coEvery { emailService.sendSetPasswordEmail(disabledReceivingUser, "token", adminSession, any()) } just runs
-        coEvery { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", adminSession, any()) } just runs
-        coEvery { emailService.sendSetPasswordEmail(disabledReceivingUser, "token", readOnlyAdminSession, any()) } just runs
-        coEvery { emailService.sendResetPasswordEmail(enabledReceivingUser, "token", readOnlyAdminSession, any()) } just runs
+        coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
+        coEvery { userLookupService.lookupCurrentUser(userSession) } returns regularUser
+        coEvery { userLookupService.lookupCurrentUser(readOnlyAdminSession) } returns readOnlyAdminUser
+        coEvery { userLookupService.lookupUserByEmail(enabledReceivingUser.email!!) } returns enabledReceivingUser
+        coEvery { userLookupService.lookupUserByEmail(enabledReceivingSSOUser.email!!) } returns enabledReceivingSSOUser
+        coEvery { userLookupService.lookupUserByEmail(disabledReceivingUser.email!!) } returns disabledReceivingUser
+        coEvery { userLookupService.lookupUserByEmail(disabledReceivingSSOUser.email!!) } returns disabledReceivingSSOUser
+        coEvery { resetPasswordTokenService.createToken(any(), any()) } returns "token"
+        coEvery { setPasswordTokenService.createToken(any(), any()) } returns "token"
+        coEvery {
+            emailService.sendSetPasswordEmail(
+                disabledReceivingUser, "token", adminSession, userLookupService, any()
+            )
+        } just runs
+        coEvery {
+            emailService.sendResetPasswordEmail(
+                enabledReceivingUser, "token", adminSession, userLookupService, any()
+            )
+        } just runs
+        coEvery {
+            emailService.sendSetPasswordEmail(
+                disabledReceivingUser, "token", readOnlyAdminSession, userLookupService, any()
+            )
+        } just runs
+        coEvery {
+            emailService.sendResetPasswordEmail(
+                enabledReceivingUser, "token", readOnlyAdminSession, userLookupService, any()
+            )
+        } just runs
     }
 
     companion object {
@@ -275,10 +309,23 @@ class AdminEmailControllerTest {
             cn = LDAPConfig.emailToCN(disabledReceivingSSOUserEmail),
             accountEnabled = false
         )
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
+        private val adminSession = OAuthSession(
+            1, adminUser.cn, adminUser.getUUID(), client, "adminAccessToken", Instant.now(), "trace", false
+        )
         private val readOnlyAdminSession =
-            OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminAccessToken", Instant.now(), "trace", false)
-        private val userSession = OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+            OAuthSession(
+                1,
+                readOnlyAdminUser.cn,
+                readOnlyAdminUser.getUUID(),
+                client,
+                "readOnlyAdminAccessToken",
+                Instant.now(),
+                "trace",
+                false
+            )
+        private val userSession = OAuthSession(
+            1, regularUser.cn, regularUser.getUUID(), client, "userAccessToken", Instant.now(), "trace", false
+        )
 
         @BeforeClass
         @JvmStatic

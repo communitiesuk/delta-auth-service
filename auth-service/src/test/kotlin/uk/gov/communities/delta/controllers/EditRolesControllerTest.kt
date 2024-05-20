@@ -43,12 +43,36 @@ class EditRolesControllerTest {
             setBody("{\"addToRoles\": [\"data-providers\"], \"removeFromRoles\": [\"data-certifiers\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-providers-orgCode2", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, "datamart-delta-data-certifiers-orgCode2", any(), null) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser, "datamart-delta-data-providers", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser, "datamart-delta-data-providers-orgCode1", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser, "datamart-delta-data-providers-orgCode2", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser, "datamart-delta-data-certifiers", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser, "datamart-delta-data-certifiers-orgCode1", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    externalUser, "datamart-delta-data-certifiers-orgCode2", any(), null, userLookupService
+                )
+            }
             confirmVerified(groupService)
         }
     }
@@ -84,34 +108,34 @@ class EditRolesControllerTest {
             setBody("{\"addToRoles\": [\"payments-reviewers\"], \"removeFromRoles\": [\"data-certifiers\"]}")
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers-orgCode1", any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(internalUser.cn, internalUser.dn, "datamart-delta-payments-reviewers-orgCode2", any(), null) }
             coVerify(exactly = 1) {
-                groupService.removeUserFromGroup(
-                    internalUser.cn,
-                    internalUser.dn,
-                    "datamart-delta-data-certifiers",
-                    any(),
-                    null
+                groupService.addUserToGroup(
+                    internalUser, "datamart-delta-payments-reviewers", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    internalUser, "datamart-delta-payments-reviewers-orgCode1", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    internalUser, "datamart-delta-payments-reviewers-orgCode2", any(), null, userLookupService
                 )
             }
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    internalUser.cn,
-                    internalUser.dn,
-                    "datamart-delta-data-certifiers-orgCode1",
-                    any(),
-                    null
+                    internalUser, "datamart-delta-data-certifiers", any(), null, userLookupService
                 )
             }
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    internalUser.cn,
-                    internalUser.dn,
-                    "datamart-delta-data-certifiers-orgCode2",
-                    any(),
-                    null
+                    internalUser, "datamart-delta-data-certifiers-orgCode1", any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.removeUserFromGroup(
+                    internalUser, "datamart-delta-data-certifiers-orgCode2", any(), null, userLookupService
                 )
             }
             confirmVerified(groupService)
@@ -159,11 +183,16 @@ class EditRolesControllerTest {
         clearAllMocks()
         coEvery { oauthSessionService.retrieveFomAuthToken(externalUserSession.authToken, client) } answers { externalUserSession }
         coEvery { oauthSessionService.retrieveFomAuthToken(internalUserSession.authToken, client) } answers { internalUserSession }
-        mockUserLookupService(userLookupService, listOf(internalUser, externalUser), organisations, accessGroups)
-        coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
-        coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), null)} just runs
-        coEvery { groupService.addUserToGroup(internalUser.cn, externalUser.dn, any(), any(), null)} just runs
-        coEvery { groupService.removeUserFromGroup(internalUser.cn, externalUser.dn, any(), any(), null)} just runs
+        mockUserLookupService(
+            userLookupService,
+            listOf(Pair(internalUser, internalUserSession), Pair(externalUser, externalUserSession)),
+            organisations,
+            accessGroups
+        )
+        coEvery { groupService.addUserToGroup(externalUser, any(), any(), null, userLookupService) } just runs
+        coEvery { groupService.removeUserFromGroup(externalUser, any(), any(), null, userLookupService) } just runs
+        coEvery { groupService.addUserToGroup(internalUser, any(), any(), null, userLookupService) } just runs
+        coEvery { groupService.removeUserFromGroup(internalUser, any(), any(), null, userLookupService) } just runs
     }
 
     companion object {
@@ -240,8 +269,26 @@ class EditRolesControllerTest {
             telephone = "0987654321",
         )
 
-        private val externalUserSession = OAuthSession(1, externalUser.cn, client, "externalUserToken", Instant.now(), "trace", false)
-        private val internalUserSession = OAuthSession(1, internalUser.cn, client, "internalUserToken", Instant.now(), "trace", false)
+        private val externalUserSession = OAuthSession(
+            1,
+            externalUser.cn,
+            externalUser.getUUID(),
+            client,
+            "externalUserToken",
+            Instant.now(),
+            "trace",
+            false
+        )
+        private val internalUserSession = OAuthSession(
+            1,
+            internalUser.cn,
+            externalUser.getUUID(),
+            client,
+            "internalUserToken",
+            Instant.now(),
+            "trace",
+            false
+        )
 
         @BeforeClass
         @JvmStatic

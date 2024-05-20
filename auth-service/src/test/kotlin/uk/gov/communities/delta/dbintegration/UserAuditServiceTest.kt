@@ -13,6 +13,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.helper.testServiceClient
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -21,7 +22,7 @@ class UserAuditServiceTest {
     fun testUserLoginAudit() = testSuspend {
         assertEquals(0, service.getAuditForUser("login.user!example.com").size)
 
-        service.userFormLoginAudit("login.user!example.com", call)
+        service.userFormLoginAudit("login.user!example.com", userGUID, call)
 
         val audit = service.getAuditForUser("login.user!example.com")
         assertEquals(1, audit.size)
@@ -35,6 +36,7 @@ class UserAuditServiceTest {
     fun testSSOLoginAudit() = testSuspend {
         service.userSSOLoginAudit(
             "sso.user!example.com",
+            userGUID,
                 AzureADSSOClient("sso-id", "", "", "", "@example.com"),
                 "az-123", call,
             )
@@ -51,6 +53,7 @@ class UserAuditServiceTest {
     companion object {
         lateinit var service: UserAuditService
         val client = testServiceClient()
+        private val userGUID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")
         val call = mockk<ApplicationCall>()
 
         @BeforeClass

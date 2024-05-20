@@ -18,6 +18,7 @@ import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.DeltaUserRegistrationController
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -50,22 +51,34 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationForNewStandardUser() = testSuspend {
-        coEvery { userLookupService.userExists(cnStart + standardDomain) } returns false
+        val user = testLdapUser(email = emailStart + standardDomain, cn = cnStart + standardDomain)
+        coEvery { userLookupService.userIfExists(emailStart + standardDomain) } returns null
+        coEvery { userService.createUser(any(), any(), any(), any()) } returns user
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + standardDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService)
+            }
             assertSuccessPageRedirect(status, headers, emailStart + standardDomain)
             coVerify(exactly = 1) {
                 emailService.sendSetPasswordEmail(
                     "Test",
                     "token",
                     cnStart + standardDomain,
+                    user.getUUID(),
                     null,
+                    userLookupService,
                     any(),
                     any()
                 )
@@ -119,7 +132,8 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationForAlreadyExistingStandardUser() = testSuspend {
-        coEvery { userLookupService.userExists(cnStart + standardDomain) } returns true
+        val user = testLdapUser(email = emailStart + standardDomain)
+        coEvery { userLookupService.userIfExists(emailStart + standardDomain) } returns user
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + standardDomain)
@@ -132,7 +146,7 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRedirectOfNewRequiredSSOUser() = testSuspend {
-        coEvery { userLookupService.userExists(cnStart + requiredDomain) } returns false
+        coEvery { userLookupService.userIfExists(emailStart + requiredDomain) } returns null
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + requiredDomain)
@@ -143,7 +157,9 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRedirectOfExistingRequiredSSOUser() = testSuspend {
-        coEvery { userLookupService.userExists(cnStart + requiredDomain) } returns true
+        coEvery {
+            userLookupService.userIfExists(emailStart + requiredDomain)
+        } returns testLdapUser(email = emailStart + requiredDomain)
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + requiredDomain)
@@ -154,22 +170,34 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationOfNewNotRequiredSSOUser() = testSuspend {
-        coEvery { userLookupService.userExists(cnStart + notRequiredDomain) } returns false
+        coEvery { userLookupService.userIfExists(emailStart + notRequiredDomain) } returns null
+        val user = testLdapUser(email = emailStart + notRequiredDomain, cn = cnStart + notRequiredDomain)
+        coEvery { userService.createUser(any(), any(), any(), any()) } returns user
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
             coVerify(exactly = 1) { userService.createUser(any(), null, null, any()) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService)
+            }
             assertSuccessPageRedirect(status, headers, emailStart + notRequiredDomain)
             coVerify(exactly = 1) {
                 emailService.sendSetPasswordEmail(
                     "Test",
                     "token",
                     cnStart + notRequiredDomain,
+                    user.getUUID(),
                     null,
+                    userLookupService,
                     any(),
                     any()
                 )
@@ -179,7 +207,8 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationOfExistingNotRequiredSSOUser() = testSuspend {
-        coEvery { userLookupService.userExists(cnStart + notRequiredDomain) } returns true
+        val user = testLdapUser(email = emailStart + notRequiredDomain, cn = cnStart + notRequiredDomain)
+        coEvery { userLookupService.userIfExists(emailStart + notRequiredDomain) } returns user
         testClient.submitForm(
             url = "/register",
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
@@ -200,7 +229,7 @@ class DeltaUserRegistrationControllerTest {
             formParameters = correctFormParameters(emailStart + notRequiredDomain)
         ).apply {
             coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
-            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any()) }
             assertFormPage(bodyAsText(), status)
             assertContains(bodyAsText(), "Email address domain not recognised")
         }
@@ -209,7 +238,9 @@ class DeltaUserRegistrationControllerTest {
     private fun assertSuccessPageRedirect(status: HttpStatusCode, headers: Headers, userEmail: String) {
         assertEquals(HttpStatusCode.Found, status)
         assertTrue("Should redirect to success page") { headers["Location"]!!.contains("/delta/register/success") }
-        assertTrue("Should have email parameter") { headers["Location"]!!.contains("emailAddress=${userEmail.encodeURLParameter()}") }
+        assertTrue("Should have email parameter") {
+            headers["Location"]!!.contains("emailAddress=${userEmail.encodeURLParameter()}")
+        }
     }
 
     private fun assertSuccessPage(bodyAsText: String) {
@@ -223,7 +254,9 @@ class DeltaUserRegistrationControllerTest {
 
     private fun assertRedirectsToDelta(status: HttpStatusCode, headers: Headers, emailAddress: String) {
         assertEquals(HttpStatusCode.Found, status)
-        assertTrue("Should redirect to delta") { headers["Location"]!!.startsWith(deltaConfig.deltaWebsiteUrl + "/oauth2/authorization/delta-auth") }
+        assertTrue("Should redirect to delta") {
+            headers["Location"]!!.startsWith(deltaConfig.deltaWebsiteUrl + "/oauth2/authorization/delta-auth")
+        }
         assertContains(
             headers["Location"]!!,
             "sso-client=required-client&expected-email=" + emailAddress.encodeURLParameter()
@@ -243,11 +276,12 @@ class DeltaUserRegistrationControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery { organisationService.findAllByDomain(any()) } returns listOf(Organisation(orgCode, "Test org"))
-        coEvery { userService.createUser(any(), any(), any(), any()) } just runs
-        coEvery { groupService.addUserToGroup(any(), any(), any(), null) } just runs
-        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
+        coEvery { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) } just runs
+        coEvery { setPasswordTokenService.createToken(any(), any()) } returns "token"
         coEvery { emailService.sendAlreadyAUserEmail(any(), any(), any()) } just runs
-        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), null, any(), any()) } just runs
+        coEvery {
+            emailService.sendSetPasswordEmail(any(), any(), any(), any(), null, userLookupService, any(), any())
+        } just runs
     }
 
     companion object {

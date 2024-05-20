@@ -29,6 +29,7 @@ import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
+import java.util.*
 import kotlin.test.assertEquals
 
 
@@ -101,11 +102,13 @@ class RefreshUserInfoControllerTest {
         private lateinit var controller: RefreshUserInfoController
 
         private val client = testServiceClient()
-        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace", false)
-        private val adminSession =
-            OAuthSession(2, "adminUser", client, "adminAccessToken", Instant.now(), "trace", false)
+        private val userGUID = UUID.randomUUID()
         private val user = testLdapUser(cn = "user", memberOfCNs = listOf("datamart-delta-user-dclg"))
+        private val adminUserGUID = UUID.randomUUID()
         private val adminUser = testLdapUser(cn = "adminUser", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
+        private val session = OAuthSession(1, user.cn, userGUID, client, "accessToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(2, adminUser.cn, adminUserGUID, client, "adminAccessToken", Instant.now(), "trace", false)
         private val userToImpersonate =
             testLdapUser(
                 cn = "userToImpersonate",
@@ -127,8 +130,8 @@ class RefreshUserInfoControllerTest {
 
 
 
-            coEvery { userLookupService.lookupUserByCn(session.userCn) } answers { user }
-            coEvery { userLookupService.lookupUserByCn(adminSession.userCn) } answers { adminUser }
+            coEvery { userLookupService.lookupCurrentUser(session) } answers { user }
+            coEvery { userLookupService.lookupCurrentUser(adminSession) } answers { adminUser }
             coEvery { userLookupService.lookupUserByCn(userToImpersonate.cn) } answers { userToImpersonate }
             every {
                 samlTokenService.generate(
@@ -162,6 +165,7 @@ class RefreshUserInfoControllerTest {
                 oauthSessionService.updateWithImpersonatedCn(
                     adminSession.id,
                     userToImpersonate.cn,
+                    userToImpersonate.getUUID(),
                 )
             } just runs
             coEvery { adminEmailController.route(any()) } just runs
@@ -169,6 +173,7 @@ class RefreshUserInfoControllerTest {
                 userAuditService.insertImpersonatingUserAuditRow(
                     adminSession,
                     userToImpersonate.cn,
+                    userToImpersonate.getUUID(),
                     any()
                 )
             } just runs
