@@ -21,7 +21,6 @@ import uk.gov.communities.delta.auth.config.ClientConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.plugins.HttpNotFound404PageException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
-import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
@@ -79,7 +78,7 @@ class DeltaSSOLoginController(
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
-        var user = ldapLookupService.userIfUserWithEmailExists(email)
+        var user = ldapLookupService.userIfExists(email)
         if (user == null) {
             if (!ssoClient.required) {
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
@@ -100,7 +99,7 @@ class DeltaSSOLoginController(
                 logger.error("Error creating SSO User, result was {}", registrationResult.toString())
                 throw Exception("Error creating SSO User")
             }
-            user = ldapLookupService.userIfUserWithEmailExists(email)!!
+            user = ldapLookupService.userIfExists(email)!!
         }
 
         checkUserEnabled(user)

@@ -42,7 +42,7 @@ class RegistrationService(
     ): RegistrationResult {
         val adUser = UserService.ADUser(ldapConfig, registration, ssoClient)
 
-        when (val user = userLookupService.userIfUserWithEmailExists(adUser.mail)) {
+        when (val user = userLookupService.userIfExists(adUser.mail)) {
             is LdapUser -> {
                 logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
                 return UserAlreadyExists(user)

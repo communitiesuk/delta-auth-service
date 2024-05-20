@@ -20,7 +20,7 @@ class UserLookupService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun userIfUserWithEmailExists(email: String): LdapUser? {
+    suspend fun userIfExists(email: String): LdapUser? {
         return try {
             lookupUserByEmail(email)
         } catch (e: LdapRepository.NoUserException) {

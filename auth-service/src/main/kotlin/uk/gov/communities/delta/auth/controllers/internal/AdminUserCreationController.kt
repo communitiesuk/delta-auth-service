@@ -48,7 +48,7 @@ class AdminUserCreationController(
             ssoClient,
         )
 
-        when (userLookupService.userIfUserWithEmailExists(adUser.mail)) {
+        when (userLookupService.userIfExists(adUser.mail)) {
             is LdapUser -> {
                 logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
                     .log("User being made by admin already exists")
