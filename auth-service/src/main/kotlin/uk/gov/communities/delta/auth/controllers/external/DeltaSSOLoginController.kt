@@ -79,7 +79,7 @@ class DeltaSSOLoginController(
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
-        var user = lookupUserInAd(email)
+        var user = ldapLookupService.userIfUserWithEmailExists(email)
         if (user == null) {
             if (!ssoClient.required) {
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
@@ -100,7 +100,7 @@ class DeltaSSOLoginController(
                 logger.error("Error creating SSO User, result was {}", registrationResult.toString())
                 throw Exception("Error creating SSO User")
             }
-            user = lookupUserInAd(email)!!
+            user = ldapLookupService.userIfUserWithEmailExists(email)!!
         }
 
         checkUserEnabled(user)
@@ -154,18 +154,6 @@ class DeltaSSOLoginController(
             )
         }
         return session
-    }
-
-    private suspend fun lookupUserInAd(email: String): LdapUser? {
-        return try {
-            ldapLookupService.lookupUserByEmail(email)
-        } catch (e: LdapRepository.NoUserException) {
-            logger.info("User not found in Active Directory {}", keyValue("email", email), e)
-            null
-        } catch (e: Exception) {
-            logger.error("Failed to lookup user in AD after OAuth login {}", keyValue("email", email), e)
-            throw e
-        }
     }
 
     private fun checkUserEnabled(user: LdapUser) {

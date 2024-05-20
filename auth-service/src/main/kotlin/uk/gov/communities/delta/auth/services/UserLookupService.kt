@@ -46,6 +46,7 @@ class UserLookupService(
                 ldapRepository.mapUserFromContext(it, dn)
             }
         } catch (e: NameNotFoundException) {
+            logger.atInfo().addKeyValue("userDN", dn).log("User not found in Active Directory", e)
             throw LdapRepository.NoUserException("No user with dn $dn")
         }
     }
