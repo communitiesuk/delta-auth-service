@@ -209,10 +209,11 @@ fun Route.internalRoutes(injection: Injection) {
     val editRolesController = injection.editRolesController()
     val editOrganisationsController = injection.editOrganisationsController()
     val editAccessGroupsController = injection.editAccessGroupsController()
+    val editLdapGroupsController = injection.editLdapGroupsController()
     val editUserDetailsController = injection.editUserDetailsController()
 
     route("/auth-internal") {
-        serviceUserRoutes(generateSAMLTokenController)
+        serviceUserRoutes(generateSAMLTokenController, editLdapGroupsController)
 
         oauthTokenRoute(oauthTokenController)
 
@@ -328,7 +329,23 @@ fun Route.bearerTokenRoutes(
     }
 }
 
-fun Route.serviceUserRoutes(samlTokenController: GenerateSAMLTokenController) {
+fun Route.serviceUserRoutes(
+    samlTokenController: GenerateSAMLTokenController,
+    editLdapGroupsController: EditLdapGroupsController
+) {
+    samlTokenRoutes(samlTokenController)
+
+    authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+        install(addServiceUserUsernameToMDC)
+        route("/service-user") {
+            post("/ldap/groups/{groupName}/members/{userCn}") {
+                editLdapGroupsController.addUserToGroup(call)
+            }
+        }
+    }
+}
+
+fun Route.samlTokenRoutes(samlTokenController: GenerateSAMLTokenController) {
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
             install(addServiceUserUsernameToMDC)
@@ -344,4 +361,3 @@ fun Route.serviceUserRoutes(samlTokenController: GenerateSAMLTokenController) {
         }
     }
 }
-
