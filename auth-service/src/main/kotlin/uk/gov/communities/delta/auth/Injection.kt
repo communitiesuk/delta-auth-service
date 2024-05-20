@@ -334,6 +334,11 @@ class Injection(
         accessGroupDCLGMembershipUpdateEmailService
     )
 
+    fun editLdapGroupsController() = EditLdapGroupsController(
+        groupService,
+        userLookupService,
+    )
+
     fun editUserDetailsController() = EditUserDetailsController(
         userLookupService,
         userService,
