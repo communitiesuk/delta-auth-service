@@ -92,7 +92,7 @@ class GroupServiceTest {
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(ldapUser.dn, modificationItems.captured[0].attribute.get())
-        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, ldapUser.getUUID(), call, any()) }
+        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, ldapUser.getGUID(), call, any()) }
         assertContains(auditData.captured, "\"addedGroupCN\":\"$groupCN\"")
     }
 
@@ -116,7 +116,7 @@ class GroupServiceTest {
         assertEquals(ldapUser.dn, modificationItems.captured[0].attribute.get())
         coVerify(exactly = 1) {
             userAuditService.userUpdateByAdminAudit(
-                adUser.cn, ldapUser.getUUID(), "adminUserCN", adminGUID, call, any()
+                adUser.cn, ldapUser.getGUID(), "adminUserCN", adminGUID, call, any()
             )
         }
         assertContains(auditData.captured, "\"addedGroupCN\":\"$groupCN\"")
@@ -147,7 +147,7 @@ class GroupServiceTest {
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.REMOVE_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(ldapUser.dn, modificationItems.captured[0].attribute.get())
-        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, ldapUser.getUUID(), call, any()) }
+        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, ldapUser.getGUID(), call, any()) }
         assertContains(auditData.captured, "\"removedGroupCN\":\"$groupCN\"")
     }
 
@@ -172,7 +172,7 @@ class GroupServiceTest {
         coVerify(exactly = 1) {
             userAuditService.userUpdateByAdminAudit(
                 adUser.cn,
-                ldapUser.getUUID(),
+                ldapUser.getGUID(),
                 "adminUserCN",
                 adminGUID,
                 call,

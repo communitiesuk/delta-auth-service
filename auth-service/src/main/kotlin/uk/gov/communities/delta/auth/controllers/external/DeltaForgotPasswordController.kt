@@ -75,12 +75,12 @@ class DeltaForgotPasswordController(
             if (!user.accountEnabled && setPasswordTokenService.passwordNeverSetForUserCN(user.cn))
                 emailService.sendPasswordNeverSetEmail(
                     user,
-                    setPasswordTokenService.createToken(user.cn, user.getUUID()),
+                    setPasswordTokenService.createToken(user.cn, user.getGUID()),
                     call
                 )
             else emailService.sendResetPasswordEmail(
                 user,
-                resetPasswordTokenService.createToken(user.cn, user.getUUID()),
+                resetPasswordTokenService.createToken(user.cn, user.getGUID()),
                 null,
                 userLookupService,
                 call

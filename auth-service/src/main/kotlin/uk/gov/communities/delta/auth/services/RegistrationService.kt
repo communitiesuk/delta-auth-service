@@ -60,9 +60,9 @@ class RegistrationService(
 
         logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully created")
         return if (ssoClient?.required == true)
-            SSOUserCreated(user.cn, user.getUUID())
+            SSOUserCreated(user.cn, user.getGUID())
         else
-            UserCreated(user, setPasswordTokenService.createToken(user.cn, user.getUUID()))
+            UserCreated(user, setPasswordTokenService.createToken(user.cn, user.getGUID()))
     }
 
     private suspend fun addUserToDefaultGroups(user: LdapUser, call: ApplicationCall) {
@@ -128,7 +128,7 @@ class RegistrationService(
                     registrationResult.user.firstName,
                     registrationResult.token,
                     registrationResult.user.cn,
-                    registrationResult.user.getUUID(),
+                    registrationResult.user.getGUID(),
                     null,
                     userLookupService,
                     getEmailContacts(registrationResult.user),

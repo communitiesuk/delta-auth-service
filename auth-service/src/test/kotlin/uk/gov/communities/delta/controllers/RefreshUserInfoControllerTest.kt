@@ -165,7 +165,7 @@ class RefreshUserInfoControllerTest {
                 oauthSessionService.updateWithImpersonatedCn(
                     adminSession.id,
                     userToImpersonate.cn,
-                    userToImpersonate.getUUID(),
+                    userToImpersonate.getGUID(),
                 )
             } just runs
             coEvery { adminEmailController.route(any()) } just runs
@@ -173,7 +173,7 @@ class RefreshUserInfoControllerTest {
                 userAuditService.insertImpersonatingUserAuditRow(
                     adminSession,
                     userToImpersonate.cn,
-                    userToImpersonate.getUUID(),
+                    userToImpersonate.getGUID(),
                     any()
                 )
             } just runs

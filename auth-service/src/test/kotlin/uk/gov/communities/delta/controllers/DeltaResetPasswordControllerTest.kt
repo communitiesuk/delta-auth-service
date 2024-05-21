@@ -71,9 +71,9 @@ class DeltaResetPasswordControllerTest {
             url = "/reset-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
-            coVerify(exactly = 1) { userService.resetPassword(user.getUUID(), validPassword) }
-            coVerify(exactly = 1) { userAuditService.resetPasswordAudit(user.cn, user.getUUID(), any()) }
+            coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
+            coVerify(exactly = 1) { userService.resetPassword(user.getGUID(), validPassword) }
+            coVerify(exactly = 1) { userAuditService.resetPasswordAudit(user.cn, user.getGUID(), any()) }
             assertSuccessPageRedirect(status, headers)
         }
     }
@@ -87,7 +87,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
@@ -104,7 +104,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not be a commonly used password.")
@@ -121,7 +121,7 @@ class DeltaResetPasswordControllerTest {
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID()) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not contain any part(s) your username")
@@ -149,15 +149,15 @@ class DeltaResetPasswordControllerTest {
         testClient.submitForm(
             url = "/reset-password/expired",
             formParameters = parameters {
-                append("userGUID", user.getUUID().toString())
+                append("userGUID", user.getGUID().toString())
                 append("token", expiredToken)
             }
         ).apply {
             coVerify(exactly = 1) {
-                resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getUUID())
+                resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getGUID())
             }
             coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), null, userLookupService, any()) }
-            coVerify(exactly = 1) { resetPasswordTokenService.createToken(user.cn, user.getUUID()) }
+            coVerify(exactly = 1) { resetPasswordTokenService.createToken(user.cn, user.getGUID()) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your password reset link has been emailed to you")
         }
@@ -185,34 +185,34 @@ class DeltaResetPasswordControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            resetPasswordTokenService.validateToken(validToken, user.cn, user.getUUID())
-        } returns PasswordTokenService.ValidToken(validToken, user.getUUID())
+            resetPasswordTokenService.validateToken(validToken, user.cn, user.getGUID())
+        } returns PasswordTokenService.ValidToken(validToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.validateToken(expiredToken, user.cn, user.getUUID())
-        } returns PasswordTokenService.ExpiredToken(expiredToken, user.getUUID())
+            resetPasswordTokenService.validateToken(expiredToken, user.cn, user.getGUID())
+        } returns PasswordTokenService.ExpiredToken(expiredToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.validateToken(invalidToken, user.cn, user.getUUID())
+            resetPasswordTokenService.validateToken(invalidToken, user.cn, user.getGUID())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
             resetPasswordTokenService.validateToken("", any(), any())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
-            resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getUUID())
-        } returns PasswordTokenService.ValidToken(validToken, user.getUUID())
+            resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID())
+        } returns PasswordTokenService.ValidToken(validToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getUUID())
-        } returns PasswordTokenService.ExpiredToken(expiredToken, user.getUUID())
+            resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getGUID())
+        } returns PasswordTokenService.ExpiredToken(expiredToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.consumeTokenIfValid(invalidToken, user.cn, user.getUUID())
+            resetPasswordTokenService.consumeTokenIfValid(invalidToken, user.cn, user.getGUID())
         } returns PasswordTokenService.NoSuchToken
         coEvery {
             resetPasswordTokenService.consumeTokenIfValid("", any(), any())
         } returns PasswordTokenService.NoSuchToken
-        coEvery { resetPasswordTokenService.createToken(user.cn, user.getUUID()) } returns "token"
-        coEvery { userService.resetPassword(user.getUUID(), validPassword) } just runs
+        coEvery { resetPasswordTokenService.createToken(user.cn, user.getGUID()) } returns "token"
+        coEvery { userService.resetPassword(user.getGUID(), validPassword) } just runs
         coEvery { emailService.sendResetPasswordEmail(any(), any(), null, userLookupService, any()) } just runs
         coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
-        coEvery { userLookupService.lookupUserByGUID(user.getUUID()) } returns user
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
     }
 
     companion object {

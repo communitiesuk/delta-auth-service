@@ -137,11 +137,11 @@ class AdminEditUserEmailControllerTest {
         )
 
         private val adminSession =
-            OAuthSession(1, adminUser.cn, adminUser.getUUID(), client, "adminToken", Instant.now(), "trace", false)
+            OAuthSession(1, adminUser.cn, adminUser.getGUID(), client, "adminToken", Instant.now(), "trace", false)
         private val nonAdminSession = OAuthSession(
             1,
             nonAdminUser.cn,
-            nonAdminUser.getUUID(),
+            nonAdminUser.getGUID(),
             client,
             "nonAdminToken",
             Instant.now(),

@@ -68,7 +68,7 @@ class AdminUserCreationControllerTest {
                     expectedLdapUser.firstName,
                     any(),
                     expectedLdapUser.cn,
-                    expectedLdapUser.getUUID(),
+                    expectedLdapUser.getGUID(),
                     adminSession,
                     userLookupService,
                     any(),
@@ -194,7 +194,7 @@ class AdminUserCreationControllerTest {
                     expectedLdapUser.firstName,
                     any(),
                     expectedLdapUser.cn,
-                    expectedLdapUser.getUUID(),
+                    expectedLdapUser.getGUID(),
                     adminSession,
                     userLookupService,
                     any(),
@@ -387,11 +387,11 @@ class AdminUserCreationControllerTest {
 
         private val adminSession =
             OAuthSession(
-            1, adminUser.cn, adminUser.getUUID(), client, "adminAccessToken", Instant.now(), "trace", false
+            1, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
         )
         private val userSession =
             OAuthSession(
-            1, regularUser.cn, regularUser.getUUID(), client, "userAccessToken", Instant.now(), "trace", false
+            1, regularUser.cn, regularUser.getGUID(), client, "userAccessToken", Instant.now(), "trace", false
         )
 
         private fun getUserDetailsJson(email: String): JsonElement {

@@ -58,7 +58,7 @@ class AdminEmailController(
         }
 
         try {
-            val token = setPasswordTokenService.createToken(receivingUser.cn, receivingUser.getUUID())
+            val token = setPasswordTokenService.createToken(receivingUser.cn, receivingUser.getGUID())
             emailService.sendSetPasswordEmail(
                 receivingUser,
                 token,
@@ -106,7 +106,7 @@ class AdminEmailController(
         }
 
         try {
-            val token = resetPasswordTokenService.createToken(receivingUser.cn, receivingUser.getUUID())
+            val token = resetPasswordTokenService.createToken(receivingUser.cn, receivingUser.getGUID())
             emailService.sendResetPasswordEmail(
                 receivingUser,
                 token,

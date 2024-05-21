@@ -10,7 +10,6 @@ import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
 import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
 import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
-import uk.gov.communities.delta.auth.repositories.getNewModeObjectGuidString
 import uk.gov.communities.delta.auth.utils.randomBase64
 import java.io.UnsupportedEncodingException
 import java.util.*
@@ -42,7 +41,7 @@ class UserService(
         }
         auditUserCreation(
             user.cn,
-            user.getUUID(),
+            user.getGUID(),
             ssoClient,
             triggeringAdminSession,
             call,
@@ -66,7 +65,7 @@ class UserService(
         }
         auditUserUpdate(
             ldapUser.cn,
-            ldapUser.getUUID(),
+            ldapUser.getGUID(),
             triggeringAdminSession,
             userLookupService,
             call,
@@ -95,7 +94,7 @@ class UserService(
             throw e
         }
         val auditMap = mapOf("mail" to newEmail, "Dn" to newDn)
-        auditUserUpdate(ldapUser.cn, ldapUser.getUUID(), triggeringAdminSession, userLookupService, call, auditMap)
+        auditUserUpdate(ldapUser.cn, ldapUser.getGUID(), triggeringAdminSession, userLookupService, call, auditMap)
     }
 
     suspend fun updateNotificationStatus(
@@ -112,7 +111,7 @@ class UserService(
             logger.atInfo().addKeyValue("NewSt", newStatus).log("Notification status updated")
         }
         val auditMap = mapOf("st" to newStatus)
-        auditUserUpdate(ldapUser.cn, ldapUser.getUUID(), triggeringAdminSession, userLookupService, call, auditMap)
+        auditUserUpdate(ldapUser.cn, ldapUser.getGUID(), triggeringAdminSession, userLookupService, call, auditMap)
     }
 
     private suspend fun auditUserCreation(
@@ -255,7 +254,7 @@ class UserService(
                     it.createSubcontext(adUser.dn, attributes)
                     val user = ldapRepository.mapUserFromContext(it, adUser.dn)
                     logger.atInfo().addKeyValue("UserDN", user.dn)
-                        .log("{} user created with GUID {}", if (enabled) "Enabled" else "Disabled", user.getUUID())
+                        .log("{} user created with GUID {}", if (enabled) "Enabled" else "Disabled", user.getGUID())
                     return@useServiceUserBind user
                 } catch (e: Exception) {
                     logger.atError().addKeyValue("UserDN", adUser.dn).log("Problem creating user", e)
@@ -367,7 +366,7 @@ class UserService(
             throw e
         }
         val auditMap = mapOf("unixHomeDirectory" to "")
-        auditUserUpdate(userToReset.cn, userToReset.getUUID(), session, userLookupService, call, auditMap)
+        auditUserUpdate(userToReset.cn, userToReset.getGUID(), session, userLookupService, call, auditMap)
     }
 
     class ADUser {

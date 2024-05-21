@@ -66,7 +66,7 @@ class EmailServiceTest {
             verify(exactly = 1) {
                 emailRepository.sendEmail("new-user", any(), any(), any())
             }
-            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getUUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getGUID(), any()) }
         }
     }
 
@@ -82,7 +82,7 @@ class EmailServiceTest {
                 emailRepository.sendEmail("new-user", any(), any(), any())
             }
             coVerify(exactly = 1) {
-                userAuditService.adminSetPasswordEmailAudit(user.cn, user.getUUID(), "adminUserCn", adminGUID, any())
+                userAuditService.adminSetPasswordEmailAudit(user.cn, user.getGUID(), "adminUserCn", adminGUID, any())
             }
         }
     }
@@ -102,7 +102,7 @@ class EmailServiceTest {
             verify(exactly = 1) {
                 emailRepository.sendEmail("not-yet-enabled-user", any(), any(), any())
             }
-            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getUUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getGUID(), any()) }
         }
     }
 
@@ -112,7 +112,7 @@ class EmailServiceTest {
             verify(exactly = 1) {
                 emailRepository.sendEmail("password-never-set", any(), any(), any())
             }
-            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getUUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getGUID(), any()) }
         }
 
     }
@@ -123,7 +123,7 @@ class EmailServiceTest {
             verify(exactly = 1) {
                 emailRepository.sendEmail("reset-password", any(), any(), any())
             }
-            coVerify(exactly = 1) { userAuditService.resetPasswordEmailAudit(user.cn, user.getUUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.resetPasswordEmailAudit(user.cn, user.getGUID(), any()) }
         }
     }
 
@@ -139,7 +139,7 @@ class EmailServiceTest {
                 emailRepository.sendEmail("reset-password", any(), any(), any())
             }
             coVerify(exactly = 1) {
-                userAuditService.adminResetPasswordEmailAudit(user.cn, user.getUUID(), "adminUserCn", adminGUID, any())
+                userAuditService.adminResetPasswordEmailAudit(user.cn, user.getGUID(), "adminUserCn", adminGUID, any())
             }
         }
     }

@@ -310,12 +310,12 @@ class AdminEditUserControllerTest {
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
         private val adminSession =
-            OAuthSession(1, adminUser.cn, adminUser.getUUID(), client, "adminToken", Instant.now(), "trace", false)
+            OAuthSession(1, adminUser.cn, adminUser.getGUID(), client, "adminToken", Instant.now(), "trace", false)
         private val disabledAdminSession =
             OAuthSession(
                 1,
                 disabledAdminUser.cn,
-                disabledAdminUser.getUUID(),
+                disabledAdminUser.getGUID(),
                 client,
                 "disabledAdminToken",
                 Instant.now(),
@@ -326,7 +326,7 @@ class AdminEditUserControllerTest {
             OAuthSession(
                 1,
                 readOnlyAdminUser.cn,
-                readOnlyAdminUser.getUUID(),
+                readOnlyAdminUser.getGUID(),
                 client,
                 "readOnlyAdminToken",
                 Instant.now(),
@@ -334,7 +334,7 @@ class AdminEditUserControllerTest {
                 false
             )
         private val regularUserSession =
-            OAuthSession(1, regularUser.cn, regularUser.getUUID(), client, "userToken", Instant.now(), "trace", false)
+            OAuthSession(1, regularUser.cn, regularUser.getGUID(), client, "userToken", Instant.now(), "trace", false)
 
         private val user = testLdapUser(
             cn = "beingUpdated!user.com",

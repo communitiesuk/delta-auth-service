@@ -40,7 +40,7 @@ class AdminEnableDisableUserControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.enableAccountAndNotifications(user.dn) }
             coVerify(exactly = 1) {
-                auditService.userEnableAudit(user.cn, user.getUUID(), adminUser.cn, adminUser.getUUID(), any())
+                auditService.userEnableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
             }
             confirmVerified(userService, auditService)
         }
@@ -86,7 +86,7 @@ class AdminEnableDisableUserControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.setPasswordAndEnable(user.dn, any()) }
             coVerify(exactly = 1) {
-                auditService.userEnableAudit(user.cn, user.getUUID(), adminUser.cn, adminUser.getUUID(), any())
+                auditService.userEnableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
             }
             confirmVerified(userService, auditService)
         }
@@ -124,7 +124,7 @@ class AdminEnableDisableUserControllerTest {
             coVerify(exactly = 1) { userService.disableAccountAndNotifications(user.dn) }
             coVerify(exactly = 1) { setPasswordTokenService.clearTokenForUserCn(user.cn) }
             coVerify(exactly = 1) {
-                auditService.userDisableAudit(user.cn, user.getUUID(), adminUser.cn, adminUser.getUUID(), any())
+                auditService.userDisableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
             }
             confirmVerified(userService, auditService, setPasswordTokenService)
         }
@@ -217,11 +217,11 @@ class AdminEnableDisableUserControllerTest {
 
         private val adminSession =
             OAuthSession(
-                1, adminUser.cn, adminUser.getUUID(), client, "adminAccessToken", Instant.now(), "trace", false
+                1, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
             )
         private val userSession =
             OAuthSession(
-                1, regularUser.cn, adminUser.getUUID(), client, "userAccessToken", Instant.now(), "trace", false
+                1, regularUser.cn, adminUser.getGUID(), client, "userAccessToken", Instant.now(), "trace", false
             )
 
         @BeforeClass

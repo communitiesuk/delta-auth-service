@@ -78,7 +78,7 @@ class RefreshUserInfoController(
                 "Something went wrong, please try again"
             )
             userToImpersonate = userLookupService.lookupUserByCn(impersonatedUsersCn)
-            impersonatedUserGUID = userToImpersonate.getUUID()
+            impersonatedUserGUID = userToImpersonate.getGUID()
         } else {
             if (!Strings.isNullOrEmpty(impersonatedUsersCn)) throw UserVisibleServerError(
                 "impersonating_user_both_user_cn_and_guid",

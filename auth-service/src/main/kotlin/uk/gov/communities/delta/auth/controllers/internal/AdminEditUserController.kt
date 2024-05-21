@@ -35,15 +35,15 @@ class AdminEditUserController(
             arrayOf(DeltaSystemRole.ADMIN), call
         )
 
-        val userToUpdate = getUserFromCallParameters(
+        val userToUpdate = getUserFromCallParameters( // TODO DT-1022 - just get GUID
             call.request.queryParameters,
             userLookupService,
             "Something went wrong, please try again",
             "update_user_as_admin"
         )
-        val userToUpdateRoles = userLookupService.loadUserRoles(userToUpdate).roles
+        val userToUpdateRoles = userLookupService.loadUserRoles(userToUpdate).roles // TODO DT-1022 - use lookupUserByGUIDAndLoadRoles
 
-        logger.atInfo().log("Updating user with GUID ${userToUpdate.getUUID()}")
+        logger.atInfo().log("Updating user with GUID ${userToUpdate.getGUID()}")
         val updatedDeltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
 
         if (updatedDeltaUserDetailsRequest.id.replace("@", "!") != userToUpdate.cn) throw ApiError(
@@ -79,7 +79,7 @@ class AdminEditUserController(
             groupService.removeUserFromGroup(userToUpdate, it, call, session, userLookupService)
         }
 
-        logger.atInfo().log("User ${userToUpdate.getUUID()} successfully updated")
+        logger.atInfo().log("User ${userToUpdate.getGUID()} successfully updated")
 
         accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
             AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(userToUpdate),

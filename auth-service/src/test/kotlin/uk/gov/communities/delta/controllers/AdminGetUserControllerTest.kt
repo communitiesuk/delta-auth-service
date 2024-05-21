@@ -143,12 +143,12 @@ class AdminGetUserControllerTest {
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
         private val adminSession =
-            OAuthSession(1, adminUser.cn, adminUser.getUUID(), client, "adminToken", Instant.now(), "trace", false)
+            OAuthSession(1, adminUser.cn, adminUser.getGUID(), client, "adminToken", Instant.now(), "trace", false)
         private val readOnlyAdminSession =
             OAuthSession(
                 1,
                 readOnlyAdminUser.cn,
-                readOnlyAdminUser.getUUID(),
+                readOnlyAdminUser.getGUID(),
                 client,
                 "readOnlyAdminToken",
                 Instant.now(),
@@ -156,7 +156,7 @@ class AdminGetUserControllerTest {
                 false
             )
         private val regularUserSession =
-            OAuthSession(1, regularUser.cn, regularUser.getUUID(), client, "userToken", Instant.now(), "trace", false)
+            OAuthSession(1, regularUser.cn, regularUser.getGUID(), client, "userToken", Instant.now(), "trace", false)
 
         private val user = testLdapUser(
             cn = "beingUpdated!user.com",

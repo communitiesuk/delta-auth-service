@@ -58,13 +58,13 @@ class DeltaSetPasswordController(
         )
         val token = call.request.queryParameters["token"].orEmpty()
         // TODO DT-976-2 - validate tokens using GUID not CN
-        when (val tokenResult = setPasswordTokenService.validateToken(token, user.cn, user.getUUID())) {
+        when (val tokenResult = setPasswordTokenService.validateToken(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException("set_password_no_token", "Set password token did not exist")
             }
 
             is PasswordTokenService.ExpiredToken -> {
-                val userEmail = userLookupService.lookupUserByGUID(user.getUUID()).email!!
+                val userEmail = userLookupService.lookupUserByGUID(user.getGUID()).email!!
                 call.respondExpiredTokenPage(tokenResult, userEmail)
             }
 
@@ -107,7 +107,7 @@ class DeltaSetPasswordController(
         val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, user.email!!)
         if (message != null) return call.respondSetPasswordPage(message)
 
-        when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getUUID())) {
+        when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 throw SetPasswordException(
                     "set_password_invalid_token",
@@ -127,7 +127,7 @@ class DeltaSetPasswordController(
                     logger.atError().addKeyValue("UserDN", user.dn).log("Error setting password for user", e)
                     throw e
                 }
-                userAuditService.setPasswordAudit(user.cn, user.getUUID(), call)
+                userAuditService.setPasswordAudit(user.cn, user.getGUID(), call)
                 call.respondRedirect("/delta/set-password/success")
             }
         }

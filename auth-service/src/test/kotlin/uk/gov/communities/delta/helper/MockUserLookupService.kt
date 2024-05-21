@@ -27,8 +27,8 @@ fun mockUserLookupService(
             )
         }
         coEvery { service.lookupUserByEmail(user.email!!) } returns user
-        coEvery { service.lookupUserByGUID(user.getUUID()) } returns user
-        coEvery { service.lookupUserByGUIDAndLoadRoles(user.getUUID()) } coAnswers {
+        coEvery { service.lookupUserByGUID(user.getGUID()) } returns user
+        coEvery { service.lookupUserByGUIDAndLoadRoles(user.getGUID()) } coAnswers {
             LdapUserWithRoles(
                 user, MemberOfToDeltaRolesMapper(user.cn, organisations, accessGroups).map(user.memberOfCNs)
             )

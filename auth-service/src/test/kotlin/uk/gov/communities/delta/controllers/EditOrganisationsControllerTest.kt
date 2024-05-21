@@ -227,7 +227,7 @@ class EditOrganisationsControllerTest {
         )
 
         private val testUserSession =
-            OAuthSession(1, testUser.cn, testUser.getUUID(), client, "testUserToken", Instant.now(), "trace", false)
+            OAuthSession(1, testUser.cn, testUser.getGUID(), client, "testUserToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic

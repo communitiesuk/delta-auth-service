@@ -43,7 +43,7 @@ class AdminEnableDisableUserController(
                     .log("Setting random password and enabling SSO user")
                 userService.setPasswordAndEnable(user.dn, randomBase64(18))
                 val sessionUserGUID = session.getUserGUID(userLookupService)
-                auditService.userEnableAudit(user.cn, user.getUUID(), session.userCn, sessionUserGUID, call)
+                auditService.userEnableAudit(user.cn, user.getGUID(), session.userCn, sessionUserGUID, call)
                 return call.respond(mapOf("message" to "User ${user.cn} enabled"))
             } else {
                 throw ApiError(
@@ -59,7 +59,7 @@ class AdminEnableDisableUserController(
         userService.enableAccountAndNotifications(user.dn)
         auditService.userEnableAudit(
             user.cn,
-            user.getUUID(),
+            user.getGUID(),
             session.userCn,
             session.getUserGUID(userLookupService),
             call
@@ -86,9 +86,7 @@ class AdminEnableDisableUserController(
         logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Disabling user")
         userService.disableAccountAndNotifications(user.dn)
         auditService.userDisableAudit(
-            user.cn, user.getUUID(), session.userCn,
-            session.getUserGUID(userLookupService),
-            call
+            user.cn, user.getGUID(), session.userCn, session.getUserGUID(userLookupService), call
         )
         // Clear any set password tokens so that they can't re-enable their account themselves
         setPasswordTokenService.clearTokenForUserCn(user.cn)

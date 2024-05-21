@@ -101,24 +101,24 @@ class UserServiceTest {
         coEvery { requiredSSOClient.required } returns true
         coEvery { notRequiredSSOClient.internalId } returns "xyz-987"
         coEvery { notRequiredSSOClient.required } returns false
-        coEvery { userAuditService.userSelfRegisterAudit(user.cn, user.getUUID(), call, capture(auditData)) } just runs
-        coEvery { userAuditService.userCreatedBySSOAudit(user.cn, user.getUUID(), call, capture(auditData)) } just runs
+        coEvery { userAuditService.userSelfRegisterAudit(user.cn, user.getGUID(), call, capture(auditData)) } just runs
+        coEvery { userAuditService.userCreatedBySSOAudit(user.cn, user.getGUID(), call, capture(auditData)) } just runs
         coEvery {
             userAuditService.ssoUserCreatedByAdminAudit(
-                user.cn, user.getUUID(), adminSession.userCn, adminSession.userGUID!!, call, capture(auditData)
+                user.cn, user.getGUID(), adminSession.userCn, adminSession.userGUID!!, call, capture(auditData)
             )
         } just runs
         coEvery {
             userAuditService.userCreatedByAdminAudit(
-                user.cn, user.getUUID(), adminSession.userCn, adminSession.userGUID!!, call, capture(auditData)
+                user.cn, user.getGUID(), adminSession.userCn, adminSession.userGUID!!, call, capture(auditData)
             )
         } just runs
         coEvery {
             userAuditService.userUpdateByAdminAudit(
-                user.cn, user.getUUID(), adminSession.userCn, adminSession.userGUID!!, call, capture(auditData)
+                user.cn, user.getGUID(), adminSession.userCn, adminSession.userGUID!!, call, capture(auditData)
             )
         } just runs
-        coEvery { userLookupService.lookupUserByGUID(user.getUUID()) } returns user
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
     }
 
     @Test
@@ -307,8 +307,8 @@ class UserServiceTest {
 
     @Test
     fun testResetUserPassword() = testSuspend {
-        coEvery { userLookupService.lookupUserByGUID(user.getUUID()) } returns user
-        userService.resetPassword(user.getUUID(), "TestPassword")
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
+        userService.resetPassword(user.getGUID(), "TestPassword")
         verify(exactly = 1) { context.modifyAttributes(user.dn, any()) }
         // User is unlocked
         assertEquals(DirContext.REPLACE_ATTRIBUTE, modificationItems.captured[1].modificationOp)
@@ -321,10 +321,10 @@ class UserServiceTest {
     @Test
     fun testResetUserPasswordDisabledUser() = testSuspend {
         val disabledUser = testLdapUser(accountEnabled = false)
-        coEvery { userLookupService.lookupUserByGUID(disabledUser.getUUID()) } returns disabledUser
+        coEvery { userLookupService.lookupUserByGUID(disabledUser.getGUID()) } returns disabledUser
         Assert.assertThrows(ResetPasswordException::class.java) {
             runBlocking {
-                userService.resetPassword(disabledUser.getUUID(), "TestPassword")
+                userService.resetPassword(disabledUser.getGUID(), "TestPassword")
             }
         }
         verify(exactly = 0) { context.modifyAttributes(disabledUser.dn, any()) }

@@ -272,7 +272,7 @@ class EditRolesControllerTest {
         private val externalUserSession = OAuthSession(
             1,
             externalUser.cn,
-            externalUser.getUUID(),
+            externalUser.getGUID(),
             client,
             "externalUserToken",
             Instant.now(),
@@ -282,7 +282,7 @@ class EditRolesControllerTest {
         private val internalUserSession = OAuthSession(
             1,
             internalUser.cn,
-            externalUser.getUUID(),
+            externalUser.getGUID(),
             client,
             "internalUserToken",
             Instant.now(),

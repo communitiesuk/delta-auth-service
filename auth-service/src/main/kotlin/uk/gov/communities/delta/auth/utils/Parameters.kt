@@ -42,7 +42,7 @@ suspend fun getUserGUIDFromCallParameters(
         )
         validateCN(userCN)
         user = userLookupService.lookupUserByCn(userCN)
-        user.getUUID()
+        user.getGUID()
     } else {
         if (!Strings.isNullOrEmpty(userCN)) throw UserVisibleServerError(
             action + "_both_user_cn_and_guid",

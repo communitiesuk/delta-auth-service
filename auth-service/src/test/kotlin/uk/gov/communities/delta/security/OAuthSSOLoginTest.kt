@@ -76,12 +76,12 @@ class OAuthSSOLoginTest {
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
             coVerify(exactly = 1) {
                 authorizationCodeServiceMock.generateAndStore(
-                    testUser.cn, testUser.getUUID(), serviceClient, any(), true
+                    testUser.cn, testUser.getGUID(), serviceClient, any(), true
                 )
             }
             verify(exactly = 1) { ssoLoginCounter.increment() }
             coVerify(exactly = 1) {
-                userAuditService.userSSOLoginAudit(testUser.cn, testUser.getUUID(), ssoClient, "abc-123", any())
+                userAuditService.userSSOLoginAudit(testUser.cn, testUser.getGUID(), ssoClient, "abc-123", any())
             }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
@@ -128,7 +128,7 @@ class OAuthSSOLoginTest {
                 assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error"))
                 coVerify(exactly = 0) {
                     authorizationCodeServiceMock.generateAndStore(
-                        testUser.cn, testUser.getUUID(), serviceClient, any(), true
+                        testUser.cn, testUser.getGUID(), serviceClient, any(), true
                     )
                 }
             }
@@ -150,7 +150,7 @@ class OAuthSSOLoginTest {
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         coEvery {
             registrationService.register(any<Registration>(), any(), any(), ssoClient)
-        } returns RegistrationService.SSOUserCreated(testUser.cn, testUser.getUUID())
+        } returns RegistrationService.SSOUserCreated(testUser.cn, testUser.getGUID())
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
@@ -170,7 +170,7 @@ class OAuthSSOLoginTest {
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         coEvery {
             registrationService.register(any<Registration>(), any(), any(), requiredSsoClient)
-        } returns RegistrationService.SSOUserCreated(testUser.cn, testUser.getUUID())
+        } returns RegistrationService.SSOUserCreated(testUser.cn, testUser.getGUID())
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
@@ -248,9 +248,9 @@ class OAuthSSOLoginTest {
             )
         coEvery { ldapUserLookupServiceMock.userIfExists(adminUser.email!!) } returns adminUser
         coEvery {
-            authorizationCodeServiceMock.generateAndStore(adminUser.cn, adminUser.getUUID(), serviceClient, any(), true)
+            authorizationCodeServiceMock.generateAndStore(adminUser.cn, adminUser.getGUID(), serviceClient, any(), true)
         } answers {
-            AuthCode("code", adminUser.cn, adminUser.getUUID(), serviceClient, Instant.MIN, "trace", true)
+            AuthCode("code", adminUser.cn, adminUser.getGUID(), serviceClient, Instant.MIN, "trace", true)
         }
     }
 
@@ -290,10 +290,10 @@ class OAuthSSOLoginTest {
         coEvery { ldapUserLookupServiceMock.lookupUserByEmail("user@email-domain.com") } returns domainUser
         coEvery {
             authorizationCodeServiceMock.generateAndStore(
-                domainUser.cn, domainUser.getUUID(), serviceClient, any(), true
+                domainUser.cn, domainUser.getGUID(), serviceClient, any(), true
             )
         } answers {
-            AuthCode("code", domainUser.cn, domainUser.getUUID(), serviceClient, Instant.MIN, "trace", true)
+            AuthCode("code", domainUser.cn, domainUser.getGUID(), serviceClient, Instant.MIN, "trace", true)
         }
 
         val loginState = runBlocking {
@@ -309,7 +309,7 @@ class OAuthSSOLoginTest {
                 assertEquals(headers["Location"], "https://delta/login/oauth2/redirect?code=code&state=delta-state")
                 coVerify(exactly = 1) {
                     authorizationCodeServiceMock.generateAndStore(
-                        domainUser.cn, domainUser.getUUID(), serviceClient, any(), true
+                        domainUser.cn, domainUser.getGUID(), serviceClient, any(), true
                     )
                 }
             }
@@ -331,10 +331,10 @@ class OAuthSSOLoginTest {
         coEvery { ldapUserLookupServiceMock.userIfExists(domainUser.email!!) } returns domainUser
         coEvery {
             authorizationCodeServiceMock.generateAndStore(
-                testUser.cn, testUser.getUUID(), serviceClient, any(), true
+                testUser.cn, testUser.getGUID(), serviceClient, any(), true
             )
         } answers {
-            AuthCode("code", testUser.cn, testUser.getUUID(), serviceClient, Instant.MIN, "trace", true)
+            AuthCode("code", testUser.cn, testUser.getGUID(), serviceClient, Instant.MIN, "trace", true)
         }
         coEvery {
             microsoftGraphServiceMock.checkCurrentUserGroups(

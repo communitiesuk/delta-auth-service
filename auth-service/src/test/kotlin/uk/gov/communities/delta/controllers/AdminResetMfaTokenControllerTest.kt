@@ -124,11 +124,11 @@ class AdminResetMfaTokenControllerTest {
         )
 
         private val adminSession =
-            OAuthSession(1, adminUser.cn, adminUser.getUUID(), client, "adminToken", Instant.now(), "trace", false)
+            OAuthSession(1, adminUser.cn, adminUser.getGUID(), client, "adminToken", Instant.now(), "trace", false)
         private val nonFullAdminSession = OAuthSession(
             1,
             nonFullAdminUser.cn,
-            nonFullAdminUser.getUUID(),
+            nonFullAdminUser.getGUID(),
             client,
             "readOnlyAdminToken",
             Instant.now(),

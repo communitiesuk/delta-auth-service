@@ -70,7 +70,7 @@ class GroupService(
             it.modifyAttributes(groupDN, modificationItems)
             logger.atInfo().addKeyValue("UserDN", user.dn).log("User added to group with dn {}", groupDN)
         }
-        auditAddingUserToGroup(user.cn, user.getUUID(), groupCN, triggeringAdminSession, userLookupService, call)
+        auditAddingUserToGroup(user.cn, user.getGUID(), groupCN, triggeringAdminSession, userLookupService, call)
     }
 
     suspend fun removeUserFromGroup(
@@ -80,27 +80,15 @@ class GroupService(
         triggeringAdminSession: OAuthSession?,
         userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
     ) {
-        removeUserFromGroup(user.cn, user.getUUID(), user.dn, groupCN, call, triggeringAdminSession, userLookupService)
-    }
-
-    private suspend fun removeUserFromGroup(
-        userCN: String,
-        userGUID: UUID,
-        userDN: String,
-        groupCN: String,
-        call: ApplicationCall,
-        triggeringAdminSession: OAuthSession?,
-        userLookupService: UserLookupService, // TODO DT-976-2 - remove once GUID is definitely in session
-    ) {
         val groupDN = ldapConfig.groupDnFormat.format(groupCN)
 
         ldapServiceUserBind.useServiceUserBind {
-            val member = BasicAttribute("member", userDN)
+            val member = BasicAttribute("member", user.dn)
             val modificationItems = arrayOf(ModificationItem(DirContext.REMOVE_ATTRIBUTE, member))
             it.modifyAttributes(groupDN, modificationItems)
-            logger.atInfo().addKeyValue("UserDN", userDN).log("User removed from group with dn {}", groupDN)
+            logger.atInfo().addKeyValue("UserDN", user.dn).log("User removed from group with dn {}", groupDN)
         }
-        auditRemovingUserFromGroup(userCN, userGUID, groupCN, triggeringAdminSession, userLookupService, call)
+        auditRemovingUserFromGroup(user.cn, user.getGUID(), groupCN, triggeringAdminSession, userLookupService, call)
     }
 
     private suspend fun auditAddingUserToGroup(

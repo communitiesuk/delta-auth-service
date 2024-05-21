@@ -42,7 +42,7 @@ class AdminEmailControllerTest {
                 emailService.sendSetPasswordEmail(disabledReceivingUser, any(), adminSession, userLookupService, any())
             }
             coVerify(exactly = 1) {
-                setPasswordTokenService.createToken(disabledReceivingUser.cn, disabledReceivingUser.getUUID())
+                setPasswordTokenService.createToken(disabledReceivingUser.cn, disabledReceivingUser.getGUID())
             }
         }
     }
@@ -63,7 +63,7 @@ class AdminEmailControllerTest {
                 )
             }
             coVerify(exactly = 1) {
-                setPasswordTokenService.createToken(disabledReceivingUser.cn, disabledReceivingUser.getUUID())
+                setPasswordTokenService.createToken(disabledReceivingUser.cn, disabledReceivingUser.getGUID())
             }
         }
     }
@@ -310,13 +310,13 @@ class AdminEmailControllerTest {
             accountEnabled = false
         )
         private val adminSession = OAuthSession(
-            1, adminUser.cn, adminUser.getUUID(), client, "adminAccessToken", Instant.now(), "trace", false
+            1, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
         )
         private val readOnlyAdminSession =
             OAuthSession(
                 1,
                 readOnlyAdminUser.cn,
-                readOnlyAdminUser.getUUID(),
+                readOnlyAdminUser.getGUID(),
                 client,
                 "readOnlyAdminAccessToken",
                 Instant.now(),
@@ -324,7 +324,7 @@ class AdminEmailControllerTest {
                 false
             )
         private val userSession = OAuthSession(
-            1, regularUser.cn, regularUser.getUUID(), client, "userAccessToken", Instant.now(), "trace", false
+            1, regularUser.cn, regularUser.getGUID(), client, "userAccessToken", Instant.now(), "trace", false
         )
 
         @BeforeClass

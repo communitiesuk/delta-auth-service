@@ -237,7 +237,7 @@ data class LdapUser(
     // Not required by Delta, but used internally
     @Transient val passwordLastSet: Instant? = null,
 ) {
-    fun getUUID(): UUID {
+    fun getGUID(): UUID {
         return UUID.fromString(javaUUIDObjectGuid)
     }
 }

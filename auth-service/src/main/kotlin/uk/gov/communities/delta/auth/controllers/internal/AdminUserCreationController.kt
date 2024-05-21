@@ -124,9 +124,9 @@ class AdminUserCreationController(
         try {
             emailService.sendSetPasswordEmail(
                 user.firstName,
-                setPasswordTokenService.createToken(user.cn, user.getUUID()),
+                setPasswordTokenService.createToken(user.cn, user.getGUID()),
                 user.cn,
-                user.getUUID(),
+                user.getGUID(),
                 session,
                 userLookupService,
                 EmailContacts(user.email!!, user.fullName, emailConfig),

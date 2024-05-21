@@ -144,7 +144,7 @@ class AdminEditUserNotificationStatusControllerTest {
         private val fullAdminSession = OAuthSession(
             1,
             fullAdminUser.cn,
-            fullAdminUser.getUUID(),
+            fullAdminUser.getGUID(),
             client,
             "fullAdminToken",
             Instant.now(),
@@ -154,7 +154,7 @@ class AdminEditUserNotificationStatusControllerTest {
         private val readOnlyAdminSession = OAuthSession(
             1,
             readOnlyAdminUser.cn,
-            readOnlyAdminUser.getUUID(),
+            readOnlyAdminUser.getGUID(),
             client,
             "readOnlyAdminToken",
             Instant.now(),
@@ -164,7 +164,7 @@ class AdminEditUserNotificationStatusControllerTest {
         private val nonAdminSession = OAuthSession(
             1,
             nonAdminUser.cn,
-            nonAdminUser.getUUID(),
+            nonAdminUser.getGUID(),
             client,
             "nonAdminToken",
             Instant.now(),

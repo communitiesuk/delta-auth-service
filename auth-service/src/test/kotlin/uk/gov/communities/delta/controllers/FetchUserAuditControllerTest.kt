@@ -194,10 +194,10 @@ class FetchUserAuditControllerTest {
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
         private val adminSession = OAuthSession(
-            1, adminUser.cn, adminUser.getUUID(), client, "adminAccessToken", Instant.now(), "trace", false
+            1, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
         )
         private val userSession = OAuthSession(
-            1, regularUser.cn, regularUser.getUUID(), client, "userAccessToken", Instant.now(), "trace", false
+            1, regularUser.cn, regularUser.getGUID(), client, "userAccessToken", Instant.now(), "trace", false
         )
 
         @BeforeClass

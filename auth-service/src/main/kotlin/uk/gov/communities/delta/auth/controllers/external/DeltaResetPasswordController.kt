@@ -55,21 +55,21 @@ class DeltaResetPasswordController(
             "reset_password_get"
         )
         val token = call.request.queryParameters["token"].orEmpty()
-        when (val tokenResult = resetPasswordTokenService.validateToken(token, user.cn, user.getUUID())) {
+        when (val tokenResult = resetPasswordTokenService.validateToken(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.warn("Reset password get request with invalid token and/or userCN")
                 throw ResetPasswordException("reset_password_no_token", "Reset password token did not exist")
             }
 
             is PasswordTokenService.ExpiredToken -> {
-                logger.atWarn().addKeyValue("userGUID", user.getUUID())
+                logger.atWarn().addKeyValue("userGUID", user.getGUID())
                     .log("Reset password get request with expired token")
-                val userEmail = userLookupService.lookupUserByGUID(user.getUUID()).email!!
+                val userEmail = userLookupService.lookupUserByGUID(user.getGUID()).email!!
                 call.respondExpiredTokenPage(tokenResult, userEmail)
             }
 
             is PasswordTokenService.ValidToken -> {
-                logger.atInfo().addKeyValue("userGUID", user.getUUID())
+                logger.atInfo().addKeyValue("userGUID", user.getGUID())
                     .log("Reset password get request with valid token")
                 call.respondResetPasswordPage()
             }
@@ -112,9 +112,9 @@ class DeltaResetPasswordController(
         val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, user.email!!)
 
         if (message != null) return call.respondResetPasswordPage(message)
-        logger.atInfo().addKeyValue("userCN", user.cn).addKeyValue("userGUID", user.getUUID())
+        logger.atInfo().addKeyValue("userCN", user.cn).addKeyValue("userGUID", user.getGUID())
             .log("Reset password post")
-        when (val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getUUID())) {
+        when (val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.error("Token did not exist on resetting password")
                 throw ResetPasswordException(
@@ -125,7 +125,7 @@ class DeltaResetPasswordController(
 
             is PasswordTokenService.ExpiredToken -> {
                 logger.atWarn().addKeyValue("userGUID", tokenResult.userGUID).log("Expired password reset token")
-                val userEmail = userLookupService.lookupUserByGUID(user.getUUID()).email!!
+                val userEmail = userLookupService.lookupUserByGUID(user.getGUID()).email!!
                 call.respondExpiredTokenPage(tokenResult, userEmail)
             }
 
@@ -134,7 +134,7 @@ class DeltaResetPasswordController(
                     .log("Reset password form submitted with valid token")
                 userService.resetPassword(tokenResult.userGUID, newPassword)
                 logger.atInfo().addKeyValue("userGUID", tokenResult.userGUID).log("Password reset")
-                userAuditService.resetPasswordAudit(user.cn, user.getUUID(), call)
+                userAuditService.resetPasswordAudit(user.cn, user.getGUID(), call)
                 call.respondRedirect("/delta/reset-password/success")
             }
         }

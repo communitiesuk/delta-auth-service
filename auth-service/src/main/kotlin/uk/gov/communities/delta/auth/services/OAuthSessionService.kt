@@ -32,7 +32,7 @@ data class OAuthSession(
         createdAt.plusSeconds(OAuthSessionService.TOKEN_VALID_DURATION_SECONDS) < timeSource.now()
 
     suspend fun getUserGUID(userLookupService: UserLookupService): UUID {
-        return this.userGUID ?: userLookupService.lookupUserByCn(this.userCn).getUUID() // TODO DT-976-2 - no longer needed
+        return this.userGUID ?: userLookupService.lookupUserByCn(this.userCn).getGUID() // TODO DT-976-2 - no longer needed
     }
 }
 
