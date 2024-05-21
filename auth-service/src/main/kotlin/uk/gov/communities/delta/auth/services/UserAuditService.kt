@@ -64,7 +64,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         insertAuditRow(
             UserAuditTrailRepo.AuditAction.IMPERSONATE_USER,
             session.userCn,
-            impersonatedUserGUID,
+            session.userGUID,
             null,
             null,
             requestId,
