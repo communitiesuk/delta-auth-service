@@ -37,7 +37,7 @@ class UserAuditTrailRepo {
     @Blocking
     fun getAuditForUser(conn: Connection, userCn: String, limitOffset: Pair<Int, Int>? = null): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
-            "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
+            "SELECT action, timestamp, user_cn, user_guid, editing_user_cn, editing_user_guid, request_id, action_data " +
                 "FROM user_audit WHERE user_cn = ? " +
                 "ORDER BY timestamp DESC " +
                 if (limitOffset != null) "LIMIT ? OFFSET ?" else ""
@@ -54,7 +54,7 @@ class UserAuditTrailRepo {
     @Blocking
     fun getAuditForAllUsers(conn: Connection, from: Instant, to: Instant): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
-            "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
+            "SELECT action, timestamp, user_cn ,user_guid, editing_user_cn, editing_user_guid, request_id, action_data " +
                 "FROM user_audit " +
                 "WHERE timestamp >= ? " +
                 "AND timestamp < ? " +
@@ -70,7 +70,9 @@ class UserAuditTrailRepo {
         AuditAction.fromActionString(row.getString("action")),
         row.getTimestamp("timestamp"),
         row.getString("user_cn"),
+        row.getObject("user_guid", UUID::class.java),
         row.getString("editing_user_cn"),
+        row.getObject("editing_user_guid", UUID::class.java),
         row.getString("request_id"),
         Json.parseToJsonElement(row.getString("action_data")).jsonObject,
     )
@@ -117,7 +119,9 @@ class UserAuditTrailRepo {
         val action: AuditAction,
         val timestamp: Timestamp,
         val userCn: String,
+        val userGUID: UUID?, // TODO DT-976-2 - no longer nullable
         val editingUserCn: String?,
+        val editingUserGUID: UUID?,
         val requestId: String,
         val actionData: JsonObject,
     )

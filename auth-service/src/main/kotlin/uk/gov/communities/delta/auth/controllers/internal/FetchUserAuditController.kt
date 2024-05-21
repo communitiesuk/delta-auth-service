@@ -74,7 +74,9 @@ class FetchUserAuditController(
                             "action" to JsonPrimitive(it.action.action),
                             "timestamp" to JsonPrimitive(it.timestamp.toInstant().toString()),
                             "userCN" to JsonPrimitive(it.userCn),
-                            "editingUserCN" to JsonPrimitive(it.editingUserCn),
+                            "userGUID" to JsonPrimitive(it.userGUID.toString()),
+                    "editingUserCN" to JsonPrimitive(it.editingUserCn),
+                    "editingUserGUID" to JsonPrimitive(it.editingUserGUID?.toString() ?: ""),
                             "requestId" to JsonPrimitive(it.requestId),
                             "actionData" to it.actionData,
                         )
@@ -134,14 +136,16 @@ class FetchUserAuditController(
     private fun buildCSVFromAudit(audit: List<UserAuditTrailRepo.UserAuditRow>): String {
         val extraCSVHeaders = audit.flatMap { it.actionData.keys }.distinct()
         val stringBuilder = StringBuilder()
-        stringBuilder.csvRow(listOf("action", "timestamp", "userCN", "editingUserCN", "requestId") + extraCSVHeaders)
+        stringBuilder.csvRow(listOf("action", "timestamp", "userCN", "userGUID", "editingUserCN", "editingUserGUID", "requestId") + extraCSVHeaders)
 
         for (auditRow in audit) {
             val csvRow = mutableListOf(
                 auditRow.action.action,
                 auditRow.timestamp.toInstant().toString(),
                 auditRow.userCn,
+                auditRow.userGUID.toString(),
                 auditRow.editingUserCn ?: "",
+                auditRow.editingUserGUID?.toString() ?: "",
                 auditRow.requestId
             )
             extraCSVHeaders.forEach {
