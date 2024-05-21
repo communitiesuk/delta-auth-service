@@ -43,6 +43,10 @@ fun Application.configureRouting(injection: Injection) {
             injection.externalDeltaResetPasswordController(),
             injection.externalDeltaForgotPasswordController(),
         )
+        deltaApiRoutes(
+            injection.externalDeltaApiTokenController(),
+            injection.internalDeltaApiTokenController(),
+        )
     }
 }
 
@@ -196,8 +200,6 @@ fun oauthClientCallbackRoute(ssoClientInternalId: String) = "/delta/oauth/${ssoC
 fun Route.internalRoutes(injection: Injection) {
     val generateSAMLTokenController = injection.generateSAMLTokenController()
     val oauthTokenController = injection.internalOAuthTokenController()
-    val externalDeltaApiTokenController = injection.externalDeltaApiTokenController()
-    val internalDeltaApiTokenController = injection.internalDeltaApiTokenController()
     val refreshUserInfoController = injection.refreshUserInfoController()
     val fetchUserAuditController = injection.fetchUserAuditController()
     val adminEmailController = injection.adminEmailController()
@@ -217,11 +219,6 @@ fun Route.internalRoutes(injection: Injection) {
         serviceUserRoutes(generateSAMLTokenController)
 
         oauthTokenRoute(oauthTokenController)
-
-        deltaApiRoutes(
-            externalDeltaApiTokenController,
-            internalDeltaApiTokenController,
-        )
 
         bearerTokenRoutes(
             refreshUserInfoController,

@@ -63,7 +63,7 @@ class ClientConfig(val clients: List<Client>) {
                     "http://localhost:8080",
                 )
             }
-            val deltaApi = Client("api", deltaApiSecret, samlCredentials)
+            val deltaApi = Client("delta-api", deltaApiSecret, samlCredentials)
             return ClientConfig(listOfNotNull(marklogic, deltaWebsite, devDeltaWebsite, devDeltaWebsiteToTestEnvironment, deltaApi))
         }
     }

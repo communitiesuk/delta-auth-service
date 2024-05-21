@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.util.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -25,14 +26,19 @@ class ExternalDeltaApiTokenController(
     }
 
     suspend fun createApiToken(call: ApplicationCall) {
-        val requestPayload = call.receive<ApiTokenRequest>()
+        val params = call.receiveParameters()
+        val grant_type = params.getOrFail("grant_type")
+        val username = params.getOrFail("username")
+        val password = params.getOrFail("password")
+        val clientId = params.getOrFail("client_id")
+        val clientSecret = params.getOrFail("client_secret")
 
         logger.atInfo()
-            .addKeyValue("userCn", requestPayload.username)
-            .addKeyValue("clientId", requestPayload.client_id)
+            .addKeyValue("userCn", username)
+            .addKeyValue("clientId", clientId)
             .log("Received API token request")
 
-        if (requestPayload.grant_type != "password") {
+        if (grant_type != "password") {
             throw ApiError(
                 HttpStatusCode.BadRequest,
                 "invalid_grant_type",
@@ -40,7 +46,7 @@ class ExternalDeltaApiTokenController(
             )
         }
 
-        if (!tokenService.validateApiClientIdAndSecret(requestPayload.client_id, requestPayload.client_secret)) {
+        if (!tokenService.validateApiClientIdAndSecret(clientId, clientSecret)) {
             throw ApiError(
                 HttpStatusCode.Unauthorized,
                 "invalid_client",
@@ -49,8 +55,8 @@ class ExternalDeltaApiTokenController(
         }
 
         // we accept emails as well as CNs to match Keycloak
-        val userCn = requestPayload.username.replace('@', '!')
-        val loginResult = ldapService.ldapLogin(userCn, requestPayload.password)
+        val userCn = username.replace('@', '!')
+        val loginResult = ldapService.ldapLogin(userCn, password)
         if (loginResult !is IADLdapLoginService.LdapLoginSuccess) {
             throw ApiError(
                 HttpStatusCode.Unauthorized,
@@ -59,7 +65,7 @@ class ExternalDeltaApiTokenController(
             )
         }
 
-        val apiToken = tokenService.createAndStoreApiToken(userCn, requestPayload.client_id, loginResult.user.javaUUIDObjectGuid, call)
+        val apiToken = tokenService.createAndStoreApiToken(userCn, clientId, loginResult.user.javaUUIDObjectGuid, call)
         return call.respond(mapOf(
             "access_token" to apiToken,
             "expires_in" to (DeltaApiTokenService.API_TOKEN_EXPIRY_HOURS * 3600).toString(),

@@ -3,6 +3,7 @@ package uk.gov.communities.delta.controllers
 import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -24,16 +25,16 @@ import kotlin.test.assertEquals
 class ExternalDeltaApiTokenControllerTest {
     @Test
     fun testCreateApiToken() = testSuspend {
-        testClient.post("/delta-api/oauth/token") {
-            contentType(ContentType.Application.Json)
-            setBody("""
-                {"grant_type": "${validGrantType}",
-                "username": "${testUser.cn}",
-                "password": "${validUserPassword}",
-                "client_id": "${validClientId}",
-                "client_secret": "${validClientSecret}"}
-            """.trimIndent())
-        }.apply {
+        testClient.submitForm(
+            url = "/delta-api/oauth/token",
+            formParameters = parameters {
+                append("grant_type", validGrantType)
+                append("username", testUser.cn)
+                append("password", validUserPassword)
+                append("client_id", validClientId)
+                append("client_secret", validClientSecret)
+            }
+        ).apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 tokenService.validateApiClientIdAndSecret(validClientId, validClientSecret)
@@ -49,16 +50,16 @@ class ExternalDeltaApiTokenControllerTest {
     fun grantTypeMustBePassword() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/delta-api/oauth/token") {
-                    contentType(ContentType.Application.Json)
-                    setBody("""
-                        {"grant_type": "device_code",
-                        "username": "${testUser.cn}",
-                        "password": "${validUserPassword}",
-                        "client_id": "${validClientId}",
-                        "client_secret": "${validClientSecret}"}
-                    """.trimIndent())
-                }
+                testClient.submitForm(
+                    url = "/delta-api/oauth/token",
+                    formParameters = parameters {
+                        append("grant_type", "device_code")
+                        append("username", testUser.cn)
+                        append("password", validUserPassword)
+                        append("client_id", validClientId)
+                        append("client_secret", validClientSecret)
+                    }
+                )
             }
         }.apply {
             assertEquals("invalid_grant_type", errorCode)
@@ -70,16 +71,16 @@ class ExternalDeltaApiTokenControllerTest {
     fun userCredentialsMustBeValid() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/delta-api/oauth/token") {
-                    contentType(ContentType.Application.Json)
-                    setBody("""
-                        {"grant_type": "${validGrantType}",
-                        "username": "${testUser.cn}",
-                        "password": "wrong_password",
-                        "client_id": "${validClientId}",
-                        "client_secret": "${validClientSecret}"}
-                    """.trimIndent())
-                }
+                testClient.submitForm(
+                    url = "/delta-api/oauth/token",
+                    formParameters = parameters {
+                        append("grant_type", validGrantType)
+                        append("username", testUser.cn)
+                        append("password", "wrong_password")
+                        append("client_id", validClientId)
+                        append("client_secret", validClientSecret)
+                    }
+                )
             }
         }.apply {
             assertEquals("invalid_grant", errorCode)
@@ -91,16 +92,16 @@ class ExternalDeltaApiTokenControllerTest {
     fun clientCredentialsMustBeValid() = testSuspend {
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
-                testClient.post("/delta-api/oauth/token") {
-                    contentType(ContentType.Application.Json)
-                    setBody("""
-                        {"grant_type": "${validGrantType}",
-                        "username": "${testUser.cn}",
-                        "password": "${validUserPassword}",
-                        "client_id": "${validClientId}",
-                        "client_secret": "wrong_secret"}
-                    """.trimIndent())
-                }
+                testClient.submitForm(
+                    url = "/delta-api/oauth/token",
+                    formParameters = parameters {
+                        append("grant_type", validGrantType)
+                        append("username", testUser.cn)
+                        append("password", validUserPassword)
+                        append("client_id", validClientId)
+                        append("client_secret", "wrong_secret")
+                    }
+                )
             }
         }.apply {
             assertEquals("invalid_client", errorCode)
