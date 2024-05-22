@@ -23,6 +23,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Use deploy key so we have write access for pushing the git tag later
+          ssh-key: ${{ secrets.REPO_WRITE_DEPLOY_KEY }}
 
       - name: Docker login
         run: aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_PATH
@@ -39,6 +42,12 @@ jobs:
         working-directory: auth-service/
       - name: Pushing tag ${{ steps.determine_tag.outputs.tag }}
         run: docker push $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }}
+      - name: Push git tag
+        if: ${{ startsWith(steps.determine_tag.outputs.tag, 'release-') }}
+        run: |
+          TAG="${{ steps.determine_tag.outputs.tag }}-$(date +%Y-%m-%d)"
+          git tag $TAG
+          git push origin $TAG
   deploy_to_test:
     name: Deploy new image to test environment
     uses: "./.github/workflows/terraform_deploy.yml"
