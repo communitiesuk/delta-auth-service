@@ -72,13 +72,4 @@ class ExternalDeltaApiTokenController(
             "token_type" to "Bearer"
         ))
     }
-
-    @Serializable
-    data class ApiTokenRequest(
-        @SerialName("grant_type") val grant_type: String,
-        @SerialName("username") val username: String,
-        @SerialName("password") val password: String,
-        @SerialName("client_id") val client_id: String,
-        @SerialName("client_secret") val client_secret: String,
-    )
 }
