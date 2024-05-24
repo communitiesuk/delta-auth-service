@@ -3,13 +3,13 @@ package uk.gov.communities.delta.tasks
 import io.ktor.server.application.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.services.DeltaApiTokenService
 import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.tasks.DeleteOldApiTokens
-import uk.gov.communities.delta.auth.tasks.DeleteOldAuthCodes
 import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.dbintegration.testDbPool
 import java.time.Instant
@@ -87,6 +87,16 @@ class DeleteOldApiTokensTest {
         fun setup() {
             testDbPool.useConnectionBlocking("test_data_creation") {
                 it.createStatement().execute("INSERT INTO api_clients (client_id, client_secret) VALUES ('valid_id', 'valid_secret')")
+                it.commit()
+            }
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            testDbPool.useConnectionBlocking("test_data_removal") {
+                it.createStatement().execute("DELETE FROM api_tokens")
+                it.createStatement().execute("DELETE FROM api_clients")
                 it.commit()
             }
         }

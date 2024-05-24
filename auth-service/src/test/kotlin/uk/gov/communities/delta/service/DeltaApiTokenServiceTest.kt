@@ -3,6 +3,7 @@ package uk.gov.communities.delta.service
 import io.ktor.server.application.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
@@ -68,6 +69,16 @@ class DeltaApiTokenServiceTest {
             service = DeltaApiTokenService(testDbPool, TimeSource.System, userAuditService)
             testDbPool.useConnectionBlocking("test_data_creation") {
                 it.createStatement().execute("INSERT INTO api_clients (client_id, client_secret) VALUES ('valid_id', 'valid_secret')")
+                it.commit()
+            }
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            testDbPool.useConnectionBlocking("test_data_removal") {
+                it.createStatement().execute("DELETE FROM api_tokens")
+                it.createStatement().execute("DELETE FROM api_clients")
                 it.commit()
             }
         }
