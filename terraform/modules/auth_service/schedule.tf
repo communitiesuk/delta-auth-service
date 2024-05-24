@@ -8,6 +8,10 @@ locals {
       cron     = "10 0 * * ? *" // Ten past midnight
       timezone = "Europe/London"
     }
+    DeleteOldApiTokens = {
+      cron     = "20 0 * * ? *" // Twenty past midnight
+      timezone = "Europe/London"
+    }
   }
 }
 

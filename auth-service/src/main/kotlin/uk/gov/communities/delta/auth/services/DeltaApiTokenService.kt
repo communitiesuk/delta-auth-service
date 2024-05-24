@@ -17,7 +17,6 @@ import java.time.temporal.ChronoUnit
 class DeltaApiTokenService(
     private val dbPool: DbPool,
     private val timeSource: TimeSource,
-    private val userLookupService: UserLookupService,
     private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)

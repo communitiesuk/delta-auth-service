@@ -101,7 +101,7 @@ class Injection(
     )
     private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig)
 
-    private val deltaApiTokenService = DeltaApiTokenService(dbPool, TimeSource.System, userLookupService, userAuditService)
+    private val deltaApiTokenService = DeltaApiTokenService(dbPool, TimeSource.System, userAuditService)
 
     private val emailService = EmailService(
         emailConfig,

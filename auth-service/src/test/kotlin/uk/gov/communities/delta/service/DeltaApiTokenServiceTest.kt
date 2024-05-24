@@ -52,15 +52,12 @@ class DeltaApiTokenServiceTest {
     @Before
     fun resetMocks() {
         clearAllMocks()
-        coEvery { userLookupService.lookupUserByCn(testUser.cn) } returns testUser
         coEvery { userAuditService.apiTokenCreationAudit(testUser.cn, any()) } just runs
     }
 
     companion object {
         lateinit var service: DeltaApiTokenService
         val client = testServiceClient()
-
-        private val userLookupService = mockk<UserLookupService>()
         private val userAuditService = mockk<UserAuditService>()
 
         private val testUser = testLdapUser()
@@ -68,7 +65,7 @@ class DeltaApiTokenServiceTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
-            service = DeltaApiTokenService(testDbPool, TimeSource.System, userLookupService, userAuditService)
+            service = DeltaApiTokenService(testDbPool, TimeSource.System, userAuditService)
             testDbPool.useConnectionBlocking("test_data_creation") {
                 it.createStatement().execute("INSERT INTO api_clients (client_id, client_secret) VALUES ('valid_id', 'valid_secret')")
                 it.commit()
