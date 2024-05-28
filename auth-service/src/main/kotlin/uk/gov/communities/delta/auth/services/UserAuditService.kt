@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
+import java.time.Instant
 
 class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, private val dbPool: DbPool) {
     suspend fun getAuditForUser(userCn: String) = withContext(Dispatchers.IO) {
@@ -31,6 +32,12 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
                     userAuditTrailRepo.getAuditItemCount(it, userCn),
                 )
             }
+        }
+    }
+
+    suspend fun getAuditForAllUsers(from: Instant, to: Instant) = withContext(Dispatchers.IO) {
+        dbPool.useConnectionBlocking("all_users_audit_read") {
+            userAuditTrailRepo.getAuditForAllUsers(it, from, to)
         }
     }
 

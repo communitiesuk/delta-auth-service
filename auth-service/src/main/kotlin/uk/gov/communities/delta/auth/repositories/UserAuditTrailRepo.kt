@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Blocking
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
+import java.time.Instant
 
 class UserAuditTrailRepo {
     enum class AuditAction(val action: String) {
@@ -36,9 +37,9 @@ class UserAuditTrailRepo {
     fun getAuditForUser(conn: Connection, userCn: String, limitOffset: Pair<Int, Int>? = null): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
             "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
-                    "FROM user_audit WHERE user_cn = ? " +
-                    "ORDER BY timestamp DESC " +
-                    if (limitOffset != null) "LIMIT ? OFFSET ?" else ""
+                "FROM user_audit WHERE user_cn = ? " +
+                "ORDER BY timestamp DESC " +
+                if (limitOffset != null) "LIMIT ? OFFSET ?" else ""
         )
         stmt.setString(1, userCn)
         if (limitOffset != null) {
@@ -46,17 +47,32 @@ class UserAuditTrailRepo {
             stmt.setInt(3, limitOffset.second)
         }
 
-        return stmt.executeQuery().map {
-            UserAuditRow(
-                AuditAction.fromActionString(it.getString("action")),
-                it.getTimestamp("timestamp"),
-                it.getString("user_cn"),
-                it.getString("editing_user_cn"),
-                it.getString("request_id"),
-                Json.parseToJsonElement(it.getString("action_data")).jsonObject,
-            )
-        }
+        return stmt.executeQuery().map(::mapUserAuditRow)
     }
+
+    @Blocking
+    fun getAuditForAllUsers(conn: Connection, from: Instant, to: Instant): List<UserAuditRow> {
+        val stmt = conn.prepareStatement(
+            "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
+                "FROM user_audit " +
+                "WHERE timestamp >= ? " +
+                "AND timestamp < ? " +
+                "ORDER BY timestamp DESC "
+        )
+        stmt.setTimestamp(1, Timestamp.from(from))
+        stmt.setTimestamp(2, Timestamp.from(to))
+
+        return stmt.executeQuery().map(::mapUserAuditRow)
+    }
+
+    private fun mapUserAuditRow(row: ResultSet) = UserAuditRow(
+        AuditAction.fromActionString(row.getString("action")),
+        row.getTimestamp("timestamp"),
+        row.getString("user_cn"),
+        row.getString("editing_user_cn"),
+        row.getString("request_id"),
+        Json.parseToJsonElement(row.getString("action_data")).jsonObject,
+    )
 
     @Blocking
     fun getAuditItemCount(conn: Connection, userCn: String): Int {
@@ -82,7 +98,7 @@ class UserAuditTrailRepo {
     ) {
         val stmt = conn.prepareStatement(
             "INSERT INTO user_audit (action, timestamp, user_cn, editing_user_cn, request_id, action_data) VALUES " +
-                    "(?, now(), ?, ?, ?, ? ::jsonb)"
+                "(?, now(), ?, ?, ?, ? ::jsonb)"
         )
         stmt.setString(1, action.action)
         stmt.setString(2, userCn)

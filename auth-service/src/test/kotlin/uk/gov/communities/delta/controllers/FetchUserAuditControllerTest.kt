@@ -8,8 +8,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
-import io.mockk.coEvery
-import io.mockk.mockk
+import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.junit.AfterClass
@@ -18,6 +17,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.FetchUserAuditController
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
@@ -32,6 +32,7 @@ import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.sql.Timestamp
 import java.time.Instant
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 
@@ -120,10 +121,74 @@ class FetchUserAuditControllerTest {
         }
     }
 
+    @Test
+    fun testAllUserCSVDownload() = testSuspend {
+        clearMocks(userAuditService, answers = false, recordedCalls = true, verificationMarks = true)
+        testClient.get("/user-audit/all-csv?fromDate=2024-01-01&toDate=2024-08-01") {
+            headers {
+                append("Authorization", "Bearer ${adminSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                set("Accept", "application/csv")
+            }
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify {
+                userAuditService.getAuditForAllUsers(
+                    Instant.parse("2024-01-01T00:00:00Z"),
+                    Instant.parse("2024-08-02T00:00:00+01:00")
+                )
+            }
+            confirmVerified(userAuditService)
+            assertEquals(
+                """
+                    action,timestamp,userCN,editingUserCN,requestId,azureObjectId
+                    set_password_email,1970-01-01T00:00:00Z,user,admin,userRequestId,
+                    sso_login,1970-01-01T00:00:01Z,admin,,adminRequestId,oid
+
+                """.trimIndent(),
+                bodyAsText()
+            )
+        }
+    }
+
+    @Test
+    fun testRegularUserCannotReadAllUserAudit() {
+        Assert.assertThrows(FetchUserAuditController.AccessDeniedError::class.java) {
+            runBlocking {
+                testClient.get("/user-audit/all-csv?fromDate=2024-01-01&toDate=2024-08-01") {
+                    headers {
+                        append("Authorization", "Bearer ${userSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                        set("Accept", "application/csv")
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun testReturnsBadRequestOnInvalidDate() {
+        Assert.assertThrows(ApiError::class.java) {
+            runBlocking {
+                testClient.get("/user-audit/all-csv?fromDate=2024-01-40&toDate=2024-08-01") {
+                    headers {
+                        append("Authorization", "Bearer ${adminSession.authToken}")
+                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+                        set("Accept", "application/csv")
+                    }
+                }
+            }
+        }.apply {
+            assertEquals("bad_request", errorCode)
+            assertContains(message!!, "Invalid date parameter 'fromDate'")
+        }
+    }
+
     companion object {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
         private lateinit var controller: FetchUserAuditController
+        private lateinit var userAuditService: UserAuditService
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
@@ -138,7 +203,7 @@ class FetchUserAuditControllerTest {
         fun setup() {
             val userLookupService = mockk<UserLookupService>()
             val oauthSessionService = mockk<OAuthSessionService>()
-            val userAuditService = mockk<UserAuditService>()
+            userAuditService = mockk<UserAuditService>()
 
             // Auth mocks
             coEvery { userLookupService.lookupUserByCn(adminUser.cn) } answers { adminUser }
@@ -179,6 +244,7 @@ class FetchUserAuditControllerTest {
                 listOf(adminAudit),
                 50
             )
+            coEvery { userAuditService.getAuditForAllUsers(any(), any()) } returns listOf(userAudit, adminAudit)
 
             controller = FetchUserAuditController(
                 userLookupService,
