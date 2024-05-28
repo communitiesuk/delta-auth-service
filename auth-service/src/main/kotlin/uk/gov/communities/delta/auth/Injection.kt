@@ -157,8 +157,9 @@ class Injection(
     fun tasksMap(): Map<String, AuthServiceTask> {
         val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
         val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
+        val deleteOldApiTokensTask = DeleteOldApiTokens(dbPool)
         val updateUserGuidMapTask = UpdateUserGUIDMap(ldapConfig, dbPool)
-        val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask, updateUserGuidMapTask)
+        val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask, deleteOldApiTokensTask, updateUserGuidMapTask)
         return tasks.associateBy { it.name }
     }
 
