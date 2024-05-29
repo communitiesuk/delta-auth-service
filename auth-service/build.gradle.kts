@@ -60,19 +60,19 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.12.4")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.13.0")
 
     //Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.3")
+    implementation("ch.qos.logback:logback-classic:1.5.6")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.8.1")
 
     // OpenSAML
-    implementation("org.opensaml:opensaml-core:4.3.0")
-    implementation("org.opensaml:opensaml-saml-impl:4.3.0")
+    implementation("org.opensaml:opensaml-core:4.0.1")
+    implementation("org.opensaml:opensaml-saml-impl:4.0.1")
 
     // Database
     implementation("org.postgresql:postgresql:42.7.3")
@@ -82,7 +82,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("io.mockk:mockk:1.13.11")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
