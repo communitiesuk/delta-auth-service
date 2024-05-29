@@ -9,6 +9,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.PasswordChecker
@@ -96,12 +97,16 @@ class DeltaResetPasswordController(
     }
 
     private suspend fun resetPasswordPost(call: ApplicationCall) {
-        val user = getUserFromCallParameters(
-            call.request.queryParameters,
-            userLookupService,
-            "Something went wrong, please click the link in your latest password reset email or request a new one",
-            "reset_password"
-        )
+        val user = try {
+            getUserFromCallParameters(
+                call.request.queryParameters,
+                userLookupService,
+                resetPasswordExceptionUserVisibleMessage,
+                "reset_password"
+            )
+        } catch (e: ApiError) {
+            throw InvalidResetPassword()
+        }
 
         val token = call.request.queryParameters["token"].orEmpty()
         if (Strings.isNullOrEmpty(token)) throw ResetPasswordException(
@@ -117,10 +122,7 @@ class DeltaResetPasswordController(
         when (val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.error("Token did not exist on resetting password")
-                throw ResetPasswordException(
-                    "reset_password_invalid_token",
-                    "Token did not exist on resetting password"
-                )
+                throw InvalidResetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {
@@ -186,11 +188,20 @@ class DeltaResetPasswordController(
     )
 }
 
-class ResetPasswordException(
+const val resetPasswordExceptionUserVisibleMessage =
+    "Something went wrong, please click the link in your latest password reset email or request a new one"
+
+open class ResetPasswordException(
     errorCode: String,
     exceptionMessage: String,
-    userVisibleMessage: String = "Something went wrong, please click the link in your latest password reset email or request a new one",
+    userVisibleMessage: String = resetPasswordExceptionUserVisibleMessage,
 ) : UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Reset Password Error")
+
+class InvalidResetPassword :
+    ResetPasswordException(
+        "reset_password_invalid",
+        "Token and user combination did not exist on resetting password"
+    )
 
 fun getResetPasswordURL(token: String, userCN: String, authServiceUrl: String) =
     String.format(

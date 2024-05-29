@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.repositories.LdapUser
@@ -64,7 +65,7 @@ class RefreshUserInfoController(
         val session = call.principal<OAuthSession>()!!
         ensureNotAlreadyImpersonating(session)
         
-        var impersonatedUsersCn = Strings.nullToEmpty(call.parameters["userToImpersonate"]).replace("@", "!")
+        var impersonatedUsersCn = LDAPConfig.emailToCN(call.parameters["userToImpersonate"])
         val impersonatedUserGUIDString = call.parameters["userToImpersonateGUID"].orEmpty()
         val impersonatedUserGUID: UUID
         val userToImpersonate: LdapUser

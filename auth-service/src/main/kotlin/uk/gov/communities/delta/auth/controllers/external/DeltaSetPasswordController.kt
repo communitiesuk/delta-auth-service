@@ -10,6 +10,7 @@ import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.PasswordChecker
@@ -91,12 +92,16 @@ class DeltaSetPasswordController(
     }
 
     private suspend fun setPasswordPost(call: ApplicationCall) {
-        val user = getUserFromCallParameters(
-            call.request.queryParameters,
-            userLookupService,
-            "Something went wrong, please click the link in your latest account activation email",
-            "set_password"
-        )
+        val user = try {
+            getUserFromCallParameters(
+                call.request.queryParameters,
+                userLookupService,
+                setPasswordExceptionUserVisibleMessage,
+                "set_password"
+            )
+        } catch (e: ApiError) {
+            throw InvalidSetPassword()
+        }
 
         val token = call.request.queryParameters["token"].orEmpty()
         if (Strings.isNullOrEmpty(token)) throw SetPasswordException(
@@ -109,10 +114,7 @@ class DeltaSetPasswordController(
 
         when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
-                throw SetPasswordException(
-                    "set_password_invalid_token",
-                    "Token did not exist on setting password"
-                )
+                InvalidSetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {
@@ -132,12 +134,6 @@ class DeltaSetPasswordController(
             }
         }
     }
-
-    class SetPasswordException(
-        errorCode: String,
-        exceptionMessage: String,
-        userVisibleMessage: String = "Something went wrong, please click the link in your latest account activation email",
-    ) : UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Set Password Error")
 
     private suspend fun ApplicationCall.respondNewEmailSentPage(userEmail: String) =
         respond(
@@ -183,6 +179,21 @@ class DeltaSetPasswordController(
         )
     )
 }
+
+const val setPasswordExceptionUserVisibleMessage =
+    "Something went wrong, please click the link in your latest account activation email"
+
+open class SetPasswordException(
+    errorCode: String,
+    exceptionMessage: String,
+    userVisibleMessage: String = setPasswordExceptionUserVisibleMessage,
+) : UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Set Password Error")
+
+class InvalidSetPassword :
+    SetPasswordException(
+        "set_password_invalid",
+        "Token and user combination did not exist on setting password"
+    )
 
 fun getSetPasswordURL(token: String, userCN: String, authServiceUrl: String) =
     String.format(

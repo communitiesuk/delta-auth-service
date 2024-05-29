@@ -46,7 +46,7 @@ class AdminEditUserController(
         logger.atInfo().log("Updating user with GUID ${userToUpdate.getGUID()}")
         val updatedDeltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
 
-        if (updatedDeltaUserDetailsRequest.id.replace("@", "!") != userToUpdate.cn) throw ApiError(
+        if (LDAPConfig.emailToCN(updatedDeltaUserDetailsRequest.id) != userToUpdate.cn) throw ApiError(
             HttpStatusCode.BadRequest,
             "username_changed",
             "Username has been changed"

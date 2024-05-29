@@ -79,7 +79,7 @@ class UserService(
         triggeringAdminSession: OAuthSession?,
         call: ApplicationCall,
     ) {
-        val derivedCn = newEmail.replace("@", "!")
+        val derivedCn = LDAPConfig.emailToCN(newEmail)
         val newDn = ldapConfig.deltaUserDnFormat.format(derivedCn)
         try {
             val emailModification = ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("mail", newEmail))
