@@ -15,11 +15,11 @@ import uk.gov.communities.delta.auth.config.SAMLConfig
 import uk.gov.communities.delta.auth.controllers.internal.GenerateSAMLTokenController
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
+import uk.gov.communities.delta.auth.samlTokenRoutes
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.serviceUserRoutes
 import uk.gov.communities.delta.helper.testLdapUser
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -32,7 +32,7 @@ class SamlTokenTest {
             fakeSecurityConfig()
             val controller = GenerateSAMLTokenController(SAMLTokenService())
             routing {
-                serviceUserRoutes(controller)
+                samlTokenRoutes(controller)
             }
         }
         client.post("/service-user/generate-saml-token") {
