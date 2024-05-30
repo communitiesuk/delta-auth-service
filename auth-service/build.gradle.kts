@@ -72,7 +72,7 @@ dependencies {
 
     // OpenSAML
     implementation("org.opensaml:opensaml-core:4.3.2")
-    implementation("org.opensaml:opensaml-saml-impl:5.1.2")
+    implementation("org.opensaml:opensaml-saml-impl:4.3.2")
 
     // Database
     implementation("org.postgresql:postgresql:42.7.3")
