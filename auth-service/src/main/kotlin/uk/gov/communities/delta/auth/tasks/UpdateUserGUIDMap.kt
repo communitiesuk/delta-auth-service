@@ -3,15 +3,17 @@ package uk.gov.communities.delta.auth.tasks
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.repositories.*
+import uk.gov.communities.delta.auth.repositories.DbPool
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.getNewModeObjectGuidString
+import uk.gov.communities.delta.auth.repositories.searchPaged
 import java.sql.Connection
+import java.util.*
 import javax.naming.directory.SearchControls
 import kotlin.time.Duration.Companion.minutes
 
 /*
- * Update the user_guid_map database table by reading all users from Active Directory in both old and new GUID mode.
- * The migration to the new GUID format in Delta is now complete so this job is no longer run regularly,
- * though we'll keep the code and table around for a short while.
+ * Update the user_guid_map table to contain latest up to date userGUIDs and userCNs from Active Directory
  */
 class UpdateUserGUIDMap(
     private val ldapConfig: LDAPConfig,
@@ -19,44 +21,16 @@ class UpdateUserGUIDMap(
 ) : AuthServiceTask("UpdateUserGUIDMap") {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    private val searchDn = ldapConfig.deltaUserDnFormat.removePrefix("CN=%s,")
-
     // Tasks are run separately anyway
     @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun execute() {
-        val oldUserGuids = fetchOldModeUserGuids()
-        val newUserGuids = fetchNewModeUserGuids()
-
-        val guidMapTableRows = constructUserGuidMapTableRows(oldUserGuids, newUserGuids)
-
-        insertIntoDatabase(guidMapTableRows)
+        val userGUIDs = fetchUserGuids()
+        insertIntoDatabase(userGUIDs)
         logger.info("UpdateUserGUIDMap complete")
     }
 
     @Blocking
-    private fun fetchOldModeUserGuids(): List<UserGuid> {
-        val oldModeLdapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.OLD_MANGLED)
-        val ctx = oldModeLdapRepository.bind(
-            ldapConfig.authServiceUserDn,
-            ldapConfig.authServiceUserPassword,
-        )
-        val users = ctx.searchPaged(
-            searchDn,
-            "(objectClass=user)",
-            ldapSearchControls(),
-            pageSize = 200,
-        ) {
-            val cn = it.get("cn").get() as String
-            val mangledObjectGuid = it.getMangledDeltaObjectGUID()
-            UserGuid(cn, mangledObjectGuid)
-        }
-        ctx.close()
-        logger.info("Read {} users in old mode from AD", users.size)
-        return users
-    }
-
-    @Blocking
-    private fun fetchNewModeUserGuids(): List<UserGuid> {
+    private fun fetchUserGuids(): List<UserGuidMapTableRow> {
         val oldModeLdapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
         val ctx = oldModeLdapRepository.bind(
             ldapConfig.authServiceUserDn,
@@ -70,8 +44,8 @@ class UpdateUserGUIDMap(
             pageSize = 200,
         ) {
             val cn = it.get("cn").get() as String
-            val objectGuid = it.getNewModeObjectGuidString()
-            UserGuid(cn, objectGuid)
+            val objectGuid = UUID.fromString(it.getNewModeObjectGuidString())
+            UserGuidMapTableRow(cn, objectGuid)
         }
         ctx.close()
         logger.info("Read {} users in new mode from AD", users.size)
@@ -82,24 +56,8 @@ class UpdateUserGUIDMap(
         val searchControls = SearchControls()
         searchControls.searchScope = SearchControls.ONELEVEL_SCOPE
         searchControls.timeLimit = 2.minutes.inWholeMilliseconds.toInt()
-        searchControls.returningAttributes = arrayOf("cn", "objectGUID", "imported-guid")
+        searchControls.returningAttributes = arrayOf("cn", "objectGUID")
         return searchControls
-    }
-
-    private fun constructUserGuidMapTableRows(
-        oldGuids: List<UserGuid>,
-        newGuids: List<UserGuid>,
-    ): List<UserGuidMapTableRow> {
-        val newGuidsMap = newGuids.associateBy { it.cn }.mapValues { it.value.guid }
-        return oldGuids.map {
-            UserGuidMapTableRow(
-                it.cn,
-                oldGuid = it.guid,
-                newGuid = newGuidsMap.getOrElse(
-                    it.cn
-                ) { throw RuntimeException("No new GUID found for user " + it.cn) }
-            )
-        }
     }
 
     @Blocking
@@ -121,12 +79,11 @@ class UpdateUserGUIDMap(
     private fun Connection.batchInsert(rows: List<UserGuidMapTableRow>) {
         for (usersBatch in rows.chunked(100)) {
             logger.debug("Inserting batch of {}", usersBatch.size)
-            val ps = prepareStatement("INSERT INTO user_guid_map (cn, oldguid, newguid) VALUES (?, ?, ?::UUID)")
+            val ps = prepareStatement("INSERT INTO user_guid_map (user_cn, user_guid) VALUES (?, ?::UUID)")
 
             for (user in usersBatch) {
-                ps.setString(1, user.cn)
-                ps.setString(2, user.oldGuid)
-                ps.setString(3, user.newGuid)
+                ps.setString(1, user.userCN)
+                ps.setObject(2, user.userGUID)
                 ps.addBatch()
                 ps.clearParameters()
             }
@@ -135,6 +92,5 @@ class UpdateUserGUIDMap(
         }
     }
 
-    private data class UserGuid(val cn: String, val guid: String)
-    private data class UserGuidMapTableRow(val cn: String, val oldGuid: String, val newGuid: String)
+    private data class UserGuidMapTableRow(val userCN: String, val userGUID: UUID)
 }

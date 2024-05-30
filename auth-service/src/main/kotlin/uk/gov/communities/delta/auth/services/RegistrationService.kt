@@ -11,18 +11,18 @@ import uk.gov.communities.delta.auth.repositories.LdapUser
 import java.util.*
 
 class RegistrationService(
-    private val deltaConfig: DeltaConfig,
     private val emailConfig: EmailConfig,
     private val ldapConfig: LDAPConfig,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val groupService: GroupService,
 ) {
     sealed class RegistrationResult
     class UserCreated(val user: LdapUser, val token: String) : RegistrationResult()
-    class SSOUserCreated(val userCN: String, val userGUID: UUID) : RegistrationResult()
+    data object SSOUserCreated : RegistrationResult()
     class UserAlreadyExists(val user: LdapUser) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
@@ -42,9 +42,10 @@ class RegistrationService(
     ): RegistrationResult {
         val adUser = UserService.ADUser(ldapConfig, registration, ssoClient)
 
-        when (val user = userLookupService.userIfExists(adUser.mail)) {
-            is LdapUser -> {
+        when (val userGUID = userGUIDMapService.userGUIDIfExists(adUser.mail)) {
+            is UUID -> {
                 logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
+                val user = userLookupService.lookupUserByGUID(userGUID)
                 return UserAlreadyExists(user)
             }
         }
@@ -60,19 +61,15 @@ class RegistrationService(
 
         logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully created")
         return if (ssoClient?.required == true)
-            SSOUserCreated(user.cn, user.getGUID())
+            SSOUserCreated
         else
-            UserCreated(user, setPasswordTokenService.createToken(user.cn, user.getGUID()))
+            UserCreated(user, setPasswordTokenService.createToken(user.getGUID()))
     }
 
     private suspend fun addUserToDefaultGroups(user: LdapUser, call: ApplicationCall) {
         try {
-            groupService.addUserToGroup(
-                user, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null, userLookupService,
-            )
-            groupService.addUserToGroup(
-                user, DeltaConfig.DATAMART_DELTA_USER, call, null, userLookupService
-            )
+            groupService.addUserToGroup(user, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null)
+            groupService.addUserToGroup(user, DeltaConfig.DATAMART_DELTA_USER, call, null)
             logger.atInfo().addKeyValue("UserDN", user.dn).log("User added to default groups")
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to default groups", e)
@@ -93,13 +90,7 @@ class RegistrationService(
         try {
             organisations.forEach {
                 if (!it.retired) {
-                    groupService.addUserToGroup(
-                        user,
-                        organisationUserGroup(it.code),
-                        call,
-                        null,
-                        userLookupService,
-                    )
+                    groupService.addUserToGroup(user, organisationUserGroup(it.code), call, null)
                     logger.atInfo().addKeyValue("UserDN", user.dn)
                         .log("Added user to domain organisation with code {}", it.code)
                 } else {
@@ -124,16 +115,7 @@ class RegistrationService(
     suspend fun sendRegistrationEmail(registrationResult: RegistrationResult, call: ApplicationCall) {
         when (registrationResult) {
             is UserCreated -> {
-                emailService.sendSetPasswordEmail(
-                    registrationResult.user.firstName,
-                    registrationResult.token,
-                    registrationResult.user.cn,
-                    registrationResult.user.getGUID(),
-                    null,
-                    userLookupService,
-                    getEmailContacts(registrationResult.user),
-                    call,
-                )
+                emailService.sendSetPasswordEmail(registrationResult.user, registrationResult.token, null, call)
             }
 
             is SSOUserCreated -> {
@@ -143,7 +125,7 @@ class RegistrationService(
             is UserAlreadyExists -> {
                 emailService.sendAlreadyAUserEmail(
                     registrationResult.user.firstName,
-                    registrationResult.user.cn,
+                    registrationResult.user.getGUID(),
                     getEmailContacts(registrationResult.user),
                 )
             }

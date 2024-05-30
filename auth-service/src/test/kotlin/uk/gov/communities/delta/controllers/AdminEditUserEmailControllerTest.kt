@@ -19,10 +19,7 @@ import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.OAuthSession
-import uk.gov.communities.delta.auth.services.OAuthSessionService
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
@@ -89,6 +86,7 @@ class AdminEditUserEmailControllerTest {
         }.apply {
             assertEquals("empty_username", errorCode)
             coVerify(exactly = 0) { userService.updateEmail(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.updateUserCN(any(), any()) }
         }
     }
 
@@ -96,18 +94,19 @@ class AdminEditUserEmailControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 adminSession.authToken,
                 client
             )
         } answers { adminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 nonAdminSession.authToken,
                 client
             )
         } answers { nonAdminSession }
-        coEvery { userLookupService.lookupUserByCn(userToUpdate.cn) } returns userToUpdate
+        coEvery { userGUIDMapService.getGUID(userToUpdate.cn) } returns userToUpdate.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(userToUpdate.getGUID()) } returns userToUpdate
         coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
         coEvery { userLookupService.lookupCurrentUser(nonAdminSession) } returns nonAdminUser
         coEvery { userService.updateEmail(userToUpdate, any(), any(), any()) } just runs
@@ -121,6 +120,7 @@ class AdminEditUserEmailControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
         private val userService = mockk<UserService>()
 
         private val client = testServiceClient()
@@ -131,22 +131,13 @@ class AdminEditUserEmailControllerTest {
         private val userToUpdate = testLdapUser(
             cn = "test!user.com",
             email = "test@user.com",
-            memberOfCNs = listOf(
-                DeltaConfig.DATAMART_DELTA_USER,
-            ),
+            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER),
         )
 
         private val adminSession =
             OAuthSession(1, adminUser.cn, adminUser.getGUID(), client, "adminToken", Instant.now(), "trace", false)
         private val nonAdminSession = OAuthSession(
-            1,
-            nonAdminUser.cn,
-            nonAdminUser.getGUID(),
-            client,
-            "nonAdminToken",
-            Instant.now(),
-            "trace",
-            false
+            1, nonAdminUser.cn, nonAdminUser.getGUID(), client, "nonAdminToken", Instant.now(), "trace", false
         )
 
         @BeforeClass
@@ -154,6 +145,7 @@ class AdminEditUserEmailControllerTest {
         fun setup() {
             controller = AdminEditUserEmailController(
                 userLookupService,
+                userGUIDMapService,
                 userService,
             )
 
@@ -163,7 +155,7 @@ class AdminEditUserEmailControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

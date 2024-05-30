@@ -18,7 +18,6 @@ import java.util.*
 // It's a short-lived code that can be exchanged using the token endpoint for user details and a longer lived access token
 data class AuthCode(
     val code: String,
-    val userCn: String,
     val userGUID: UUID,
     val client: Client,
     val createdAt: Instant,
@@ -38,7 +37,6 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
     }
 
     suspend fun generateAndStore(
-        userCn: String,
         userGUID: UUID,
         client: Client,
         traceId: String,
@@ -46,7 +44,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
     ): AuthCode {
         val code = randomBase64(AUTH_CODE_LENGTH_BYTES)
         val now = timeSource.now()
-        val authCode = AuthCode(code, userCn, userGUID, client, now, traceId, isSso)
+        val authCode = AuthCode(code, userGUID, client, now, traceId, isSso)
         withContext(Dispatchers.IO) { insert(authCode) }
 
         logger.atInfo().withAuthCode(authCode).log("Generated auth code at {}", now)
@@ -66,16 +64,15 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
     private fun insert(authCode: AuthCode) {
         dbPool.useConnectionBlocking("Insert Auth Code") {
             val stmt = it.prepareStatement(
-                "INSERT INTO authorization_code (username, client_id, code_hash, created_at, trace_id, is_sso, user_guid) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO authorization_code (client_id, code_hash, created_at, trace_id, is_sso, user_guid) " +
+                    "VALUES (?, ?, ?, ?, ?, ?)"
             )
-            stmt.setString(1, authCode.userCn)
-            stmt.setString(2, authCode.client.clientId)
-            stmt.setBytes(3, hashBase64String(authCode.code))
-            stmt.setTimestamp(4, Timestamp.from(authCode.createdAt))
-            stmt.setString(5, authCode.traceId)
-            stmt.setBoolean(6, authCode.isSso)
-            stmt.setObject(7, authCode.userGUID)
+            stmt.setString(1, authCode.client.clientId)
+            stmt.setBytes(2, hashBase64String(authCode.code))
+            stmt.setTimestamp(3, Timestamp.from(authCode.createdAt))
+            stmt.setString(4, authCode.traceId)
+            stmt.setBoolean(5, authCode.isSso)
+            stmt.setObject(6, authCode.userGUID)
             stmt.executeUpdate()
             it.commit()
         }
@@ -92,7 +89,7 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
         return dbPool.useConnectionBlocking("Consume auth code") {
             val stmt = it.prepareStatement(
                 "DELETE FROM authorization_code " +
-                    "WHERE code_hash = ? AND client_id = ? RETURNING username, created_at, trace_id, is_sso, user_guid"
+                    "WHERE code_hash = ? AND client_id = ? RETURNING created_at, trace_id, is_sso, user_guid"
             )
             stmt.setBytes(1, codeHash)
             stmt.setString(2, client.clientId)
@@ -103,7 +100,6 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
             }
             val authCode = AuthCode(
                 code = code,
-                userCn = resultSet.getString("username"),
                 userGUID = resultSet.getObject("user_guid", UUID::class.java),
                 client = client,
                 createdAt = resultSet.getTimestamp("created_at").toInstant(),
@@ -117,4 +113,4 @@ class AuthorizationCodeService(private val dbPool: DbPool, private val timeSourc
 }
 
 fun LoggingEventBuilder.withAuthCode(authCode: AuthCode): LoggingEventBuilder =
-    addKeyValue("username", authCode.userCn).addKeyValue("trace", authCode.traceId)
+    addKeyValue("userGUID", authCode.userGUID).addKeyValue("trace", authCode.traceId)

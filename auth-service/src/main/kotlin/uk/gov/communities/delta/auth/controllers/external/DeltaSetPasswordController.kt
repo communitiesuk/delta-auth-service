@@ -9,20 +9,20 @@ import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.PasswordChecker
 import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
+import uk.gov.communities.delta.auth.utils.getUserGUIDFromCallParameters
 import java.util.*
 
 class DeltaSetPasswordController(
     private val deltaConfig: DeltaConfig,
-    private val ldapConfig: LDAPConfig,
     private val userService: UserService,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val emailService: EmailService,
     private val userAuditService: UserAuditService,
 ) {
@@ -51,10 +51,10 @@ class DeltaSetPasswordController(
     }
 
     private suspend fun setPasswordGet(call: ApplicationCall) {
-        val user = try {
-            getUserFromCallParameters(  // TODO DT-976-2 - just get GUID once CN not needed
+        val userGUID = try {
+            getUserGUIDFromCallParameters(
                 call.request.queryParameters,
-                userLookupService,
+                userGUIDMapService,
                 setPasswordExceptionUserVisibleMessage,
                 "set_password_get"
             )
@@ -62,14 +62,13 @@ class DeltaSetPasswordController(
             throw InvalidSetPassword()
         }
         val token = call.request.queryParameters["token"].orEmpty()
-        // TODO DT-976-2 - validate tokens using GUID not CN
-        when (val tokenResult = setPasswordTokenService.validateToken(token, user.cn, user.getGUID())) {
+        when (val tokenResult = setPasswordTokenService.validateToken(token, userGUID)) {
             is PasswordTokenService.NoSuchToken -> {
                 throw InvalidSetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {
-                val userEmail = userLookupService.lookupUserByGUID(user.getGUID()).email!!
+                val userEmail = userLookupService.lookupUserByGUID(userGUID).email!!
                 call.respondExpiredTokenPage(tokenResult, userEmail)
             }
 
@@ -84,11 +83,11 @@ class DeltaSetPasswordController(
         val userGUID = UUID.fromString(formParameters["userGUID"]!!)
         val user = userLookupService.lookupUserByGUID(userGUID)
         val token = formParameters["token"].orEmpty()
-        val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, user.cn, userGUID)
+        val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, userGUID)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             emailService.sendNotYetEnabledEmail(
                 userLookupService.lookupUserByGUID(userGUID),
-                setPasswordTokenService.createToken(user.cn, userGUID),
+                setPasswordTokenService.createToken(userGUID),
                 call
             )
             call.respondNewEmailSentPage(user.email!!)
@@ -100,6 +99,7 @@ class DeltaSetPasswordController(
             getUserFromCallParameters(
                 call.request.queryParameters,
                 userLookupService,
+                userGUIDMapService,
                 setPasswordExceptionUserVisibleMessage,
                 "set_password"
             )
@@ -116,7 +116,7 @@ class DeltaSetPasswordController(
         val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, user.email!!)
         if (message != null) return call.respondSetPasswordPage(message)
 
-        when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getGUID())) {
+        when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 InvalidSetPassword()
             }
@@ -133,7 +133,7 @@ class DeltaSetPasswordController(
                     logger.atError().addKeyValue("UserDN", user.dn).log("Error setting password for user", e)
                     throw e
                 }
-                userAuditService.setPasswordAudit(user.cn, user.getGUID(), call)
+                userAuditService.setPasswordAudit(user.getGUID(), call)
                 call.respondRedirect("/delta/set-password/success")
             }
         }
@@ -199,10 +199,10 @@ class InvalidSetPassword :
         "Token and user combination did not exist on setting password"
     )
 
-fun getSetPasswordURL(token: String, userCN: String, authServiceUrl: String) =
+fun getSetPasswordURL(token: String, userGUID: UUID, authServiceUrl: String) =
     String.format(
-        "%s/delta/set-password?userCN=%s&token=%s",
+        "%s/delta/set-password?userGUID=%s&token=%s",
         authServiceUrl,
-        userCN.encodeURLParameter(),
+        userGUID.toString().encodeURLParameter(),
         token.encodeURLParameter()
     )

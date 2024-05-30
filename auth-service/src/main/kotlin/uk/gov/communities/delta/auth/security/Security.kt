@@ -65,7 +65,7 @@ fun Application.configureSecurity(injection: Injection) {
                     logger.warn("OAuth Bearer token authentication, rejecting due to missing client authentication")
                     return@authenticate null
                 }
-                oauthSessionService.retrieveFomAuthToken(it.token, clientPrincipal.client as DeltaLoginEnabledClient)
+                oauthSessionService.retrieveFromAuthToken(it.token, clientPrincipal.client as DeltaLoginEnabledClient)
             }
         }
 

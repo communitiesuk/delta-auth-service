@@ -42,16 +42,15 @@ class EmailServiceTest {
         userAuditService,
         emailRepository
     )
-    private val userLookupService = mockk<UserLookupService>()
     private val user = testLdapUser(email = "test@user.com")
-    private val adminGUID = UUID.fromString("ffeeddcc-bbaa-9988-7766-5544332211")
+    private val adminGUID = UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100")
 
     @Test
     fun testSendAlreadyAUserEmail() = testSuspend {
         emailService.sendAlreadyAUserEmail(
-            "userFirstName",
-            "userCN",
-            EmailContacts("test@email.com", "Test Contact", emailConfig)
+            user.firstName,
+            user.getGUID(),
+            EmailContacts(user.email!!, user.fullName, emailConfig)
         ).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("already-a-user", any(), any(), any())
@@ -62,11 +61,9 @@ class EmailServiceTest {
 
     @Test
     fun testSendSelfSetPasswordEmail() = testSuspend {
-        emailService.sendSetPasswordEmail(user, "token", null, userLookupService, mockk()).apply {
-            verify(exactly = 1) {
-                emailRepository.sendEmail("new-user", any(), any(), any())
-            }
-            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getGUID(), any()) }
+        emailService.sendSetPasswordEmail(user, "token", null, mockk()).apply {
+            verify(exactly = 1) { emailRepository.sendEmail("new-user", any(), any(), any()) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.getGUID(), any()) }
         }
     }
 
@@ -74,16 +71,11 @@ class EmailServiceTest {
     fun testSendAdminSetPasswordEmail() = testSuspend {
         val call = mockk<ApplicationCall>()
         val adminSession = mockk<OAuthSession>()
-        coEvery { adminSession.getUserGUID(userLookupService) } returns adminGUID
+        coEvery { adminSession.userGUID } returns adminGUID
         coEvery { call.principal<OAuthSession>() } returns adminSession
-        coEvery { adminSession.userCn } returns "adminUserCn"
-        emailService.sendSetPasswordEmail(user, "token", adminSession, userLookupService, call).apply {
-            verify(exactly = 1) {
-                emailRepository.sendEmail("new-user", any(), any(), any())
-            }
-            coVerify(exactly = 1) {
-                userAuditService.adminSetPasswordEmailAudit(user.cn, user.getGUID(), "adminUserCn", adminGUID, any())
-            }
+        emailService.sendSetPasswordEmail(user, "token", adminSession, call).apply {
+            verify(exactly = 1) { emailRepository.sendEmail("new-user", any(), any(), any()) }
+            coVerify(exactly = 1) { userAuditService.adminSetPasswordEmailAudit(user.getGUID(), adminGUID, any()) }
         }
     }
 
@@ -102,7 +94,7 @@ class EmailServiceTest {
             verify(exactly = 1) {
                 emailRepository.sendEmail("not-yet-enabled-user", any(), any(), any())
             }
-            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getGUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.getGUID(), any()) }
         }
     }
 
@@ -112,18 +104,18 @@ class EmailServiceTest {
             verify(exactly = 1) {
                 emailRepository.sendEmail("password-never-set", any(), any(), any())
             }
-            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.cn, user.getGUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.setPasswordEmailAudit(user.getGUID(), any()) }
         }
 
     }
 
     @Test
     fun testSendSelfResetPasswordEmail() = testSuspend {
-        emailService.sendResetPasswordEmail(user, "token", null, userLookupService, mockk()).apply {
+        emailService.sendResetPasswordEmail(user, "token", null, mockk()).apply {
             verify(exactly = 1) {
                 emailRepository.sendEmail("reset-password", any(), any(), any())
             }
-            coVerify(exactly = 1) { userAuditService.resetPasswordEmailAudit(user.cn, user.getGUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.resetPasswordEmailAudit(user.getGUID(), any()) }
         }
     }
 
@@ -132,15 +124,10 @@ class EmailServiceTest {
         val call = mockk<ApplicationCall>()
         val adminSession = mockk<OAuthSession>()
         coEvery { call.principal<OAuthSession>() } returns adminSession
-        coEvery { adminSession.getUserGUID(userLookupService) } returns adminGUID
-        coEvery { adminSession.userCn } returns "adminUserCn"
-        emailService.sendResetPasswordEmail(user, "token", adminSession, userLookupService, call).apply {
-            verify(exactly = 1) {
-                emailRepository.sendEmail("reset-password", any(), any(), any())
-            }
-            coVerify(exactly = 1) {
-                userAuditService.adminResetPasswordEmailAudit(user.cn, user.getGUID(), "adminUserCn", adminGUID, any())
-            }
+        coEvery { adminSession.userGUID } returns adminGUID
+        emailService.sendResetPasswordEmail(user, "token", adminSession, call).apply {
+            verify(exactly = 1) { emailRepository.sendEmail("reset-password", any(), any(), any()) }
+            coVerify(exactly = 1) { userAuditService.adminResetPasswordEmailAudit(user.getGUID(), adminGUID, any()) }
         }
     }
 
@@ -148,9 +135,9 @@ class EmailServiceTest {
     fun resetMocks() {
         clearAllMocks()
         every { emailRepository.sendEmail(any(), any(), any(), any()) } just runs
-        coEvery { userAuditService.setPasswordEmailAudit(any(), any(), any()) } just runs
-        coEvery { userAuditService.resetPasswordEmailAudit(any(), any(), any()) } just runs
-        coEvery { userAuditService.adminSetPasswordEmailAudit(any(), any(), any(), any(), any()) } just runs
-        coEvery { userAuditService.adminResetPasswordEmailAudit(any(), any(), any(), any(), any()) } just runs
+        coEvery { userAuditService.setPasswordEmailAudit(any(), any()) } just runs
+        coEvery { userAuditService.resetPasswordEmailAudit(any(), any()) } just runs
+        coEvery { userAuditService.adminSetPasswordEmailAudit(any(), any(), any()) } just runs
+        coEvery { userAuditService.adminResetPasswordEmailAudit(any(), any(), any()) } just runs
     }
 }

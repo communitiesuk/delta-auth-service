@@ -24,6 +24,7 @@ import java.util.*
 
 class RefreshUserInfoController(
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val samlTokenService: SAMLTokenService,
     private val accessGroupsService: AccessGroupsService,
     private val organisationService: OrganisationService,
@@ -46,7 +47,7 @@ class RefreshUserInfoController(
             val samlToken = samlTokenService.samlTokenForSession(session, user)
 
             val roles = memberOfToDeltaRolesMapperFactory(
-                user.cn, allOrganisations.await(), allAccessGroups.await()
+                user.getGUID(), allOrganisations.await(), allAccessGroups.await()
             ).map(user.memberOfCNs)
 
             logger.info("Retrieved updated user info")
@@ -64,11 +65,10 @@ class RefreshUserInfoController(
     suspend fun impersonateUser(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         ensureNotAlreadyImpersonating(session)
-        
+
         var impersonatedUsersCn = LDAPConfig.emailToCN(call.parameters["userToImpersonate"])
         val impersonatedUserGUIDString = call.parameters["userToImpersonateGUID"].orEmpty()
         val impersonatedUserGUID: UUID
-        val userToImpersonate: LdapUser
 
         // During transition from userCN to userGUID exactly one should be non-empty
         // TODO DT-1022 - simplify this to just get GUID from call
@@ -78,8 +78,7 @@ class RefreshUserInfoController(
                 "User CN and GUID both not present on impersonating_user",
                 "Something went wrong, please try again"
             )
-            userToImpersonate = userLookupService.lookupUserByCn(impersonatedUsersCn)
-            impersonatedUserGUID = userToImpersonate.getGUID()
+            impersonatedUserGUID = userGUIDMapService.getGUID(impersonatedUsersCn)
         } else {
             if (!Strings.isNullOrEmpty(impersonatedUsersCn)) throw UserVisibleServerError(
                 "impersonating_user_both_user_cn_and_guid",
@@ -87,9 +86,9 @@ class RefreshUserInfoController(
                 "Something went wrong, please try again"
             )
             impersonatedUserGUID = UUID.fromString(impersonatedUserGUIDString)
-            userToImpersonate = userLookupService.lookupUserByGUID(impersonatedUserGUID)
-            impersonatedUsersCn = userToImpersonate.cn
         }
+        val userToImpersonate = userLookupService.lookupUserByGUID(impersonatedUserGUID)
+        impersonatedUsersCn = userToImpersonate.cn
 
         val originalUser = userLookupService.lookupCurrentUser(session)
         if (!originalUser.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_ADMIN) || !originalUser.accountEnabled) {
@@ -107,15 +106,13 @@ class RefreshUserInfoController(
         val userInfoResponse = getUserInfo(call, originalUserWithImpersonatedRoles)
         userInfoResponse.impersonatedUserCn = impersonatedUsersCn
         withContext(Dispatchers.IO) {
-            oAuthSessionService.updateWithImpersonatedCn(
+            oAuthSessionService.updateWithImpersonatedGUID(
                 session.id,
-                impersonatedUsersCn,
                 impersonatedUserGUID,
             )
         }
         userAuditService.insertImpersonatingUserAuditRow(
             session,
-            impersonatedUsersCn,
             impersonatedUserGUID,
             call.callId!!
         )
@@ -134,7 +131,7 @@ class RefreshUserInfoController(
     )
 
     private fun ensureNotAlreadyImpersonating(session: OAuthSession) {
-        if (session.impersonatedUserCn != null) { //TODO DT-976-2 - use GUID instead
+        if (session.impersonatedUserGUID != null) {
             throw ApiError(
                 HttpStatusCode.Forbidden,
                 "forbidden",

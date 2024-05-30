@@ -30,7 +30,7 @@ class EditUserDetailsController(
     private suspend fun updateUserDetails(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupCurrentUser(session)
-        logger.atInfo().log("Updating details for user {}", session.userCn)
+        logger.atInfo().log("Updating details for user {}", session.userGUID)
 
         val updatedDeltaUserDetails = call.receive<DeltaUserMyDetails>()
 
@@ -45,7 +45,7 @@ class EditUserDetailsController(
 
         val modifications = getModifications(callingUser, updatedDeltaUserDetails)
 
-        userService.updateUser(callingUser, modifications, null, userLookupService, call)
+        userService.updateUser(callingUser, modifications, null, call)
 
         return call.respond(mapOf("message" to "Details have been updated."))
     }

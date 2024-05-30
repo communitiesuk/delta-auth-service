@@ -40,21 +40,11 @@ class EditOrganisationsControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                groupService.addUserToGroup(
-                    testUser, "datamart-delta-user-orgCode3", any(), null, userLookupService
-                )
-                groupService.addUserToGroup(
-                    testUser, "datamart-delta-data-certifiers-orgCode3", any(), null, userLookupService
-                )
-                groupService.removeUserFromGroup(
-                    testUser, "datamart-delta-user-orgCode2", any(), null, userLookupService
-                )
-                groupService.removeUserFromGroup(
-                    testUser, "datamart-delta-access-group-3-orgCode2", any(), null, userLookupService
-                )
-                groupService.removeUserFromGroup(
-                    testUser, "datamart-delta-data-certifiers-orgCode2", any(), null, userLookupService
-                )
+                groupService.addUserToGroup(testUser, "datamart-delta-user-orgCode3", any(), null)
+                groupService.addUserToGroup(testUser, "datamart-delta-data-certifiers-orgCode3", any(), null)
+                groupService.removeUserFromGroup(testUser, "datamart-delta-user-orgCode2", any(), null)
+                groupService.removeUserFromGroup(testUser, "datamart-delta-access-group-3-orgCode2", any(), null)
+                groupService.removeUserFromGroup(testUser, "datamart-delta-data-certifiers-orgCode2", any(), null)
             }
             confirmVerified(groupService)
         }
@@ -70,7 +60,7 @@ class EditOrganisationsControllerTest {
             contentType(ContentType.Application.Json)
             setBody("{\"selectedDomainOrganisationCodes\": [\"orgCode1\", \"orgCode2\"]}")
         }.apply {
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any()) }
         }
     }
 
@@ -86,12 +76,8 @@ class EditOrganisationsControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                groupService.addUserToGroup(
-                    testUser, "datamart-delta-user-orgCode3", any(), null, userLookupService
-                )
-                groupService.addUserToGroup(
-                    testUser, "datamart-delta-data-certifiers-orgCode3", any(), null, userLookupService
-                )
+                groupService.addUserToGroup(testUser, "datamart-delta-user-orgCode3", any(), null)
+                groupService.addUserToGroup(testUser, "datamart-delta-data-certifiers-orgCode3", any(), null)
             }
             confirmVerified(groupService)
         }
@@ -109,15 +95,9 @@ class EditOrganisationsControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                groupService.removeUserFromGroup(
-                    testUser, "datamart-delta-user-orgCode2", any(), null, userLookupService
-                )
-                groupService.removeUserFromGroup(
-                    testUser, "datamart-delta-access-group-3-orgCode2", any(), null, userLookupService
-                )
-                groupService.removeUserFromGroup(
-                    testUser, "datamart-delta-data-certifiers-orgCode2", any(), null, userLookupService
-                )
+                groupService.removeUserFromGroup(testUser, "datamart-delta-user-orgCode2", any(), null)
+                groupService.removeUserFromGroup(testUser, "datamart-delta-access-group-3-orgCode2", any(), null)
+                groupService.removeUserFromGroup(testUser, "datamart-delta-data-certifiers-orgCode2", any(), null)
             }
             confirmVerified(groupService)
         }
@@ -159,7 +139,7 @@ class EditOrganisationsControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 testUserSession.authToken,
                 client
             )
@@ -186,8 +166,8 @@ class EditOrganisationsControllerTest {
             runBlocking { organisationService.findAllNamesAndCodes() },
             accessGroups,
         )
-        coEvery { groupService.addUserToGroup(testUser, any(), any(), null, userLookupService) } just runs
-        coEvery { groupService.removeUserFromGroup(testUser, any(), any(), null, userLookupService) } just runs
+        coEvery { groupService.addUserToGroup(testUser, any(), any(), null) } just runs
+        coEvery { groupService.removeUserFromGroup(testUser, any(), any(), null) } just runs
     }
 
     companion object {
@@ -244,7 +224,7 @@ class EditOrganisationsControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

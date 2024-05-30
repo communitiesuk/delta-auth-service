@@ -33,7 +33,7 @@ class GenerateSAMLTokenController(private val samlTokenService: SAMLTokenService
 
         call.respond(
             GenerateSAMLTokenResponse(
-                username = user.ldapUser.cn,
+                username = user.ldapUser.cn, // TODO DT-1022 - make the SAML token response use GUID not CN?
                 token = token,
                 expiry = DateTimeFormatter.ISO_INSTANT.format(validTo),
             )

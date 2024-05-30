@@ -21,28 +21,25 @@ import kotlin.time.Duration.Companion.hours
 class SetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource) :
     PasswordTokenService(dbPool, timeSource) {
     override val tableName: String = "set_password_tokens"
-    suspend fun passwordNeverSetForUserCN(userCN: String): Boolean {
+    suspend fun passwordNeverSetForUserCN(userGUID: UUID): Boolean {
         return withContext(Dispatchers.IO) {
-            setPasswordTokenExistsForUserCN(userCN)
+            setPasswordTokenExistsForUserCN(userGUID)
         }
     }
 
-    suspend fun clearTokenForUserCn(userCN: String) {
+    suspend fun clearTokenForUserGUID(userGUID: UUID) {
         withContext(Dispatchers.IO) {
-            if (deleteForUser(userCN)) {
-                logger.info("Cleared set password token for user {}", userCN)
-            }
+            if (deleteForUser(userGUID)) logger.info("Cleared set password token for user {}", userGUID)
         }
     }
 
     @Blocking
-    private fun deleteForUser(userCN: String): Boolean {
-        // TODO DT-976-2 - use GUID not CN
+    private fun deleteForUser(userGUID: UUID): Boolean {
         return dbPool.useConnectionBlocking("Delete token for user") {
             val stmt = it.prepareStatement(
-                "DELETE FROM $tableName WHERE user_cn = ?",
+                "DELETE FROM $tableName WHERE user_guid = ?"
             )
-            stmt.setString(1, userCN)
+            stmt.setObject(1, userGUID)
             val result = stmt.executeUpdate()
             it.commit()
             result == 1
@@ -50,14 +47,13 @@ class SetPasswordTokenService(private val dbPool: DbPool, timeSource: TimeSource
     }
 
     @Blocking
-    private fun setPasswordTokenExistsForUserCN(userCN: String): Boolean {
-        // TODO DT-976-2 - use GUID not CN
+    private fun setPasswordTokenExistsForUserCN(userGUID: UUID): Boolean {
         return dbPool.useConnectionBlocking("Check if set password token exists") {
             val stmt = it.prepareStatement(
-                "SELECT user_cn, token, created_at FROM $tableName " +
-                        "WHERE user_cn = ?"
+                "SELECT token, created_at FROM $tableName " +
+                    "WHERE user_guid = ?"
             )
-            stmt.setString(1, userCN)
+            stmt.setObject(1, userGUID)
             val result = stmt.executeQuery()
 
             // Returns true if there is a matching entry, false if not
@@ -84,48 +80,45 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
         const val TOKEN_LENGTH_BYTES = 24
     }
 
-    suspend fun createToken(userCN: String, userGUID: UUID): String {
-        // TODO DT-976-2 - use GUID only
+    suspend fun createToken(userGUID: UUID): String {
         val token = randomBase64(TOKEN_LENGTH_BYTES)
         val now = timeSource.now()
         withContext(Dispatchers.IO) {
-            insert(userCN, userGUID, token, now)
+            insert(userGUID, token, now)
         }
         return token
     }
 
     @Blocking
-    private fun insert(userCN: String, userGUID: UUID, token: String, now: Instant) {
-        // TODO DT-976-2 - use GUID not CN
+    private fun insert(userGUID: UUID, token: String, now: Instant) {
         return dbPool.useConnectionBlocking("Insert password token") {
             val nowTimestamp = Timestamp.from(now)
             val tokenBytes = hashBase64String(token)
             val stmt = it.prepareStatement(
-                "INSERT INTO $tableName (user_cn, user_guid, token, created_at) VALUES (?, ?, ?, ?) " +
-                        "ON CONFLICT (user_cn) DO UPDATE SET token = ?, created_at = ?"
+                "INSERT INTO $tableName (user_guid, token, created_at) VALUES (?, ?, ?) " +
+                    "ON CONFLICT (user_guid) DO UPDATE SET token = ?, created_at = ?"
             )
-            stmt.setString(1, userCN)
-            stmt.setObject(2, userGUID)
-            stmt.setBytes(3, tokenBytes)
-            stmt.setTimestamp(4, nowTimestamp)
-            stmt.setBytes(5, tokenBytes)
-            stmt.setTimestamp(6, nowTimestamp)
+            stmt.setObject(1, userGUID)
+            stmt.setBytes(2, tokenBytes)
+            stmt.setTimestamp(3, nowTimestamp)
+            stmt.setBytes(4, tokenBytes)
+            stmt.setTimestamp(5, nowTimestamp)
             stmt.executeUpdate()
             it.commit()
         }
     }
 
-    suspend fun validateToken(token: String, userCN: String, userGUID: UUID): TokenResult {
+    suspend fun validateToken(token: String, userGUID: UUID): TokenResult {
         return withContext(Dispatchers.IO) {
-            readToken(token, userCN, userGUID)
+            readToken(token, userGUID)
         }
     }
 
-    suspend fun consumeTokenIfValid(token: String, userCN: String, userGUID: UUID): TokenResult {
+    suspend fun consumeTokenIfValid(token: String, userGUID: UUID): TokenResult {
         return withContext(Dispatchers.IO) {
-            var tokenResult = readToken(token, userCN, userGUID)
+            var tokenResult = readToken(token, userGUID)
             if (tokenResult is ValidToken) {
-                val tokenDeletedSuccessfully = deleteToken(token, userCN, userGUID)
+                val tokenDeletedSuccessfully = deleteToken(token, userGUID)
                 if (!tokenDeletedSuccessfully) {
                     tokenResult = NoSuchToken
                     logger.warn("Token not deleted successfully")
@@ -136,18 +129,17 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
     }
 
     @Blocking
-    private fun readToken(token: String, userCN: String, userGUID: UUID): TokenResult {
-        // TODO DT-976-2 - use GUID instead of CN
+    private fun readToken(token: String, userGUID: UUID): TokenResult {
         return dbPool.useConnectionBlocking("Read select password token") {
             val stmt = it.prepareStatement(
-                "SELECT user_cn, token, created_at FROM $tableName " +
-                        "WHERE token = ? AND user_cn = ?"
+                "SELECT token, created_at FROM $tableName " +
+                    "WHERE token = ? AND user_guid = ?"
             )
             stmt.setBytes(1, hashBase64String(token))
-            stmt.setString(2, userCN)
+            stmt.setObject(2, userGUID)
             val result = stmt.executeQuery()
             return@useConnectionBlocking if (!result.next()) {
-                logger.debug("No session found for token '{}' and userCN '{}'", token, userCN)
+                logger.debug("No session found for token '{}' and userCN '{}'", token, userGUID)
                 NoSuchToken
             } else if (tokenExpired(result.getTimestamp("created_at"))) {
                 ExpiredToken(token, userGUID)
@@ -156,14 +148,13 @@ abstract class PasswordTokenService(private val dbPool: DbPool, private val time
     }
 
     @Blocking
-    private fun deleteToken(token: String, userCN: String, userGUID: UUID): Boolean {
-        // TODO DT-976-2 - use GUID not CN
+    private fun deleteToken(token: String, userGUID: UUID): Boolean {
         return dbPool.useConnectionBlocking("Delete token") {
             val stmt = it.prepareStatement(
-                "DELETE FROM $tableName WHERE token = ? AND user_cn = ?",
+                "DELETE FROM $tableName WHERE token = ? AND user_guid = ?",
             )
             stmt.setBytes(1, hashBase64String(token))
-            stmt.setString(2, userCN)
+            stmt.setObject(2, userGUID)
             val result = stmt.executeUpdate()
             it.commit()
             result == 1

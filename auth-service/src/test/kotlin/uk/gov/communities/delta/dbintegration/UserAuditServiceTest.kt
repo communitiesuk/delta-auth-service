@@ -10,8 +10,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
-import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
+import uk.gov.communities.delta.auth.repositories.UserGUIDMapRepo
+import uk.gov.communities.delta.auth.services.UserAuditService
+import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.util.*
 import kotlin.test.assertEquals
@@ -20,32 +22,45 @@ import kotlin.test.assertNull
 class UserAuditServiceTest {
     @Test
     fun testUserLoginAudit() = testSuspend {
-        assertEquals(0, service.getAuditForUser("login.user!example.com").size)
+        val userGUID = UUID.fromString("aa11bb22-cc33-dd44-ee55-ff6677889900")
+        val userCN = "auditServiceLoginTestCN"
+        testDbPool.useConnectionBlocking("add_test_user_to_guid_map") {
+            userGUIDMapRepo.newUser(it, testLdapUser(cn = userCN, javaUUIDObjectGuid = userGUID.toString()))
+            it.commit()
+            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUser(it, userCN))
+        }
+        assertEquals(0, service.getAuditForUser(userGUID).size)
 
-        service.userFormLoginAudit("login.user!example.com", userGUID, call)
+        service.userFormLoginAudit(userGUID, call)
 
-        val audit = service.getAuditForUser("login.user!example.com")
+        val audit = service.getAuditForUser(userGUID)
         assertEquals(1, audit.size)
-        assertEquals("login.user!example.com", audit[0].userCn)
+        assertEquals(userCN, audit[0].userCN)
         assertEquals(call.callId, audit[0].requestId)
-        assertNull(audit[0].editingUserCn)
+        assertNull(audit[0].editingUserCN)
         assertEquals(UserAuditTrailRepo.AuditAction.FORM_LOGIN, audit[0].action)
     }
 
     @Test
     fun testSSOLoginAudit() = testSuspend {
+        val userGUID = UUID.randomUUID()
+        val userCN = "auditServiceSSOLoginTestCN"
+        testDbPool.useConnectionBlocking("add_test_user_to_guid_map") {
+            userGUIDMapRepo.newUser(it, testLdapUser(cn = userCN, javaUUIDObjectGuid = userGUID.toString()))
+            it.commit()
+            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUser(it, userCN))
+        }
         service.userSSOLoginAudit(
-            "sso.user!example.com",
             userGUID,
                 AzureADSSOClient("sso-id", "", "", "", "@example.com"),
                 "az-123", call,
             )
 
-        val audit = service.getAuditForUser("sso.user!example.com")
+        val audit = service.getAuditForUser(userGUID)
         assertEquals(1, audit.size)
-        assertEquals("sso.user!example.com", audit[0].userCn)
+        assertEquals(userCN, audit[0].userCN)
         assertEquals(call.callId, audit[0].requestId)
-        assertNull(audit[0].editingUserCn)
+        assertNull(audit[0].editingUserCN)
         assertEquals(UserAuditTrailRepo.AuditAction.SSO_LOGIN, audit[0].action)
         assertEquals("az-123", audit[0].actionData.jsonObject["azureUserObjectId"]!!.jsonPrimitive.content)
     }
@@ -53,14 +68,16 @@ class UserAuditServiceTest {
     companion object {
         lateinit var service: UserAuditService
         val client = testServiceClient()
-        private val userGUID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")
         val call = mockk<ApplicationCall>()
+        private lateinit var userGUIDMapRepo: UserGUIDMapRepo
+
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             val repo = UserAuditTrailRepo()
             service = UserAuditService(repo, testDbPool)
+            userGUIDMapRepo = UserGUIDMapRepo()
             every { call.callId } returns "request-id-1234"
         }
     }

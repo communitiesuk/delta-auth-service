@@ -10,11 +10,8 @@ import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.deltaWebsiteLoginRoute
-import uk.gov.communities.delta.auth.repositories.LdapRepository
-import uk.gov.communities.delta.auth.services.EmailService
-import uk.gov.communities.delta.auth.services.ResetPasswordTokenService
-import uk.gov.communities.delta.auth.services.SetPasswordTokenService
-import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.plugins.NoUserException
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 
 class DeltaForgotPasswordController(
@@ -23,6 +20,7 @@ class DeltaForgotPasswordController(
     private val resetPasswordTokenService: ResetPasswordTokenService,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val emailService: EmailService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
@@ -71,21 +69,17 @@ class DeltaForgotPasswordController(
         }
 
         try {
-            val user = userLookupService.lookupUserByEmail(emailAddress)
-            if (!user.accountEnabled && setPasswordTokenService.passwordNeverSetForUserCN(user.cn))
-                emailService.sendPasswordNeverSetEmail(
-                    user,
-                    setPasswordTokenService.createToken(user.cn, user.getGUID()),
-                    call
-                )
+            val userGUID = userGUIDMapService.getGUIDFromEmail(emailAddress)
+            val user = userLookupService.lookupUserByGUID(userGUID)
+            if (!user.accountEnabled && setPasswordTokenService.passwordNeverSetForUserCN(user.getGUID()))
+                emailService.sendPasswordNeverSetEmail(user, setPasswordTokenService.createToken(user.getGUID()), call)
             else emailService.sendResetPasswordEmail(
                 user,
-                resetPasswordTokenService.createToken(user.cn, user.getGUID()),
+                resetPasswordTokenService.createToken(user.getGUID()),
                 null,
-                userLookupService,
                 call
             )
-        } catch (e: LdapRepository.NoUserException) {
+        } catch (e: NoUserException) {
             emailService.sendNoUserEmail(emailAddress)
         } catch (e: Exception) {
             logger.atError().addKeyValue("emailAddress", emailAddress)

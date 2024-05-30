@@ -29,6 +29,17 @@ class DeltaResetPasswordControllerTest {
 
     @Test
     fun testResetPasswordPage() = testSuspend {
+        testClient.get(
+            "/reset-password?userGUID=" + user.getGUID().toString().encodeURLParameter() + "&token=$validToken"
+        )
+            .apply {
+                assertEquals(HttpStatusCode.OK, status)
+                assertFormPage(bodyAsText())
+            }
+    }
+
+    @Test
+    fun testResetPasswordPageWithCNParameter() = testSuspend {
         testClient.get("/reset-password?userCN=user%21example.com&token=$validToken")
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -57,7 +68,9 @@ class DeltaResetPasswordControllerTest {
 
     @Test
     fun testGetResetPasswordPageExpiredToken() = testSuspend {
-        testClient.get("/reset-password?userCN=user%21example.com&token=expiredToken")
+        testClient.get(
+            "/reset-password?userGUID=" + user.getGUID().toString().encodeURLParameter() + "&token=expiredToken"
+        )
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
                 assertContains(bodyAsText(), "Your password reset link had expired.")
@@ -68,12 +81,12 @@ class DeltaResetPasswordControllerTest {
     @Test
     fun testResetPasswordSuccess() = testSuspend {
         testClient.submitForm(
-            url = "/reset-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userGUID=" + user.getGUID().toString().encodeURLParameter() + "&token=" + validToken,
             formParameters = correctFormParameters()
         ).apply {
-            coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
+            coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.getGUID()) }
             coVerify(exactly = 1) { userService.resetPassword(user.getGUID(), validPassword) }
-            coVerify(exactly = 1) { userAuditService.resetPasswordAudit(user.cn, user.getGUID(), any()) }
+            coVerify(exactly = 1) { userAuditService.resetPasswordAudit(user.getGUID(), any()) }
             assertSuccessPageRedirect(status, headers)
         }
     }
@@ -81,13 +94,13 @@ class DeltaResetPasswordControllerTest {
     @Test
     fun testResetPasswordValidationError() = testSuspend {
         testClient.submitForm(
-            url = "/reset-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userGUID=" + user.getGUID().toString().encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", validPassword)
                 append("confirmPassword", "Not$validPassword")
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.getGUID()) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Passwords did not match")
@@ -98,13 +111,13 @@ class DeltaResetPasswordControllerTest {
     fun testResetPasswordCommonPasswordError() = testSuspend {
         val badPassword = "qwerty123456"
         testClient.submitForm(
-            url = "/reset-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userGUID=" + user.getGUID().toString().encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", badPassword)
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.getGUID()) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not be a commonly used password.")
@@ -115,13 +128,13 @@ class DeltaResetPasswordControllerTest {
     fun testResetPasswordNameInPasswordError() = testSuspend {
         val badPassword = "userexample1"
         testClient.submitForm(
-            url = "/reset-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + validToken,
+            url = "/reset-password?userGUID=" + user.getGUID().toString().encodeURLParameter() + "&token=" + validToken,
             formParameters = parameters {
                 append("newPassword", badPassword)
                 append("confirmPassword", badPassword)
             }
         ).apply {
-            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID()) }
+            coVerify(exactly = 0) { resetPasswordTokenService.consumeTokenIfValid(validToken, user.getGUID()) }
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
             assertFormPage(bodyAsText())
             assertContains(bodyAsText(), "Password must not contain any part(s) your username")
@@ -131,7 +144,8 @@ class DeltaResetPasswordControllerTest {
     @Test
     fun testPostResetPasswordExpiredToken() = testSuspend {
         testClient.submitForm(
-            url = "/reset-password?userCN=" + user.cn.encodeURLParameter() + "&token=" + expiredToken,
+            url = "/reset-password?userGUID=" + user.getGUID().toString()
+                .encodeURLParameter() + "&token=" + expiredToken,
             formParameters = parameters {
                 append("newPassword", validPassword)
                 append("confirmPassword", validPassword)
@@ -153,11 +167,9 @@ class DeltaResetPasswordControllerTest {
                 append("token", expiredToken)
             }
         ).apply {
-            coVerify(exactly = 1) {
-                resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getGUID())
-            }
-            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), null, userLookupService, any()) }
-            coVerify(exactly = 1) { resetPasswordTokenService.createToken(user.cn, user.getGUID()) }
+            coVerify(exactly = 1) { resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.getGUID()) }
+            coVerify(exactly = 1) { emailService.sendResetPasswordEmail(any(), any(), null, any()) }
+            coVerify(exactly = 1) { resetPasswordTokenService.createToken(user.getGUID()) }
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your password reset link has been emailed to you")
         }
@@ -185,33 +197,29 @@ class DeltaResetPasswordControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            resetPasswordTokenService.validateToken(validToken, user.cn, user.getGUID())
+            resetPasswordTokenService.validateToken(validToken, user.getGUID())
         } returns PasswordTokenService.ValidToken(validToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.validateToken(expiredToken, user.cn, user.getGUID())
+            resetPasswordTokenService.validateToken(expiredToken, user.getGUID())
         } returns PasswordTokenService.ExpiredToken(expiredToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.validateToken(invalidToken, user.cn, user.getGUID())
+            resetPasswordTokenService.validateToken(invalidToken, user.getGUID())
         } returns PasswordTokenService.NoSuchToken
+        coEvery { resetPasswordTokenService.validateToken("", any()) } returns PasswordTokenService.NoSuchToken
         coEvery {
-            resetPasswordTokenService.validateToken("", any(), any())
-        } returns PasswordTokenService.NoSuchToken
-        coEvery {
-            resetPasswordTokenService.consumeTokenIfValid(validToken, user.cn, user.getGUID())
+            resetPasswordTokenService.consumeTokenIfValid(validToken, user.getGUID())
         } returns PasswordTokenService.ValidToken(validToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.cn, user.getGUID())
+            resetPasswordTokenService.consumeTokenIfValid(expiredToken, user.getGUID())
         } returns PasswordTokenService.ExpiredToken(expiredToken, user.getGUID())
         coEvery {
-            resetPasswordTokenService.consumeTokenIfValid(invalidToken, user.cn, user.getGUID())
+            resetPasswordTokenService.consumeTokenIfValid(invalidToken, user.getGUID())
         } returns PasswordTokenService.NoSuchToken
-        coEvery {
-            resetPasswordTokenService.consumeTokenIfValid("", any(), any())
-        } returns PasswordTokenService.NoSuchToken
-        coEvery { resetPasswordTokenService.createToken(user.cn, user.getGUID()) } returns "token"
+        coEvery { resetPasswordTokenService.consumeTokenIfValid("", any()) } returns PasswordTokenService.NoSuchToken
+        coEvery { resetPasswordTokenService.createToken(user.getGUID()) } returns "token"
         coEvery { userService.resetPassword(user.getGUID(), validPassword) } just runs
-        coEvery { emailService.sendResetPasswordEmail(any(), any(), null, userLookupService, any()) } just runs
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { emailService.sendResetPasswordEmail(any(), any(), null, any()) } just runs
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
     }
 
@@ -234,6 +242,7 @@ class DeltaResetPasswordControllerTest {
         private val emailService = mockk<EmailService>()
         private val userService = mockk<UserService>()
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
         private var userAuditService = mockk<UserAuditService>(relaxed = true)
 
 
@@ -245,6 +254,7 @@ class DeltaResetPasswordControllerTest {
                 userService,
                 resetPasswordTokenService,
                 userLookupService,
+                userGUIDMapService,
                 emailService,
                 userAuditService,
             )

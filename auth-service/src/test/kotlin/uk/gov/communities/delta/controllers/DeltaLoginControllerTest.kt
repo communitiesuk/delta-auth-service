@@ -91,7 +91,7 @@ class DeltaLoginControllerTest {
             assertContains(bodyAsText(), "Your account has been disabled")
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
-            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any(), any()) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -111,7 +111,7 @@ class DeltaLoginControllerTest {
             assertContains(bodyAsText(), "Your account exists but is not set up to access Delta.")
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
-            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any(), any()) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -134,7 +134,7 @@ class DeltaLoginControllerTest {
             )
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
-            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any(), any()) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -155,7 +155,7 @@ class DeltaLoginControllerTest {
             )
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
-            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any(), any()) }
+            coVerify(exactly = 0) { userAuditService.userFormLoginAudit(any(), any()) }
         }
     }
 
@@ -176,8 +176,8 @@ class DeltaLoginControllerTest {
             }
             verify(exactly = 0) { failedLoginCounter.increment(1.0) }
             verify(exactly = 1) { successfulLoginCounter.increment(1.0) }
-            coVerify(exactly = 1) { authorizationCodeService.generateAndStore(any(), any(), any(), any(), false)}
-            coVerify(exactly = 1) { userAuditService.userFormLoginAudit(testUser.cn, testUser.getGUID(), any()) }
+            coVerify(exactly = 1) { authorizationCodeService.generateAndStore(any(), any(), any(), false) }
+            coVerify(exactly = 1) { userAuditService.userFormLoginAudit(testUser.getGUID(), any()) }
         }
     }
 
@@ -221,9 +221,9 @@ class DeltaLoginControllerTest {
         clearAllMocks()
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit
-        coEvery { userAuditService.userFormLoginAudit(any(), any(), any()) } returns Unit
-        coEvery { authorizationCodeService.generateAndStore(any(), any(), any(), any(), any()) } answers {
-            AuthCode("test-auth-code", user.cn, user.getGUID(), client, Instant.now(), "trace", false)
+        coEvery { userAuditService.userFormLoginAudit(any(), any()) } returns Unit
+        coEvery { authorizationCodeService.generateAndStore(any(), any(), any(), any()) } answers {
+            AuthCode("test-auth-code", user.getGUID(), client, Instant.now(), "trace", false)
         }
     }
 

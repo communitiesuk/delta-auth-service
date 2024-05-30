@@ -21,6 +21,7 @@ import org.junit.BeforeClass
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminGetUserController
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.plugins.NoUserException
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
@@ -94,12 +95,12 @@ class AdminGetUserControllerTest {
     @Before
     fun resetMocks() {
         clearAllMocks()
-        coEvery { oauthSessionService.retrieveFomAuthToken(adminSession.authToken, client) } answers { adminSession }
+        coEvery { oauthSessionService.retrieveFromAuthToken(adminSession.authToken, client) } answers { adminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(readOnlyAdminSession.authToken, client)
+            oauthSessionService.retrieveFromAuthToken(readOnlyAdminSession.authToken, client)
         } answers { readOnlyAdminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(regularUserSession.authToken, client)
+            oauthSessionService.retrieveFromAuthToken(regularUserSession.authToken, client)
         } answers { regularUserSession }
         val organisations = listOf(
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
@@ -121,10 +122,8 @@ class AdminGetUserControllerTest {
             ),
             organisations, accessGroups
         )
-        coEvery { userLookupService.loadUserRoles(user) } returns LdapUserWithRoles(
-            user,
-            MemberOfToDeltaRolesMapper(user.cn, organisations, accessGroups).map(user.memberOfCNs)
-        )
+        coEvery { userGUIDMapService.getGUID(any()) } throws NoUserException("Test exception")
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
     }
 
     companion object {
@@ -135,6 +134,7 @@ class AdminGetUserControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
 
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
@@ -176,6 +176,7 @@ class AdminGetUserControllerTest {
             ),
             mobile = "0123456789",
             telephone = "0987654321",
+            javaUUIDObjectGuid = "00112233-4455-1677-8899-aabbccddeeff"
         )
         private const val NON_EXISTENT_USER_CN = "fake!user.com"
 
@@ -204,7 +205,7 @@ class AdminGetUserControllerTest {
                             "\"fullName\":\"Test Surname\"," +
                             "\"accountEnabled\":true," +
                             "\"mangledDeltaObjectGuid\":null," +
-                            "\"javaUUIDObjectGuid\":\"00112233-4455-6677-8899-aabbccddeeff\"," +
+                            "\"javaUUIDObjectGuid\":\"00112233-4455-1677-8899-aabbccddeeff\"," +
                             "\"telephone\":\"0987654321\"," +
                             "\"mobile\":\"0123456789\"," +
                             "\"positionInOrganisation\":null," +
@@ -242,6 +243,7 @@ class AdminGetUserControllerTest {
         fun setup() {
             controller = AdminGetUserController(
                 userLookupService,
+                userGUIDMapService
             )
 
             testApp = TestApplication {
@@ -250,7 +252,7 @@ class AdminGetUserControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

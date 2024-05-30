@@ -19,7 +19,6 @@ class DeltaUserRegistrationController(
     private val ssoConfig: AzureADSSOConfig,
     private val organisationService: OrganisationService,
     private val registrationService: RegistrationService,
-    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
     private val emailAddressChecker = EmailAddressChecker()

@@ -9,7 +9,10 @@ import org.junit.Before
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.GroupService
+import uk.gov.communities.delta.auth.services.LdapServiceUserBind
+import uk.gov.communities.delta.auth.services.OAuthSession
+import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.helper.testLdapUser
 import java.time.Instant
 import java.util.*
@@ -24,7 +27,6 @@ import kotlin.test.assertTrue
 class GroupServiceTest {
     private val ldapServiceUserBind = mockk<LdapServiceUserBind>()
     private val userAuditService = mockk<UserAuditService>()
-    private val userLookupService = mockk<UserLookupService>()
     private val groupCN = "datamart-delta-group"
     private val groupDnFormat = "CN=%s"
     private val groupDN = String.format(groupDnFormat, groupCN)
@@ -34,9 +36,8 @@ class GroupServiceTest {
     private val modificationItems = slot<Array<ModificationItem>>()
     private val context = mockk<InitialLdapContext>()
     private val contextBlock = slot<(InitialLdapContext) -> Any>()
-    private val adUser = UserService.ADUser(ldapConfig, Registration("Test", "User", "user@example.com"), null)
     private val ldapUser = testLdapUser(email = "user@example.com", cn = "user!example.com")
-    private val adminGUID = UUID.fromString("ffeeddcc-bbaa-9988-7766-5544332211")
+    private val adminGUID = UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100")
     private val attributes = BasicAttributes()
     private val call = mockk<ApplicationCall>()
     private val auditData = slot<String>()
@@ -48,11 +49,8 @@ class GroupServiceTest {
         coEvery { ldapServiceUserBind.useServiceUserBind(capture(contextBlock)) } coAnswers { contextBlock.captured(context) }
         coEvery { context.createSubcontext(groupDN, capture(container)) } coAnswers { nothing }
         coEvery { context.modifyAttributes(groupDN, capture(modificationItems)) } coAnswers { nothing }
-        coEvery { userAuditService.userUpdateAudit(any(), any(), any(), capture(auditData)) } just runs
-        coEvery {
-            userAuditService.userUpdateByAdminAudit(any(), any(), any(), any(), any(), capture(auditData))
-        } just runs
-        coEvery { userLookupService.lookupUserByCn(ldapUser.cn) } returns ldapUser
+        coEvery { userAuditService.userUpdateAudit(any(), any(), capture(auditData)) } just runs
+        coEvery { userAuditService.userUpdateByAdminAudit(any(), any(), any(), capture(auditData)) } just runs
     }
 
     @Test
@@ -87,12 +85,12 @@ class GroupServiceTest {
     @Test
     fun testAddingUserToExistingGroup() = testSuspend {
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
-        groupService.addUserToGroup(ldapUser, groupCN, call, null, userLookupService)
+        groupService.addUserToGroup(ldapUser, groupCN, call, null)
         verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(ldapUser.dn, modificationItems.captured[0].attribute.get())
-        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, ldapUser.getGUID(), call, any()) }
+        coVerify(exactly = 1) { userAuditService.userUpdateAudit(ldapUser.getGUID(), call, any()) }
         assertContains(auditData.captured, "\"addedGroupCN\":\"$groupCN\"")
     }
 
@@ -100,7 +98,7 @@ class GroupServiceTest {
     fun testAdminAddingUserToExistingGroup() = testSuspend {
         val adminSession = OAuthSession(
             1,
-            "adminUserCN",
+            "admin",
             adminGUID,
             mockk<DeltaLoginEnabledClient>(),
             "adminAccessToken",
@@ -109,16 +107,12 @@ class GroupServiceTest {
             false
         )
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
-        groupService.addUserToGroup(ldapUser, groupCN, call, adminSession, userLookupService)
+        groupService.addUserToGroup(ldapUser, groupCN, call, adminSession)
         verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.ADD_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(ldapUser.dn, modificationItems.captured[0].attribute.get())
-        coVerify(exactly = 1) {
-            userAuditService.userUpdateByAdminAudit(
-                adUser.cn, ldapUser.getGUID(), "adminUserCN", adminGUID, call, any()
-            )
-        }
+        coVerify(exactly = 1) { userAuditService.userUpdateByAdminAudit(ldapUser.getGUID(), adminGUID, call, any()) }
         assertContains(auditData.captured, "\"addedGroupCN\":\"$groupCN\"")
     }
 
@@ -130,7 +124,7 @@ class GroupServiceTest {
                 arrayOf("cn")
             )
         } coAnswers { BasicAttributes() } coAndThen { attributes }
-        groupService.addUserToGroup(ldapUser, groupCN, call, null, userLookupService)
+        groupService.addUserToGroup(ldapUser, groupCN, call, null)
         verify(exactly = 1) { context.createSubcontext(groupDN, any()) }
         assertEquals(groupCN, container.captured.get("cn").get())
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
@@ -142,12 +136,12 @@ class GroupServiceTest {
     @Test
     fun testRemovingUserFromGroup() = testSuspend {
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
-        groupService.removeUserFromGroup(ldapUser, groupCN, call, null, userLookupService)
+        groupService.removeUserFromGroup(ldapUser, groupCN, call, null)
         verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.REMOVE_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(ldapUser.dn, modificationItems.captured[0].attribute.get())
-        coVerify(exactly = 1) { userAuditService.userUpdateAudit(adUser.cn, ldapUser.getGUID(), call, any()) }
+        coVerify(exactly = 1) { userAuditService.userUpdateAudit(ldapUser.getGUID(), call, any()) }
         assertContains(auditData.captured, "\"removedGroupCN\":\"$groupCN\"")
     }
 
@@ -155,7 +149,7 @@ class GroupServiceTest {
     fun testAdminRemovingUserFromGroup() = testSuspend {
         val adminSession = OAuthSession(
             1,
-            "adminUserCN",
+            "admin",
             adminGUID,
             mockk<DeltaLoginEnabledClient>(),
             "adminAccessToken",
@@ -164,21 +158,12 @@ class GroupServiceTest {
             false
         )
         coEvery { context.getAttributes(groupDN, arrayOf("cn")) } coAnswers { attributes }
-        groupService.removeUserFromGroup(ldapUser, groupCN, call, adminSession, userLookupService)
+        groupService.removeUserFromGroup(ldapUser, groupCN, call, adminSession)
         verify(exactly = 0) { context.createSubcontext(groupDN, any()) }
         verify(exactly = 1) { context.modifyAttributes(groupDN, any()) }
         assertEquals(DirContext.REMOVE_ATTRIBUTE, modificationItems.captured[0].modificationOp)
         assertEquals(ldapUser.dn, modificationItems.captured[0].attribute.get())
-        coVerify(exactly = 1) {
-            userAuditService.userUpdateByAdminAudit(
-                adUser.cn,
-                ldapUser.getGUID(),
-                "adminUserCN",
-                adminGUID,
-                call,
-                any()
-            )
-        }
+        coVerify(exactly = 1) { userAuditService.userUpdateByAdminAudit(ldapUser.getGUID(), adminGUID, call, any()) }
         assertContains(auditData.captured, "\"removedGroupCN\":\"$groupCN\"")
     }
 
@@ -186,7 +171,7 @@ class GroupServiceTest {
     fun testErrorThrownOnRemovingUserFromNotExistingGroup() = testSuspend {
         Assert.assertThrows(Exception::class.java) {
             runBlocking {
-                groupService.addUserToGroup(ldapUser, groupCN, call, null, userLookupService)
+                groupService.addUserToGroup(ldapUser, groupCN, call, null)
             }
         }.apply {
             verify(exactly = 0) { context.createSubcontext(any<String>(), any()) }

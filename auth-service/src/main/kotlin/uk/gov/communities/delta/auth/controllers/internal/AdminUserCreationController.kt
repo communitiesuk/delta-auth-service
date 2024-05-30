@@ -7,18 +7,18 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
+import java.util.*
 
 class AdminUserCreationController(
     private val ldapConfig: LDAPConfig,
     private val ssoConfig: AzureADSSOConfig,
-    private val emailConfig: EmailConfig,
-    private val userLookupService: UserLookupService,
+    userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val userService: UserService,
     private val groupService: GroupService,
     private val emailService: EmailService,
@@ -48,8 +48,8 @@ class AdminUserCreationController(
             ssoClient,
         )
 
-        when (userLookupService.userIfExists(adUser.mail)) {
-            is LdapUser -> {
+        when (userGUIDMapService.userGUIDIfExists(adUser.mail)) {
+            is UUID -> {
                 logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
                     .log("User being made by admin already exists")
                 throw ApiError(
@@ -104,7 +104,7 @@ class AdminUserCreationController(
         logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully created")
         try {
             userPermissions.getADGroupCNs().forEach {
-                groupService.addUserToGroup(user, it, call, session, userLookupService)
+                groupService.addUserToGroup(user, it, call, session)
             }
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to groups", e)
@@ -122,16 +122,7 @@ class AdminUserCreationController(
             return call.respond(mapOf("message" to "User created. Single Sign On (SSO) is enabled for this user based on their email domain. The account has been activated automatically, no email has been sent."))
         }
         try {
-            emailService.sendSetPasswordEmail(
-                user.firstName,
-                setPasswordTokenService.createToken(user.cn, user.getGUID()),
-                user.cn,
-                user.getGUID(),
-                session,
-                userLookupService,
-                EmailContacts(user.email!!, user.fullName, emailConfig),
-                call
-            )
+            emailService.sendSetPasswordEmail(user, setPasswordTokenService.createToken(user.getGUID()), session, call)
         } catch (e: Exception) {
             throw ApiError(
                 HttpStatusCode.InternalServerError,

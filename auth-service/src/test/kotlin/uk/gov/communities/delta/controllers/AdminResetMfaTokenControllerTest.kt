@@ -19,10 +19,7 @@ import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.OAuthSession
-import uk.gov.communities.delta.auth.services.OAuthSessionService
-import uk.gov.communities.delta.auth.services.UserLookupService
-import uk.gov.communities.delta.auth.services.UserService
+import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
@@ -73,13 +70,13 @@ class AdminResetMfaTokenControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 adminSession.authToken,
                 client
             )
         } answers { adminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 nonFullAdminSession.authToken,
                 client
             )
@@ -92,6 +89,7 @@ class AdminResetMfaTokenControllerTest {
             ), listOf(), listOf()
         )
         coEvery { userService.resetMfaToken(userToUpdate, any(), any()) } just runs
+        coEvery { userGUIDMapService.getGUID(userToUpdate.cn) } returns userToUpdate.getGUID()
     }
 
     companion object {
@@ -102,6 +100,7 @@ class AdminResetMfaTokenControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
         private val userService = mockk<UserService>()
 
         private val client = testServiceClient()
@@ -141,6 +140,7 @@ class AdminResetMfaTokenControllerTest {
         fun setup() {
             controller = AdminResetMfaTokenController(
                 userLookupService,
+                userGUIDMapService,
                 userService,
             )
 
@@ -150,9 +150,7 @@ class AdminResetMfaTokenControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token,
-                                client
-                            ) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"
