@@ -15,6 +15,7 @@ import java.time.Instant
 import java.util.*
 import javax.naming.Context
 import javax.naming.NamingException
+import javax.naming.directory.Attribute
 import javax.naming.directory.Attributes
 import javax.naming.directory.InitialDirContext
 import javax.naming.directory.SearchControls
@@ -173,9 +174,13 @@ class LdapRepository(
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun Attributes.getMemberOfList(): List<String> {
-        return get("memberOf").all.asSequence().toList() as List<String>
+        return get("memberOf")?.asList()?:emptyList()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Attribute.asList(): List<String> {
+        return all.asSequence().toList() as List<String>
     }
 
     private fun Attributes.getAccountEnabled(): Boolean {
