@@ -55,7 +55,7 @@ class DeltaSetPasswordControllerTest {
         Assert.assertThrows(UserVisibleServerError::class.java) {
             runBlocking { testClient.get("/set-password") }
         }.apply {
-            assertEquals("set_password_no_user_cn_or_guid", errorCode)
+            assertEquals("set_password_get_no_user_cn_or_guid", errorCode)
         }
     }
 

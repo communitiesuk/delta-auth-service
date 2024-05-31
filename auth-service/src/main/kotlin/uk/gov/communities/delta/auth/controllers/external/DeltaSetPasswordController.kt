@@ -51,17 +51,21 @@ class DeltaSetPasswordController(
     }
 
     private suspend fun setPasswordGet(call: ApplicationCall) {
-        val user = getUserFromCallParameters(  // TODO DT-976-2 - just get GUID once CN not needed
-            call.request.queryParameters,
-            userLookupService,
-            "Something went wrong, please click the link in your latest account activation email",
-            "set_password"
-        )
+        val user = try {
+            getUserFromCallParameters(  // TODO DT-976-2 - just get GUID once CN not needed
+                call.request.queryParameters,
+                userLookupService,
+                setPasswordExceptionUserVisibleMessage,
+                "set_password_get"
+            )
+        } catch (e: ApiError) {
+            throw InvalidSetPassword()
+        }
         val token = call.request.queryParameters["token"].orEmpty()
         // TODO DT-976-2 - validate tokens using GUID not CN
         when (val tokenResult = setPasswordTokenService.validateToken(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
-                throw SetPasswordException("set_password_no_token", "Set password token did not exist")
+                throw InvalidSetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {

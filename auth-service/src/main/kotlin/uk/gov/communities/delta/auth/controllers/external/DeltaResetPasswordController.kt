@@ -49,17 +49,21 @@ class DeltaResetPasswordController(
     }
 
     private suspend fun resetPasswordGet(call: ApplicationCall) {
-        val user = getUserFromCallParameters( // TODO DT-976-2 - just get GUID once CN not needed
-            call.request.queryParameters,
-            userLookupService,
-            "Something went wrong, please click the link in your latest password reset email or request a new one",
-            "reset_password_get"
-        )
+        val user = try {
+            getUserFromCallParameters( // TODO DT-976-2 - just get GUID once CN not needed
+                call.request.queryParameters,
+                userLookupService,
+                resetPasswordExceptionUserVisibleMessage,
+                "reset_password_get"
+            )
+        } catch (e: ApiError) {
+            throw InvalidResetPassword()
+        }
         val token = call.request.queryParameters["token"].orEmpty()
         when (val tokenResult = resetPasswordTokenService.validateToken(token, user.cn, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.warn("Reset password get request with invalid token and/or userCN")
-                throw ResetPasswordException("reset_password_no_token", "Reset password token did not exist")
+                throw InvalidResetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {
