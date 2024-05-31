@@ -57,6 +57,9 @@ class FetchUserAuditController(
                 "Page size must be positive"
             )
         }
+        // TODO DT-1022 - receive GUID instead of CN
+        // TODO DT-976-2 - get GUID instead of CN (use Parameters.kt)
+        // TODO DT-976-2 - use GUID to get audit instead of cn
         val targetUserCn = parameters.getOrFail("cn")
         checkPermissions(session, targetUserCn)
 
@@ -71,7 +74,9 @@ class FetchUserAuditController(
                             "action" to JsonPrimitive(it.action.action),
                             "timestamp" to JsonPrimitive(it.timestamp.toInstant().toString()),
                             "userCN" to JsonPrimitive(it.userCn),
-                            "editingUserCN" to JsonPrimitive(it.editingUserCn),
+                            "userGUID" to JsonPrimitive(it.userGUID.toString()),
+                    "editingUserCN" to JsonPrimitive(it.editingUserCn), // TODO DT-976-2 - still return a human readable user identifier once not storing cn
+                    "editingUserGUID" to JsonPrimitive(it.editingUserGUID?.toString() ?: ""),
                             "requestId" to JsonPrimitive(it.requestId),
                             "actionData" to it.actionData,
                         )
@@ -131,14 +136,16 @@ class FetchUserAuditController(
     private fun buildCSVFromAudit(audit: List<UserAuditTrailRepo.UserAuditRow>): String {
         val extraCSVHeaders = audit.flatMap { it.actionData.keys }.distinct()
         val stringBuilder = StringBuilder()
-        stringBuilder.csvRow(listOf("action", "timestamp", "userCN", "editingUserCN", "requestId") + extraCSVHeaders)
+        stringBuilder.csvRow(listOf("action", "timestamp", "userCN", "userGUID", "editingUserCN", "editingUserGUID", "requestId") + extraCSVHeaders)
 
         for (auditRow in audit) {
             val csvRow = mutableListOf(
                 auditRow.action.action,
                 auditRow.timestamp.toInstant().toString(),
                 auditRow.userCn,
-                auditRow.editingUserCn ?: "",
+                auditRow.userGUID.toString(),
+                auditRow.editingUserCn ?: "", // TODO DT-976-2 - still return a human readable user identifier once not storing cn
+                auditRow.editingUserGUID?.toString() ?: "",
                 auditRow.requestId
             )
             extraCSVHeaders.forEach {
@@ -153,7 +160,8 @@ class FetchUserAuditController(
     }
 
     private suspend fun checkPermissions(session: OAuthSession, targetUserCn: String) {
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        // TODO DT-976-2 - use GUID instead
+        val callingUser = userLookupService.lookupCurrentUser(session)
 
         if (!userHasPermissionToReadAuditTrail(callingUser, targetUserCn)) {
             logger.atWarn()

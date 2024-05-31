@@ -93,7 +93,8 @@ class FetchUserAuditControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals(
                 "{\"userAudit\":[{\"action\":\"sso_login\",\"timestamp\":\"1970-01-01T00:00:01Z\",\"userCN\":\"admin\"," +
-                    "\"editingUserCN\":null,\"requestId\":\"adminRequestId\"," +
+                    "\"userGUID\":\"00112233-4455-6677-8899-aabbccddeeff\",\"editingUserCN\":null," +
+                    "\"editingUserGUID\":\"\",\"requestId\":\"adminRequestId\"," +
                     "\"actionData\":{\"azureObjectId\":\"oid\"}}],\"totalRecords\":50}",
                 bodyAsText()
             )
@@ -112,8 +113,8 @@ class FetchUserAuditControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals(
                 """
-                    action,timestamp,userCN,editingUserCN,requestId,azureObjectId
-                    sso_login,1970-01-01T00:00:01Z,admin,,adminRequestId,oid
+                    action,timestamp,userCN,userGUID,editingUserCN,editingUserGUID,requestId,azureObjectId
+                    sso_login,1970-01-01T00:00:01Z,admin,00112233-4455-6677-8899-aabbccddeeff,,,adminRequestId,oid
                     
                 """.trimIndent(),
                 bodyAsText()
@@ -141,9 +142,9 @@ class FetchUserAuditControllerTest {
             confirmVerified(userAuditService)
             assertEquals(
                 """
-                    action,timestamp,userCN,editingUserCN,requestId,azureObjectId
-                    set_password_email,1970-01-01T00:00:00Z,user,admin,userRequestId,
-                    sso_login,1970-01-01T00:00:01Z,admin,,adminRequestId,oid
+                    action,timestamp,userCN,userGUID,editingUserCN,editingUserGUID,requestId,azureObjectId
+                    set_password_email,1970-01-01T00:00:00Z,user,00112233-4455-6677-8899-aabbccddeeff,admin,00112233-4455-6677-8899-aabbccddeeff,userRequestId,
+                    sso_login,1970-01-01T00:00:01Z,admin,00112233-4455-6677-8899-aabbccddeeff,,,adminRequestId,oid
 
                 """.trimIndent(),
                 bodyAsText()
@@ -193,10 +194,12 @@ class FetchUserAuditControllerTest {
         private val client = testServiceClient()
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
-        private val adminSession =
-            OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
-        private val userSession =
-            OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+        private val adminSession = OAuthSession(
+            1, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
+        )
+        private val userSession = OAuthSession(
+            1, regularUser.cn, regularUser.getGUID(), client, "userAccessToken", Instant.now(), "trace", false
+        )
 
         @BeforeClass
         @JvmStatic
@@ -206,8 +209,10 @@ class FetchUserAuditControllerTest {
             userAuditService = mockk<UserAuditService>()
 
             // Auth mocks
+            coEvery { userLookupService.lookupCurrentUser(adminSession) } answers { adminUser }
+            coEvery { userLookupService.lookupCurrentUser(userSession) } answers { regularUser }
+            coEvery { userLookupService.lookupUserByCn(regularUser.cn) } answers { regularUser } // TODO DT-976-2 - get rid of these hopefully
             coEvery { userLookupService.lookupUserByCn(adminUser.cn) } answers { adminUser }
-            coEvery { userLookupService.lookupUserByCn(regularUser.cn) } answers { regularUser }
             coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
             coEvery {
                 oauthSessionService.retrieveFomAuthToken(
@@ -222,7 +227,9 @@ class FetchUserAuditControllerTest {
                 UserAuditTrailRepo.AuditAction.SET_PASSWORD_EMAIL,
                 Timestamp(0),
                 regularUser.cn,
-                adminUser.cn,
+                regularUser.getGUID(),
+                    adminUser.cn,
+                    adminUser.getGUID(),
                 "userRequestId",
                 JsonObject(emptyMap())
             )
@@ -235,10 +242,12 @@ class FetchUserAuditControllerTest {
                 UserAuditTrailRepo.AuditAction.SSO_LOGIN,
                 Timestamp(1000),
                 adminUser.cn,
-                null,
-                "adminRequestId",
-                JsonObject(mapOf("azureObjectId" to JsonPrimitive("oid")))
-            )
+                adminUser.getGUID(),
+                    null,
+                    null,
+                    "adminRequestId",
+                    JsonObject(mapOf("azureObjectId" to JsonPrimitive("oid")))
+                )
             coEvery { userAuditService.getAuditForUser(adminUser.cn) } returns listOf(adminAudit)
             coEvery { userAuditService.getAuditForUserPaged(adminUser.cn, 1, 100) } returns Pair(
                 listOf(adminAudit),

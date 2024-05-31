@@ -6,6 +6,7 @@ import org.junit.Test
 import uk.gov.communities.delta.auth.services.AuthorizationCodeService
 import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.helper.testServiceClient
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -20,14 +21,14 @@ class AuthorizationCodeServiceTest {
 
     @Test
     fun testLookupCodeWrongClientFails() = testSuspend {
-        val code = service.generateAndStore("some.user", client, "traceId", false)
+        val code = service.generateAndStore("some.user", userGUID, client, "traceId", false)
         val result = service.lookupAndInvalidate(code.code, testServiceClient("wrong-client"))
         assertNull(result)
     }
 
     @Test
     fun testRetrieveValidCode() = testSuspend {
-        val code = service.generateAndStore("some.user", client, "traceId", true)
+        val code = service.generateAndStore("some.user", userGUID, client, "traceId", true)
         val result = service.lookupAndInvalidate(code.code, client)
         assertNotNull(result)
         assertEquals(result.userCn, "some.user")
@@ -39,6 +40,7 @@ class AuthorizationCodeServiceTest {
     companion object {
         lateinit var service: AuthorizationCodeService
         val client = testServiceClient()
+        val userGUID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")
 
         @BeforeClass
         @JvmStatic

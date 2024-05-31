@@ -11,6 +11,7 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
 
 class EditLdapGroupsController(
     private val groupService: GroupService,
@@ -22,13 +23,17 @@ class EditLdapGroupsController(
         validateAuthorisation(call)
         val groupName = call.parameters.getOrFail("groupName")
         val groupCn = LDAPConfig.DATAMART_DELTA_PREFIX + groupName
-        
-        val userCn = call.parameters.getOrFail("userCn")
-        val user = userLookupService.lookupUserByCn(userCn)
+
+        val user = getUserFromCallParameters(
+            call.parameters,
+            userLookupService,
+            "An error occurred adding groups to the user",
+            "add_ldap_group"
+        )
         
         if (!user.memberOfCNs.contains(groupCn)) {
-            logger.info("Adding User CN={} to group CN={}", userCn, groupCn)
-            groupService.addUserToGroup(user.cn, user.dn, groupCn, call, null)
+            logger.info("Adding user {} to group CN={}", user.getGUID(), groupCn)
+            groupService.addUserToGroup(user, groupCn, call, null, userLookupService)
         }
         call.response.status(HttpStatusCode.NoContent)
     }

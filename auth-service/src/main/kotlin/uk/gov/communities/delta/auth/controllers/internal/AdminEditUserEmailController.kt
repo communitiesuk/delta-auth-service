@@ -33,6 +33,7 @@ class AdminEditUserEmailController(
         val requestData = call.receive<DeltaEmailChangeRequest>()
         val requestedEmail = requestData.newEmail
 
+        // TODO DT-1022 - use GUID once it is being received
         val userToEdit = userLookupService.lookupUserByCn(requestData.userToEditCn)
 
         validateEmail(requestedEmail)

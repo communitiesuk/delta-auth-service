@@ -29,10 +29,11 @@ class EditAccessGroupsController(
     // It will assign the user to that access group and the given list of organisations for that access group.
     suspend fun addUserToAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
         validateIsInternalUser(callingUser)
 
         val addGroupRequest = call.receive<DeltaUserSingleAccessGroupOrganisationsRequest>()
+        // TODO DT-1022 - GUID not CN
         val (targetUser, targetUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(addGroupRequest.userToEditCn)
 
         val targetGroupName = addGroupRequest.accessGroupName
@@ -52,13 +53,7 @@ class EditAccessGroupsController(
         if (targetUser.memberOfCNs.contains(targetGroupADName)) {
             logger.warn("User {} already member of access group {}", targetUser.cn, targetGroupADName)
         } else {
-            groupService.addUserToGroup(
-                targetUser.cn,
-                targetUser.dn,
-                targetGroupADName,
-                call,
-                session,
-            )
+            groupService.addUserToGroup(targetUser, targetGroupADName, call, session, userLookupService,)
         }
         targetOrganisationCodes.forEach { orgCode ->
             val targetGroupOrgADName = getGroupOrgADName(targetGroupName, orgCode)
@@ -70,13 +65,7 @@ class EditAccessGroupsController(
                     orgCode,
                 )
             } else {
-                groupService.addUserToGroup(
-                    targetUser.cn,
-                    targetUser.dn,
-                    targetGroupOrgADName,
-                    call,
-                    session,
-                )
+                groupService.addUserToGroup(targetUser, targetGroupOrgADName, call, session, userLookupService,)
                 if (orgCode == "dclg") {
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                         AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(targetUser),
@@ -96,10 +85,11 @@ class EditAccessGroupsController(
     // It will remove the user from the given access group, including any organisation associations.
     suspend fun removeUserFromAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
         validateIsInternalUser(callingUser)
 
         val removeGroupRequest = call.receive<DeltaUserSingleAccessGroupRequest>()
+        // TODO DT-1022 - GUID not CN
         val targetUser = userLookupService.lookupUserByCn(removeGroupRequest.userToEditCn)
 
         val targetGroupName = removeGroupRequest.accessGroupName
@@ -113,11 +103,11 @@ class EditAccessGroupsController(
             for (groupName in targetUser.memberOfCNs) {
                 if (groupName.startsWith(targetGroupADName)) {
                     groupService.removeUserFromGroup(
-                        targetUser.cn,
-                        targetUser.dn,
+                        targetUser,
                         groupName,
                         call,
                         session,
+                        userLookupService,
                     )
                 }
             }
@@ -157,7 +147,7 @@ class EditAccessGroupsController(
     // membership of (access group, organisation) will be ignored for organisations not in this list.
     suspend fun updateCurrentUserAccessGroups(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
         logger.info("Updating access groups for user {}", session.userCn)
         val userIsInternal = callingUser.isInternal()
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
@@ -339,11 +329,11 @@ class EditAccessGroupsController(
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.addUserToGroup(
-                    user.cn,
-                    user.dn,
+                    user,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
                     null,
+                    userLookupService,
                 )
                 if (action is AddAccessGroupOrganisationAction && action.organisationCode == "dclg") {
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
@@ -360,11 +350,11 @@ class EditAccessGroupsController(
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.removeUserFromGroup(
-                    user.cn,
-                    user.dn,
+                    user,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
                     null,
+                    userLookupService,
                 )
             }
         }
@@ -419,13 +409,13 @@ class EditAccessGroupsController(
 
     @Serializable
     data class DeltaUserSingleAccessGroupRequest(
-        @SerialName("userToEditCn") val userToEditCn: String,
+        @SerialName("userToEditCn") val userToEditCn: String, // TODO DT-1022 - use GUID
         @SerialName("accessGroupName") val accessGroupName: String,
     )
 
     @Serializable
     data class DeltaUserSingleAccessGroupOrganisationsRequest(
-        @SerialName("userToEditCn") val userToEditCn: String,
+        @SerialName("userToEditCn") val userToEditCn: String, // TODO DT-1022 - use GUID
         @SerialName("accessGroupName") val accessGroupName: String,
         @SerialName("organisationCodes") val organisationCodes: List<String>,
     )

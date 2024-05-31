@@ -31,7 +31,7 @@ class EditRolesController(
         val session = call.principal<OAuthSession>()!!
         val request = call.receive<DeltaUserRolesRequest>()
 
-        val (callingUser, callingUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
+        val (callingUser, callingUserRoles) = userLookupService.lookupCurrentUserAndLoadRoles(session)
         logger.atInfo().log("Request to update own roles for user ${session.userCn}")
 
         checkRequestedRolesArePermitted(request, callingUser)
@@ -53,13 +53,15 @@ class EditRolesController(
         logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAddFilteredForNonMembership")
         groupCNsToAddFilteredForNonMembership
             .forEach {
-                groupService.addUserToGroup(callingUser.cn, callingUser.dn, it, call, null)
+                groupService.addUserToGroup(callingUser, it, call, null, userLookupService,)
             }
 
         logger.atInfo().log("Revoking user ${session.userCn} groups $groupCNsToRemoveFilteredForMembership")
         groupCNsToRemoveFilteredForMembership
             .forEach {
-                groupService.removeUserFromGroup(callingUser.cn, callingUser.dn, it, call, null)
+                groupService.removeUserFromGroup(
+                    callingUser, it, call, null, userLookupService,
+                )
             }
 
         return call.respond(mapOf("message" to "Roles have been updated. Any changes to your roles or access groups will take effect the next time you log in."))

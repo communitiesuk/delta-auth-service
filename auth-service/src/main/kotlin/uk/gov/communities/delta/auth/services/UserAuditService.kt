@@ -11,6 +11,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.repositories.DbPool
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import java.time.Instant
+import java.util.*
 
 class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, private val dbPool: DbPool) {
     suspend fun getAuditForUser(userCn: String) = withContext(Dispatchers.IO) {
@@ -43,12 +44,13 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
 
     suspend fun userSSOLoginAudit(
         userCn: String,
+        userGUID: UUID,
         ssoClient: AzureADSSOClient,
         azureUserObjectId: String,
         call: ApplicationCall,
     ) {
         insertAuditRow(
-            UserAuditTrailRepo.AuditAction.SSO_LOGIN, userCn, null, call.callId!!,
+            UserAuditTrailRepo.AuditAction.SSO_LOGIN, userCn, userGUID, null, null, call.callId!!,
             Json.encodeToString(
                 SSOLoginAuditData(ssoClient.internalId, azureUserObjectId)
             )
@@ -56,10 +58,18 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
     }
 
 
-    suspend fun insertImpersonatingUserAuditRow(session: OAuthSession, impersonatedUserCn: String, requestId: String) {
+    suspend fun insertImpersonatingUserAuditRow(
+        session: OAuthSession, impersonatedUserCn: String, impersonatedUserGUID: UUID, requestId: String
+    ) {
         insertAuditRow(
-            UserAuditTrailRepo.AuditAction.IMPERSONATE_USER, session.userCn, null, requestId, Json.encodeToString(
-                ImpersonateUserAuditData(impersonatedUserCn)
+            UserAuditTrailRepo.AuditAction.IMPERSONATE_USER,
+            session.userCn,
+            session.userGUID,
+            null,
+            null,
+            requestId,
+            Json.encodeToString(
+                ImpersonateUserAuditData(impersonatedUserCn, impersonatedUserGUID.toString())
             )
         )
     }
@@ -82,44 +92,48 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
     val userDisableAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.USER_DISABLE_BY_ADMIN)
 
     // A user doing something to their own account with no extra data
-    private fun insertAnonSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall) -> Unit {
-        return { userCn: String, call: ApplicationCall ->
-            insertAuditRow(auditAction, userCn, null, call.callId!!, "{}")
+    private fun insertAnonSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, UUID, ApplicationCall) -> Unit {
+        return { userCn: String, userGUID: UUID, call: ApplicationCall ->
+            insertAuditRow(auditAction, userCn, userGUID, null, null, call.callId!!, "{}")
         }
     }
 
     // A user altering changing someone else's account with no extra data
-    private fun insertSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, String, ApplicationCall) -> Unit {
-        return { userCn: String, editingUserCn: String, call: ApplicationCall ->
-            insertAuditRow(auditAction, userCn, editingUserCn, call.callId!!, "{}")
+    private fun insertSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, UUID, String, UUID, ApplicationCall) -> Unit {
+        return { userCn: String, userGUID: UUID, editingUserCn: String, editingUserGUID: UUID, call: ApplicationCall ->
+            insertAuditRow(auditAction, userCn, userGUID, editingUserCn, editingUserGUID, call.callId!!, "{}")
         }
     }
 
     // A user doing something to their own account
-    private fun insertAnonDetailedAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, ApplicationCall, String) -> Unit {
-        return { userCn: String, call: ApplicationCall, encodedActionData: String ->
-            insertAuditRow(auditAction, userCn, null, call.callId!!, encodedActionData)
+    private fun insertAnonDetailedAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, UUID, ApplicationCall, String) -> Unit {
+        return { userCn: String, userGUID: UUID, call: ApplicationCall, encodedActionData: String ->
+            insertAuditRow(auditAction, userCn, userGUID, null, null, call.callId!!, encodedActionData)
         }
     }
 
     // A user altering changing someone else's account
-    private fun insertDetailedAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, String, ApplicationCall, String) -> Unit {
-        return { userCn: String, editingUserCn: String, call: ApplicationCall, encodedActionData: String ->
-            insertAuditRow(auditAction, userCn, editingUserCn, call.callId!!, encodedActionData)
+    private fun insertDetailedAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (String, UUID, String, UUID, ApplicationCall, String) -> Unit {
+        return { userCn: String, userGUID: UUID, editingUserCn: String, editingUserGUID: UUID, call: ApplicationCall, encodedActionData: String ->
+            insertAuditRow(
+                auditAction, userCn, userGUID, editingUserCn, editingUserGUID, call.callId!!, encodedActionData
+            )
         }
     }
 
     private suspend fun insertAuditRow(
         action: UserAuditTrailRepo.AuditAction,
         userCn: String,
+        userGUID: UUID?,
         editingUserCn: String?,
+        editingUserGUID: UUID?,
         requestId: String,
         encodedActionData: String,
     ) {
         withContext(Dispatchers.IO) {
             dbPool.useConnectionBlocking("Auditing $action") {
                 userAuditTrailRepo.insertAuditRow(
-                    it, action, userCn, editingUserCn, requestId, encodedActionData
+                    it, action, userCn, userGUID, editingUserCn, editingUserGUID, requestId, encodedActionData
                 )
                 it.commit()
             }
@@ -130,5 +144,5 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
     private data class SSOLoginAuditData(val ssoClientId: String, val azureUserObjectId: String)
 
     @Serializable
-    private data class ImpersonateUserAuditData(val impersonatedUserCn: String)
+    private data class ImpersonateUserAuditData(val impersonatedUserCn: String, val impersonatedUserGUIDString: String)
 }

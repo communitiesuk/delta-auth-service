@@ -1,17 +1,21 @@
 package uk.gov.communities.delta.auth.repositories
 
+import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDString
+import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDSearchString
+import uk.gov.communities.delta.auth.utils.toGUIDString
 import java.lang.Integer.parseInt
 import java.time.Instant
 import java.util.*
 import javax.naming.Context
 import javax.naming.NamingException
+import javax.naming.directory.Attribute
 import javax.naming.directory.Attributes
 import javax.naming.directory.InitialDirContext
 import javax.naming.directory.SearchControls
@@ -19,6 +23,7 @@ import javax.naming.ldap.Control
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.ldap.PagedResultsControl
 import javax.naming.ldap.PagedResultsResponseControl
+import kotlin.time.Duration.Companion.seconds
 
 class LdapRepository(
     private val ldapConfig: LDAPConfig,
@@ -27,6 +32,8 @@ class LdapRepository(
     enum class ObjectGUIDMode {
         OLD_MANGLED, NEW_JAVA_UUID_STRING;
     }
+
+    class NoUserException(errorMessage: String) : ApiError(HttpStatusCode.BadRequest, "no_user", errorMessage)
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
@@ -60,32 +67,30 @@ class LdapRepository(
         }
     }
 
-    @Blocking
-    fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
-        val attributes =
-            ctx.getAttributes(
-                userDn,
-                arrayOf(
-                    "cn",
-                    "memberOf",
-                    "mail",
-                    "unixHomeDirectory", // Delta TOTP secret
-                    "givenName",
-                    "sn",
-                    "userAccountControl",
-                    "objectGUID",
-                    "imported-guid",
-                    "telephoneNumber",
-                    "mobile",
-                    "title", // Delta "Position in organisation"
-                    "description", // Delta "Reason for access"
-                    "comment",
-                    "st",
-                    "pwdLastSet",
-                )
-            )
+    private val attributeNames = arrayOf(
+        "cn",
+        "distinguishedName",
+        "memberOf",
+        "mail",
+        "unixHomeDirectory", // Delta TOTP secret
+        "givenName",
+        "sn",
+        "userAccountControl",
+        "objectGUID",
+        "imported-guid",
+        "telephoneNumber",
+        "mobile",
+        "title", // Delta "Position in organisation"
+        "description", // Delta "Reason for access"
+        "comment",
+        "st",
+        "pwdLastSet",
+    )
 
+    private fun getUserFromAttributes(attributes: Attributes): LdapUser {
         val cn = attributes.get("cn")?.get() as String? ?: throw InvalidLdapUserException("No value for attribute cn")
+        val dn = attributes.get("distinguishedName").get() as String?
+            ?: throw InvalidLdapUserException("No value for attribute dn")
         val email = attributes.get("mail")?.get() as String?
         val totpSecret = attributes.get("unixHomeDirectory")?.get() as String?
         val firstName = attributes.get("givenName")?.get() as String? ?: ""
@@ -114,7 +119,7 @@ class LdapRepository(
             match?.groups?.get(1)?.value
         }
         return LdapUser(
-            dn = userDn,
+            dn = dn,
             cn = cn,
             memberOfCNs = memberOfGroupCNs,
             email = email,
@@ -135,9 +140,47 @@ class LdapRepository(
         )
     }
 
-    @Suppress("UNCHECKED_CAST")
+    @Blocking
+    fun mapUserFromContext(ctx: InitialDirContext, userDn: String): LdapUser {
+        val attributes = ctx.getAttributes(userDn, attributeNames)
+        return getUserFromAttributes(attributes)
+    }
+
+    private val searchDn = ldapConfig.deltaUserDnFormat.removePrefix("CN=%s,")
+    private fun searchControls(): SearchControls {
+        val searchControls = SearchControls()
+        searchControls.searchScope = SearchControls.ONELEVEL_SCOPE
+        searchControls.timeLimit = 30.seconds.inWholeMilliseconds.toInt()
+        searchControls.returningAttributes = attributeNames
+        return searchControls
+    }
+
+    @Blocking
+    fun mapUserFromContext(ctx: InitialDirContext, userGUID: UUID): LdapUser {
+        val adGUIDString = userGUID.toActiveDirectoryGUIDSearchString()
+        val filter = "(objectGUID=$adGUIDString)"
+        val searchResults = ctx.search(searchDn, filter, searchControls())
+        val attributes = if (searchResults.hasMore()) {
+            searchResults.next().attributes
+        } else {
+            logger.atError().log("Couldn't find user with GUID $userGUID")
+            throw NoUserException("Couldn't find user with GUID $userGUID")
+        }
+        return if (searchResults.hasMore()) {
+            logger.atError().log("Multiple users found with GUID $userGUID")
+            throw Exception("Multiple users found on GUID lookup")
+        } else {
+            getUserFromAttributes(attributes)
+        }
+    }
+
     private fun Attributes.getMemberOfList(): List<String> {
-        return get("memberOf").all.asSequence().toList() as List<String>
+        return get("memberOf")?.asList()?:emptyList()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Attribute.asList(): List<String> {
+        return all.asSequence().toList() as List<String>
     }
 
     private fun Attributes.getAccountEnabled(): Boolean {
@@ -172,7 +215,7 @@ fun Attributes.getMangledDeltaObjectGUID(): String {
 
 fun Attributes.getNewModeObjectGuidString(): String {
     val objectGuid = get("objectGUID").get() as ByteArray
-    return objectGuid.toActiveDirectoryGUIDString()
+    return objectGuid.toGUIDString()
 }
 
 @Serializable
@@ -198,7 +241,11 @@ data class LdapUser(
     val notificationStatus: String?,
     // Not required by Delta, but used internally
     @Transient val passwordLastSet: Instant? = null,
-)
+) {
+    fun getGUID(): UUID {
+        return UUID.fromString(javaUUIDObjectGuid)
+    }
+}
 
 fun LdapUser.isInternal() : Boolean {
     return this.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_INTERNAL_USER)

@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Blocking
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
+import java.util.*
 import java.time.Instant
 
 class UserAuditTrailRepo {
@@ -36,7 +37,7 @@ class UserAuditTrailRepo {
     @Blocking
     fun getAuditForUser(conn: Connection, userCn: String, limitOffset: Pair<Int, Int>? = null): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
-            "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
+            "SELECT action, timestamp, user_cn, user_guid, editing_user_cn, editing_user_guid, request_id, action_data " +
                 "FROM user_audit WHERE user_cn = ? " +
                 "ORDER BY timestamp DESC " +
                 if (limitOffset != null) "LIMIT ? OFFSET ?" else ""
@@ -53,7 +54,7 @@ class UserAuditTrailRepo {
     @Blocking
     fun getAuditForAllUsers(conn: Connection, from: Instant, to: Instant): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
-            "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
+            "SELECT action, timestamp, user_cn ,user_guid, editing_user_cn, editing_user_guid, request_id, action_data " +
                 "FROM user_audit " +
                 "WHERE timestamp >= ? " +
                 "AND timestamp < ? " +
@@ -69,7 +70,9 @@ class UserAuditTrailRepo {
         AuditAction.fromActionString(row.getString("action")),
         row.getTimestamp("timestamp"),
         row.getString("user_cn"),
+        row.getObject("user_guid", UUID::class.java),
         row.getString("editing_user_cn"),
+        row.getObject("editing_user_guid", UUID::class.java),
         row.getString("request_id"),
         Json.parseToJsonElement(row.getString("action_data")).jsonObject,
     )
@@ -92,19 +95,23 @@ class UserAuditTrailRepo {
         conn: Connection,
         action: AuditAction,
         userCn: String,
+        userGUID: UUID?,
         editingUserCn: String?,
+        editingUserGUID: UUID?,
         requestId: String,
         encodedActionData: String,
     ) {
         val stmt = conn.prepareStatement(
-            "INSERT INTO user_audit (action, timestamp, user_cn, editing_user_cn, request_id, action_data) VALUES " +
-                "(?, now(), ?, ?, ?, ? ::jsonb)"
+            "INSERT INTO user_audit (action, timestamp, user_cn, editing_user_cn, request_id, action_data, user_guid, editing_user_guid) VALUES " +
+                "(?, now(), ?, ?, ?, ? ::jsonb, ?, ?)"
         )
         stmt.setString(1, action.action)
         stmt.setString(2, userCn)
         stmt.setString(3, editingUserCn)
         stmt.setString(4, requestId)
         stmt.setString(5, encodedActionData)
+        stmt.setObject(6, userGUID)
+        stmt.setObject(7, editingUserGUID)
         stmt.executeUpdate()
     }
 
@@ -112,7 +119,9 @@ class UserAuditTrailRepo {
         val action: AuditAction,
         val timestamp: Timestamp,
         val userCn: String,
+        val userGUID: UUID?, // TODO DT-976-2 - no longer nullable
         val editingUserCn: String?,
+        val editingUserGUID: UUID?,
         val requestId: String,
         val actionData: JsonObject,
     )

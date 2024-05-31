@@ -19,7 +19,10 @@ import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.OAuthSession
+import uk.gov.communities.delta.auth.services.OAuthSessionService
+import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
@@ -105,8 +108,8 @@ class AdminEditUserEmailControllerTest {
             )
         } answers { nonAdminSession }
         coEvery { userLookupService.lookupUserByCn(userToUpdate.cn) } returns userToUpdate
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
-        coEvery { userLookupService.lookupUserByCn(nonAdminUser.cn) } returns nonAdminUser
+        coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
+        coEvery { userLookupService.lookupCurrentUser(nonAdminSession) } returns nonAdminUser
         coEvery { userService.updateEmail(userToUpdate, any(), any(), any()) } just runs
     }
 
@@ -133,8 +136,18 @@ class AdminEditUserEmailControllerTest {
             ),
         )
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)
-        private val nonAdminSession = OAuthSession(1, nonAdminUser.cn, client, "nonAdminToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(1, adminUser.cn, adminUser.getGUID(), client, "adminToken", Instant.now(), "trace", false)
+        private val nonAdminSession = OAuthSession(
+            1,
+            nonAdminUser.cn,
+            nonAdminUser.getGUID(),
+            client,
+            "nonAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
 
         @BeforeClass
         @JvmStatic

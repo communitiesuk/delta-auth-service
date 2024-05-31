@@ -5,6 +5,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
+import java.util.*
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -13,9 +14,9 @@ class UserAuditTrailRepoTest {
     @Test
     fun testRetrievesAuditValues() {
         testDbPool.useConnectionBlocking("test_login_audit") {
-            val audit = repo.getAuditForUser(it, "some.user!audit-test.com")
+            val audit = repo.getAuditForUser(it, userCN)
             assertEquals(2, audit.size)
-            assertEquals("some.user!audit-test.com", audit[1].userCn)
+            assertEquals(userCN, audit[1].userCn)
             assertEquals("requestId", audit[1].requestId)
             assertNull(audit[1].editingUserCn)
             assertEquals(UserAuditTrailRepo.AuditAction.FORM_LOGIN, audit[1].action)
@@ -26,16 +27,16 @@ class UserAuditTrailRepoTest {
     @Test
     fun testOtherUserAuditIsEmpty() {
         testDbPool.useConnectionBlocking("test_login_audit") {
-            assertEquals(0, repo.getAuditForUser(it, "other.user!audit-test.com").size)
+            assertEquals(0, repo.getAuditForUser(it, otherUserCN).size)
         }
     }
 
     @Test
     fun testPagination() {
         testDbPool.useConnectionBlocking("test_login_audit") {
-            val firstPage = repo.getAuditForUser(it, "some.user!audit-test.com", Pair(1, 0))
-            val secondPage = repo.getAuditForUser(it, "some.user!audit-test.com", Pair(1, 1))
-            val thirdPage = repo.getAuditForUser(it, "some.user!audit-test.com", Pair(1, 2))
+            val firstPage = repo.getAuditForUser(it, userCN, Pair(1, 0))
+            val secondPage = repo.getAuditForUser(it, userCN, Pair(1, 1))
+            val thirdPage = repo.getAuditForUser(it, userCN, Pair(1, 2))
             assertEquals(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL, firstPage.single().action)
             assertEquals(UserAuditTrailRepo.AuditAction.FORM_LOGIN, secondPage.single().action)
             assertEquals(0, thirdPage.size)
@@ -61,6 +62,9 @@ class UserAuditTrailRepoTest {
 
     companion object {
         lateinit var repo: UserAuditTrailRepo
+        private const val userCN = "some.user!audit-test.com"
+        private const val otherUserCN = "other.user!audit-test.com"
+        private val userGUID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff")
 
         @BeforeClass
         @JvmStatic
@@ -72,7 +76,9 @@ class UserAuditTrailRepoTest {
                 repo.insertAuditRow(
                     it,
                     UserAuditTrailRepo.AuditAction.FORM_LOGIN,
-                    "some.user!audit-test.com",
+                    userCN,
+                    userGUID,
+                    null,
                     null,
                     "requestId",
                     "{\"key\": \"value\"}"
@@ -82,7 +88,9 @@ class UserAuditTrailRepoTest {
                 repo.insertAuditRow(
                     it,
                     UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL,
-                    "some.user!audit-test.com",
+                    userCN,
+                    userGUID,
+                    null,
                     null,
                     "requestId2",
                     "{}"

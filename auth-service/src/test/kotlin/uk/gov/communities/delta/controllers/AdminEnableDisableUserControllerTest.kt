@@ -39,7 +39,9 @@ class AdminEnableDisableUserControllerTest {
         enableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.enableAccountAndNotifications(user.dn) }
-            coVerify(exactly = 1) { auditService.userEnableAudit(user.cn, adminUser.cn, any()) }
+            coVerify(exactly = 1) {
+                auditService.userEnableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
+            }
             confirmVerified(userService, auditService)
         }
     }
@@ -83,7 +85,9 @@ class AdminEnableDisableUserControllerTest {
         enableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.setPasswordAndEnable(user.dn, any()) }
-            coVerify(exactly = 1) { auditService.userEnableAudit(user.cn, adminUser.cn, any()) }
+            coVerify(exactly = 1) {
+                auditService.userEnableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
+            }
             confirmVerified(userService, auditService)
         }
     }
@@ -119,7 +123,9 @@ class AdminEnableDisableUserControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.disableAccountAndNotifications(user.dn) }
             coVerify(exactly = 1) { setPasswordTokenService.clearTokenForUserCn(user.cn) }
-            coVerify(exactly = 1) { auditService.userDisableAudit(user.cn, adminUser.cn, any()) }
+            coVerify(exactly = 1) {
+                auditService.userDisableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
+            }
             confirmVerified(userService, auditService, setPasswordTokenService)
         }
     }
@@ -188,10 +194,10 @@ class AdminEnableDisableUserControllerTest {
         } answers { adminSession }
         coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
 
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
-        coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
-        coEvery { auditService.userEnableAudit(any(), any(), any()) } just runs
-        coEvery { auditService.userDisableAudit(any(), any(), any()) } just runs
+        coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
+        coEvery { userLookupService.lookupCurrentUser(userSession) } returns regularUser
+        coEvery { auditService.userEnableAudit(any(), any(), any(), any(), any()) } just runs
+        coEvery { auditService.userDisableAudit(any(), any(), any(), any(), any()) } just runs
     }
 
     companion object {
@@ -210,9 +216,13 @@ class AdminEnableDisableUserControllerTest {
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
         private val adminSession =
-            OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
+            OAuthSession(
+                1, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
+            )
         private val userSession =
-            OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+            OAuthSession(
+                1, regularUser.cn, adminUser.getGUID(), client, "userAccessToken", Instant.now(), "trace", false
+            )
 
         @BeforeClass
         @JvmStatic

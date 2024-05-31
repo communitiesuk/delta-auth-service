@@ -7,7 +7,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
@@ -59,8 +58,14 @@ class AdminEmailController(
         }
 
         try {
-            val token = setPasswordTokenService.createToken(receivingUser.cn)
-            emailService.sendSetPasswordEmail(receivingUser, token, call.principal<OAuthSession>()!!, call)
+            val token = setPasswordTokenService.createToken(receivingUser.cn, receivingUser.getGUID())
+            emailService.sendSetPasswordEmail(
+                receivingUser,
+                token,
+                call.principal<OAuthSession>()!!,
+                userLookupService,
+                call
+            )
         } catch (e: Exception) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send activation email")
             throw ApiError(
@@ -101,8 +106,14 @@ class AdminEmailController(
         }
 
         try {
-            val token = resetPasswordTokenService.createToken(receivingUser.cn)
-            emailService.sendResetPasswordEmail(receivingUser, token, call.principal<OAuthSession>()!!, call)
+            val token = resetPasswordTokenService.createToken(receivingUser.cn, receivingUser.getGUID())
+            emailService.sendResetPasswordEmail(
+                receivingUser,
+                token,
+                call.principal<OAuthSession>()!!,
+                userLookupService,
+                call
+            )
         } catch (e: Exception) {
             logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send email")
             throw ApiError(
@@ -117,9 +128,8 @@ class AdminEmailController(
     }
 
     private suspend fun getReceivingUserFromCall(call: ApplicationCall): LdapUser {
-        val receivingEmailAddress = call.parameters["userEmail"]!!
-        val receivingUserCN = LDAPConfig.emailToCN(receivingEmailAddress)
-        val receivingUser = userLookupService.lookupUserByCn(receivingUserCN)
+        val receivingEmailAddress = call.parameters["userEmail"]!! // TODO DT-1022 - Use userGUID once receiving
+        val receivingUser = userLookupService.lookupUserByEmail(receivingEmailAddress)
         return receivingUser
     }
 

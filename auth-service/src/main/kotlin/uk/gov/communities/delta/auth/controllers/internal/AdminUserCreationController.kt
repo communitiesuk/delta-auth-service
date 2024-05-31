@@ -10,6 +10,7 @@ import uk.gov.communities.delta.auth.config.AzureADSSOConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 
@@ -47,15 +48,17 @@ class AdminUserCreationController(
             ssoClient,
         )
 
-        if (userLookupService.userExists(adUser.cn)) {
-            logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
-                .log("User being made by admin already exists")
-            throw ApiError(
-                HttpStatusCode.Conflict,
-                "user_already_exists",
-                "User already exists upon creation by admin",
-                "A user with this username already exists, you can edit that user via the users page"
-            )
+        when (userLookupService.userIfExists(adUser.mail)) {
+            is LdapUser -> {
+                logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
+                    .log("User being made by admin already exists")
+                throw ApiError(
+                    HttpStatusCode.Conflict,
+                    "user_already_exists",
+                    "User already exists upon creation by admin",
+                    "A user with this username already exists, you can edit that user via the users page"
+                )
+            }
         }
         if (!emailAddressChecker.hasValidFormat(adUser.mail)) {
             logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
@@ -86,8 +89,9 @@ class AdminUserCreationController(
             )
         }
 
+        val user: LdapUser
         try {
-            userService.createUser(adUser, ssoClient, session, call)
+            user = userService.createUser(adUser, ssoClient, session, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             throw ApiError(
@@ -97,13 +101,13 @@ class AdminUserCreationController(
                 "An error occurred while creating the user, please try again"
             )
         }
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully created")
         try {
             userPermissions.getADGroupCNs().forEach {
-                groupService.addUserToGroup(adUser, it, call, session)
+                groupService.addUserToGroup(user, it, call, session, userLookupService)
             }
         } catch (e: Exception) {
-            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to groups", e)
+            logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to groups", e)
             throw ApiError(
                 HttpStatusCode.InternalServerError,
                 "error_adding_user_to_groups",
@@ -111,19 +115,21 @@ class AdminUserCreationController(
                 "The user was created but the details were not saved correctly, please find and edit the user to have the desired details."
             )
         }
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully added to all desired groups")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully added to all desired groups")
 
         if (ssoClient?.required == true) {
-            logger.atInfo().addKeyValue("UserDN", adUser.dn).log("SSO user created by admin, no email sent")
+            logger.atInfo().addKeyValue("UserDN", user.dn).log("SSO user created by admin, no email sent")
             return call.respond(mapOf("message" to "User created. Single Sign On (SSO) is enabled for this user based on their email domain. The account has been activated automatically, no email has been sent."))
         }
         try {
             emailService.sendSetPasswordEmail(
-                adUser.givenName,
-                setPasswordTokenService.createToken(adUser.cn),
-                adUser.cn,
+                user.firstName,
+                setPasswordTokenService.createToken(user.cn, user.getGUID()),
+                user.cn,
+                user.getGUID(),
                 session,
-                EmailContacts(adUser.mail, adUser.getDisplayName(), emailConfig),
+                userLookupService,
+                EmailContacts(user.email!!, user.fullName, emailConfig),
                 call
             )
         } catch (e: Exception) {

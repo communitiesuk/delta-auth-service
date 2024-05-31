@@ -19,7 +19,7 @@ class EmailAddressChecker {
         }
 
         val cn = LDAPConfig.emailToCN(email)
-        return LDAPConfig.VALID_EMAIL_REGEX.matches(email) && LDAPConfig.VALID_USERNAME_REGEX.matches(cn)
+        return LDAPConfig.VALID_EMAIL_REGEX.matches(email) && LDAPConfig.VALID_USER_CN_REGEX.matches(cn)
     }
 
     fun hasKnownNotRetiredDomain(organisations: List<Organisation>): Boolean {

@@ -184,7 +184,7 @@ class DeltaUserRegistrationController(
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
         return when (registrationResult) {
             is RegistrationService.UserCreated -> {
-                respondSuccessPage(registrationResult.user.mail)
+                respondSuccessPage(registrationResult.user.email!!)
             }
 
             is RegistrationService.SSOUserCreated -> {
@@ -192,7 +192,7 @@ class DeltaUserRegistrationController(
             }
 
             is RegistrationService.UserAlreadyExists -> {
-                respondSuccessPage(registrationResult.user.mail)
+                respondSuccessPage(registrationResult.user.email!!)
             }
 
             is RegistrationService.RegistrationFailure -> {

@@ -41,39 +41,19 @@ class EditOrganisationsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-user-orgCode3",
-                    any(),
-                    null
+                    testUser, "datamart-delta-user-orgCode3", any(), null, userLookupService
                 )
                 groupService.addUserToGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-data-certifiers-orgCode3",
-                    any(),
-                    null
+                    testUser, "datamart-delta-data-certifiers-orgCode3", any(), null, userLookupService
                 )
                 groupService.removeUserFromGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-user-orgCode2",
-                    any(),
-                    null
+                    testUser, "datamart-delta-user-orgCode2", any(), null, userLookupService
                 )
                 groupService.removeUserFromGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-access-group-3-orgCode2",
-                    any(),
-                    null
+                    testUser, "datamart-delta-access-group-3-orgCode2", any(), null, userLookupService
                 )
                 groupService.removeUserFromGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-data-certifiers-orgCode2",
-                    any(),
-                    null
+                    testUser, "datamart-delta-data-certifiers-orgCode2", any(), null, userLookupService
                 )
             }
             confirmVerified(groupService)
@@ -107,18 +87,10 @@ class EditOrganisationsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-user-orgCode3",
-                    any(),
-                    null
+                    testUser, "datamart-delta-user-orgCode3", any(), null, userLookupService
                 )
                 groupService.addUserToGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-data-certifiers-orgCode3",
-                    any(),
-                    null
+                    testUser, "datamart-delta-data-certifiers-orgCode3", any(), null, userLookupService
                 )
             }
             confirmVerified(groupService)
@@ -138,25 +110,13 @@ class EditOrganisationsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-user-orgCode2",
-                    any(),
-                    null
+                    testUser, "datamart-delta-user-orgCode2", any(), null, userLookupService
                 )
                 groupService.removeUserFromGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-access-group-3-orgCode2",
-                    any(),
-                    null
+                    testUser, "datamart-delta-access-group-3-orgCode2", any(), null, userLookupService
                 )
                 groupService.removeUserFromGroup(
-                    testUser.cn,
-                    testUser.dn,
-                    "datamart-delta-data-certifiers-orgCode2",
-                    any(),
-                    null
+                    testUser, "datamart-delta-data-certifiers-orgCode2", any(), null, userLookupService
                 )
             }
             confirmVerified(groupService)
@@ -222,13 +182,12 @@ class EditOrganisationsControllerTest {
         )
         mockUserLookupService(
             userLookupService,
-            listOf(testUser),
+            listOf(Pair(testUser, testUserSession)),
             runBlocking { organisationService.findAllNamesAndCodes() },
             accessGroups,
         )
-
-        coEvery { groupService.addUserToGroup(testUser.cn, testUser.dn, any(), any(), null) } just runs
-        coEvery { groupService.removeUserFromGroup(testUser.cn, testUser.dn, any(), any(), null) } just runs
+        coEvery { groupService.addUserToGroup(testUser, any(), any(), null, userLookupService) } just runs
+        coEvery { groupService.removeUserFromGroup(testUser, any(), any(), null, userLookupService) } just runs
     }
 
     companion object {
@@ -268,7 +227,7 @@ class EditOrganisationsControllerTest {
         )
 
         private val testUserSession =
-            OAuthSession(1, testUser.cn, client, "testUserToken", Instant.now(), "trace", false)
+            OAuthSession(1, testUser.cn, testUser.getGUID(), client, "testUserToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic

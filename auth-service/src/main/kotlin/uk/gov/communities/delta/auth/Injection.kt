@@ -99,7 +99,8 @@ class Injection(
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper
     )
-    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig)
+    private val userService =
+        UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig, ldapRepository)
 
     private val emailService = EmailService(
         emailConfig,
@@ -209,9 +210,6 @@ class Injection(
 
     fun externalDeltaResetPasswordController() = DeltaResetPasswordController(
         deltaConfig,
-        ldapConfig,
-        emailConfig,
-        authServiceConfig,
         userService,
         resetPasswordTokenService,
         userLookupService,

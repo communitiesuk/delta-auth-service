@@ -4,7 +4,6 @@ import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.http.headers
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
@@ -25,6 +24,7 @@ import uk.gov.communities.delta.auth.services.OAuthSessionService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -84,9 +84,13 @@ class AdminResetMfaTokenControllerTest {
                 client
             )
         } answers { nonFullAdminSession }
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
-        coEvery { userLookupService.lookupUserByCn(nonFullAdminUser.cn) } returns nonFullAdminUser
-        coEvery { userLookupService.lookupUserByCn(userToUpdate.cn) } returns userToUpdate
+        mockUserLookupService(
+            userLookupService, listOf(
+                Pair(adminUser, adminSession),
+                Pair(nonFullAdminUser, nonFullAdminSession),
+                Pair(userToUpdate, null)
+            ), listOf(), listOf()
+        )
         coEvery { userService.resetMfaToken(userToUpdate, any(), any()) } just runs
     }
 
@@ -119,8 +123,18 @@ class AdminResetMfaTokenControllerTest {
             deltaTOTPSecret = "TopOfThePops"
         )
 
-        private val adminSession = OAuthSession(1, adminUser.cn, client, "adminToken", Instant.now(), "trace", false)
-        private val nonFullAdminSession = OAuthSession(1, nonFullAdminUser.cn, client, "readOnlyAdminToken", Instant.now(), "trace", false)
+        private val adminSession =
+            OAuthSession(1, adminUser.cn, adminUser.getGUID(), client, "adminToken", Instant.now(), "trace", false)
+        private val nonFullAdminSession = OAuthSession(
+            1,
+            nonFullAdminUser.cn,
+            nonFullAdminUser.getGUID(),
+            client,
+            "readOnlyAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
 
         @BeforeClass
         @JvmStatic

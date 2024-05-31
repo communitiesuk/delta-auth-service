@@ -27,7 +27,6 @@ import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 import uk.gov.communities.delta.auth.utils.emailToDomain
-import javax.naming.NameNotFoundException
 
 /*
  * Authenticating users via Azure AD
@@ -79,7 +78,7 @@ class DeltaSSOLoginController(
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
-        var user = lookupUserInAd(email)
+        var user = ldapLookupService.userIfExists(email)
         if (user == null) {
             if (!ssoClient.required) {
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
@@ -100,7 +99,7 @@ class DeltaSSOLoginController(
                 logger.error("Error creating SSO User, result was {}", registrationResult.toString())
                 throw Exception("Error creating SSO User")
             }
-            user = lookupUserInAd(email)!!
+            user = ldapLookupService.userIfExists(email)!!
         }
 
         checkUserEnabled(user)
@@ -110,12 +109,12 @@ class DeltaSSOLoginController(
 
         val client = clientConfig.oauthClients.first { it.clientId == session.clientId }
         val authCode = authorizationCodeService.generateAndStore(
-            userCn = user.cn, client = client, traceId = call.callId!!, isSso = true
+            userCn = user.cn, userGUID = user.getGUID(), client = client, traceId = call.callId!!, isSso = true
         )
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         ssoLoginCounter.increment()
-        userAuditService.userSSOLoginAudit(authCode.userCn, ssoClient, jwt.userObjectId, call)
+        userAuditService.userSSOLoginAudit(authCode.userCn, authCode.userGUID, ssoClient, jwt.userObjectId, call)
         call.sessions.clear<LoginSessionCookie>()
         call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
     }
@@ -154,19 +153,6 @@ class DeltaSSOLoginController(
             )
         }
         return session
-    }
-
-    private suspend fun lookupUserInAd(email: String): LdapUser? {
-        val cn = email.replace('@', '!')
-        return try {
-            ldapLookupService.lookupUserByCn(cn)
-        } catch (e: NameNotFoundException) {
-            logger.info("User not found in Active Directory {}", keyValue("username", cn), e)
-            null
-        } catch (e: Exception) {
-            logger.error("Failed to lookup user in AD after OAuth login {}", keyValue("username", cn), e)
-            throw e
-        }
     }
 
     private fun checkUserEnabled(user: LdapUser) {

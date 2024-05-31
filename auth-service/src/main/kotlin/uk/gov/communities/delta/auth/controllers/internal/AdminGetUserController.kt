@@ -5,10 +5,11 @@ import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.services.DeltaSystemRole
 import uk.gov.communities.delta.auth.services.LdapUserWithRoles
 import uk.gov.communities.delta.auth.services.UserLookupService
-import javax.naming.NameNotFoundException
+import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
 
 class AdminGetUserController(
     private val userLookupService: UserLookupService,
@@ -25,15 +26,19 @@ class AdminGetUserController(
             arrayOf(DeltaSystemRole.ADMIN, DeltaSystemRole.READ_ONLY_ADMIN), call
         )
 
-        val cn = call.request.queryParameters["userCn"]!!
-        logger.atInfo().log("Getting info for user $cn")
-        val user: LdapUserWithRoles
+        val userWithRoles: LdapUserWithRoles
         try {
-            user = userLookupService.lookupUserByCNAndLoadRoles(cn)
-        } catch (e: NameNotFoundException) {
-            logger.warn("User not found $cn")
+            val user = getUserFromCallParameters( // TODO DT-1022 - make this get userGUID instead
+                call.request.queryParameters,
+                userLookupService,
+                "An error occurred when getting user details",
+                "get_user"
+            )
+            userWithRoles = userLookupService.loadUserRoles(user) // TODO DT-1022 - change back to lookupUserByGUIDAndLoadRoles
+        } catch (e: ApiError) {
+            logger.warn(e.errorDescription)
             return call.respond(HttpStatusCode.NotFound, "User not found")
         }
-        call.respond(LdapUserWithRoles(user.user, user.roles))
+        call.respond(userWithRoles)
     }
 }
