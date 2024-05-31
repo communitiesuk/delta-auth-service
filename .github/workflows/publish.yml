@@ -15,7 +15,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_ci }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key_ci }}
       AWS_REGION: "eu-west-1"
-      VERSION: "10.1"
+      VERSION: "10.2"
       REPOSITORY: "delta-auth-service"
       ECR_PATH: "468442790030.dkr.ecr.eu-west-1.amazonaws.com"
     outputs:
