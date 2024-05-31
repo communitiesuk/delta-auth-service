@@ -24,6 +24,7 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEditUserController
 import uk.gov.communities.delta.auth.controllers.internal.DeltaUserPermissionsRequestMapper
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.plugins.NoUserException
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
@@ -59,7 +60,7 @@ class AdminEditUserControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                userService.updateUser(user, capture(modifications), adminSession, userLookupService, any())
+                userService.updateUser(user, capture(modifications), adminSession, any())
             }
 
             // Verify the correct changes are made to the user's details
@@ -81,10 +82,10 @@ class AdminEditUserControllerTest {
                 "datamart-delta-data-certifiers-orgCode3"
             )
             expectedAddedGroups.forEach {
-                coVerify(exactly = 1) { groupService.addUserToGroup(user, it, any(), adminSession, userLookupService) }
+                coVerify(exactly = 1) { groupService.addUserToGroup(user, it, any(), adminSession) }
             }
             coVerify(exactly = expectedAddedGroups.size) {
-                groupService.addUserToGroup(user, any(), any(), adminSession, userLookupService)
+                groupService.addUserToGroup(user, any(), any(), adminSession)
             }
 
             val expectedRemovedGroups = arrayOf(
@@ -96,11 +97,11 @@ class AdminEditUserControllerTest {
             )
             expectedRemovedGroups.forEach {
                 coVerify(exactly = 1) {
-                    groupService.removeUserFromGroup(user, it, any(), adminSession, userLookupService)
+                    groupService.removeUserFromGroup(user, it, any(), adminSession)
                 }
             }
             coVerify(exactly = expectedRemovedGroups.size) {
-                groupService.removeUserFromGroup(user, any(), any(), adminSession, userLookupService)
+                groupService.removeUserFromGroup(user, any(), any(), adminSession)
             }
             coVerify(exactly = 1) {
                 accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
@@ -122,9 +123,10 @@ class AdminEditUserControllerTest {
             }
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.updateUserCN(any(), any())}
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any()) }
             assertEquals("{\"message\":\"No changes were made to the user\"}", bodyAsText())
         }
     }
@@ -145,9 +147,10 @@ class AdminEditUserControllerTest {
         }.apply {
             assertEquals("username_changed", errorCode)
             assertEquals(HttpStatusCode.BadRequest, statusCode)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.updateUserCN(any(), any())}
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any()) }
         }
     }
 
@@ -165,11 +168,12 @@ class AdminEditUserControllerTest {
                 }
             }
         }.apply {
-            assertEquals("user_not_found", errorCode)
+            assertEquals("no_user", errorCode)
             assertEquals(HttpStatusCode.BadRequest, statusCode)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.updateUserCN(any(), any())}
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any()) }
         }
     }
 
@@ -189,9 +193,10 @@ class AdminEditUserControllerTest {
         }.apply {
             assertEquals("forbidden", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.updateUserCN(any(), any())}
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any()) }
         }
     }
 
@@ -211,9 +216,10 @@ class AdminEditUserControllerTest {
         }.apply {
             assertEquals("forbidden", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.updateUserCN(any(), any())}
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any()) }
         }
     }
 
@@ -233,9 +239,10 @@ class AdminEditUserControllerTest {
         }.apply {
             assertEquals("forbidden", errorCode)
             assertEquals(HttpStatusCode.Forbidden, statusCode)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.updateUserCN(any(), any())}
+            coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { groupService.removeUserFromGroup(any(), any(), any(), any()) }
         }
     }
 
@@ -243,18 +250,17 @@ class AdminEditUserControllerTest {
     fun resetMocks() {
         modifications.clear()
         clearAllMocks()
-        coEvery { oauthSessionService.retrieveFomAuthToken(adminSession.authToken, client) } answers { adminSession }
+        coEvery { oauthSessionService.retrieveFromAuthToken(adminSession.authToken, client) } answers { adminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(disabledAdminSession.authToken, client)
+            oauthSessionService.retrieveFromAuthToken(disabledAdminSession.authToken, client)
         } answers { disabledAdminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(readOnlyAdminSession.authToken, client)
+            oauthSessionService.retrieveFromAuthToken(readOnlyAdminSession.authToken, client)
         } answers { readOnlyAdminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(regularUserSession.authToken, client)
+            oauthSessionService.retrieveFromAuthToken(regularUserSession.authToken, client)
         } answers { regularUserSession }
         coEvery { organisationService.findAllNamesAndCodes() } returns organisations
-        @Suppress("BooleanLiteralArgument")
         coEvery { accessGroupsService.getAllAccessGroups() } returns accessGroups
         mockUserLookupService(
             userLookupService,
@@ -269,19 +275,12 @@ class AdminEditUserControllerTest {
             runBlocking { organisationService.findAllNamesAndCodes() },
             runBlocking { accessGroupsService.getAllAccessGroups() }
         )
-        coEvery { userLookupService.loadUserRoles(user) } returns LdapUserWithRoles(
-            user,
-            MemberOfToDeltaRolesMapper(user.cn, organisations, accessGroups).map(user.memberOfCNs)
-        )
-        coEvery { userLookupService.loadUserRoles(unchangedUser) } returns LdapUserWithRoles(
-            unchangedUser,
-            MemberOfToDeltaRolesMapper(unchangedUser.cn, organisations, accessGroups).map(unchangedUser.memberOfCNs)
-        )
-        coEvery {
-            userService.updateUser(user, capture(modifications), adminSession, userLookupService, any())
-        } just runs
-        coEvery { groupService.addUserToGroup(user, any(), any(), adminSession, userLookupService) } just runs
-        coEvery { groupService.removeUserFromGroup(user, any(), any(), adminSession, userLookupService) } just runs
+        coEvery { userGUIDMapService.getGUID(any()) } throws NoUserException("Test exception")
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUID(unchangedUser.cn) } returns unchangedUser.getGUID()
+        coEvery { userService.updateUser(user, capture(modifications), adminSession, any()) } just runs
+        coEvery { groupService.addUserToGroup(user, any(), any(), adminSession) } just runs
+        coEvery { groupService.removeUserFromGroup(user, any(), any(), adminSession) } just runs
     }
 
     companion object {
@@ -291,6 +290,7 @@ class AdminEditUserControllerTest {
 
         private lateinit var oauthSessionService: OAuthSessionService
         private lateinit var userLookupService: UserLookupService
+        private lateinit var userGUIDMapService: UserGUIDMapService
         private lateinit var userService: UserService
         private lateinit var groupService: GroupService
         private lateinit var organisationService: OrganisationService
@@ -386,6 +386,7 @@ class AdminEditUserControllerTest {
         private val organisations = listOf(
             OrganisationNameAndCode("orgCode2", "Org 2"), OrganisationNameAndCode("orgCode3", "Org 3")
         )
+        @Suppress("BooleanLiteralArgument")
         private val accessGroups = listOf(
             AccessGroup("access-group-1", "STATS", "access group 1", false, false),
             AccessGroup("access-group-2", "STATS", "access group 2", false, false),
@@ -417,6 +418,7 @@ class AdminEditUserControllerTest {
         fun setup() {
             oauthSessionService = mockk<OAuthSessionService>()
             userLookupService = mockk<UserLookupService>()
+            userGUIDMapService = mockk<UserGUIDMapService>()
             userService = mockk<UserService>()
             groupService = mockk<GroupService>()
             organisationService = mockk<OrganisationService>()
@@ -428,6 +430,7 @@ class AdminEditUserControllerTest {
             )
             controller = AdminEditUserController(
                 userLookupService,
+                userGUIDMapService,
                 userService,
                 groupService,
                 requestBodyMapper,
@@ -440,7 +443,7 @@ class AdminEditUserControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

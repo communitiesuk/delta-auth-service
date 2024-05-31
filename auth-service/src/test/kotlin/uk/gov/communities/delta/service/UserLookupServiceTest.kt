@@ -18,17 +18,16 @@ class UserLookupServiceTest {
     @Test
     fun testLookupUser() = testSuspend {
         val testUser = testLdapUser()
-        every { ldapRepository.mapUserFromContext(any(), "CN=some!user") } returns testUser
-        val result = userLookupService.lookupUserByCn("some!user")
+        every { ldapRepository.mapUserFromContext(any(), testUser.getGUID()) } returns testUser
+        val result = userLookupService.lookupUserByGUID(testUser.getGUID())
         assertTrue { testUser === result }
     }
 
     @Test
     fun testMapUser() = testSuspend {
         val testUser = testLdapUser(memberOfCNs = listOf("datamart-delta-user", "datamart-delta-user-orgCode1", "datamart-delta-access-group-1"))
-        every { ldapRepository.mapUserFromContext(any(), "CN=some!user") } returns testUser
-
-        val result = userLookupService.lookupUserByCNAndLoadRoles("some!user")
+        every { ldapRepository.mapUserFromContext(any(), testUser.getGUID()) } returns testUser
+        val result = userLookupService.lookupUserByGUIDAndLoadRoles(testUser.getGUID())
         assertTrue { testUser === result.user }
         assertEquals(DeltaSystemRole.USER, result.roles.systemRoles.single().role)
         assertEquals("orgCode1", result.roles.organisations.single().code)

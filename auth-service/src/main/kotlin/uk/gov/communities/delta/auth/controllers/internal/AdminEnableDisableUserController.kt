@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.utils.randomBase64
 class AdminEnableDisableUserController(
     private val ssoConfig: AzureADSSOConfig,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val userService: UserService,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val auditService: UserAuditService,
@@ -29,6 +30,7 @@ class AdminEnableDisableUserController(
         val user = getUserFromCallParameters(
             call.parameters,
             userLookupService,
+            userGUIDMapService,
             "Something went wrong enabling the user, please try again",
             "enable_user"
         )
@@ -39,33 +41,26 @@ class AdminEnableDisableUserController(
 
         if (user.passwordLastSet == null) {
             if (user.isSSORequiredUser()) {
-                logger.atInfo().addKeyValue("targetUserCN", user.cn)
+                logger.atInfo().addKeyValue("targetUserGUID", user.getGUID())
                     .log("Setting random password and enabling SSO user")
                 userService.setPasswordAndEnable(user.dn, randomBase64(18))
-                val sessionUserGUID = session.getUserGUID(userLookupService)
-                auditService.userEnableAudit(user.cn, user.getGUID(), session.userCn, sessionUserGUID, call)
-                return call.respond(mapOf("message" to "User ${user.cn} enabled"))
+                auditService.userEnableAudit(user.getGUID(), session.userGUID, call)
+                return call.respond(mapOf("message" to "User ${user.email} enabled"))
             } else {
                 throw ApiError(
                     HttpStatusCode.BadRequest,
                     "cannot_enable_user_no_password",
-                    "User '${user.cn}' pwdLastSet is null, will not enable",
-                    "User '${user.cn}' does not have a password set and so cannot be enabled. Send them an activation email instead.",
+                    "User ${user.getGUID()} pwdLastSet is null, will not enable",
+                    "User '${user.email}' does not have a password set and so cannot be enabled. Send them an activation email instead.",
                 )
             }
         }
 
-        logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Enabling user")
+        logger.atInfo().addKeyValue("targetUserGUID", user.getGUID()).log("Enabling user")
         userService.enableAccountAndNotifications(user.dn)
-        auditService.userEnableAudit(
-            user.cn,
-            user.getGUID(),
-            session.userCn,
-            session.getUserGUID(userLookupService),
-            call
-        )
+        auditService.userEnableAudit(user.getGUID(), session.userGUID, call)
 
-        return call.respond(mapOf("message" to "User ${user.cn} enabled"))
+        return call.respond(mapOf("message" to "User ${user.email} enabled"))
     }
 
 
@@ -75,6 +70,7 @@ class AdminEnableDisableUserController(
         val user = getUserFromCallParameters(
             call.parameters,
             userLookupService,
+            userGUIDMapService,
             "Something went wrong disabling the user, please try again",
             "disable_user"
         )
@@ -83,15 +79,13 @@ class AdminEnableDisableUserController(
             return call.respond(mapOf("message" to "Account already disabled"))
         }
 
-        logger.atInfo().addKeyValue("targetUserCN", user.cn).log("Disabling user")
+        logger.atInfo().addKeyValue("targetUserGUID", user.getGUID()).log("Disabling user")
         userService.disableAccountAndNotifications(user.dn)
-        auditService.userDisableAudit(
-            user.cn, user.getGUID(), session.userCn, session.getUserGUID(userLookupService), call
-        )
+        auditService.userDisableAudit(user.getGUID(), session.userGUID, call)
         // Clear any set password tokens so that they can't re-enable their account themselves
-        setPasswordTokenService.clearTokenForUserCn(user.cn)
+        setPasswordTokenService.clearTokenForUserGUID(user.getGUID())
 
-        return call.respond(mapOf("message" to "User ${user.cn} disabled"))
+        return call.respond(mapOf("message" to "User ${user.email} disabled"))
     }
 
     private fun LdapUser.isSSORequiredUser(): Boolean {

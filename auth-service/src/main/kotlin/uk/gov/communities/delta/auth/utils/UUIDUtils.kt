@@ -33,7 +33,7 @@ fun UUID.toActiveDirectoryGUIDSearchString(): String {
 @OptIn(ExperimentalStdlibApi::class)
 fun String.toActiveDirectoryGUIDSearchString(): String {
     if (LDAPConfig.VALID_USER_GUID_REGEX.matchEntire(this)==null){
-        throw IllegalArgumentException("GUID must have format 00112233-4455-6677-8899-aabbccddeeff")
+        throw IllegalArgumentException("GUID must have format 00112233-4455-1677-8899-aabbccddeeff")
     }
     val hexBytesString = this.replace("-", "")
     val oldOrderBytes = hexBytesString.hexToByteArray()

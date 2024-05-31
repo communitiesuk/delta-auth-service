@@ -11,15 +11,16 @@ import kotlinx.serialization.encoding.Encoder
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig.Companion.DATAMART_DELTA_PREFIX
 import uk.gov.communities.delta.auth.repositories.LdapUser
+import java.util.*
 
 typealias MemberOfToDeltaRolesMapperFactory = (
-    username: String,
+    userGUID: UUID,
     allOrganisations: List<OrganisationNameAndCode>,
     allAccessGroups: List<AccessGroup>,
 ) -> MemberOfToDeltaRolesMapper
 
 class MemberOfToDeltaRolesMapper(
-    private val username: String,
+    private val userGUID: UUID,
     allOrganisations: List<OrganisationNameAndCode>,
     allAccessGroups: List<AccessGroup>,
 ) {
@@ -59,7 +60,7 @@ class MemberOfToDeltaRolesMapper(
             RoleType.DELEGATE to mutableMapOf(),
         )
 
-        if (organisationIds.isEmpty()) logger.atWarn().addKeyValue("username", username).log("No organisations from AD")
+        if (organisationIds.isEmpty()) logger.atWarn().log("No organisations for user $userGUID from AD")
 
         // Set the non-organisation specific roles first
         for (role in roles.filter { it.organisation == null }) {
@@ -70,17 +71,17 @@ class MemberOfToDeltaRolesMapper(
         for (role in roles) {
             if (role.organisation == null) continue
             if (!organisationIds.contains(role.organisation.code)) {
-                logger.atWarn().addKeyValue("username", username).addKeyValue("group", role.originalGroup)
+                logger.atWarn().addKeyValue("group", role.originalGroup)
                     .addKeyValue("role", role.role).addKeyValue("orgId", role.organisation.code)
-                    .log("User is member of datamart-delta-<role>-<orgId> group, but not part of the organisation, i.e. not a member of datamart-delta-user-<orgId> group, discarding group")
+                    .log("User $userGUID is member of datamart-delta-<role>-<orgId> group, but not part of the organisation, i.e. not a member of datamart-delta-user-<orgId> group, discarding group")
                 continue
             }
 
             val orgListForRole = roleOrgIdsMap[role.type]!![role.role]
             if (orgListForRole == null) {
-                logger.atWarn().addKeyValue("username", username).addKeyValue("group", role.originalGroup)
+                logger.atWarn().addKeyValue("group", role.originalGroup)
                     .addKeyValue("role", role.role).addKeyValue("orgId", role.organisation.code)
-                    .log("User is member of datamart-delta-<role>-<orgId> group, but not member of datamart-delta-<role> group, discarding group")
+                    .log("User $userGUID is member of datamart-delta-<role>-<orgId> group, but not member of datamart-delta-<role> group, discarding group")
                 continue
             }
             orgListForRole.add(role.organisation.code)
@@ -129,8 +130,8 @@ class MemberOfToDeltaRolesMapper(
         return if (group.startsWith(DATAMART_DELTA_PREFIX)) {
             group.substring(DATAMART_DELTA_PREFIX.length, group.length)
         } else {
-            logger.atWarn().addKeyValue("username", username).addKeyValue("group", group)
-                .log("Ignoring group as CN does not start with $DATAMART_DELTA_PREFIX")
+            logger.atWarn().addKeyValue("group", group)
+                .log("Ignoring group for user $userGUID as CN does not start with $DATAMART_DELTA_PREFIX")
             null
         }
     }
@@ -152,9 +153,9 @@ class MemberOfToDeltaRolesMapper(
 
         return when (val roleType = determineRoleType(roleStr)) {
             null -> {
-                logger.atWarn().addKeyValue("username", username).addKeyValue("role", roleStr)
+                logger.atWarn().addKeyValue("role", roleStr)
                     .addKeyValue("orgId", orgId).addKeyValue("group", DATAMART_DELTA_PREFIX + groupWithoutPrefix)
-                    .log("Ignoring group as unable to find matching system role or access group")
+                    .log("Ignoring group for user $userGUID as unable to find matching system role or access group")
                 null
             }
 

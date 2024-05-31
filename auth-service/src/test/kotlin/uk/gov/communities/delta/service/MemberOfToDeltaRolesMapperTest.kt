@@ -1,6 +1,7 @@
 package uk.gov.communities.delta.service
 
 import uk.gov.communities.delta.auth.services.*
+import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -131,7 +132,7 @@ class MemberOfToDeltaRolesMapperTest {
         assertEquals(listOf("dclg", "E1234"), result.organisations.map { it.code })
     }
 
-    private fun mapper() = MemberOfToDeltaRolesMapper("username", organisations, accessGroups)
+    private fun mapper() = MemberOfToDeltaRolesMapper(UUID.randomUUID(), organisations, accessGroups)
 
     private val accessGroups = listOf(
         AccessGroup("access-group", "STATS", null, enableOnlineRegistration = false, enableInternalUser = false),

@@ -34,13 +34,14 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testEnableUser() = testSuspend {
         val user = testLdapUser(cn = "user!example.com", accountEnabled = false)
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         enableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.enableAccountAndNotifications(user.dn) }
             coVerify(exactly = 1) {
-                auditService.userEnableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
+                auditService.userEnableAudit(user.getGUID(), adminUser.getGUID(), any())
             }
             confirmVerified(userService, auditService)
         }
@@ -49,7 +50,8 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testUserAlreadyEnabled() = testSuspend {
         val user = testLdapUser(cn = "user!example.com", accountEnabled = true)
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         enableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
@@ -60,7 +62,8 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testUserNoPassword() {
         val user = testLdapUser(cn = "user!example.com", passwordLastSet = null, accountEnabled = false)
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
@@ -80,14 +83,13 @@ class AdminEnableDisableUserControllerTest {
             passwordLastSet = null,
             accountEnabled = false
         )
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         enableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.setPasswordAndEnable(user.dn, any()) }
-            coVerify(exactly = 1) {
-                auditService.userEnableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
-            }
+            coVerify(exactly = 1) { auditService.userEnableAudit(user.getGUID(), adminUser.getGUID(), any()) }
             confirmVerified(userService, auditService)
         }
     }
@@ -95,7 +97,7 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testCannotEnableUserAsNonAdmin() {
         val user = testLdapUser(cn = "user!example.com", accountEnabled = false)
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
@@ -116,15 +118,20 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testDisableUser() = testSuspend {
         val user = testLdapUser(cn = "user!example.com")
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
-        coEvery { setPasswordTokenService.clearTokenForUserCn(user.cn) } just runs
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
+        coEvery { setPasswordTokenService.clearTokenForUserGUID(user.getGUID()) } just runs
 
         disableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) { userService.disableAccountAndNotifications(user.dn) }
-            coVerify(exactly = 1) { setPasswordTokenService.clearTokenForUserCn(user.cn) }
+            coVerify(exactly = 1) { setPasswordTokenService.clearTokenForUserGUID(user.getGUID()) }
             coVerify(exactly = 1) {
-                auditService.userDisableAudit(user.cn, user.getGUID(), adminUser.cn, adminUser.getGUID(), any())
+                auditService.userDisableAudit(user.getGUID(), adminUser.getGUID(), any())
+            }
+            coVerify(exactly = 1) { setPasswordTokenService.clearTokenForUserGUID(user.getGUID()) }
+            coVerify(exactly = 1) {
+                auditService.userDisableAudit(user.getGUID(), adminUser.getGUID(), any())
             }
             confirmVerified(userService, auditService, setPasswordTokenService)
         }
@@ -133,8 +140,8 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testUserAlreadyDisabled() = testSuspend {
         val user = testLdapUser(cn = "user!example.com", accountEnabled = false)
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
-
+        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
         disableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
             confirmVerified(userService, auditService, setPasswordTokenService)
@@ -144,7 +151,7 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testCannotDisableUserAsNonAdmin() {
         val user = testLdapUser(cn = "user!example.com")
-        coEvery { userLookupService.lookupUserByCn(user.cn) } returns user
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
@@ -185,19 +192,19 @@ class AdminEnableDisableUserControllerTest {
     @Before
     fun resetMocks() {
         clearAllMocks()
-        coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
+        coEvery { oauthSessionService.retrieveFromAuthToken(any(), client) } answers { null }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 adminSession.authToken,
                 client
             )
         } answers { adminSession }
-        coEvery { oauthSessionService.retrieveFomAuthToken(userSession.authToken, client) } answers { userSession }
+        coEvery { oauthSessionService.retrieveFromAuthToken(userSession.authToken, client) } answers { userSession }
 
         coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
         coEvery { userLookupService.lookupCurrentUser(userSession) } returns regularUser
-        coEvery { auditService.userEnableAudit(any(), any(), any(), any(), any()) } just runs
-        coEvery { auditService.userDisableAudit(any(), any(), any(), any(), any()) } just runs
+        coEvery { auditService.userEnableAudit(any(), any(), any()) } just runs
+        coEvery { auditService.userDisableAudit(any(), any(), any()) } just runs
     }
 
     companion object {
@@ -207,6 +214,7 @@ class AdminEnableDisableUserControllerTest {
 
         private lateinit var oauthSessionService: OAuthSessionService
         private lateinit var userLookupService: UserLookupService
+        private lateinit var userGUIDMapService: UserGUIDMapService
         private lateinit var setPasswordTokenService: SetPasswordTokenService
         private lateinit var userService: UserService
         private lateinit var auditService: UserAuditService
@@ -229,12 +237,14 @@ class AdminEnableDisableUserControllerTest {
         fun setup() {
             oauthSessionService = mockk<OAuthSessionService>()
             userLookupService = mockk<UserLookupService>()
+            userGUIDMapService = mockk<UserGUIDMapService>()
             setPasswordTokenService = mockk<SetPasswordTokenService>()
             userService = mockk<UserService>(relaxed = true)
             auditService = mockk<UserAuditService>()
             controller = AdminEnableDisableUserController(
                 AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain", required = true))),
                 userLookupService,
+                userGUIDMapService,
                 userService,
                 setPasswordTokenService,
                 auditService,
@@ -246,7 +256,7 @@ class AdminEnableDisableUserControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

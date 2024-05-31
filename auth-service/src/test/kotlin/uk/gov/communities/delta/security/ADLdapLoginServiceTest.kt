@@ -5,9 +5,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Before
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
-import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.helper.testLdapUser
 import javax.naming.ldap.InitialLdapContext
 import kotlin.test.Test
@@ -17,6 +18,7 @@ import kotlin.test.assertTrue
 class ADLdapLoginServiceTest {
     private lateinit var loginService: ADLdapLoginService
     private lateinit var ldapRepository: LdapRepository
+    private lateinit var user: LdapUser
 
     @Before
     fun setup() {
@@ -26,8 +28,9 @@ class ADLdapLoginServiceTest {
             ldapRepository,
         )
         val mockContext = mockk<InitialLdapContext>(relaxed = true)
+        user = testLdapUser()
         every { ldapRepository.bind("CN=username,OU=Users,DC=test", "password") }.returns(mockContext)
-        every { ldapRepository.mapUserFromContext(mockContext, "CN=username,OU=Users,DC=test") }.returns(testLdapUser())
+        every { ldapRepository.mapUserFromContext(mockContext, "CN=username,OU=Users,DC=test") }.returns(user)
     }
 
     @Test
@@ -35,7 +38,7 @@ class ADLdapLoginServiceTest {
         val result = loginService.ldapLogin("username", "password")
 
         assertTrue(result is IADLdapLoginService.LdapLoginSuccess)
-        assertEquals(result.user, testLdapUser())
+        assertEquals(result.user, user)
     }
 
     @Test

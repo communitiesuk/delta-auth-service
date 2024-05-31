@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.PasswordChecker
 import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
+import uk.gov.communities.delta.auth.utils.getUserGUIDFromCallParameters
 import java.util.*
 
 class DeltaResetPasswordController(
@@ -21,6 +22,7 @@ class DeltaResetPasswordController(
     private val userService: UserService,
     private val resetPasswordTokenService: ResetPasswordTokenService,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val emailService: EmailService,
     private val userAuditService: UserAuditService,
 ) {
@@ -49,10 +51,10 @@ class DeltaResetPasswordController(
     }
 
     private suspend fun resetPasswordGet(call: ApplicationCall) {
-        val user = try {
-            getUserFromCallParameters( // TODO DT-976-2 - just get GUID once CN not needed
+        val userGUID = try {
+            getUserGUIDFromCallParameters(
                 call.request.queryParameters,
-                userLookupService,
+                userGUIDMapService,
                 resetPasswordExceptionUserVisibleMessage,
                 "reset_password_get"
             )
@@ -60,21 +62,21 @@ class DeltaResetPasswordController(
             throw InvalidResetPassword()
         }
         val token = call.request.queryParameters["token"].orEmpty()
-        when (val tokenResult = resetPasswordTokenService.validateToken(token, user.cn, user.getGUID())) {
+        when (val tokenResult = resetPasswordTokenService.validateToken(token, userGUID)) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.warn("Reset password get request with invalid token and/or userCN")
                 throw InvalidResetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {
-                logger.atWarn().addKeyValue("userGUID", user.getGUID())
+                logger.atWarn().addKeyValue("userGUID", userGUID)
                     .log("Reset password get request with expired token")
-                val userEmail = userLookupService.lookupUserByGUID(user.getGUID()).email!!
+                val userEmail = userLookupService.lookupUserByGUID(userGUID).email!!
                 call.respondExpiredTokenPage(tokenResult, userEmail)
             }
 
             is PasswordTokenService.ValidToken -> {
-                logger.atInfo().addKeyValue("userGUID", user.getGUID())
+                logger.atInfo().addKeyValue("userGUID", userGUID)
                     .log("Reset password get request with valid token")
                 call.respondResetPasswordPage()
             }
@@ -86,14 +88,14 @@ class DeltaResetPasswordController(
         val userGUID = UUID.fromString(formParameters["userGUID"]!!)
         val user = userLookupService.lookupUserByGUID(userGUID)
         val token = formParameters["token"]!!
-        val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, user.cn, userGUID)
+        val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, userGUID)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
-            logger.atInfo().addKeyValue("userCN", user.cn).log("Sending new reset password link (after expiry)")
+            logger.atInfo().addKeyValue("userGUID", user.getGUID())
+                .log("Sending new reset password link (after expiry)")
             emailService.sendResetPasswordEmail(
                 userLookupService.lookupUserByGUID(userGUID),
-                resetPasswordTokenService.createToken(user.cn, userGUID),
+                resetPasswordTokenService.createToken(userGUID),
                 null,
-                userLookupService,
                 call
             )
             call.respondNewEmailSentPage(user.email!!)
@@ -105,6 +107,7 @@ class DeltaResetPasswordController(
             getUserFromCallParameters(
                 call.request.queryParameters,
                 userLookupService,
+                userGUIDMapService,
                 resetPasswordExceptionUserVisibleMessage,
                 "reset_password"
             )
@@ -121,9 +124,9 @@ class DeltaResetPasswordController(
         val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, user.email!!)
 
         if (message != null) return call.respondResetPasswordPage(message)
-        logger.atInfo().addKeyValue("userCN", user.cn).addKeyValue("userGUID", user.getGUID())
+        logger.atInfo().addKeyValue("userGUID", user.getGUID()).addKeyValue("userGUID", user.getGUID())
             .log("Reset password post")
-        when (val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, user.cn, user.getGUID())) {
+        when (val tokenResult = resetPasswordTokenService.consumeTokenIfValid(token, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
                 logger.error("Token did not exist on resetting password")
                 throw InvalidResetPassword()
@@ -140,7 +143,7 @@ class DeltaResetPasswordController(
                     .log("Reset password form submitted with valid token")
                 userService.resetPassword(tokenResult.userGUID, newPassword)
                 logger.atInfo().addKeyValue("userGUID", tokenResult.userGUID).log("Password reset")
-                userAuditService.resetPasswordAudit(user.cn, user.getGUID(), call)
+                userAuditService.resetPasswordAudit(user.getGUID(), call)
                 call.respondRedirect("/delta/reset-password/success")
             }
         }
@@ -207,10 +210,10 @@ class InvalidResetPassword :
         "Token and user combination did not exist on resetting password"
     )
 
-fun getResetPasswordURL(token: String, userCN: String, authServiceUrl: String) =
+fun getResetPasswordURL(token: String, userGUID: UUID, authServiceUrl: String) =
     String.format(
-        "%s/delta/reset-password?userCN=%s&token=%s",
+        "%s/delta/reset-password?userGUID=%s&token=%s",
         authServiceUrl,
-        userCN.encodeURLParameter(),
+        userGUID.toString().encodeURLParameter(),
         token.encodeURLParameter()
     )

@@ -15,11 +15,11 @@ import uk.gov.communities.delta.helper.testLdapUser
 import kotlin.test.assertTrue
 
 class RegistrationServiceTest {
-    private val deltaConfig = DeltaConfig.fromEnv()
     private val setPasswordTokenService = mockk<SetPasswordTokenService>()
     private val emailService = mockk<EmailService>()
     private val userService = mockk<UserService>()
     private val userLookupService = mockk<UserLookupService>()
+    private val userGUIDMapService = mockk<UserGUIDMapService>()
     private val groupService = mockk<GroupService>()
     private val call = mockk<ApplicationCall>()
     private val requiredSSOClient = mockk<AzureADSSOClient>()
@@ -30,22 +30,22 @@ class RegistrationServiceTest {
     private val retiredOrganisation = Organisation(orgCode, "Test org", "2023-09-30Z")
 
     private val registrationService = RegistrationService(
-        deltaConfig,
         EmailConfig.fromEnv(),
         LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
         setPasswordTokenService,
         emailService,
         userService,
         userLookupService,
+        userGUIDMapService,
         groupService
     )
 
     @Before
     fun setup() {
-        coEvery { userLookupService.userIfExists(any()) } returns null
-        coEvery { groupService.addUserToGroup(any(), any(), any(), null, any()) } just runs
+        coEvery { userGUIDMapService.userGUIDIfExists(any()) } returns null
+        coEvery { groupService.addUserToGroup(any(), any(), any(), null) } just runs
         coEvery { userService.createUser(any(), any(), any(), any(), any()) } returns testLdapUser()
-        coEvery { setPasswordTokenService.createToken(any(), any()) } returns "token"
+        coEvery { setPasswordTokenService.createToken(any()) } returns "token"
         coEvery { call.principal<OAuthSession>() } returns null
         coEvery { requiredSSOClient.required } returns true
         coEvery { notRequiredSSOClient.required } returns false
@@ -60,14 +60,14 @@ class RegistrationServiceTest {
         )
         coVerify(exactly = 1) { userService.createUser(any(), null, null, call) }
         coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService)
+            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null)
         }
         coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
+            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null)
         }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) }
-        coVerify(exactly = 1) { setPasswordTokenService.createToken(any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
@@ -81,14 +81,12 @@ class RegistrationServiceTest {
         )
         coVerify(exactly = 1) { userService.createUser(any(), requiredSSOClient, null, call) }
         coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService)
+            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null)
         }
-        coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
-        }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.SSOUserCreated)
     }
 
@@ -104,14 +102,12 @@ class RegistrationServiceTest {
         )
         coVerify(exactly = 1) { userService.createUser(any(), requiredSSOClient, null, call, azureId) }
         coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService)
+            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null)
         }
-        coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
-        }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.SSOUserCreated)
     }
 
@@ -125,20 +121,19 @@ class RegistrationServiceTest {
         )
         coVerify(exactly = 1) { userService.createUser(any(), notRequiredSSOClient, null, call) }
         coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService)
+            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null)
         }
-        coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
-        }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService) }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) }
-        coVerify(exactly = 1) { setPasswordTokenService.createToken(any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
     @Test
     fun testRegisteringExistingStandardUser() = testSuspend {
-        coEvery { userLookupService.userIfExists(user.email!!) } returns user
+        coEvery { userGUIDMapService.userGUIDIfExists(user.email!!) } returns user.getGUID()
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
         val registrationResult = registrationService.register(
             Registration(user.firstName, user.lastName, user.email!!),
             listOf(Organisation(orgCode, "Test org")),
@@ -147,8 +142,9 @@ class RegistrationServiceTest {
         )
         assertTrue(registrationResult is RegistrationService.UserAlreadyExists)
         coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) }
-        coVerify(exactly = 0) { setPasswordTokenService.createToken(any(), any()) }
+        coVerify(exactly = 0) { userGUIDMapService.addNewUser(any()) }
+        coVerify(exactly = 0) { groupService.addUserToGroup(any(), any(), any(), null) }
+        coVerify(exactly = 0) { setPasswordTokenService.createToken(any()) }
     }
 
     @Test
@@ -160,17 +156,13 @@ class RegistrationServiceTest {
         )
         coVerify(exactly = 1) { userService.createUser(any(), null, null, call) }
         coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService)
+            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null)
         }
-        coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
-        }
-        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService) }
-        coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), groupName(anotherOrgCode), any(), null, userLookupService)
-        }
-        coVerify(exactly = 4) { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) }
-        coVerify(exactly = 1) { setPasswordTokenService.createToken(any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode), any(), null) }
+        coVerify(exactly = 4) { groupService.addUserToGroup(any(), any(), any(), null) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 
@@ -183,17 +175,13 @@ class RegistrationServiceTest {
         )
         coVerify(exactly = 1) { userService.createUser(any(), null, null, call) }
         coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null, userLookupService)
+            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_REPORT_USERS, any(), null)
         }
-        coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null, userLookupService)
-        }
-        coVerify(exactly = 0) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null, userLookupService) }
-        coVerify(exactly = 1) {
-            groupService.addUserToGroup(any(), groupName(anotherOrgCode), any(), null, userLookupService)
-        }
-        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null, userLookupService) }
-        coVerify(exactly = 1) { setPasswordTokenService.createToken(any(), any()) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), DeltaConfig.DATAMART_DELTA_USER, any(), null) }
+        coVerify(exactly = 0) { groupService.addUserToGroup(any(), groupName(orgCode), any(), null) }
+        coVerify(exactly = 1) { groupService.addUserToGroup(any(), groupName(anotherOrgCode), any(), null) }
+        coVerify(exactly = 3) { groupService.addUserToGroup(any(), any(), any(), null) }
+        coVerify(exactly = 1) { setPasswordTokenService.createToken(any()) }
         assertTrue(registrationResult is RegistrationService.UserCreated)
     }
 

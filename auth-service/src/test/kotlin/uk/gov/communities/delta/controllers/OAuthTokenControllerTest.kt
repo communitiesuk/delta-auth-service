@@ -22,7 +22,6 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import java.util.*
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
@@ -83,10 +82,10 @@ class OAuthTokenControllerTest {
         private lateinit var controller: OAuthTokenController
         private val client = testServiceClient()
 
-        private val userGUID = UUID.randomUUID()
         private val user = testLdapUser(cn = "user")
-        private val authCode = AuthCode("code", user.cn, userGUID, client, Instant.now(), "trace", false)
-        private val session = OAuthSession(1, user.cn, userGUID, client, "accessToken", Instant.now(), "trace", false)
+        private val authCode = AuthCode("code", user.getGUID(), client, Instant.now(), "trace", false)
+        private val session =
+            OAuthSession(1, user.cn, user.getGUID(), client, "accessToken", Instant.now(), "trace", false)
 
         private val authorizationCodeService = mockk<AuthorizationCodeService>()
         private val userLookupService = mockk<UserLookupService>()

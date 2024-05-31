@@ -32,7 +32,7 @@ class EditOrganisationsController(
     private suspend fun updateUserOrganisations(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val (callingUser, callingUserRoles) = userLookupService.lookupCurrentUserAndLoadRoles(session)
-        logger.atInfo().log("Updating organisations for user {}", session.userCn)
+        logger.atInfo().log("Updating organisations for user {}", session.userGUID)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
         val userDomainOrgCodes = organisationService.findAllByEmail(callingUser.email).map { it.code }.toSet()
@@ -51,7 +51,7 @@ class EditOrganisationsController(
         for (org in orgsToAdd) {
             for (role in callingUserRoles.systemRoles) {
                 val roleGroupString = role.role.adCn(org)
-                groupService.addUserToGroup(callingUser, roleGroupString, call, null, userLookupService,)
+                groupService.addUserToGroup(callingUser, roleGroupString, call, null)
             }
         }
 
@@ -63,7 +63,6 @@ class EditOrganisationsController(
                         group,
                         call,
                         null,
-                        userLookupService,
                     )
                 }
             }

@@ -22,7 +22,10 @@ import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.OAuthSession
+import uk.gov.communities.delta.auth.services.OAuthSessionService
+import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
@@ -44,7 +47,7 @@ class EditUserDetailsControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
-                userService.updateUser(testUser, capture(modifications), null, userLookupService, any())
+                userService.updateUser(testUser, capture(modifications), null, any())
             }
 
             assertEquals(4, modifications.captured.size)
@@ -72,7 +75,7 @@ class EditUserDetailsControllerTest {
             }
         }.apply {
             assertEquals("non_numeric_telephone_number", errorCode)
-            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userService.updateUser(any(), any(), any(), any()) }
         }
     }
 
@@ -80,13 +83,13 @@ class EditUserDetailsControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 testUserSession.authToken,
                 client
             )
         } answers { testUserSession }
         coEvery { userLookupService.lookupCurrentUser(testUserSession) } returns testUser
-        coEvery { userService.updateUser(testUser, any(), null, userLookupService, any()) } just runs
+        coEvery { userService.updateUser(testUser, any(), null, any()) } just runs
     }
 
 
@@ -148,7 +151,7 @@ class EditUserDetailsControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

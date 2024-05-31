@@ -37,6 +37,7 @@ class DeltaSSOLoginController(
     private val ssoConfig: AzureADSSOConfig,
     private val ssoLoginStateService: SSOLoginSessionStateService,
     private val ldapLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val authorizationCodeService: AuthorizationCodeService,
     private val microsoftGraphService: MicrosoftGraphService,
     private val registrationService: RegistrationService,
@@ -78,8 +79,8 @@ class DeltaSSOLoginController(
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
-        var user = ldapLookupService.userIfExists(email)
-        if (user == null) {
+        var userGUID = userGUIDMapService.userGUIDIfExists(email)
+        if (userGUID == null) {
             if (!ssoClient.required) {
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
                 return call.respondRedirect("/delta/register?fromSSOEmail=${email.encodeURLParameter()}")
@@ -99,9 +100,10 @@ class DeltaSSOLoginController(
                 logger.error("Error creating SSO User, result was {}", registrationResult.toString())
                 throw Exception("Error creating SSO User")
             }
-            user = ldapLookupService.userIfExists(email)!!
+            userGUID = userGUIDMapService.userGUIDIfExists(email)!!
         }
 
+        val user = ldapLookupService.lookupUserByGUID(userGUID)
         checkUserEnabled(user)
         checkUserHasEmail(user)
         lookupAndCheckAzureGroups(user, principal, ssoClient)
@@ -109,12 +111,12 @@ class DeltaSSOLoginController(
 
         val client = clientConfig.oauthClients.first { it.clientId == session.clientId }
         val authCode = authorizationCodeService.generateAndStore(
-            userCn = user.cn, userGUID = user.getGUID(), client = client, traceId = call.callId!!, isSso = true
+            userGUID = user.getGUID(), client = client, traceId = call.callId!!, isSso = true
         )
 
         logger.atInfo().withAuthCode(authCode).log("Successful OAuth login")
         ssoLoginCounter.increment()
-        userAuditService.userSSOLoginAudit(authCode.userCn, authCode.userGUID, ssoClient, jwt.userObjectId, call)
+        userAuditService.userSSOLoginAudit(authCode.userGUID, ssoClient, jwt.userObjectId, call)
         call.sessions.clear<LoginSessionCookie>()
         call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${session.deltaState.encodeURLParameter()}")
     }
@@ -159,7 +161,7 @@ class DeltaSSOLoginController(
         if (!user.accountEnabled) {
             throw OAuthLoginException(
                 "user_disabled",
-                "User ${user.cn} is disabled in Active Directory, login blocked",
+                "User ${user.getGUID()} is disabled in Active Directory, login blocked",
                 "Your Delta user account is disabled. If you haven't used your account before please check for an activation email otherwise please contact the service desk"
             )
         }
@@ -169,7 +171,7 @@ class DeltaSSOLoginController(
         if (user.email.isNullOrEmpty()) {
             throw OAuthLoginException(
                 "user_no_mail_attribute",
-                "User ${user.cn} has no email set in Active Directory, login blocked",
+                "User ${user.getGUID()} has no email set in Active Directory, login blocked",
                 "Your Delta user account is not fully set up (missing mail attribute). Please contact the Service Desk."
             )
         }
@@ -212,7 +214,7 @@ class DeltaSSOLoginController(
         if (ssoClient.requiredGroupId != null && !azGroups.contains(ssoClient.requiredGroupId)) {
             throw OAuthLoginException(
                 "not_in_required_azure_group",
-                "User ${user.cn} not in required Azure group ${ssoClient.requiredGroupId}",
+                "User ${user.getGUID()} not in required Azure group ${ssoClient.requiredGroupId}",
                 "This account (${user.cn.replace('!', '@')}) is not configured for Single Sign On for Delta (not in required Azure AD users group ${ssoClient.requiredGroupId}). Please contact the Service Desk"
             )
         }
@@ -221,7 +223,7 @@ class DeltaSSOLoginController(
         if (adminGroups.isNotEmpty() && ssoClient.requiredAdminGroupId != null && !azGroups.contains(ssoClient.requiredAdminGroupId)) {
             throw OAuthLoginException(
                 "not_in_required_admin_group",
-                "User ${user.cn} is admin in Delta (member of ${adminGroups.joinToString(", ")}), but not member of required admin group ${ssoClient.requiredAdminGroupId}",
+                "User ${user.getGUID()} is admin in Delta (member of ${adminGroups.joinToString(", ")}), but not member of required admin group ${ssoClient.requiredAdminGroupId}",
                 "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()} (${ssoClient.requiredAdminGroupId}). Please contact the Service Desk"
             )
         }
@@ -231,12 +233,12 @@ class DeltaSSOLoginController(
         if (!user.memberOfCNs.contains(DeltaConfig.DATAMART_DELTA_USER)) {
             logger.error(
                 "User {} is not a member of required Delta group {}",
-                keyValue("username", user.cn),
+                keyValue("userGUID", user.getGUID()),
                 DeltaConfig.DATAMART_DELTA_USER
             )
             throw OAuthLoginException(
                 "not_delta_user",
-                "User ${user.cn} is not member of required Delta group ${DeltaConfig.DATAMART_DELTA_USER}",
+                "User ${user.getGUID()} is not member of required Delta group ${DeltaConfig.DATAMART_DELTA_USER}",
                 "Your Delta user is misconfigured (not in ${DeltaConfig.DATAMART_DELTA_USER}). Please contact the Service Desk",
             )
         }

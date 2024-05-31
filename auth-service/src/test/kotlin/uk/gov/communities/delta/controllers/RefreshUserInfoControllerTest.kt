@@ -29,7 +29,6 @@ import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import java.util.*
 import kotlin.test.assertEquals
 
 
@@ -102,25 +101,30 @@ class RefreshUserInfoControllerTest {
         private lateinit var controller: RefreshUserInfoController
 
         private val client = testServiceClient()
-        private val userGUID = UUID.randomUUID()
         private val user = testLdapUser(cn = "user", memberOfCNs = listOf("datamart-delta-user-dclg"))
-        private val adminUserGUID = UUID.randomUUID()
         private val adminUser = testLdapUser(cn = "adminUser", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
-        private val session = OAuthSession(1, user.cn, userGUID, client, "accessToken", Instant.now(), "trace", false)
-        private val adminSession =
-            OAuthSession(2, adminUser.cn, adminUserGUID, client, "adminAccessToken", Instant.now(), "trace", false)
+        private val session =
+            OAuthSession(1, user.cn, user.getGUID(), client, "accessToken", Instant.now(), "trace", false)
+        private val adminSession = OAuthSession(
+            2, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
+        )
         private val userToImpersonate =
             testLdapUser(
                 cn = "userToImpersonate",
                 memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN)
             )
         private val adminImpersonatingUser =
-            testLdapUser(cn = "adminUser", memberOfCNs = userToImpersonate.memberOfCNs)
+            testLdapUser(
+                cn = adminUser.cn,
+                memberOfCNs = userToImpersonate.memberOfCNs,
+                javaUUIDObjectGuid = adminUser.javaUUIDObjectGuid
+            )
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             val userLookupService = mockk<UserLookupService>()
+            val userGUIDMapService = mockk<UserGUIDMapService>()
             val samlTokenService = mockk<SAMLTokenService>()
             val oauthSessionService = mockk<OAuthSessionService>()
             val accessGroupsService = mockk<AccessGroupsService>()
@@ -132,7 +136,8 @@ class RefreshUserInfoControllerTest {
 
             coEvery { userLookupService.lookupCurrentUser(session) } answers { user }
             coEvery { userLookupService.lookupCurrentUser(adminSession) } answers { adminUser }
-            coEvery { userLookupService.lookupUserByCn(userToImpersonate.cn) } answers { userToImpersonate }
+            coEvery { userGUIDMapService.getGUID(userToImpersonate.cn) } returns userToImpersonate.getGUID()
+            coEvery { userLookupService.lookupUserByGUID(userToImpersonate.getGUID()) } returns userToImpersonate
             every {
                 samlTokenService.generate(
                     client.samlCredential,
@@ -153,26 +158,18 @@ class RefreshUserInfoControllerTest {
             coEvery { organisationService.findAllNamesAndCodes() }.returns(
                 listOf(OrganisationNameAndCode("dclg", "The Department"))
             )
-            coEvery { oauthSessionService.retrieveFomAuthToken(any(), client) } answers { null }
-            coEvery { oauthSessionService.retrieveFomAuthToken(session.authToken, client) } answers { session }
+            coEvery { oauthSessionService.retrieveFromAuthToken(any(), client) } answers { null }
+            coEvery { oauthSessionService.retrieveFromAuthToken(session.authToken, client) } answers { session }
             coEvery {
-                oauthSessionService.retrieveFomAuthToken(
-                    adminSession.authToken,
-                    client
-                )
+                oauthSessionService.retrieveFromAuthToken(adminSession.authToken, client)
             } answers { adminSession }
             coEvery {
-                oauthSessionService.updateWithImpersonatedCn(
-                    adminSession.id,
-                    userToImpersonate.cn,
-                    userToImpersonate.getGUID(),
-                )
+                oauthSessionService.updateWithImpersonatedGUID(adminSession.id, userToImpersonate.getGUID())
             } just runs
             coEvery { adminEmailController.route(any()) } just runs
             coEvery {
                 userAuditService.insertImpersonatingUserAuditRow(
                     adminSession,
-                    userToImpersonate.cn,
                     userToImpersonate.getGUID(),
                     any()
                 )
@@ -180,6 +177,7 @@ class RefreshUserInfoControllerTest {
 
             controller = RefreshUserInfoController(
                 userLookupService,
+                userGUIDMapService,
                 samlTokenService,
                 accessGroupsService,
                 organisationService,
@@ -195,7 +193,7 @@ class RefreshUserInfoControllerTest {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
                             authenticate {
-                                oauthSessionService.retrieveFomAuthToken(it.token, client)
+                                oauthSessionService.retrieveFromAuthToken(it.token, client)
                             }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {

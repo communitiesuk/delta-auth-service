@@ -16,7 +16,9 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEditUserNotificationStatusController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.security.*
+import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
+import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
+import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.mockUserLookupService
@@ -89,19 +91,19 @@ class AdminEditUserNotificationStatusControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 fullAdminSession.authToken,
                 client
             )
         } answers { fullAdminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 readOnlyAdminSession.authToken,
                 client
             )
         } answers { readOnlyAdminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 nonAdminSession.authToken,
                 client
             )
@@ -115,6 +117,7 @@ class AdminEditUserNotificationStatusControllerTest {
             ), organisations = listOf(), accessGroups = listOf()
         )
         coEvery { userService.updateNotificationStatus(userToUpdate, any(), any(), any()) } just runs
+        coEvery { userGUIDMapService.getGUID(userToUpdate.cn) } returns userToUpdate.getGUID()
     }
 
     companion object {
@@ -125,6 +128,7 @@ class AdminEditUserNotificationStatusControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
         private val userService = mockk<UserService>()
 
         private val client = testServiceClient()
@@ -177,6 +181,7 @@ class AdminEditUserNotificationStatusControllerTest {
         fun setup() {
             controller = AdminEditUserNotificationStatusController(
                 userLookupService,
+                userGUIDMapService,
                 userService,
             )
 
@@ -186,9 +191,7 @@ class AdminEditUserNotificationStatusControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token,
-                                client
-                            ) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

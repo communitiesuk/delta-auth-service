@@ -32,7 +32,7 @@ class EditRolesController(
         val request = call.receive<DeltaUserRolesRequest>()
 
         val (callingUser, callingUserRoles) = userLookupService.lookupCurrentUserAndLoadRoles(session)
-        logger.atInfo().log("Request to update own roles for user ${session.userCn}")
+        logger.atInfo().log("Request to update own roles for user ${session.userGUID}")
 
         checkRequestedRolesArePermitted(request, callingUser)
 
@@ -50,19 +50,11 @@ class EditRolesController(
         val groupCNsToRemoveFilteredForMembership =
             groupCNsToRemove.filter { callingUser.memberOfCNs.contains(it) }
 
-        logger.atInfo().log("Granting user ${session.userCn} groups $groupCNsToAddFilteredForNonMembership")
-        groupCNsToAddFilteredForNonMembership
-            .forEach {
-                groupService.addUserToGroup(callingUser, it, call, null, userLookupService,)
-            }
+        logger.atInfo().log("Granting user ${session.userGUID} groups $groupCNsToAddFilteredForNonMembership")
+        groupCNsToAddFilteredForNonMembership.forEach { groupService.addUserToGroup(callingUser, it, call, null) }
 
-        logger.atInfo().log("Revoking user ${session.userCn} groups $groupCNsToRemoveFilteredForMembership")
-        groupCNsToRemoveFilteredForMembership
-            .forEach {
-                groupService.removeUserFromGroup(
-                    callingUser, it, call, null, userLookupService,
-                )
-            }
+        logger.atInfo().log("Revoking user ${session.userGUID} groups $groupCNsToRemoveFilteredForMembership")
+        groupCNsToRemoveFilteredForMembership.forEach { groupService.removeUserFromGroup(callingUser, it, call, null) }
 
         return call.respond(mapOf("message" to "Roles have been updated. Any changes to your roles or access groups will take effect the next time you log in."))
     }

@@ -15,7 +15,8 @@ import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
 
 class EditLdapGroupsController(
     private val groupService: GroupService,
-    private val userLookupService: UserLookupService
+    private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -27,13 +28,14 @@ class EditLdapGroupsController(
         val user = getUserFromCallParameters(
             call.parameters,
             userLookupService,
+            userGUIDMapService,
             "An error occurred adding groups to the user",
             "add_ldap_group"
         )
         
         if (!user.memberOfCNs.contains(groupCn)) {
             logger.info("Adding user {} to group CN={}", user.getGUID(), groupCn)
-            groupService.addUserToGroup(user, groupCn, call, null, userLookupService)
+            groupService.addUserToGroup(user, groupCn, call, null)
         }
         call.response.status(HttpStatusCode.NoContent)
     }

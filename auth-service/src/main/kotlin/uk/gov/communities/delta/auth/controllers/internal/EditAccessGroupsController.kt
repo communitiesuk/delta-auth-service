@@ -16,6 +16,7 @@ import uk.gov.communities.delta.auth.services.*
 
 class EditAccessGroupsController(
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val groupService: GroupService,
     private val organisationService: OrganisationService,
     private val accessGroupsService: AccessGroupsService,
@@ -33,15 +34,16 @@ class EditAccessGroupsController(
         validateIsInternalUser(callingUser)
 
         val addGroupRequest = call.receive<DeltaUserSingleAccessGroupOrganisationsRequest>()
-        // TODO DT-1022 - GUID not CN
-        val (targetUser, targetUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(addGroupRequest.userToEditCn)
+        // TODO DT-1022 - get GUID directly from call
+        val targetUserGUID = userGUIDMapService.getGUID(addGroupRequest.userToEditCn)
+        val (targetUser, targetUserRoles) = userLookupService.lookupUserByGUIDAndLoadRoles(targetUserGUID)
 
         val targetGroupName = addGroupRequest.accessGroupName
         val targetOrganisationCodes = addGroupRequest.organisationCodes
 
         logger.info(
             "Adding user {} to access group {} and organisations {}",
-            targetUser.cn,
+            targetUser.getGUID(),
             targetGroupName,
             targetOrganisationCodes
         )
@@ -50,22 +52,20 @@ class EditAccessGroupsController(
         validateUserInOrganisations(targetUserRoles, targetOrganisationCodes)
 
         val targetGroupADName = getGroupOrgADName(targetGroupName, null)
-        if (targetUser.memberOfCNs.contains(targetGroupADName)) {
-            logger.warn("User {} already member of access group {}", targetUser.cn, targetGroupADName)
-        } else {
-            groupService.addUserToGroup(targetUser, targetGroupADName, call, session, userLookupService,)
-        }
+        if (targetUser.memberOfCNs.contains(targetGroupADName))
+            logger.warn("User {} already member of access group {}", targetUser.getGUID(), targetGroupADName)
+        else groupService.addUserToGroup(targetUser, targetGroupADName, call, session)
         targetOrganisationCodes.forEach { orgCode ->
             val targetGroupOrgADName = getGroupOrgADName(targetGroupName, orgCode)
             if (targetUser.memberOfCNs.contains(targetGroupOrgADName)) {
                 logger.warn(
                     "User {} already member of (access group, organisation) ({}, {})",
-                    targetUser.cn,
+                    targetUser.getGUID(),
                     targetGroupName,
                     orgCode,
                 )
             } else {
-                groupService.addUserToGroup(targetUser, targetGroupOrgADName, call, session, userLookupService,)
+                groupService.addUserToGroup(targetUser, targetGroupOrgADName, call, session)
                 if (orgCode == "dclg") {
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                         AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(targetUser),
@@ -77,7 +77,7 @@ class EditAccessGroupsController(
             }
         }
 
-        return call.respond(mapOf("message" to "User ${targetUser.cn} added to access group $targetGroupName and organisations ${targetOrganisationCodes}."))
+        return call.respond(mapOf("message" to "User ${targetUser.email} added to access group $targetGroupName and organisations ${targetOrganisationCodes}."))
     }
 
 
@@ -89,15 +89,16 @@ class EditAccessGroupsController(
         validateIsInternalUser(callingUser)
 
         val removeGroupRequest = call.receive<DeltaUserSingleAccessGroupRequest>()
-        // TODO DT-1022 - GUID not CN
-        val targetUser = userLookupService.lookupUserByCn(removeGroupRequest.userToEditCn)
+        // TODO DT-1022 - get GUID directly from call
+        val targetUserGUID = userGUIDMapService.getGUID(removeGroupRequest.userToEditCn)
+        val targetUser = userLookupService.lookupUserByGUID(targetUserGUID)
 
         val targetGroupName = removeGroupRequest.accessGroupName
         validateAccessGroupExists(targetGroupName)
 
         val targetGroupADName = getGroupOrgADName(targetGroupName, null)
 
-        logger.info("Removing user {} from access group {}", targetUser.cn, targetGroupADName)
+        logger.info("Removing user {} from access group {}", targetUser.getGUID(), targetGroupADName)
 
         if (targetUser.memberOfCNs.contains(targetGroupADName)) {
             for (groupName in targetUser.memberOfCNs) {
@@ -107,14 +108,13 @@ class EditAccessGroupsController(
                         groupName,
                         call,
                         session,
-                        userLookupService,
                     )
                 }
             }
-            return call.respond(mapOf("message" to "User ${targetUser.cn} removed from access group ${targetGroupName}."))
+            return call.respond(mapOf("message" to "User ${targetUser.email} removed from access group ${targetGroupName}."))
         } else {
-            logger.warn("User {} already not member of access group {}", targetUser.cn, targetGroupADName)
-            return call.respond(mapOf("message" to "User ${targetUser.cn} already not member of access group ${targetGroupName}."))
+            logger.warn("User {} already not member of access group {}", targetUser.getGUID(), targetGroupADName)
+            return call.respond(mapOf("message" to "User ${targetUser.email} already not member of access group ${targetGroupName}."))
         }
     }
 
@@ -148,7 +148,7 @@ class EditAccessGroupsController(
     suspend fun updateCurrentUserAccessGroups(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupCurrentUser(session)
-        logger.info("Updating access groups for user {}", session.userCn)
+        logger.info("Updating access groups for user {}", session.userGUID)
         val userIsInternal = callingUser.isInternal()
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
 
@@ -157,7 +157,7 @@ class EditAccessGroupsController(
         val accessGroupRequestMap = stripDatamartPrefixFromKeys(requestBodyObject.accessGroupsRequest)
 
         val deltaRolesForUser = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), allAccessGroups
+            callingUser.getGUID(), organisationService.findAllNamesAndCodes(), allAccessGroups
         ).map(callingUser.memberOfCNs)
 
         validateUpdateAccessGroupsRequest(
@@ -325,7 +325,7 @@ class EditAccessGroupsController(
             if (action is AddAccessGroupAction || action is AddAccessGroupOrganisationAction) {
                 logger.info(
                     "Access group self update: Adding user {} to access group {}",
-                    user.cn,
+                    user.getGUID(),
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.addUserToGroup(
@@ -333,7 +333,6 @@ class EditAccessGroupsController(
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
                     null,
-                    userLookupService,
                 )
                 if (action is AddAccessGroupOrganisationAction && action.organisationCode == "dclg") {
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
@@ -346,15 +345,11 @@ class EditAccessGroupsController(
             } else if (action is RemoveAccessGroupAction || action is RemoveAccessGroupOrganisationAction) {
                 logger.info(
                     "Access group self update: Removing user {} from access group {}",
-                    user.cn,
+                    user.getGUID(),
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.removeUserFromGroup(
-                    user,
-                    getGroupOrgADName(action.accessGroupName, action.organisationCode),
-                    call,
-                    null,
-                    userLookupService,
+                    user, getGroupOrgADName(action.accessGroupName, action.organisationCode), call, null,
                 )
             }
         }

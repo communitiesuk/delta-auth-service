@@ -12,11 +12,12 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.getModificationItem
-import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
+import uk.gov.communities.delta.auth.utils.getUserGUIDFromCallParameters
 import javax.naming.directory.ModificationItem
 
 class AdminEditUserController(
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val userService: UserService,
     private val groupService: GroupService,
     private val deltaUserPermissionsRequestMapper: DeltaUserPermissionsRequestMapper,
@@ -35,13 +36,13 @@ class AdminEditUserController(
             arrayOf(DeltaSystemRole.ADMIN), call
         )
 
-        val userToUpdate = getUserFromCallParameters( // TODO DT-1022 - just get GUID
+        val userToUpdateGUID = getUserGUIDFromCallParameters(
             call.request.queryParameters,
-            userLookupService,
+            userGUIDMapService,
             "Something went wrong, please try again",
             "update_user_as_admin"
         )
-        val userToUpdateRoles = userLookupService.loadUserRoles(userToUpdate).roles // TODO DT-1022 - use lookupUserByGUIDAndLoadRoles
+        val (userToUpdate, userToUpdateRoles) = userLookupService.lookupUserByGUIDAndLoadRoles(userToUpdateGUID)
 
         logger.atInfo().log("Updating user with GUID ${userToUpdate.getGUID()}")
         val updatedDeltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
@@ -70,14 +71,10 @@ class AdminEditUserController(
         if (modifications.isEmpty() && groupsToAddToUser.isEmpty() && groupsToRemoveFromUser.isEmpty())
             return call.respond(mapOf("message" to "No changes were made to the user"))
 
-        if (modifications.isNotEmpty()) userService.updateUser(userToUpdate, modifications, session, userLookupService, call)
+        if (modifications.isNotEmpty()) userService.updateUser(userToUpdate, modifications, session, call)
 
-        groupsToAddToUser.forEach {
-            groupService.addUserToGroup(userToUpdate, it, call, session, userLookupService)
-        }
-        groupsToRemoveFromUser.forEach {
-            groupService.removeUserFromGroup(userToUpdate, it, call, session, userLookupService)
-        }
+        groupsToAddToUser.forEach { groupService.addUserToGroup(userToUpdate, it, call, session) }
+        groupsToRemoveFromUser.forEach { groupService.removeUserFromGroup(userToUpdate, it, call, session) }
 
         logger.atInfo().log("User ${userToUpdate.getGUID()} successfully updated")
 

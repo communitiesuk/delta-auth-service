@@ -4,9 +4,10 @@ import com.google.common.base.Strings
 import io.ktor.http.*
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.plugins.NoUserException
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
-import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
+import uk.gov.communities.delta.auth.services.UserGUIDMapService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import java.util.*
 
@@ -22,18 +23,22 @@ private fun validateCN(userCN: String) {
     }
 }
 
+fun getIdentifyingParameterOrEmpty(parameters: Parameters) :String {
+    return parameters["userCN"] ?: parameters["userCn"] ?: parameters["cn"] ?: parameters["userGUID"].orEmpty()
+}
+
 suspend fun getUserGUIDFromCallParameters(
     parameters: Parameters,
-    userLookupService: UserLookupService,
+    userGUIDMapService: UserGUIDMapService,
     userVisibleErrorMessage: String,
     action: String
 ): UUID {
-    val userCN = parameters["userCN"] ?: parameters["userCn"].orEmpty()
+    val userCN = parameters["userCN"] ?: parameters["userCn"] ?: parameters["cn"].orEmpty()
     val userGUIDString = parameters["userGUID"].orEmpty()
-    val user: LdapUser
 
     // During transition from userCN to userGUID exactly one should be non-empty
-    // TODO DT-1022 - simplify this to just get GUID directly
+    // TODO DT-1022 - simplify this to just get GUID from call once receiving GUID in all places
+    //  NB: Password flow used to send userCN and some people may still have (expired) links using that
     return if (Strings.isNullOrEmpty(userGUIDString)) {
         if (Strings.isNullOrEmpty(userCN)) throw UserVisibleServerError(
             action + "_no_user_cn_or_guid",
@@ -41,8 +46,7 @@ suspend fun getUserGUIDFromCallParameters(
             userVisibleErrorMessage
         )
         validateCN(userCN)
-        user = userLookupService.lookupUserByCn(userCN)
-        user.getGUID()
+        userGUIDMapService.getGUID(userCN)
     } else {
         if (!Strings.isNullOrEmpty(userCN)) throw UserVisibleServerError(
             action + "_both_user_cn_and_guid",
@@ -58,39 +62,15 @@ suspend fun getUserGUIDFromCallParameters(
 suspend fun getUserFromCallParameters(
     parameters: Parameters,
     userLookupService: UserLookupService,
+    userGUIDMapService: UserGUIDMapService,
     userVisibleErrorMessage: String,
     action: String
 ): LdapUser {
-    val userCN = parameters["userCN"] ?: parameters["userCn"].orEmpty()
-    val userGUIDString = parameters["userGUID"].orEmpty()
-    val userGUID: UUID
+    val userGUID = getUserGUIDFromCallParameters(parameters, userGUIDMapService, userVisibleErrorMessage, action)
 
-    // During transition from userCN to userGUID exactly one should be non-empty
-    // TODO DT-1022 - simplify this to just look for GUID
-    if (Strings.isNullOrEmpty(userGUIDString)) {
-        if (Strings.isNullOrEmpty(userCN)) throw UserVisibleServerError(
-            action + "_no_user_cn_or_guid",
-            "User CN and GUID both not present on $action",
-            userVisibleErrorMessage
-        )
-        validateCN(userCN)
-        try {
-            return userLookupService.lookupUserByCn(userCN)
-        } catch (e: LdapRepository.NoUserException) {
-            throw ApiError(HttpStatusCode.BadRequest, "user_not_found", "User not found")
-        }
-    } else {
-        if (!Strings.isNullOrEmpty(userCN)) throw UserVisibleServerError(
-            action + "_both_user_cn_and_guid",
-            "User CN and GUID both present on $action",
-            userVisibleErrorMessage
-        )
-        validateGUID(userGUIDString)
-        userGUID = UUID.fromString(userGUIDString)
-        try {
-            return userLookupService.lookupUserByGUID(userGUID)
-        } catch (e: LdapRepository.NoUserException) {
-            throw ApiError(HttpStatusCode.BadRequest, "user_not_found", "User not found")
-        }
+    try {
+        return userLookupService.lookupUserByGUID(userGUID)
+    } catch (e: NoUserException) {
+        throw ApiError(HttpStatusCode.BadRequest, "user_not_found", "User not found")
     }
 }

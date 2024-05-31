@@ -1,13 +1,12 @@
 package uk.gov.communities.delta.auth.repositories
 
-import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.plugins.NoUserException
 import uk.gov.communities.delta.auth.utils.toActiveDirectoryGUIDSearchString
 import uk.gov.communities.delta.auth.utils.toGUIDString
 import java.lang.Integer.parseInt
@@ -23,6 +22,7 @@ import javax.naming.ldap.Control
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.ldap.PagedResultsControl
 import javax.naming.ldap.PagedResultsResponseControl
+import kotlin.collections.set
 import kotlin.time.Duration.Companion.seconds
 
 class LdapRepository(
@@ -32,8 +32,6 @@ class LdapRepository(
     enum class ObjectGUIDMode {
         OLD_MANGLED, NEW_JAVA_UUID_STRING;
     }
-
-    class NoUserException(errorMessage: String) : ApiError(HttpStatusCode.BadRequest, "no_user", errorMessage)
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))

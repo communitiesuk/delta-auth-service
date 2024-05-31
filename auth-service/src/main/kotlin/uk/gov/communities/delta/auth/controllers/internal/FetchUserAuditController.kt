@@ -12,21 +12,27 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig.Companion.DATAMART_DELTA_PREFIX
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.plugins.NoUserException
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
 import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserAuditService
+import uk.gov.communities.delta.auth.services.UserGUIDMapService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.utils.csvRow
+import uk.gov.communities.delta.auth.utils.getIdentifyingParameterOrEmpty
+import uk.gov.communities.delta.auth.utils.getUserGUIDFromCallParameters
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
+import java.util.*
 
 class FetchUserAuditController(
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -57,14 +63,24 @@ class FetchUserAuditController(
                 "Page size must be positive"
             )
         }
-        // TODO DT-1022 - receive GUID instead of CN
-        // TODO DT-976-2 - get GUID instead of CN (use Parameters.kt)
-        // TODO DT-976-2 - use GUID to get audit instead of cn
-        val targetUserCn = parameters.getOrFail("cn")
-        checkPermissions(session, targetUserCn)
+        val targetUserGUID = try {
+            getUserGUIDFromCallParameters(
+                parameters,
+                userGUIDMapService,
+                "Something went wrong, please try again",
+                "get_audit"
+            )
+        } catch (e: NoUserException) {
+            // If user isn't an admin throw AccessDeniedError to avoid confirming user existence
+            if (userLookupService.lookupCurrentUser(session).memberOfCNs.any { viewAuditAdminGroupCNs.contains(it) })
+                throw e
+            else throw AuditAccessDeniedError(getIdentifyingParameterOrEmpty(parameters))//TODO DT-1022 - once receiving GUID just use that here
+        }
 
-        logger.atInfo().log("Audit trail page {} requested for {}", page, targetUserCn)
-        val (audit, totalRecords) = userAuditService.getAuditForUserPaged(targetUserCn, page, pageSize)
+        checkPermissions(session, targetUserGUID, getIdentifyingParameterOrEmpty(parameters))
+
+        logger.atInfo().log("Audit trail page {} requested for {}", page, targetUserGUID)
+        val (audit, totalRecords) = userAuditService.getAuditForUserPaged(targetUserGUID, page, pageSize)
 
         return respond(
             UserAuditJsonResponse(
@@ -73,10 +89,8 @@ class FetchUserAuditController(
                         mapOf(
                             "action" to JsonPrimitive(it.action.action),
                             "timestamp" to JsonPrimitive(it.timestamp.toInstant().toString()),
-                            "userCN" to JsonPrimitive(it.userCn),
-                            "userGUID" to JsonPrimitive(it.userGUID.toString()),
-                    "editingUserCN" to JsonPrimitive(it.editingUserCn), // TODO DT-976-2 - still return a human readable user identifier once not storing cn
-                    "editingUserGUID" to JsonPrimitive(it.editingUserGUID?.toString() ?: ""),
+                            "userCN" to JsonPrimitive(it.userCN),
+                            "editingUserCN" to JsonPrimitive(it.editingUserCN),
                             "requestId" to JsonPrimitive(it.requestId),
                             "actionData" to it.actionData,
                         )
@@ -89,12 +103,23 @@ class FetchUserAuditController(
 
     private suspend fun ApplicationCall.getUserAuditCSV() {
         val session = principal<OAuthSession>()!!
-        val userCn = parameters.getOrFail("cn")
-        checkPermissions(session, userCn)
+        val userGUID = try {
+            getUserGUIDFromCallParameters(
+            parameters,
+            userGUIDMapService,
+            "Something went wrong, please try again",
+            "get_audit"
+            )
+        } catch (e: NoUserException) {
+            // If user isn't an admin throw AccessDeniedError to avoid confirming user existence
+            if (userLookupService.lookupCurrentUser(session).memberOfCNs.any { viewAuditAdminGroupCNs.contains(it) })
+                throw e
+            else throw AuditAccessDeniedError(getIdentifyingParameterOrEmpty(parameters))//TODO DT-1022 - once receiving GUID just use that here
+        }
 
-        logger.atInfo().log("Audit trail CSV requested for user {}", userCn)
-
-        val audit = userAuditService.getAuditForUser(userCn)
+        checkPermissions(session, userGUID, getIdentifyingParameterOrEmpty(parameters))
+        logger.atInfo().log("Audit trail CSV requested for user {}", userGUID)
+        val audit = userAuditService.getAuditForUser(userGUID)
         val csvString = buildCSVFromAudit(audit)
         respondBytes(csvString.toByteArray(), ContentType.Text.CSV)
     }
@@ -104,7 +129,7 @@ class FetchUserAuditController(
     // Dates range is inclusive, interpreted as Europe/London timezone
     private suspend fun ApplicationCall.getAllUsersAuditCSV() {
         val session = principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
         if (!callingUser.memberOfCNs.any { viewAuditAdminGroupCNs.contains(it) }) {
             throw AccessDeniedError("User does not have permission to read all user audit log")
         }
@@ -142,10 +167,10 @@ class FetchUserAuditController(
             val csvRow = mutableListOf(
                 auditRow.action.action,
                 auditRow.timestamp.toInstant().toString(),
-                auditRow.userCn,
+                auditRow.userCN,
                 auditRow.userGUID.toString(),
-                auditRow.editingUserCn ?: "", // TODO DT-976-2 - still return a human readable user identifier once not storing cn
-                auditRow.editingUserGUID?.toString() ?: "",
+                auditRow.editingUserCN ?: "",
+                auditRow.editingUserGUID?.toString()?:"",
                 auditRow.requestId
             )
             extraCSVHeaders.forEach {
@@ -159,25 +184,27 @@ class FetchUserAuditController(
         return stringBuilder.toString()
     }
 
-    private suspend fun checkPermissions(session: OAuthSession, targetUserCn: String) {
-        // TODO DT-976-2 - use GUID instead
+    private suspend fun checkPermissions(session: OAuthSession, targetUserGUID: UUID, identifyingParameter: String) {
         val callingUser = userLookupService.lookupCurrentUser(session)
 
-        if (!userHasPermissionToReadAuditTrail(callingUser, targetUserCn)) {
+        if (!userHasPermissionToReadAuditTrail(callingUser, targetUserGUID)) {
             logger.atWarn()
-                .log("User does not have permission to read audit log for {}", targetUserCn)
-            throw AccessDeniedError("User does not have permission to read audit log for $targetUserCn")
+                .log("User does not have permission to read audit log for {}", targetUserGUID)
+            throw AuditAccessDeniedError(identifyingParameter) //TODO DT-1022 - once receiving GUID just use that here
         }
     }
 
+    class AuditAccessDeniedError(identifyingParameter: String) :
+        AccessDeniedError("User does not have permission to read audit log for $identifyingParameter")
+
     private val viewAuditAdminGroupCNs = listOf("admin", "read-only-admin").map { DATAMART_DELTA_PREFIX + it }
 
-    private fun userHasPermissionToReadAuditTrail(callingUser: LdapUser, auditTrailOfUserCN: String): Boolean {
-        if (callingUser.cn == auditTrailOfUserCN) return true // Everyone can see their own audit history
+    private fun userHasPermissionToReadAuditTrail(callingUser: LdapUser, auditTrailOfUserGUID: UUID): Boolean {
+        if (callingUser.getGUID() == auditTrailOfUserGUID) return true // Everyone can see their own audit history
 
         return callingUser.memberOfCNs.any { viewAuditAdminGroupCNs.contains(it) }
     }
 
-    class AccessDeniedError(description: String) :
+    open class AccessDeniedError(description: String) :
         ApiError(HttpStatusCode.Forbidden, "forbidden", description, description)
 }

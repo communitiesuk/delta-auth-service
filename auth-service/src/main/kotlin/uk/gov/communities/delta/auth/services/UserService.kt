@@ -18,6 +18,7 @@ import javax.naming.directory.*
 class UserService(
     private val ldapServiceUserBind: LdapServiceUserBind,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val userAuditService: UserAuditService,
     private val ldapConfig: LDAPConfig,
     private val ldapRepository: LdapRepository,
@@ -40,13 +41,13 @@ class UserService(
             throw e
         }
         auditUserCreation(
-            user.cn,
             user.getGUID(),
             ssoClient,
             triggeringAdminSession,
             call,
             getAuditData(attributes, ssoClient, azureUserObjectId),
         )
+        userGUIDMapService.addNewUser(user)
         return user
     }
 
@@ -54,7 +55,6 @@ class UserService(
         ldapUser: LdapUser,
         modifications: Array<ModificationItem>,
         triggeringAdminSession: OAuthSession?,
-        userLookupService: UserLookupService,
         call: ApplicationCall,
     ) {
         try {
@@ -63,14 +63,7 @@ class UserService(
             logger.atError().addKeyValue("UserDN", ldapUser.dn).log("Error updating user", e)
             throw e
         }
-        auditUserUpdate(
-            ldapUser.cn,
-            ldapUser.getGUID(),
-            triggeringAdminSession,
-            userLookupService,
-            call,
-            getAuditData(modifications)
-        )
+        auditUserUpdate(ldapUser.getGUID(), triggeringAdminSession, call, getAuditData(modifications))
     }
 
     suspend fun updateEmail(
@@ -94,7 +87,8 @@ class UserService(
             throw e
         }
         val auditMap = mapOf("mail" to newEmail, "Dn" to newDn)
-        auditUserUpdate(ldapUser.cn, ldapUser.getGUID(), triggeringAdminSession, userLookupService, call, auditMap)
+        auditUserUpdate(ldapUser.getGUID(), triggeringAdminSession, call, auditMap)
+        userGUIDMapService.updateUserCN(ldapUser, derivedCn)
     }
 
     suspend fun updateNotificationStatus(
@@ -111,11 +105,10 @@ class UserService(
             logger.atInfo().addKeyValue("NewSt", newStatus).log("Notification status updated")
         }
         val auditMap = mapOf("st" to newStatus)
-        auditUserUpdate(ldapUser.cn, ldapUser.getGUID(), triggeringAdminSession, userLookupService, call, auditMap)
+        auditUserUpdate(ldapUser.getGUID(), triggeringAdminSession, call, auditMap)
     }
 
     private suspend fun auditUserCreation(
-        userCN: String,
         userGUID: UUID,
         ssoClient: AzureADSSOClient?,
         triggeringAdminSession: OAuthSession?,
@@ -126,49 +119,26 @@ class UserService(
         val encodedAuditData = Json.encodeToString(auditData)
         if (triggeringAdminSession != null) {
             if (ssoUser) userAuditService.ssoUserCreatedByAdminAudit(
-                userCN,
-                userGUID,
-                triggeringAdminSession.userCn,
-                triggeringAdminSession.getUserGUID(userLookupService),
-                call,
-                encodedAuditData
+                userGUID, triggeringAdminSession.userGUID, call, encodedAuditData
             )
             else userAuditService.userCreatedByAdminAudit(
-                userCN,
-                userGUID,
-                triggeringAdminSession.userCn,
-                triggeringAdminSession.getUserGUID(userLookupService),
-                call,
-                encodedAuditData
+                userGUID, triggeringAdminSession.userGUID, call, encodedAuditData
             )
-        } else if (ssoUser) userAuditService.userCreatedBySSOAudit(
-            userCN,
-            userGUID,
-            call,
-            encodedAuditData
-        ) else userAuditService.userSelfRegisterAudit(userCN, userGUID, call, encodedAuditData)
+        } else if (ssoUser) userAuditService.userCreatedBySSOAudit(userGUID, call, encodedAuditData)
+        else userAuditService.userSelfRegisterAudit(userGUID, call, encodedAuditData)
     }
 
     private suspend fun auditUserUpdate(
-        userCN: String,
         userGUID: UUID,
         triggeringAdminSession: OAuthSession?,
-        userLookupService: UserLookupService, // TODO DT-976-2 - remove and get from session
         call: ApplicationCall,
         auditData: Map<String, String>,
     ) {
         val encodedAuditData = Json.encodeToString(auditData)
         if (triggeringAdminSession != null)
-            userAuditService.userUpdateByAdminAudit(
-                userCN,
-                userGUID,
-                triggeringAdminSession.userCn,
-                triggeringAdminSession.getUserGUID(userLookupService),
-                call,
-                encodedAuditData
-            )
+            userAuditService.userUpdateByAdminAudit(userGUID, triggeringAdminSession.userGUID, call, encodedAuditData)
         else
-            userAuditService.userUpdateAudit(userCN, userGUID, call, encodedAuditData)
+            userAuditService.userUpdateAudit(userGUID, call, encodedAuditData)
     }
 
     private fun getAuditData(
@@ -359,14 +329,14 @@ class UserService(
             val modificationArray = arrayOf(modificationItem)
             ldapServiceUserBind.useServiceUserBind {
                 it.modifyAttributes(userToReset.dn, modificationArray)
-                logger.atInfo().addKeyValue("userToResetCn", userToReset.cn).log("MFA token deleted")
+                logger.atInfo().addKeyValue("userToResetGUID", userToReset.getGUID()).log("MFA token deleted")
             }
         } catch (e: Exception) {
-            logger.atError().addKeyValue("userToResetCn", userToReset.cn).log("Error deleting MFA token", e)
+            logger.atError().addKeyValue("userToResetGUID", userToReset.getGUID()).log("Error deleting MFA token", e)
             throw e
         }
         val auditMap = mapOf("unixHomeDirectory" to "")
-        auditUserUpdate(userToReset.cn, userToReset.getGUID(), session, userLookupService, call, auditMap)
+        auditUserUpdate(userToReset.getGUID(), session, call, auditMap)
     }
 
     class ADUser {
