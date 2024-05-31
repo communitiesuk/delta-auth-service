@@ -23,6 +23,10 @@ private fun validateCN(userCN: String) {
     }
 }
 
+fun getIdentifyingParameterOrEmpty(parameters: Parameters) :String {
+    return parameters["userCN"] ?: parameters["userCn"] ?: parameters["cn"] ?: parameters["userGUID"].orEmpty()
+}
+
 suspend fun getUserGUIDFromCallParameters(
     parameters: Parameters,
     userGUIDMapService: UserGUIDMapService,
