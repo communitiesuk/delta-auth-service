@@ -14,6 +14,7 @@ import kotlin.time.Duration.Companion.minutes
 
 /*
  * Update the user_guid_map table to contain latest up to date userGUIDs and userCNs from Active Directory
+ * Should not be run on production as we will lose record of users deleted from AD
  */
 class UpdateUserGUIDMap(
     private val ldapConfig: LDAPConfig,
