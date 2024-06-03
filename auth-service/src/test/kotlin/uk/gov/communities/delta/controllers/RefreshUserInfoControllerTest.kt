@@ -136,7 +136,7 @@ class RefreshUserInfoControllerTest {
 
             coEvery { userLookupService.lookupCurrentUser(session) } answers { user }
             coEvery { userLookupService.lookupCurrentUser(adminSession) } answers { adminUser }
-            coEvery { userGUIDMapService.getGUID(userToImpersonate.cn) } returns userToImpersonate.getGUID()
+            coEvery { userGUIDMapService.getGUIDFromCN(userToImpersonate.cn) } returns userToImpersonate.getGUID()
             coEvery { userLookupService.lookupUserByGUID(userToImpersonate.getGUID()) } returns userToImpersonate
             every {
                 samlTokenService.generate(

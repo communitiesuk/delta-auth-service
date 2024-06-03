@@ -462,8 +462,8 @@ class EditAccessGroupsControllerTest {
                 client
             )
         } answers { internalUserSession }
-        coEvery { userGUIDMapService.getGUID(externalUser.cn) } returns externalUser.getGUID()
-        coEvery { userGUIDMapService.getGUID(internalUser.cn) } returns internalUser.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(externalUser.cn) } returns externalUser.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(internalUser.cn) } returns internalUser.getGUID()
         coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),

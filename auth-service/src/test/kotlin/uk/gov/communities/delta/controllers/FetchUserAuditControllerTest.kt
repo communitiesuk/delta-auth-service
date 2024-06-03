@@ -254,8 +254,8 @@ class FetchUserAuditControllerTest {
                 50
             )
             coEvery { userAuditService.getAuditForAllUsers(any(), any()) } returns listOf(userAudit, adminAudit)
-            coEvery { userGUIDMapService.getGUID(adminUser.cn) } returns adminUser.getGUID()
-            coEvery { userGUIDMapService.getGUID(regularUser.cn) } returns regularUser.getGUID()
+            coEvery { userGUIDMapService.getGUIDFromCN(adminUser.cn) } returns adminUser.getGUID()
+            coEvery { userGUIDMapService.getGUIDFromCN(regularUser.cn) } returns regularUser.getGUID()
 
             controller = FetchUserAuditController(
                 userLookupService,

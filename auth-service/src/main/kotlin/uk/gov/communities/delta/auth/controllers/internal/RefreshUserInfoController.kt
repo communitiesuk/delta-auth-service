@@ -78,7 +78,7 @@ class RefreshUserInfoController(
                 "User CN and GUID both not present on impersonating_user",
                 "Something went wrong, please try again"
             )
-            impersonatedUserGUID = userGUIDMapService.getGUID(impersonatedUsersCn)
+            impersonatedUserGUID = userGUIDMapService.getGUIDFromCN(impersonatedUsersCn)
         } else {
             if (!Strings.isNullOrEmpty(impersonatedUsersCn)) throw UserVisibleServerError(
                 "impersonating_user_both_user_cn_and_guid",

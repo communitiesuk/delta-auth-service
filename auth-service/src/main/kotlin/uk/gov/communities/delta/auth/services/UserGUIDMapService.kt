@@ -17,7 +17,7 @@ class UserGUIDMapService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun userGUIDIfExists(userEmail: String): UUID? {
+    suspend fun userGUIDFromEmailIfExists(userEmail: String): UUID? {
         return try {
             getGUIDFromEmail(userEmail)
         } catch (e: NoUserException) {
@@ -26,20 +26,40 @@ class UserGUIDMapService(
     }
 
     suspend fun getGUIDFromEmail(email: String): UUID {
-        return getGUID(LDAPConfig.emailToCN(email))
-    }
-
-    suspend fun getGUID(userCN: String): UUID {
+        val cn = LDAPConfig.emailToCN(email)
         try {
             return withContext(Dispatchers.IO) {
                 dbPool.useConnectionBlocking("user_guid_read") {
-                    userGUIDMapRepo.getGUIDForUser(it, userCN)
+                    userGUIDMapRepo.getGUIDForUserCNCaseInsensitive(it, cn)
+                }
+            }
+        } catch (e: NoUserException) {
+            val user = userLookupService.lookupUserByCN(cn)
+            // NB: this should not be used in production or staging but may occur on test or dev due to shared AD
+            logger.atWarn().addKeyValue("lookupUserGUID", user.getGUID()).addKeyValue("lookupUserCN", cn)
+                .log("Email lookup: User existed in AD but was not found in user_guid_map, will add")
+            addMissingUser(user)
+            return user.getGUID()
+        }
+    }
+
+    suspend fun getGUIDFromCN(userCN: String): UUID {
+        try {
+            return withContext(Dispatchers.IO) {
+                dbPool.useConnectionBlocking("user_guid_read") {
+                    userGUIDMapRepo.getGUIDForUserCNCaseSensitive(it, userCN)
                 }
             }
         } catch (e: NoUserException) {
             val user = userLookupService.lookupUserByCN(userCN)
-            // NB: this should not be used in production or staging but may occur on test or dev due to shared AD
-            logger.atWarn().log("User with GUID {} existed in AD but was not found in user_guid_map", user.getGUID())
+            if (user.cn != userCN) {
+                logger.atWarn().addKeyValue("suppliedCN", userCN).addKeyValue("actualCN", user.cn)
+                    .log("Incorrect CN used when looking up user - is the casing wrong? Updating user_guid_map in case it is wrong there")
+            } else {
+                // NB: this should not be used in production or staging but may occur on test or dev due to shared AD
+                logger.atWarn().addKeyValue("lookupUserGUID", user.getGUID()).addKeyValue("lookupUserCN", userCN)
+                    .log("CN lookup: User existed in AD but was not found in user_guid_map, will add")
+            }
             addMissingUser(user)
             return user.getGUID()
         }

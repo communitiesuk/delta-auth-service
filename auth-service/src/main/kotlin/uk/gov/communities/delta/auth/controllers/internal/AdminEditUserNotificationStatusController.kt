@@ -30,7 +30,7 @@ class AdminEditUserNotificationStatusController(
 
         val requestData = call.receive<DeltaChangeNotificationStatusRequest>()
 
-        val userToEditGUID = userGUIDMapService.getGUID(requestData.userToEditCn)
+        val userToEditGUID = userGUIDMapService.getGUIDFromCN(requestData.userToEditCn)
         val userToEdit = userLookupService.lookupUserByGUID(userToEditGUID)
         logger.atInfo().log(
             "Updating notification status for user {} to {}",

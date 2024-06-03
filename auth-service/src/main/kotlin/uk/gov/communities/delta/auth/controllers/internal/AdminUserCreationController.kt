@@ -48,7 +48,7 @@ class AdminUserCreationController(
             ssoClient,
         )
 
-        when (userGUIDMapService.userGUIDIfExists(adUser.mail)) {
+        when (userGUIDMapService.userGUIDFromEmailIfExists(adUser.mail)) {
             is UUID -> {
                 logger.atWarn().addKeyValue("email", adUser.mail).addKeyValue("UserDN", adUser.dn)
                     .log("User being made by admin already exists")

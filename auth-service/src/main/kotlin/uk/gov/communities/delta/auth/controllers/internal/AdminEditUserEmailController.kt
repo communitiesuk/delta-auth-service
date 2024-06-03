@@ -36,7 +36,7 @@ class AdminEditUserEmailController(
         val requestedEmail = requestData.newEmail
 
         // TODO DT-1022 - get GUID from request directly
-        val userToEditGUID = userGUIDMapService.getGUID(requestData.userToEditCn)
+        val userToEditGUID = userGUIDMapService.getGUIDFromCN(requestData.userToEditCn)
         val userToEdit = userLookupService.lookupUserByGUID(userToEditGUID)
 
         validateEmail(requestedEmail)

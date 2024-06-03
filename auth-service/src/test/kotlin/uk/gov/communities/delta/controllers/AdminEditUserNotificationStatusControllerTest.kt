@@ -117,7 +117,7 @@ class AdminEditUserNotificationStatusControllerTest {
             ), organisations = listOf(), accessGroups = listOf()
         )
         coEvery { userService.updateNotificationStatus(userToUpdate, any(), any(), any()) } just runs
-        coEvery { userGUIDMapService.getGUID(userToUpdate.cn) } returns userToUpdate.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(userToUpdate.cn) } returns userToUpdate.getGUID()
     }
 
     companion object {

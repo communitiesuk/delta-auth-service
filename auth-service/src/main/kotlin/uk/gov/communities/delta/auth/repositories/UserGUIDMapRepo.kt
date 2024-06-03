@@ -17,7 +17,16 @@ class UserGUIDMapRepo {
     }
 
     @Blocking
-    fun getGUIDForUser(conn: Connection, userCN: String): UUID {
+    fun getGUIDForUserCNCaseInsensitive(conn: Connection, userCN: String): UUID {
+        val stmt = conn.prepareStatement("SELECT user_guid FROM user_guid_map WHERE lowercase_user_cn = ?")
+        stmt.setObject(1, userCN.lowercase())
+        val result = stmt.executeQuery()
+        if (!result.next()) throw NoUserException("No user found with lowercased userCN $userCN")
+        else return result.getObject("user_guid", UUID::class.java)
+    }
+
+    @Blocking
+    fun getGUIDForUserCNCaseSensitive(conn: Connection, userCN: String): UUID {
         val stmt = conn.prepareStatement("SELECT user_guid FROM user_guid_map WHERE user_cn = ?")
         stmt.setObject(1, userCN)
         val result = stmt.executeQuery()

@@ -122,8 +122,8 @@ class AdminGetUserControllerTest {
             ),
             organisations, accessGroups
         )
-        coEvery { userGUIDMapService.getGUID(any()) } throws NoUserException("Test exception")
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(any()) } throws NoUserException("Test exception")
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
     }
 
     companion object {

@@ -46,7 +46,7 @@ suspend fun getUserGUIDFromCallParameters(
             userVisibleErrorMessage
         )
         validateCN(userCN)
-        userGUIDMapService.getGUID(userCN)
+        userGUIDMapService.getGUIDFromCN(userCN)
     } else {
         if (!Strings.isNullOrEmpty(userCN)) throw UserVisibleServerError(
             action + "_both_user_cn_and_guid",

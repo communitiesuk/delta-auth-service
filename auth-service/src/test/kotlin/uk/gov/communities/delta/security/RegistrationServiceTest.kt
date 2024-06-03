@@ -42,7 +42,7 @@ class RegistrationServiceTest {
 
     @Before
     fun setup() {
-        coEvery { userGUIDMapService.userGUIDIfExists(any()) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(any()) } returns null
         coEvery { groupService.addUserToGroup(any(), any(), any(), null) } just runs
         coEvery { userService.createUser(any(), any(), any(), any(), any()) } returns testLdapUser()
         coEvery { setPasswordTokenService.createToken(any()) } returns "token"
@@ -132,7 +132,7 @@ class RegistrationServiceTest {
 
     @Test
     fun testRegisteringExistingStandardUser() = testSuspend {
-        coEvery { userGUIDMapService.userGUIDIfExists(user.email!!) } returns user.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(user.email!!) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
         val registrationResult = registrationService.register(
             Registration(user.firstName, user.lastName, user.email!!),

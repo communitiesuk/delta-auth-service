@@ -79,7 +79,7 @@ class DeltaSSOLoginController(
 
         logger.info("OAuth callback successfully authenticated user with email {}, checking in on-prem AD", email)
 
-        var userGUID = userGUIDMapService.userGUIDIfExists(email)
+        var userGUID = userGUIDMapService.userGUIDFromEmailIfExists(email)
         if (userGUID == null) {
             if (!ssoClient.required) {
                 logger.info("User {} not found in AD, and SSO is not required, so redirecting to register page", email)
@@ -100,7 +100,7 @@ class DeltaSSOLoginController(
                 logger.error("Error creating SSO User, result was {}", registrationResult.toString())
                 throw Exception("Error creating SSO User")
             }
-            userGUID = userGUIDMapService.userGUIDIfExists(email)!!
+            userGUID = userGUIDMapService.userGUIDFromEmailIfExists(email)!!
         }
 
         val user = ldapLookupService.lookupUserByGUID(userGUID)

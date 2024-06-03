@@ -89,7 +89,7 @@ class AdminResetMfaTokenControllerTest {
             ), listOf(), listOf()
         )
         coEvery { userService.resetMfaToken(userToUpdate, any(), any()) } just runs
-        coEvery { userGUIDMapService.getGUID(userToUpdate.cn) } returns userToUpdate.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(userToUpdate.cn) } returns userToUpdate.getGUID()
     }
 
     companion object {
