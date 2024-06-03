@@ -42,7 +42,7 @@ class RegistrationService(
     ): RegistrationResult {
         val adUser = UserService.ADUser(ldapConfig, registration, ssoClient)
 
-        when (val userGUID = userGUIDMapService.userGUIDIfExists(adUser.mail)) {
+        when (val userGUID = userGUIDMapService.userGUIDFromEmailIfExists(adUser.mail)) {
             is UUID -> {
                 logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
                 val user = userLookupService.lookupUserByGUID(userGUID)

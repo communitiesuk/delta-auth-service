@@ -275,9 +275,9 @@ class AdminEditUserControllerTest {
             runBlocking { organisationService.findAllNamesAndCodes() },
             runBlocking { accessGroupsService.getAllAccessGroups() }
         )
-        coEvery { userGUIDMapService.getGUID(any()) } throws NoUserException("Test exception")
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
-        coEvery { userGUIDMapService.getGUID(unchangedUser.cn) } returns unchangedUser.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(any()) } throws NoUserException("Test exception")
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(unchangedUser.cn) } returns unchangedUser.getGUID()
         coEvery { userService.updateUser(user, capture(modifications), adminSession, any()) } just runs
         coEvery { groupService.addUserToGroup(user, any(), any(), adminSession) } just runs
         coEvery { groupService.removeUserFromGroup(user, any(), any(), adminSession) } just runs

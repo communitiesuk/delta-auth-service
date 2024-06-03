@@ -105,7 +105,7 @@ class AdminEditUserEmailControllerTest {
                 client
             )
         } answers { nonAdminSession }
-        coEvery { userGUIDMapService.getGUID(userToUpdate.cn) } returns userToUpdate.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(userToUpdate.cn) } returns userToUpdate.getGUID()
         coEvery { userLookupService.lookupUserByGUID(userToUpdate.getGUID()) } returns userToUpdate
         coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
         coEvery { userLookupService.lookupCurrentUser(nonAdminSession) } returns nonAdminUser

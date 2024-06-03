@@ -34,7 +34,7 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testEnableUser() = testSuspend {
         val user = testLdapUser(cn = "user!example.com", accountEnabled = false)
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         enableRequestAsAdminUser(user).apply {
@@ -50,7 +50,7 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testUserAlreadyEnabled() = testSuspend {
         val user = testLdapUser(cn = "user!example.com", accountEnabled = true)
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         enableRequestAsAdminUser(user).apply {
@@ -62,7 +62,7 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testUserNoPassword() {
         val user = testLdapUser(cn = "user!example.com", passwordLastSet = null, accountEnabled = false)
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         Assert.assertThrows(ApiError::class.java) {
@@ -83,7 +83,7 @@ class AdminEnableDisableUserControllerTest {
             passwordLastSet = null,
             accountEnabled = false
         )
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
 
         enableRequestAsAdminUser(user).apply {
@@ -118,7 +118,7 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testDisableUser() = testSuspend {
         val user = testLdapUser(cn = "user!example.com")
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
         coEvery { setPasswordTokenService.clearTokenForUserGUID(user.getGUID()) } just runs
 
@@ -140,7 +140,7 @@ class AdminEnableDisableUserControllerTest {
     @Test
     fun testUserAlreadyDisabled() = testSuspend {
         val user = testLdapUser(cn = "user!example.com", accountEnabled = false)
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
         disableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)

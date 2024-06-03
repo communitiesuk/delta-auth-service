@@ -30,7 +30,7 @@ class AdminResetMfaTokenController (
 
         val requestData = call.receive<DeltaResetMfaTokenRequest>()
 
-        val userToEditGUID = userGUIDMapService.getGUID(requestData.userToEditCn) // TODO DT-1022 - get GUID directly
+        val userToEditGUID = userGUIDMapService.getGUIDFromCN(requestData.userToEditCn) // TODO DT-1022 - get GUID directly
         val userToEdit = userLookupService.lookupUserByGUID(userToEditGUID)
         logger.atInfo().log("Resetting MFA token for user {}", userToEdit.getGUID())
 

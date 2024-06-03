@@ -35,7 +35,7 @@ class EditAccessGroupsController(
 
         val addGroupRequest = call.receive<DeltaUserSingleAccessGroupOrganisationsRequest>()
         // TODO DT-1022 - get GUID directly from call
-        val targetUserGUID = userGUIDMapService.getGUID(addGroupRequest.userToEditCn)
+        val targetUserGUID = userGUIDMapService.getGUIDFromCN(addGroupRequest.userToEditCn)
         val (targetUser, targetUserRoles) = userLookupService.lookupUserByGUIDAndLoadRoles(targetUserGUID)
 
         val targetGroupName = addGroupRequest.accessGroupName
@@ -90,7 +90,7 @@ class EditAccessGroupsController(
 
         val removeGroupRequest = call.receive<DeltaUserSingleAccessGroupRequest>()
         // TODO DT-1022 - get GUID directly from call
-        val targetUserGUID = userGUIDMapService.getGUID(removeGroupRequest.userToEditCn)
+        val targetUserGUID = userGUIDMapService.getGUIDFromCN(removeGroupRequest.userToEditCn)
         val targetUser = userLookupService.lookupUserByGUID(targetUserGUID)
 
         val targetGroupName = removeGroupRequest.accessGroupName

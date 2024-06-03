@@ -292,12 +292,12 @@ class AdminUserCreationControllerTest {
         coEvery { oauthSessionService.retrieveFromAuthToken(userSession.authToken, client) } answers { userSession }
         coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
         coEvery { userLookupService.lookupCurrentUser(userSession) } returns regularUser
-        coEvery { userGUIDMapService.userGUIDIfExists(NEW_STANDARD_USER_EMAIL) } returns null
-        coEvery { userGUIDMapService.userGUIDIfExists(NEW_INVALID_USER_EMAIL) } returns null
-        coEvery { userGUIDMapService.userGUIDIfExists(NEW_SSO_USER_EMAIL) } returns null
-        coEvery { userGUIDMapService.userGUIDIfExists(NEW_NOT_REQUIRED_SSO_USER) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_STANDARD_USER_EMAIL) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_INVALID_USER_EMAIL) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_SSO_USER_EMAIL) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_NOT_REQUIRED_SSO_USER) } returns null
         coEvery {
-            userGUIDMapService.userGUIDIfExists(OLD_STANDARD_USER_EMAIL)
+            userGUIDMapService.userGUIDFromEmailIfExists(OLD_STANDARD_USER_EMAIL)
         } returns getLdapUserWithDetails(OLD_STANDARD_USER_EMAIL).getGUID()
         coEvery { groupService.addUserToGroup(any(), any(), any(), any()) } just runs
         coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any()) } just runs

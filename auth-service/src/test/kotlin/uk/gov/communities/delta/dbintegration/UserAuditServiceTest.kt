@@ -27,7 +27,7 @@ class UserAuditServiceTest {
         testDbPool.useConnectionBlocking("add_test_user_to_guid_map") {
             userGUIDMapRepo.newUser(it, testLdapUser(cn = userCN, javaUUIDObjectGuid = userGUID.toString()))
             it.commit()
-            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUser(it, userCN))
+            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUserCNCaseSensitive(it, userCN))
         }
         assertEquals(0, service.getAuditForUser(userGUID).size)
 
@@ -48,7 +48,7 @@ class UserAuditServiceTest {
         testDbPool.useConnectionBlocking("add_test_user_to_guid_map") {
             userGUIDMapRepo.newUser(it, testLdapUser(cn = userCN, javaUUIDObjectGuid = userGUID.toString()))
             it.commit()
-            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUser(it, userCN))
+            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUserCNCaseSensitive(it, userCN))
         }
         service.userSSOLoginAudit(
             userGUID,

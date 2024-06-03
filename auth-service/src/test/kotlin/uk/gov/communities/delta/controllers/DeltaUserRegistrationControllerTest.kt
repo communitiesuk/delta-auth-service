@@ -52,7 +52,7 @@ class DeltaUserRegistrationControllerTest {
     @Test
     fun testRegistrationForNewStandardUser() = testSuspend {
         val user = testLdapUser(email = emailStart + standardDomain, cn = cnStart + standardDomain)
-        coEvery { userGUIDMapService.userGUIDIfExists(user.email!!) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(user.email!!) } returns null
         coEvery { userService.createUser(any(), any(), any(), any()) } returns user
         testClient.submitForm(
             url = "/register",
@@ -116,7 +116,7 @@ class DeltaUserRegistrationControllerTest {
     @Test
     fun testRegistrationForAlreadyExistingStandardUser() = testSuspend {
         val user = testLdapUser(email = emailStart + standardDomain)
-        coEvery { userGUIDMapService.userGUIDIfExists(user.email!!) } returns user.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(user.email!!) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
         testClient.submitForm(
             url = "/register",
@@ -150,7 +150,7 @@ class DeltaUserRegistrationControllerTest {
 
     @Test
     fun testRegistrationOfNewNotRequiredSSOUser() = testSuspend {
-        coEvery { userGUIDMapService.userGUIDIfExists(emailStart + notRequiredDomain) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(emailStart + notRequiredDomain) } returns null
         val user = testLdapUser(email = emailStart + notRequiredDomain, cn = cnStart + notRequiredDomain)
         coEvery { userService.createUser(any(), any(), any(), any()) } returns user
         testClient.submitForm(
@@ -171,7 +171,7 @@ class DeltaUserRegistrationControllerTest {
     @Test
     fun testRegistrationOfExistingNotRequiredSSOUser() = testSuspend {
         val user = testLdapUser(email = emailStart + notRequiredDomain, cn = cnStart + notRequiredDomain)
-        coEvery { userGUIDMapService.userGUIDIfExists(user.email!!) } returns user.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(user.email!!) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
         testClient.submitForm(
             url = "/register",

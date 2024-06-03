@@ -219,7 +219,7 @@ class DeltaResetPasswordControllerTest {
         coEvery { resetPasswordTokenService.createToken(user.getGUID()) } returns "token"
         coEvery { userService.resetPassword(user.getGUID(), validPassword) } just runs
         coEvery { emailService.sendResetPasswordEmail(any(), any(), null, any()) } just runs
-        coEvery { userGUIDMapService.getGUID(user.cn) } returns user.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
     }
 

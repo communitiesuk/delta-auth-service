@@ -141,7 +141,7 @@ class OAuthSSOLoginTest {
 
     @Test
     fun `Callback redirects to register page if no ldap user for non-required SSO client`() = testSuspend {
-        coEvery { userGUIDMapService.userGUIDIfExists(testUser.email!!) } returns null andThen testUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(testUser.email!!) } returns null andThen testUser.getGUID()
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         coEvery {
@@ -161,7 +161,7 @@ class OAuthSSOLoginTest {
     fun `Callback calls register function if no ldap user for required SSO client`() = testSuspend {
         val requiredSsoClient = ssoClient.copy(required = true)
         every { ssoConfig.ssoClients } answers { listOf(requiredSsoClient) }
-        coEvery { userGUIDMapService.userGUIDIfExists(testUser.email!!) } returns null andThen testUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(testUser.email!!) } returns null andThen testUser.getGUID()
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         coEvery {
@@ -186,7 +186,7 @@ class OAuthSSOLoginTest {
             memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER),
             accountEnabled = false
         )
-        coEvery { userGUIDMapService.userGUIDIfExists(disabledUser.email!!) } returns disabledUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(disabledUser.email!!) } returns disabledUser.getGUID()
         coEvery { ldapUserLookupServiceMock.lookupUserByGUID(disabledUser.getGUID()) } returns disabledUser
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
@@ -198,7 +198,7 @@ class OAuthSSOLoginTest {
     @Test
     fun `Callback returns error if user has no email`() {
         val noEmailUser = testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER), email = null)
-        coEvery { userGUIDMapService.userGUIDIfExists(tokenEmail) } returns noEmailUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(tokenEmail) } returns noEmailUser.getGUID()
         coEvery { ldapUserLookupServiceMock.lookupUserByGUID(noEmailUser.getGUID()) } returns noEmailUser
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
@@ -210,7 +210,7 @@ class OAuthSSOLoginTest {
     @Test
     fun `Callback returns error if user is not in Delta users group`() {
         val userNotInUserGroup = testLdapUser(memberOfCNs = listOf("some-other-group"))
-        coEvery { userGUIDMapService.userGUIDIfExists(tokenEmail) } returns userNotInUserGroup.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(tokenEmail) } returns userNotInUserGroup.getGUID()
         coEvery { ldapUserLookupServiceMock.lookupUserByGUID(userNotInUserGroup.getGUID()) } returns userNotInUserGroup
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
@@ -245,7 +245,7 @@ class OAuthSSOLoginTest {
                 email = tokenEmail,
                 memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_ADMIN)
             )
-        coEvery { userGUIDMapService.userGUIDIfExists(adminUser.email!!) } returns adminUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(adminUser.email!!) } returns adminUser.getGUID()
         coEvery { ldapUserLookupServiceMock.lookupUserByGUID(adminUser.getGUID()) } returns adminUser
         coEvery {
             authorizationCodeServiceMock.generateAndStore(adminUser.getGUID(), serviceClient, any(), true)
@@ -320,8 +320,8 @@ class OAuthSSOLoginTest {
     @Before
     fun setupMocks() {
         clearAllMocks()
-        coEvery { userGUIDMapService.userGUIDIfExists(testUser.email!!) } returns testUser.getGUID()
-        coEvery { userGUIDMapService.userGUIDIfExists(domainUser.email!!) } returns domainUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(testUser.email!!) } returns testUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(domainUser.email!!) } returns domainUser.getGUID()
         coEvery { ldapUserLookupServiceMock.lookupUserByGUID(testUser.getGUID()) } returns testUser
         coEvery { ldapUserLookupServiceMock.lookupUserByGUID(domainUser.getGUID()) } returns domainUser
         coEvery {
