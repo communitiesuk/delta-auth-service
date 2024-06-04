@@ -132,3 +132,21 @@ data "aws_secretsmanager_secret" "delta_ses_credentials" {
 
   name = var.mail_settings.smtp_secret_name
 }
+
+resource "random_password" "client_secret_delta_api" {
+  length  = 32
+  special = false
+}
+
+# No CMK, secret is shared between multiple services
+# tfsec:ignore:aws-ssm-secret-use-customer-key
+resource "aws_secretsmanager_secret" "client_secret_delta_api" {
+  name                    = "tf-${var.environment}-delta-api-client-secret"
+  description             = "Shared secret for Delta API Gateway -> auth service for internal API calls"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "client_secret_delta_api" {
+  secret_id     = aws_secretsmanager_secret.client_secret_delta_api.id
+  secret_string = random_password.client_secret_delta_api.result
+}

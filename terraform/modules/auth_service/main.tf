@@ -167,6 +167,10 @@ module "fargate" {
       name      = "AZ_SSO_CLIENTS_JSON"
       valueFrom = data.aws_secretsmanager_secret.sso_config.arn
     },
+    {
+      name      = "CLIENT_SECRET_DELTA_API"
+      valueFrom = aws_secretsmanager_secret.client_secret_delta_api.arn
+    },
     var.delta_website_local_dev_client_secret_arn == null ? null : {
       name      = "CLIENT_SECRET_DELTA_WEBSITE_DEV"
       valueFrom = var.delta_website_local_dev_client_secret_arn
