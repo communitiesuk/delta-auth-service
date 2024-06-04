@@ -13,7 +13,7 @@ data "aws_secretsmanager_secret" "delta_saml_private_key" {
   name = "delta-saml-private-key-${var.environment}"
 }
 
-data "aws_secretsmanager_secret" "delta_saml_private_key" {
+data "aws_secretsmanager_secret" "delta_saml_certificate" {
   name = "delta-saml-certificate-${var.environment}"
 }
 
