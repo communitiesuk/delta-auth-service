@@ -11,10 +11,7 @@ import io.ktor.server.thymeleaf.*
 import io.micrometer.core.instrument.Counter
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.LoginSessionCookie
-import uk.gov.communities.delta.auth.config.AzureADSSOClient
-import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
+import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.oauthClientLoginRoute
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
@@ -152,7 +149,7 @@ class DeltaLoginController(
             username = formUsername,
         )
 
-        val cn = formUsername.replace('@', '!')
+        val cn = LDAPConfig.emailToCN(formUsername)
         when (val loginResult = ldapService.ldapLogin(cn, password)) {
             is IADLdapLoginService.LdapLoginFailure -> {
                 // There's a risk of logging passwords accidentally typed into the username box,
@@ -195,11 +192,14 @@ class DeltaLoginController(
                 }
 
                 val authCode = authorizationCodeService.generateAndStore(
-                    userCn = loginResult.user.cn, client = client, traceId = call.callId!!, isSso = false
+                    loginResult.user.getGUID(),
+                    client = client,
+                    traceId = call.callId!!,
+                    isSso = false
                 )
 
                 logger.atInfo().withAuthCode(authCode).log("Successful login")
-                userAuditService.userFormLoginAudit(loginResult.user.cn, call)
+                userAuditService.userFormLoginAudit(loginResult.user.getGUID(), call)
                 successfulLoginCounter.increment(1.0)
                 call.respondRedirect(client.deltaWebsiteUrl + "/login/oauth2/redirect?code=${authCode.code}&state=${queryParams.state.encodeURLParameter()}")
             }

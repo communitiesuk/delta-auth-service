@@ -14,9 +14,12 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.external.ResetPasswordException
 import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
+import uk.gov.communities.delta.auth.repositories.LdapRepository
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.helper.testLdapUser
 import java.time.Instant
+import java.util.*
 import javax.naming.directory.Attributes
 import javax.naming.directory.BasicAttribute
 import javax.naming.directory.DirContext
@@ -30,26 +33,50 @@ class UserServiceTest {
     private val deltaUserDnFormat = "CN=%s"
     private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
     private val userLookupService = mockk<UserLookupService>()
+    private val userGUIDMapService = mockk<UserGUIDMapService>()
     private val userAuditService = mockk<UserAuditService>()
-    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig)
-    private val userEmail = "user@example.com"
-    private val registration = Registration("Test", "User", userEmail)
+    private val ldapRepository = mockk<LdapRepository>()
+    private val userService =
+        UserService(
+            ldapServiceUserBind,
+            userLookupService,
+            userGUIDMapService,
+            userAuditService,
+            ldapConfig,
+            ldapRepository
+        )
+    private val user = testLdapUser(
+        dn = String.format(deltaUserDnFormat, "user!example.com"),
+        cn = "user!example.com",
+        email = "user@example.com",
+        memberOfCNs = listOf("group-1", "group-2"),
+        comment = "test comment",
+    )
+    private val registration = Registration("Test", "User", user.email!!)
     private val container = slot<Attributes>()
     private val modificationItems = slot<Array<ModificationItem>>()
     private val context = mockk<InitialLdapContext>()
-    private val contextBlock = slot<(InitialLdapContext) -> Unit>()
-    private val userCN = LDAPConfig.emailToCN(userEmail)
-    private val userDN = String.format(deltaUserDnFormat, userCN)
+    private val contextBlock = slot<(InitialLdapContext) -> LdapUser>()
+
     private val call = mockk<ApplicationCall>()
     private val requiredSSOClient = mockk<AzureADSSOClient>()
     private val notRequiredSSOClient = mockk<AzureADSSOClient>()
     private val auditData = slot<String>()
     private val adminSession =
-        OAuthSession(1, "adminUserCN", mockk(relaxed = true), "adminAccessToken", Instant.now(), "trace", false)
+        OAuthSession(
+            1,
+            "adminUserCN",
+            UUID.randomUUID(),
+            mockk(relaxed = true),
+            "adminAccessToken",
+            Instant.now(),
+            "trace",
+            false
+        )
     private val testUserDetails = DeltaUserDetailsRequest(
-        userEmail,
+        user.email!!,
         false,
-        userEmail,
+        user.email!!,
         "testLast",
         "testFirst",
         "0123456789",
@@ -75,46 +102,35 @@ class UserServiceTest {
         coEvery { ldapServiceUserBind.useServiceUserBind(capture(contextBlock)) } coAnswers {
             contextBlock.captured(context)
         }
-        coEvery { context.createSubcontext(userDN, capture(container)) } coAnswers { nothing }
-        coEvery { context.modifyAttributes(userDN, capture(modificationItems)) } coAnswers { nothing }
+        coEvery { context.createSubcontext(user.dn, capture(container)) } coAnswers { nothing }
+        coEvery { context.modifyAttributes(user.dn, capture(modificationItems)) } coAnswers { nothing }
+        coEvery { ldapRepository.mapUserFromContext(context, user.dn) } returns user
         coEvery { requiredSSOClient.internalId } returns "abc-123"
         coEvery { requiredSSOClient.required } returns true
         coEvery { notRequiredSSOClient.internalId } returns "xyz-987"
         coEvery { notRequiredSSOClient.required } returns false
-        coEvery { userAuditService.userSelfRegisterAudit(userCN, call, capture(auditData)) } just runs
-        coEvery { userAuditService.userCreatedBySSOAudit(userCN, call, capture(auditData)) } just runs
+        coEvery { userAuditService.userSelfRegisterAudit(user.getGUID(), call, capture(auditData)) } just runs
+        coEvery { userAuditService.userCreatedBySSOAudit(user.getGUID(), call, capture(auditData)) } just runs
         coEvery {
-            userAuditService.ssoUserCreatedByAdminAudit(
-                userCN,
-                adminSession.userCn,
-                call,
-                capture(auditData)
-            )
+            userAuditService.ssoUserCreatedByAdminAudit(user.getGUID(), adminSession.userGUID, call, capture(auditData))
         } just runs
         coEvery {
-            userAuditService.userCreatedByAdminAudit(
-                userCN,
-                adminSession.userCn,
-                call,
-                capture(auditData)
-            )
+            userAuditService.userCreatedByAdminAudit(user.getGUID(), adminSession.userGUID, call, capture(auditData))
         } just runs
         coEvery {
-            userAuditService.userUpdateByAdminAudit(
-                userCN,
-                adminSession.userCn,
-                call,
-                capture(auditData)
-            )
+            userAuditService.userUpdateByAdminAudit(user.getGUID(), adminSession.userGUID, call, capture(auditData))
         } just runs
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
+        coEvery { userGUIDMapService.addNewUser(user) } just runs
     }
 
     @Test
     fun testCreateStandardUser() = testSuspend {
         userService.createUser(UserService.ADUser(ldapConfig, registration, null), null, null, call)
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and disabled account
-        assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
+        assertEquals("514", container.captured.get("userAccountControl").get() as String)
         // User has no password set yet
         assert(container.captured.get("unicodePwd") == null)
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
@@ -128,9 +144,10 @@ class UserServiceTest {
     @Test
     fun testCreateStandardUserWithAllDetails() = testSuspend {
         userService.createUser(UserService.ADUser(ldapConfig, testUserDetails, null), null, null, call)
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and disabled account
-        assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
+        assertEquals("514", container.captured.get("userAccountControl").get() as String)
         // User has no password set yet
         assert(container.captured.get("unicodePwd") == null)
         assertContains(auditData.captured, "\"givenName\":\"${testUserDetails.firstName}\"")
@@ -147,9 +164,10 @@ class UserServiceTest {
     @Test
     fun testAdminCreateStandardUser() = testSuspend {
         userService.createUser(UserService.ADUser(ldapConfig, registration, null), null, adminSession, call)
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and disabled account
-        assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
+        assertEquals("514", container.captured.get("userAccountControl").get() as String)
         // User has no password set yet
         assert(container.captured.get("unicodePwd") == null)
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
@@ -168,9 +186,10 @@ class UserServiceTest {
             null,
             call
         )
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and enabled account
-        assertEquals<String>("512", container.captured.get("userAccountControl").get() as String)
+        assertEquals("512", container.captured.get("userAccountControl").get() as String)
         // User has had a password set at account creation
         assert(container.captured.get("unicodePwd").get() as ByteArray? != null)
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
@@ -189,9 +208,10 @@ class UserServiceTest {
             adminSession,
             call
         )
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and enabled account
-        assertEquals<String>("512", container.captured.get("userAccountControl").get() as String)
+        assertEquals("512", container.captured.get("userAccountControl").get() as String)
         // User has had a password set at account creation
         assert(container.captured.get("unicodePwd").get() as ByteArray? != null)
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
@@ -212,9 +232,10 @@ class UserServiceTest {
             call,
             azureObjectId
         )
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and enabled account
-        assertEquals<String>("512", container.captured.get("userAccountControl").get() as String)
+        assertEquals("512", container.captured.get("userAccountControl").get() as String)
         // User has had a password set at account creation
         assert(container.captured.get("unicodePwd").get() as ByteArray? != null)
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
@@ -233,9 +254,10 @@ class UserServiceTest {
             null,
             call
         )
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and disabled account
-        assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
+        assertEquals("514", container.captured.get("userAccountControl").get() as String)
         // User has no password set yet
         assert(container.captured.get("unicodePwd") == null)
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
@@ -254,9 +276,10 @@ class UserServiceTest {
             adminSession,
             call
         )
-        verify(exactly = 1) { context.createSubcontext(userDN, any()) }
+        coVerify(exactly = 1) { userGUIDMapService.addNewUser(user) }
+        verify(exactly = 1) { context.createSubcontext(user.dn, any()) }
         // User has normal and disabled account
-        assertEquals<String>("514", container.captured.get("userAccountControl").get() as String)
+        assertEquals("514", container.captured.get("userAccountControl").get() as String)
         // User has no password set yet
         assert(container.captured.get("unicodePwd") == null)
         assertContains(auditData.captured, "\"givenName\":\"${registration.firstName}\"")
@@ -274,28 +297,40 @@ class UserServiceTest {
             ModificationItem(DirContext.ADD_ATTRIBUTE, BasicAttribute("description", "test reasonForAccess")),
             ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("sn", "test new surname"))
         )
-        userService.updateUser(
-            testLdapUser(
-                cn = userCN,
-                dn = userDN,
-                memberOfCNs = listOf("group-1", "group-2"),
-                comment = "test comment"
-            ),
-            modificationItems,
-            adminSession,
-            call,
-        )
-        verify(exactly = 1) { context.modifyAttributes(userDN, modificationItems) }
+        userService.updateUser(user, modificationItems, adminSession, call)
+        verify(exactly = 1) { context.modifyAttributes(user.dn, modificationItems) }
         assertEquals(
             auditData.captured,
             "{\"comment\":\"\",\"description\":\"test reasonForAccess\",\"sn\":\"test new surname\"}"
         )
+        confirmVerified(userGUIDMapService)
+    }
+
+    @Test
+    fun testAdminUpdateUserEmail() = testSuspend {
+        val newEmail = "newEmail@test.com"
+        val newDN = "CN=newEmail!test.com"
+        coEvery { context.modifyAttributes(newDN, capture(modificationItems)) } coAnswers { nothing }
+        coEvery { context.rename(user.dn, newDN) } coAnswers { nothing }
+        coEvery { userGUIDMapService.updateUserCN(any(), any()) } just runs
+        userService.updateEmail(user, newEmail, adminSession, call)
+        verify(exactly = 1) { context.rename(user.dn, newDN) }
+        assertEquals(modificationItems.captured.size, 1)
+        assertEquals(modificationItems.captured[0].modificationOp, DirContext.REPLACE_ATTRIBUTE)
+        assertEquals(modificationItems.captured[0].attribute, BasicAttribute("mail", newEmail))
+        verify(exactly = 1) { context.modifyAttributes(newDN, any()) }
+        confirmVerified(context)
+        assertEquals(
+            auditData.captured,
+            "{\"mail\":\"newEmail@test.com\",\"Dn\":\"CN=newEmail!test.com\"}"
+        )
+        coVerify(exactly = 1) { userGUIDMapService.updateUserCN(user, LDAPConfig.emailToCN(newEmail)) }
     }
 
     @Test
     fun testSetUserPassword() = testSuspend {
-        userService.setPasswordAndEnable(userDN, "TestPassword")
-        verify(exactly = 1) { context.modifyAttributes(userDN, any()) }
+        userService.setPasswordAndEnable(user.dn, "TestPassword")
+        verify(exactly = 1) { context.modifyAttributes(user.dn, any()) }
         // User has normal and enabled account
         assertEquals(DirContext.REPLACE_ATTRIBUTE, modificationItems.captured[1].modificationOp)
         assertEquals("512", modificationItems.captured[1].attribute.get())
@@ -305,9 +340,9 @@ class UserServiceTest {
 
     @Test
     fun testResetUserPassword() = testSuspend {
-        coEvery { userLookupService.lookupUserByDN(userDN) } returns testLdapUser(accountEnabled = true)
-        userService.resetPassword(userDN, "TestPassword")
-        verify(exactly = 1) { context.modifyAttributes(userDN, any()) }
+        coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user
+        userService.resetPassword(user.getGUID(), "TestPassword")
+        verify(exactly = 1) { context.modifyAttributes(user.dn, any()) }
         // User is unlocked
         assertEquals(DirContext.REPLACE_ATTRIBUTE, modificationItems.captured[1].modificationOp)
         assertEquals("lockoutTime", modificationItems.captured[1].attribute.id)
@@ -318,13 +353,14 @@ class UserServiceTest {
 
     @Test
     fun testResetUserPasswordDisabledUser() = testSuspend {
-        coEvery { userLookupService.lookupUserByDN(userDN) } returns testLdapUser(accountEnabled = false)
+        val disabledUser = testLdapUser(accountEnabled = false)
+        coEvery { userLookupService.lookupUserByGUID(disabledUser.getGUID()) } returns disabledUser
         Assert.assertThrows(ResetPasswordException::class.java) {
             runBlocking {
-                userService.resetPassword(userDN, "TestPassword")
+                userService.resetPassword(disabledUser.getGUID(), "TestPassword")
             }
         }
-        verify(exactly = 0) { context.modifyAttributes(userDN, any()) }
+        verify(exactly = 0) { context.modifyAttributes(disabledUser.dn, any()) }
     }
 
     @Test

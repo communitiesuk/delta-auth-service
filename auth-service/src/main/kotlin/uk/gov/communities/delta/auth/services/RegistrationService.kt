@@ -7,21 +7,23 @@ import uk.gov.communities.delta.auth.config.AzureADSSOClient
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.repositories.LdapUser
+import java.util.*
 
 class RegistrationService(
-    private val deltaConfig: DeltaConfig,
     private val emailConfig: EmailConfig,
     private val ldapConfig: LDAPConfig,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val emailService: EmailService,
     private val userService: UserService,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val groupService: GroupService,
 ) {
     sealed class RegistrationResult
-    class UserCreated(val user: UserService.ADUser, val token: String) : RegistrationResult()
-    class SSOUserCreated(val userCN: String) : RegistrationResult()
-    class UserAlreadyExists(val user: UserService.ADUser) : RegistrationResult()
+    class UserCreated(val user: LdapUser, val token: String) : RegistrationResult()
+    data object SSOUserCreated : RegistrationResult()
+    class UserAlreadyExists(val user: LdapUser) : RegistrationResult()
     class RegistrationFailure(val exception: Exception) : RegistrationResult()
 
     // Previously users could be datamart users but not delta users, at migration we only transferred over users who
@@ -40,33 +42,37 @@ class RegistrationService(
     ): RegistrationResult {
         val adUser = UserService.ADUser(ldapConfig, registration, ssoClient)
 
-        if (userLookupService.userExists(adUser.cn)) {
-            logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
-            return UserAlreadyExists(adUser)
+        when (val userGUID = userGUIDMapService.userGUIDFromEmailIfExists(adUser.mail)) {
+            is UUID -> {
+                logger.atWarn().addKeyValue("UserDN", adUser.dn).log("User tried to register but user already exists")
+                val user = userLookupService.lookupUserByGUID(userGUID)
+                return UserAlreadyExists(user)
+            }
         }
+        val user: LdapUser
         try {
-            userService.createUser(adUser, ssoClient, call.principal<OAuthSession>(), call, azureObjectId)
-            addUserToDefaultGroups(adUser, call)
-            addUserToOrganisations(adUser, organisations, call)
+            user = userService.createUser(adUser, ssoClient, call.principal<OAuthSession>(), call, azureObjectId)
+            addUserToDefaultGroups(user, call)
+            addUserToOrganisations(user, organisations, call)
         } catch (e: Exception) {
             logger.atError().addKeyValue("UserDN", adUser.dn).log("Error creating user", e)
             return RegistrationFailure(e)
         }
 
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User successfully created")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("User successfully created")
         return if (ssoClient?.required == true)
-            SSOUserCreated(adUser.cn)
+            SSOUserCreated
         else
-            UserCreated(adUser, setPasswordTokenService.createToken(adUser.cn))
+            UserCreated(user, setPasswordTokenService.createToken(user.getGUID()))
     }
 
-    private suspend fun addUserToDefaultGroups(adUser: UserService.ADUser, call: ApplicationCall) {
+    private suspend fun addUserToDefaultGroups(user: LdapUser, call: ApplicationCall) {
         try {
-            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null)
-            groupService.addUserToGroup(adUser, DeltaConfig.DATAMART_DELTA_USER, call, null)
-            logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to default groups")
+            groupService.addUserToGroup(user, DeltaConfig.DATAMART_DELTA_REPORT_USERS, call, null)
+            groupService.addUserToGroup(user, DeltaConfig.DATAMART_DELTA_USER, call, null)
+            logger.atInfo().addKeyValue("UserDN", user.dn).log("User added to default groups")
         } catch (e: Exception) {
-            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to default groups", e)
+            logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to default groups", e)
             throw e
         }
     }
@@ -76,37 +82,32 @@ class RegistrationService(
     }
 
     private suspend fun addUserToOrganisations(
-        adUser: UserService.ADUser,
+        user: LdapUser,
         organisations: List<Organisation>,
         call: ApplicationCall
     ) {
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("Adding user to domain organisations")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("Adding user to domain organisations")
         try {
             organisations.forEach {
                 if (!it.retired) {
-                    groupService.addUserToGroup(
-                        adUser,
-                        organisationUserGroup(it.code),
-                        call,
-                        null,
-                    )
-                    logger.atInfo().addKeyValue("UserDN", adUser.dn)
+                    groupService.addUserToGroup(user, organisationUserGroup(it.code), call, null)
+                    logger.atInfo().addKeyValue("UserDN", user.dn)
                         .log("Added user to domain organisation with code {}", it.code)
                 } else {
                     logger.info("Organisation {} is retired, with retirement date: {}", it.code, it.retirementDate)
                 }
             }
         } catch (e: Exception) {
-            logger.atError().addKeyValue("UserDN", adUser.dn).log("Error adding user to domain organisations", e)
+            logger.atError().addKeyValue("UserDN", user.dn).log("Error adding user to domain organisations", e)
             throw e
         }
-        logger.atInfo().addKeyValue("UserDN", adUser.dn).log("User added to domain organisations")
+        logger.atInfo().addKeyValue("UserDN", user.dn).log("User added to domain organisations")
     }
 
-    private fun getEmailContacts(adUser: UserService.ADUser): EmailContacts {
+    private fun getEmailContacts(user: LdapUser): EmailContacts {
         return EmailContacts(
-            adUser.mail,
-            adUser.getDisplayName(),
+            user.email!!,
+            user.fullName,
             emailConfig
         )
     }
@@ -114,14 +115,7 @@ class RegistrationService(
     suspend fun sendRegistrationEmail(registrationResult: RegistrationResult, call: ApplicationCall) {
         when (registrationResult) {
             is UserCreated -> {
-                emailService.sendSetPasswordEmail(
-                    registrationResult.user.givenName,
-                    registrationResult.token,
-                    registrationResult.user.cn,
-                    null,
-                    getEmailContacts(registrationResult.user),
-                    call,
-                )
+                emailService.sendSetPasswordEmail(registrationResult.user, registrationResult.token, null, call)
             }
 
             is SSOUserCreated -> {
@@ -130,8 +124,8 @@ class RegistrationService(
 
             is UserAlreadyExists -> {
                 emailService.sendAlreadyAUserEmail(
-                    registrationResult.user.givenName,
-                    registrationResult.user.cn,
+                    registrationResult.user.firstName,
+                    registrationResult.user.getGUID(),
                     getEmailContacts(registrationResult.user),
                 )
             }

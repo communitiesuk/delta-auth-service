@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.controllers.external.getSetPasswordURL
 import uk.gov.communities.delta.auth.repositories.EmailRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.utils.timed
+import java.util.*
 
 class EmailService(
     private val emailConfig: EmailConfig,
@@ -42,7 +43,7 @@ class EmailService(
 
     suspend fun sendAlreadyAUserEmail(
         firstName: String,
-        userCN: String,
+        userGUID: UUID,
         contacts: EmailContacts,
     ) {
         sendTemplateEmail(
@@ -54,7 +55,7 @@ class EmailService(
                 "userFirstName" to firstName,
             )
         )
-        logger.atInfo().addKeyValue("userCN", userCN).log("Sent already-a-user email")
+        logger.atInfo().addKeyValue("receivingUserGUID", userGUID).log("Sent already-a-user email")
     }
 
     suspend fun sendSetPasswordEmail(
@@ -63,45 +64,27 @@ class EmailService(
         triggeringAdminSession: OAuthSession?,
         call: ApplicationCall
     ) {
-        sendSetPasswordEmail(
-            user.firstName,
-            token,
-            user.cn,
-            triggeringAdminSession,
-            EmailContacts(user.email!!, user.fullName, emailConfig),
-            call
-        )
-    }
-
-    suspend fun sendSetPasswordEmail(
-        firstName: String,
-        token: String,
-        userCN: String,
-        triggeringAdminSession: OAuthSession?,
-        contacts: EmailContacts,
-        call: ApplicationCall,
-    ) {
         sendTemplateEmail(
             "new-user",
-            contacts,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
             "DLUHC Delta - New User Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "userFirstName" to firstName,
+                "userFirstName" to user.firstName,
                 "setPasswordUrl" to getSetPasswordURL(
                     token,
-                    userCN,
+                    user.getGUID(),
                     authServiceConfig.serviceUrl
                 )
             )
         )
         if (triggeringAdminSession != null) userAuditService.adminSetPasswordEmailAudit(
-            userCN,
-            triggeringAdminSession.userCn,
+            user.getGUID(),
+            triggeringAdminSession.userGUID,
             call
         )
-        else userAuditService.setPasswordEmailAudit(userCN, call)
-        logger.atInfo().addKeyValue("userCN", userCN).log("Sent new-user email")
+        else userAuditService.setPasswordEmailAudit(user.getGUID(), call)
+        logger.atInfo().addKeyValue("receivingUserGUID", user.getGUID()).log("Sent new-user email")
     }
 
     suspend fun sendNoUserEmail(emailAddress: String) {
@@ -120,73 +103,41 @@ class EmailService(
     }
 
     suspend fun sendNotYetEnabledEmail(user: LdapUser, token: String, call: ApplicationCall) {
-        sendNotYetEnabledEmail(
-            user.firstName,
-            token,
-            user.cn,
-            EmailContacts(user.email!!, user.fullName, emailConfig),
-            call,
-        )
-    }
-
-    private suspend fun sendNotYetEnabledEmail(
-        firstName: String,
-        token: String,
-        userCN: String,
-        contacts: EmailContacts,
-        call: ApplicationCall,
-    ) {
         sendTemplateEmail(
             "not-yet-enabled-user",
-            contacts,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
             "DLUHC Delta - Set Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "userFirstName" to firstName,
+                "userFirstName" to user.firstName,
                 "setPasswordUrl" to getSetPasswordURL(
                     token,
-                    userCN,
+                    user.getGUID(),
                     authServiceConfig.serviceUrl
                 )
             )
         )
-        userAuditService.setPasswordEmailAudit(userCN, call)
-        logger.atInfo().addKeyValue("userCN", userCN).log("Sent not-yet-enabled-user email")
+        userAuditService.setPasswordEmailAudit(user.getGUID(), call)
+        logger.atInfo().addKeyValue("receivingUserGUID", user.getGUID()).log("Sent not-yet-enabled-user email")
     }
 
     suspend fun sendPasswordNeverSetEmail(user: LdapUser, token: String, call: ApplicationCall) {
-        sendPasswordNeverSetEmail(
-            user.firstName,
-            token,
-            user.cn,
-            EmailContacts(user.email!!, user.fullName, emailConfig),
-            call,
-        )
-    }
-
-    private suspend fun sendPasswordNeverSetEmail(
-        firstName: String,
-        token: String,
-        userCN: String,
-        contacts: EmailContacts,
-        call: ApplicationCall,
-    ) {
         sendTemplateEmail(
             "password-never-set",
-            contacts,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
             "DLUHC Delta - Set Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "setPasswordUrl" to getSetPasswordURL(
                     token,
-                    userCN,
+                    user.getGUID(),
                     authServiceConfig.serviceUrl
                 ),
-                "userFirstName" to firstName,
+                "userFirstName" to user.firstName,
             )
         )
-        userAuditService.setPasswordEmailAudit(userCN, call)
-        logger.atInfo().addKeyValue("userCN", userCN).log("Sent password-never-set email")
+        userAuditService.setPasswordEmailAudit(user.getGUID(), call)
+        logger.atInfo().addKeyValue("receivingUserGUID", user.getGUID()).log("Sent password-never-set email")
     }
 
     suspend fun sendResetPasswordEmail(
@@ -195,46 +146,26 @@ class EmailService(
         triggeringAdminSession: OAuthSession?,
         call: ApplicationCall
     ) {
-        sendResetPasswordEmail(
-            user.firstName,
-            token,
-            user.cn,
-            triggeringAdminSession,
-            EmailContacts(user.email!!, user.fullName, emailConfig),
-            call,
-        )
-    }
-
-    private suspend fun sendResetPasswordEmail(
-        firstName: String,
-        token: String,
-        userCN: String,
-        triggeringAdminSession: OAuthSession?,
-        contacts: EmailContacts,
-        call: ApplicationCall,
-    ) {
         sendTemplateEmail(
             "reset-password",
-            contacts,
+            EmailContacts(user.email!!, user.fullName, emailConfig),
             "DLUHC Delta - Reset Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "userFirstName" to firstName,
+                "userFirstName" to user.firstName,
                 "resetPasswordUrl" to getResetPasswordURL(
                     token,
-                    userCN,
+                    user.getGUID(),
                     authServiceConfig.serviceUrl
                 )
             )
         )
         if (triggeringAdminSession != null) userAuditService.adminResetPasswordEmailAudit(
-            userCN,
-            triggeringAdminSession.userCn,
-            call
+            user.getGUID(), triggeringAdminSession.userGUID, call
         )
-        else userAuditService.resetPasswordEmailAudit(userCN, call)
+        else userAuditService.resetPasswordEmailAudit(user.getGUID(), call)
 
-        logger.atInfo().addKeyValue("userCN", userCN).log("Sent reset-password email")
+        logger.atInfo().addKeyValue("receivingUserGUID", user.getGUID()).log("Sent reset-password email")
     }
 
     suspend fun sendEmailForUserAddedToDCLGInAccessGroup(

@@ -135,6 +135,8 @@ open class ApiError(
     val userVisibleMessage: String? = null,
 ) : Exception("$errorCode ($statusCode) $errorDescription")
 
+open class NoUserException(errorMessage: String) : ApiError(HttpStatusCode.BadRequest, "no_user", errorMessage)
+
 open class UserVisibleServerError(
     val errorCode: String,
     exceptionMessage: String,

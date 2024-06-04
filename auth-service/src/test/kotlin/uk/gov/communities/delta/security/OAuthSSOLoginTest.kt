@@ -34,7 +34,6 @@ import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupSe
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import javax.naming.NameNotFoundException
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -75,10 +74,12 @@ class OAuthSSOLoginTest {
             // Which should redirect us back to Delta with an Authorisation code
             assertEquals(HttpStatusCode.Found, status)
             assertEquals("https://delta/login/oauth2/redirect?code=code&state=delta-state", headers["Location"])
-            coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any(), true)}
+            coVerify(exactly = 1) {
+                authorizationCodeServiceMock.generateAndStore(testUser.getGUID(), serviceClient, any(), true)
+            }
             verify(exactly = 1) { ssoLoginCounter.increment() }
             coVerify(exactly = 1) {
-                userAuditService.userSSOLoginAudit("cn", ssoClient, "abc-123", any())
+                userAuditService.userSSOLoginAudit(testUser.getGUID(), ssoClient, "abc-123", any())
             }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
@@ -123,7 +124,9 @@ class OAuthSSOLoginTest {
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
                 assertTrue(headers["Location"]!!.startsWith("${deltaConfig.deltaWebsiteUrl}/login?error=delta_sso_failed&sso_error=some_azure_error"))
-                coVerify(exactly = 0) { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any(), true) }
+                coVerify(exactly = 0) {
+                    authorizationCodeServiceMock.generateAndStore(testUser.getGUID(), serviceClient, any(), true)
+                }
             }
     }
 
@@ -138,19 +141,16 @@ class OAuthSSOLoginTest {
 
     @Test
     fun `Callback redirects to register page if no ldap user for non-required SSO client`() = testSuspend {
-        val userCN = "user!example.com"
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
-            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
-        )
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(testUser.email!!) } returns null andThen testUser.getGUID()
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         coEvery {
             registrationService.register(any<Registration>(), any(), any(), ssoClient)
-        } returns RegistrationService.SSOUserCreated(userCN)
+        } returns RegistrationService.SSOUserCreated
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
-                val registration = Registration("Example", "User", "user@example.com")
+                val registration = Registration(testUser.firstName, testUser.lastName, testUser.email!!)
                 coVerify(exactly = 0) { registrationService.register(registration, organisations, any(), ssoClient) }
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals("/delta/register?fromSSOEmail=user%40example.com", headers["Location"])
@@ -161,20 +161,16 @@ class OAuthSSOLoginTest {
     fun `Callback calls register function if no ldap user for required SSO client`() = testSuspend {
         val requiredSsoClient = ssoClient.copy(required = true)
         every { ssoConfig.ssoClients } answers { listOf(requiredSsoClient) }
-        val userCN = "user!example.com"
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn(userCN) } throws (NameNotFoundException()) andThen testLdapUser(
-            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
-        )
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(testUser.email!!) } returns null andThen testUser.getGUID()
         val organisations = listOf(Organisation("E1234", "Test Organisation"))
         coEvery { organisationService.findAllByDomain("example.com") } returns organisations
         coEvery {
             registrationService.register(any<Registration>(), any(), any(), requiredSsoClient)
-        } returns RegistrationService.SSOUserCreated(userCN)
-
+        } returns RegistrationService.SSOUserCreated
 
         testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}")
             .apply {
-                val registration = Registration("Example", "User", "user@example.com", "abc-123")
+                val registration = Registration(testUser.firstName, testUser.lastName, testUser.email!!, "abc-123")
                 coVerify(exactly = 1) {
                     registrationService.register(registration, organisations, any(), requiredSsoClient)
                 }
@@ -185,9 +181,13 @@ class OAuthSSOLoginTest {
 
     @Test
     fun `Callback returns error if user is disabled`() {
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER), accountEnabled = false)
-        }
+        val disabledUser = testLdapUser(
+            email = tokenEmail,
+            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER),
+            accountEnabled = false
+        )
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(disabledUser.email!!) } returns disabledUser.getGUID()
+        coEvery { ldapUserLookupServiceMock.lookupUserByGUID(disabledUser.getGUID()) } returns disabledUser
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
@@ -197,9 +197,9 @@ class OAuthSSOLoginTest {
 
     @Test
     fun `Callback returns error if user has no email`() {
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER), email = null)
-        }
+        val noEmailUser = testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER), email = null)
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(tokenEmail) } returns noEmailUser.getGUID()
+        coEvery { ldapUserLookupServiceMock.lookupUserByGUID(noEmailUser.getGUID()) } returns noEmailUser
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
@@ -209,9 +209,9 @@ class OAuthSSOLoginTest {
 
     @Test
     fun `Callback returns error if user is not in Delta users group`() {
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf("some-other-group"))
-        }
+        val userNotInUserGroup = testLdapUser(memberOfCNs = listOf("some-other-group"))
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(tokenEmail) } returns userNotInUserGroup.getGUID()
+        coEvery { ldapUserLookupServiceMock.lookupUserByGUID(userNotInUserGroup.getGUID()) } returns userNotInUserGroup
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
@@ -222,7 +222,6 @@ class OAuthSSOLoginTest {
     @Test
     fun `Callback returns error if user is not in required Azure group`() {
         coEvery { microsoftGraphServiceMock.checkCurrentUserGroups(accessToken, any()) } answers { listOf() }
-
         Assert.assertThrows(DeltaSSOLoginController.OAuthLoginException::class.java) {
             runBlocking { testClient(loginState.cookie).get("/delta/oauth/test/callback?code=auth-code&state=${loginState.state}") }
         }.apply {
@@ -241,8 +240,17 @@ class OAuthSSOLoginTest {
     }
 
     private fun mockAdminUser() {
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_ADMIN))
+        val adminUser =
+            testLdapUser(
+                email = tokenEmail,
+                memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_ADMIN)
+            )
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(adminUser.email!!) } returns adminUser.getGUID()
+        coEvery { ldapUserLookupServiceMock.lookupUserByGUID(adminUser.getGUID()) } returns adminUser
+        coEvery {
+            authorizationCodeServiceMock.generateAndStore(adminUser.getGUID(), serviceClient, any(), true)
+        } answers {
+            AuthCode("code", adminUser.getGUID(), serviceClient, Instant.MIN, "trace", true)
         }
     }
 
@@ -279,16 +287,9 @@ class OAuthSSOLoginTest {
                 listOf(emailMappingSSOClient.requiredGroupId!!, emailMappingSSOClient.requiredAdminGroupId!!)
             )
         } answers { listOf(emailMappingSSOClient.requiredGroupId!!) }
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!email-domain.com") } answers {
-            testLdapUser(
-                cn = "user!email-domain.com",
-                email = "user@email-domain.com",
-                memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
-            )
-        }
-        coEvery { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any(), true) } answers {
-            AuthCode("code", "user!email-domain.com", serviceClient, Instant.MIN, "trace", true)
-        }
+        coEvery {
+            authorizationCodeServiceMock.generateAndStore(domainUser.getGUID(), serviceClient, any(), true)
+        } answers { AuthCode("code", domainUser.getGUID(), serviceClient, Instant.MIN, "trace", true) }
 
         val loginState = runBlocking {
             val client = testClient()
@@ -301,7 +302,9 @@ class OAuthSSOLoginTest {
             .apply {
                 assertEquals(HttpStatusCode.Found, status)
                 assertEquals(headers["Location"], "https://delta/login/oauth2/redirect?code=code&state=delta-state")
-                coVerify(exactly = 1) { authorizationCodeServiceMock.generateAndStore("user!email-domain.com", serviceClient, any(), true)}
+                coVerify(exactly = 1) {
+                    authorizationCodeServiceMock.generateAndStore(domainUser.getGUID(), serviceClient, any(), true)
+                }
             }
     }
 
@@ -317,12 +320,13 @@ class OAuthSSOLoginTest {
     @Before
     fun setupMocks() {
         clearAllMocks()
-        coEvery { ldapUserLookupServiceMock.lookupUserByCn("user!example.com") } answers {
-            testLdapUser(memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER))
-        }
-        coEvery { authorizationCodeServiceMock.generateAndStore("cn", serviceClient, any(), true) } answers {
-            AuthCode("code", "cn", serviceClient, Instant.MIN, "trace", true)
-        }
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(testUser.email!!) } returns testUser.getGUID()
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(domainUser.email!!) } returns domainUser.getGUID()
+        coEvery { ldapUserLookupServiceMock.lookupUserByGUID(testUser.getGUID()) } returns testUser
+        coEvery { ldapUserLookupServiceMock.lookupUserByGUID(domainUser.getGUID()) } returns domainUser
+        coEvery {
+            authorizationCodeServiceMock.generateAndStore(testUser.getGUID(), serviceClient, any(), true)
+        } answers { AuthCode("code", testUser.getGUID(), serviceClient, Instant.MIN, "trace", true) }
         coEvery {
             microsoftGraphServiceMock.checkCurrentUserGroups(
                 accessToken,
@@ -366,11 +370,25 @@ class OAuthSSOLoginTest {
             requiredAdminGroupId = "required-admin-group-id",
         )
         private val ssoConfig = mockk<AzureADSSOConfig>()
+        private const val tokenEmail = "user@example.com"
         private val accessToken =
-            "header.${"{\"unique_name\": \"user@example.com\", \"given_name\": \"Example\", \"family_name\": \"User\", \"oid\": \"abc-123\"}".encodeBase64()}.trailer"
+            "header.${"{\"unique_name\": \"$tokenEmail\", \"given_name\": \"Example\", \"family_name\": \"User\", \"oid\": \"abc-123\"}".encodeBase64()}.trailer"
         private val emailMappingAccessToken =
             "header.${"{\"unique_name\": \"user@azure-domain.com\", \"given_name\": \"Example\", \"family_name\": \"User\", \"oid\": \"abc-321\"}".encodeBase64()}.trailer"
+        private val testUser = testLdapUser(
+            cn = "user!example.com",
+            email = tokenEmail,
+            firstName = "Example",
+            lastName = "User",
+            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
+        )
+        private val domainUser = testLdapUser(
+            cn = "user!email-domain.com",
+            email = "user@email-domain.com",
+            memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER)
+        )
         private lateinit var ldapUserLookupServiceMock: UserLookupService
+        private lateinit var userGUIDMapService: UserGUIDMapService
         private lateinit var authorizationCodeServiceMock: AuthorizationCodeService
         private lateinit var microsoftGraphServiceMock: MicrosoftGraphService
         private lateinit var ssoLoginStateService: SSOLoginSessionStateService
@@ -386,6 +404,7 @@ class OAuthSSOLoginTest {
             microsoftGraphServiceMock = mockk<MicrosoftGraphService>()
             authorizationCodeServiceMock = mockk<AuthorizationCodeService>()
             ldapUserLookupServiceMock = mockk<UserLookupService>()
+            userGUIDMapService = mockk<UserGUIDMapService>()
             registrationService = mockk<RegistrationService>()
             organisationService = mockk<OrganisationService>()
             userAuditService = mockk<UserAuditService>()
@@ -406,6 +425,7 @@ class OAuthSSOLoginTest {
                 ssoConfig,
                 ssoLoginStateService,
                 ldapUserLookupServiceMock,
+                userGUIDMapService,
                 authorizationCodeServiceMock,
                 microsoftGraphServiceMock,
                 registrationService,

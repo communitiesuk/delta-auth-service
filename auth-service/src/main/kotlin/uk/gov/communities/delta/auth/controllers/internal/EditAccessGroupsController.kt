@@ -16,6 +16,7 @@ import uk.gov.communities.delta.auth.services.*
 
 class EditAccessGroupsController(
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val groupService: GroupService,
     private val organisationService: OrganisationService,
     private val accessGroupsService: AccessGroupsService,
@@ -29,18 +30,20 @@ class EditAccessGroupsController(
     // It will assign the user to that access group and the given list of organisations for that access group.
     suspend fun addUserToAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
         validateIsInternalUser(callingUser)
 
         val addGroupRequest = call.receive<DeltaUserSingleAccessGroupOrganisationsRequest>()
-        val (targetUser, targetUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(addGroupRequest.userToEditCn)
+        // TODO DT-1022 - get GUID directly from call
+        val targetUserGUID = userGUIDMapService.getGUIDFromCN(addGroupRequest.userToEditCn)
+        val (targetUser, targetUserRoles) = userLookupService.lookupUserByGUIDAndLoadRoles(targetUserGUID)
 
         val targetGroupName = addGroupRequest.accessGroupName
         val targetOrganisationCodes = addGroupRequest.organisationCodes
 
         logger.info(
             "Adding user {} to access group {} and organisations {}",
-            targetUser.cn,
+            targetUser.getGUID(),
             targetGroupName,
             targetOrganisationCodes
         )
@@ -49,34 +52,20 @@ class EditAccessGroupsController(
         validateUserInOrganisations(targetUserRoles, targetOrganisationCodes)
 
         val targetGroupADName = getGroupOrgADName(targetGroupName, null)
-        if (targetUser.memberOfCNs.contains(targetGroupADName)) {
-            logger.warn("User {} already member of access group {}", targetUser.cn, targetGroupADName)
-        } else {
-            groupService.addUserToGroup(
-                targetUser.cn,
-                targetUser.dn,
-                targetGroupADName,
-                call,
-                session,
-            )
-        }
+        if (targetUser.memberOfCNs.contains(targetGroupADName))
+            logger.warn("User {} already member of access group {}", targetUser.getGUID(), targetGroupADName)
+        else groupService.addUserToGroup(targetUser, targetGroupADName, call, session)
         targetOrganisationCodes.forEach { orgCode ->
             val targetGroupOrgADName = getGroupOrgADName(targetGroupName, orgCode)
             if (targetUser.memberOfCNs.contains(targetGroupOrgADName)) {
                 logger.warn(
                     "User {} already member of (access group, organisation) ({}, {})",
-                    targetUser.cn,
+                    targetUser.getGUID(),
                     targetGroupName,
                     orgCode,
                 )
             } else {
-                groupService.addUserToGroup(
-                    targetUser.cn,
-                    targetUser.dn,
-                    targetGroupOrgADName,
-                    call,
-                    session,
-                )
+                groupService.addUserToGroup(targetUser, targetGroupOrgADName, call, session)
                 if (orgCode == "dclg") {
                     accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForUserAddedToDCLGInAccessGroup(
                         AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(targetUser),
@@ -88,7 +77,7 @@ class EditAccessGroupsController(
             }
         }
 
-        return call.respond(mapOf("message" to "User ${targetUser.cn} added to access group $targetGroupName and organisations ${targetOrganisationCodes}."))
+        return call.respond(mapOf("message" to "User ${targetUser.email} added to access group $targetGroupName and organisations ${targetOrganisationCodes}."))
     }
 
 
@@ -96,35 +85,36 @@ class EditAccessGroupsController(
     // It will remove the user from the given access group, including any organisation associations.
     suspend fun removeUserFromAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
         validateIsInternalUser(callingUser)
 
         val removeGroupRequest = call.receive<DeltaUserSingleAccessGroupRequest>()
-        val targetUser = userLookupService.lookupUserByCn(removeGroupRequest.userToEditCn)
+        // TODO DT-1022 - get GUID directly from call
+        val targetUserGUID = userGUIDMapService.getGUIDFromCN(removeGroupRequest.userToEditCn)
+        val targetUser = userLookupService.lookupUserByGUID(targetUserGUID)
 
         val targetGroupName = removeGroupRequest.accessGroupName
         validateAccessGroupExists(targetGroupName)
 
         val targetGroupADName = getGroupOrgADName(targetGroupName, null)
 
-        logger.info("Removing user {} from access group {}", targetUser.cn, targetGroupADName)
+        logger.info("Removing user {} from access group {}", targetUser.getGUID(), targetGroupADName)
 
         if (targetUser.memberOfCNs.contains(targetGroupADName)) {
             for (groupName in targetUser.memberOfCNs) {
                 if (groupName.startsWith(targetGroupADName)) {
                     groupService.removeUserFromGroup(
-                        targetUser.cn,
-                        targetUser.dn,
+                        targetUser,
                         groupName,
                         call,
                         session,
                     )
                 }
             }
-            return call.respond(mapOf("message" to "User ${targetUser.cn} removed from access group ${targetGroupName}."))
+            return call.respond(mapOf("message" to "User ${targetUser.email} removed from access group ${targetGroupName}."))
         } else {
-            logger.warn("User {} already not member of access group {}", targetUser.cn, targetGroupADName)
-            return call.respond(mapOf("message" to "User ${targetUser.cn} already not member of access group ${targetGroupName}."))
+            logger.warn("User {} already not member of access group {}", targetUser.getGUID(), targetGroupADName)
+            return call.respond(mapOf("message" to "User ${targetUser.email} already not member of access group ${targetGroupName}."))
         }
     }
 
@@ -157,8 +147,8 @@ class EditAccessGroupsController(
     // membership of (access group, organisation) will be ignored for organisations not in this list.
     suspend fun updateCurrentUserAccessGroups(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
-        logger.info("Updating access groups for user {}", session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
+        logger.info("Updating access groups for user {}", session.userGUID)
         val userIsInternal = callingUser.isInternal()
         val allAccessGroups = accessGroupsService.getAllAccessGroups()
 
@@ -167,7 +157,7 @@ class EditAccessGroupsController(
         val accessGroupRequestMap = stripDatamartPrefixFromKeys(requestBodyObject.accessGroupsRequest)
 
         val deltaRolesForUser = memberOfToDeltaRolesMapperFactory(
-            callingUser.cn, organisationService.findAllNamesAndCodes(), allAccessGroups
+            callingUser.getGUID(), organisationService.findAllNamesAndCodes(), allAccessGroups
         ).map(callingUser.memberOfCNs)
 
         validateUpdateAccessGroupsRequest(
@@ -335,12 +325,11 @@ class EditAccessGroupsController(
             if (action is AddAccessGroupAction || action is AddAccessGroupOrganisationAction) {
                 logger.info(
                     "Access group self update: Adding user {} to access group {}",
-                    user.cn,
+                    user.getGUID(),
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.addUserToGroup(
-                    user.cn,
-                    user.dn,
+                    user,
                     getGroupOrgADName(action.accessGroupName, action.organisationCode),
                     call,
                     null,
@@ -356,15 +345,11 @@ class EditAccessGroupsController(
             } else if (action is RemoveAccessGroupAction || action is RemoveAccessGroupOrganisationAction) {
                 logger.info(
                     "Access group self update: Removing user {} from access group {}",
-                    user.cn,
+                    user.getGUID(),
                     getGroupOrgADName(action.accessGroupName, action.organisationCode)
                 )
                 groupService.removeUserFromGroup(
-                    user.cn,
-                    user.dn,
-                    getGroupOrgADName(action.accessGroupName, action.organisationCode),
-                    call,
-                    null,
+                    user, getGroupOrgADName(action.accessGroupName, action.organisationCode), call, null,
                 )
             }
         }
@@ -419,13 +404,13 @@ class EditAccessGroupsController(
 
     @Serializable
     data class DeltaUserSingleAccessGroupRequest(
-        @SerialName("userToEditCn") val userToEditCn: String,
+        @SerialName("userToEditCn") val userToEditCn: String, // TODO DT-1022 - use GUID
         @SerialName("accessGroupName") val accessGroupName: String,
     )
 
     @Serializable
     data class DeltaUserSingleAccessGroupOrganisationsRequest(
-        @SerialName("userToEditCn") val userToEditCn: String,
+        @SerialName("userToEditCn") val userToEditCn: String, // TODO DT-1022 - use GUID
         @SerialName("accessGroupName") val accessGroupName: String,
         @SerialName("organisationCodes") val organisationCodes: List<String>,
     )

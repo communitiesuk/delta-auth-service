@@ -10,10 +10,7 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.*
-import uk.gov.communities.delta.auth.repositories.DbPool
-import uk.gov.communities.delta.auth.repositories.EmailRepository
-import uk.gov.communities.delta.auth.repositories.LdapRepository
-import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
+import uk.gov.communities.delta.auth.repositories.*
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.LdapAuthenticationService
@@ -99,13 +96,24 @@ class Injection(
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper
     )
-    private val userService = UserService(ldapServiceUserBind, userLookupService, userAuditService, ldapConfig)
+    private val userGUIDMapRepo = UserGUIDMapRepo()
+    private val userGUIDMapService = UserGUIDMapService(userGUIDMapRepo, userLookupService, dbPool)
+    private val userService =
+        UserService(
+            ldapServiceUserBind,
+            userLookupService,
+            userGUIDMapService,
+            userAuditService,
+            ldapConfig,
+            ldapRepository
+        )
 
     private val deltaApiTokenService = DeltaApiTokenService(dbPool, TimeSource.System, userAuditService)
 
     private val emailService = EmailService(
         emailConfig,
-        deltaConfig, authServiceConfig,
+        deltaConfig,
+        authServiceConfig,
         userAuditService,
         emailRepository,
     )
@@ -114,18 +122,18 @@ class Injection(
         AccessGroupDCLGMembershipUpdateEmailService(ldapServiceUserBind, ldapConfig, emailService, emailConfig)
 
     val registrationService = RegistrationService(
-        deltaConfig,
         emailConfig,
         ldapConfig,
         setPasswordTokenService,
         emailService,
         userService,
         userLookupService,
+        userGUIDMapService,
         groupService,
     )
 
     val authorizationCodeService = AuthorizationCodeService(dbPool, TimeSource.System)
-    val oauthSessionService = OAuthSessionService(dbPool, TimeSource.System)
+    val oauthSessionService = OAuthSessionService(dbPool, TimeSource.System, userGUIDMapRepo)
     val ssoLoginStateService = SSOLoginSessionStateService()
     val ssoOAuthClientProviderLookupService =
         SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
@@ -197,27 +205,24 @@ class Injection(
         azureADSSOConfig,
         organisationService,
         registrationService,
-        userAuditService,
     )
 
     fun externalDeltaSetPasswordController() = DeltaSetPasswordController(
         deltaConfig,
-        ldapConfig,
         userService,
         setPasswordTokenService,
         userLookupService,
+        userGUIDMapService,
         emailService,
         userAuditService,
     )
 
     fun externalDeltaResetPasswordController() = DeltaResetPasswordController(
         deltaConfig,
-        ldapConfig,
-        emailConfig,
-        authServiceConfig,
         userService,
         resetPasswordTokenService,
         userLookupService,
+        userGUIDMapService,
         emailService,
         userAuditService,
     )
@@ -228,6 +233,7 @@ class Injection(
         resetPasswordTokenService,
         setPasswordTokenService,
         userLookupService,
+        userGUIDMapService,
         emailService,
     )
 
@@ -254,6 +260,7 @@ class Injection(
 
     fun refreshUserInfoController() = RefreshUserInfoController(
         userLookupService,
+        userGUIDMapService,
         samlTokenService,
         accessGroupsService,
         organisationService,
@@ -266,6 +273,7 @@ class Injection(
         azureADSSOConfig,
         emailService,
         userLookupService,
+        userGUIDMapService,
         setPasswordTokenService,
         resetPasswordTokenService,
     )
@@ -276,6 +284,7 @@ class Injection(
         azureADSSOConfig,
         ssoLoginStateService,
         userLookupService,
+        userGUIDMapService,
         authorizationCodeService,
         microsoftGraphService,
         registrationService,
@@ -286,14 +295,15 @@ class Injection(
 
     fun fetchUserAuditController() = FetchUserAuditController(
         userLookupService,
+        userGUIDMapService,
         userAuditService,
     )
 
     fun adminUserCreationController() = AdminUserCreationController(
         ldapConfig,
         azureADSSOConfig,
-        emailConfig,
         userLookupService,
+        userGUIDMapService,
         userService,
         groupService,
         emailService,
@@ -304,6 +314,7 @@ class Injection(
 
     fun adminEditUserController() = AdminEditUserController(
         userLookupService,
+        userGUIDMapService,
         userService,
         groupService,
         deltaUserDetailsRequestMapper,
@@ -312,16 +323,19 @@ class Injection(
 
     fun adminGetUserController() = AdminGetUserController(
         userLookupService,
+        userGUIDMapService,
     )
 
     fun adminEditEmailController() = AdminEditUserEmailController(
         userLookupService,
+        userGUIDMapService,
         userService,
     )
 
     fun adminEnableDisableUserController() = AdminEnableDisableUserController(
         azureADSSOConfig,
         userLookupService,
+        userGUIDMapService,
         userService,
         setPasswordTokenService,
         userAuditService,
@@ -330,21 +344,30 @@ class Injection(
 
     fun adminResetMfaTokenController() = AdminResetMfaTokenController(
         userLookupService,
+        userGUIDMapService,
         userService,
     )
 
     fun adminEditUserNotificationStatusController() = AdminEditUserNotificationStatusController(
         userLookupService,
+        userGUIDMapService,
         userService,
     )
 
     fun editAccessGroupsController() = EditAccessGroupsController(
         userLookupService,
+        userGUIDMapService,
         groupService,
         organisationService,
         accessGroupsService,
         ::MemberOfToDeltaRolesMapper,
         accessGroupDCLGMembershipUpdateEmailService
+    )
+
+    fun editLdapGroupsController() = EditLdapGroupsController(
+        groupService,
+        userLookupService,
+        userGUIDMapService,
     )
 
     fun editUserDetailsController() = EditUserDetailsController(

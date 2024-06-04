@@ -82,9 +82,10 @@ class OAuthTokenControllerTest {
         private lateinit var controller: OAuthTokenController
         private val client = testServiceClient()
 
-        private val authCode = AuthCode("code", "user", client, Instant.now(), "trace", false)
-        private val session = OAuthSession(1, "user", client, "accessToken", Instant.now(), "trace", false)
         private val user = testLdapUser(cn = "user")
+        private val authCode = AuthCode("code", user.getGUID(), client, Instant.now(), "trace", false)
+        private val session =
+            OAuthSession(1, user.cn, user.getGUID(), client, "accessToken", Instant.now(), "trace", false)
 
         private val authorizationCodeService = mockk<AuthorizationCodeService>()
         private val userLookupService = mockk<UserLookupService>()
@@ -101,7 +102,7 @@ class OAuthTokenControllerTest {
             coEvery { authorizationCodeService.lookupAndInvalidate(any(), client) } answers { null }
             coEvery { authorizationCodeService.lookupAndInvalidate(authCode.code, client) } answers { authCode }
             coEvery { oauthSessionService.create(authCode, client) } answers { session }
-            coEvery { userLookupService.lookupUserByCn(authCode.userCn) }.returns(user)
+            coEvery { userLookupService.lookupCurrentUser(session) }.returns(user)
             coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
             coEvery { organisationService.findAllNamesAndCodes() }.returns(listOf())
             every { memberOfToDeltaRolesMapper.map(any()) }.returns(

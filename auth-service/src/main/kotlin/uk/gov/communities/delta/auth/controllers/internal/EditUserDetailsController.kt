@@ -15,8 +15,6 @@ import uk.gov.communities.delta.auth.services.OAuthSession
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.auth.utils.getModificationItem
-import javax.naming.directory.BasicAttribute
-import javax.naming.directory.DirContext
 import javax.naming.directory.ModificationItem
 
 class EditUserDetailsController(
@@ -31,8 +29,8 @@ class EditUserDetailsController(
 
     private suspend fun updateUserDetails(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val callingUser = userLookupService.lookupUserByCn(session.userCn)
-        logger.atInfo().log("Updating details for user {}", session.userCn)
+        val callingUser = userLookupService.lookupCurrentUser(session)
+        logger.atInfo().log("Updating details for user {}", session.userGUID)
 
         val updatedDeltaUserDetails = call.receive<DeltaUserMyDetails>()
 

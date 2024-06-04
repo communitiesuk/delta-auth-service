@@ -22,7 +22,10 @@ import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.OAuthSession
+import uk.gov.communities.delta.auth.services.OAuthSessionService
+import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
@@ -80,12 +83,12 @@ class EditUserDetailsControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 testUserSession.authToken,
                 client
             )
         } answers { testUserSession }
-        coEvery { userLookupService.lookupUserByCn(testUser.cn) } returns testUser
+        coEvery { userLookupService.lookupCurrentUser(testUserSession) } returns testUser
         coEvery { userService.updateUser(testUser, any(), null, any()) } just runs
     }
 
@@ -132,7 +135,7 @@ class EditUserDetailsControllerTest {
         }
 
         private val testUserSession =
-            OAuthSession(1, testUser.cn, client, "testUserToken", Instant.now(), "trace", false)
+            OAuthSession(1, testUser.cn, testUser.getGUID(), client, "testUserToken", Instant.now(), "trace", false)
 
         @BeforeClass
         @JvmStatic
@@ -148,7 +151,7 @@ class EditUserDetailsControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

@@ -16,9 +16,12 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminEditUserNotificationStatusController
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.security.*
+import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
+import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
+import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -88,28 +91,33 @@ class AdminEditUserNotificationStatusControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 fullAdminSession.authToken,
                 client
             )
         } answers { fullAdminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 readOnlyAdminSession.authToken,
                 client
             )
         } answers { readOnlyAdminSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 nonAdminSession.authToken,
                 client
             )
         } answers { nonAdminSession }
-        coEvery { userLookupService.lookupUserByCn(fullAdminUser.cn) } returns fullAdminUser
-        coEvery { userLookupService.lookupUserByCn(readOnlyAdminUser.cn) } returns readOnlyAdminUser
-        coEvery { userLookupService.lookupUserByCn(nonAdminUser.cn) } returns nonAdminUser
-        coEvery { userLookupService.lookupUserByCn(userToUpdate.cn) } returns userToUpdate
+        mockUserLookupService(
+            userLookupService, listOf(
+                Pair(fullAdminUser, fullAdminSession),
+                Pair(readOnlyAdminUser, readOnlyAdminSession),
+                Pair(nonAdminUser, nonAdminSession),
+                Pair(userToUpdate, null)
+            ), organisations = listOf(), accessGroups = listOf()
+        )
         coEvery { userService.updateNotificationStatus(userToUpdate, any(), any(), any()) } just runs
+        coEvery { userGUIDMapService.getGUIDFromCN(userToUpdate.cn) } returns userToUpdate.getGUID()
     }
 
     companion object {
@@ -120,6 +128,7 @@ class AdminEditUserNotificationStatusControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
         private val userService = mockk<UserService>()
 
         private val client = testServiceClient()
@@ -136,15 +145,43 @@ class AdminEditUserNotificationStatusControllerTest {
             ),
         )
 
-        private val fullAdminSession = OAuthSession(1, fullAdminUser.cn, client, "fullAdminToken", Instant.now(), "trace", false)
-        private val readOnlyAdminSession = OAuthSession(1, readOnlyAdminUser.cn, client, "readOnlyAdminToken", Instant.now(), "trace", false)
-        private val nonAdminSession = OAuthSession(1, nonAdminUser.cn, client, "nonAdminToken", Instant.now(), "trace", false)
+        private val fullAdminSession = OAuthSession(
+            1,
+            fullAdminUser.cn,
+            fullAdminUser.getGUID(),
+            client,
+            "fullAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
+        private val readOnlyAdminSession = OAuthSession(
+            1,
+            readOnlyAdminUser.cn,
+            readOnlyAdminUser.getGUID(),
+            client,
+            "readOnlyAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
+        private val nonAdminSession = OAuthSession(
+            1,
+            nonAdminUser.cn,
+            nonAdminUser.getGUID(),
+            client,
+            "nonAdminToken",
+            Instant.now(),
+            "trace",
+            false
+        )
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             controller = AdminEditUserNotificationStatusController(
                 userLookupService,
+                userGUIDMapService,
                 userService,
             )
 
@@ -154,9 +191,7 @@ class AdminEditUserNotificationStatusControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token,
-                                client
-                            ) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

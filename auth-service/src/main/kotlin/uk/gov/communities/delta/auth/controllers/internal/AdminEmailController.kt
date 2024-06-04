@@ -7,7 +7,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.AzureADSSOConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
@@ -16,6 +15,7 @@ class AdminEmailController(
     private val ssoConfig: AzureADSSOConfig,
     private val emailService: EmailService,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val resetPasswordTokenService: ResetPasswordTokenService,
 ) : AdminUserController(userLookupService) {
@@ -37,7 +37,7 @@ class AdminEmailController(
         checkUserHasPermittedRole(rolesThatCanSendPasswordEmails, call)
 
         if (receivingUser.accountEnabled) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
+            logger.atError().addKeyValue("userToSendEmailTo", receivingUser.getGUID())
                 .log("User already enabled on activation email request")
             throw ApiError(
                 HttpStatusCode.BadRequest,
@@ -48,7 +48,7 @@ class AdminEmailController(
         }
 
         if (isRequiredSSOUser(receivingUser)) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
+            logger.atError().addKeyValue("userToSendEmailTo", receivingUser.getGUID())
                 .log("Trying to send activation email to SSO User")
             throw ApiError(
                 HttpStatusCode.BadRequest,
@@ -59,10 +59,11 @@ class AdminEmailController(
         }
 
         try {
-            val token = setPasswordTokenService.createToken(receivingUser.cn)
+            val token = setPasswordTokenService.createToken(receivingUser.getGUID())
             emailService.sendSetPasswordEmail(receivingUser, token, call.principal<OAuthSession>()!!, call)
         } catch (e: Exception) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send activation email")
+            logger.atError().addKeyValue("userToSendEmailTo", receivingUser.getGUID())
+                .log("Failed to send activation email")
             throw ApiError(
                 HttpStatusCode.InternalServerError,
                 "email_failure",
@@ -70,7 +71,7 @@ class AdminEmailController(
                 "Failed to send activation email"
             )
         }
-        logger.atInfo().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("New activation email sent")
+        logger.atInfo().addKeyValue("userToSendEmailTo", receivingUser.getGUID()).log("New activation email sent")
         return call.respond(mapOf("message" to "New activation email sent successfully"))
     }
 
@@ -80,7 +81,7 @@ class AdminEmailController(
         checkUserHasPermittedRole(rolesThatCanSendPasswordEmails, call)
 
         if (!receivingUser.accountEnabled) {
-            logger.atWarn().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("User not enabled")
+            logger.atWarn().addKeyValue("userToSendEmailTo", receivingUser.getGUID()).log("User not enabled")
             throw ApiError(
                 HttpStatusCode.BadRequest,
                 "not_enabled",
@@ -90,7 +91,7 @@ class AdminEmailController(
         }
 
         if (isRequiredSSOUser(receivingUser)) {
-            logger.atWarn().addKeyValue("userCNToSendEmailTo", receivingUser.cn)
+            logger.atWarn().addKeyValue("userToSendEmailTo", receivingUser.getGUID())
                 .log("Trying to send reset password to SSO User")
             throw ApiError(
                 HttpStatusCode.BadRequest,
@@ -101,10 +102,10 @@ class AdminEmailController(
         }
 
         try {
-            val token = resetPasswordTokenService.createToken(receivingUser.cn)
+            val token = resetPasswordTokenService.createToken(receivingUser.getGUID())
             emailService.sendResetPasswordEmail(receivingUser, token, call.principal<OAuthSession>()!!, call)
         } catch (e: Exception) {
-            logger.atError().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Failed to send email")
+            logger.atError().addKeyValue("userToSendEmailTo", receivingUser.getGUID()).log("Failed to send email")
             throw ApiError(
                 HttpStatusCode.InternalServerError,
                 "email_failure",
@@ -112,14 +113,14 @@ class AdminEmailController(
                 "Failed to send reset password email"
             )
         }
-        logger.atInfo().addKeyValue("userCNToSendEmailTo", receivingUser.cn).log("Reset password email sent")
+        logger.atInfo().addKeyValue("userToSendEmailTo", receivingUser.getGUID()).log("Reset password email sent")
         return call.respond(mapOf("message" to "Reset password email sent successfully"))
     }
 
     private suspend fun getReceivingUserFromCall(call: ApplicationCall): LdapUser {
-        val receivingEmailAddress = call.parameters["userEmail"]!!
-        val receivingUserCN = LDAPConfig.emailToCN(receivingEmailAddress)
-        val receivingUser = userLookupService.lookupUserByCn(receivingUserCN)
+        val receivingEmailAddress = call.parameters["userEmail"]!! // TODO DT-1022 - Use userGUID directly once receiving
+        val receivingUserGUID = userGUIDMapService.getGUIDFromEmail(receivingEmailAddress)
+        val receivingUser = userLookupService.lookupUserByGUID(receivingUserGUID)
         return receivingUser
     }
 

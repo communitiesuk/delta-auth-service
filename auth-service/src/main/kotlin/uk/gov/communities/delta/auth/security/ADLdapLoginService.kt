@@ -58,7 +58,7 @@ class ADLdapLoginService(
             return IADLdapLoginService.InvalidUsernameOrPassword
         }
 
-        if (!username.matches(LDAPConfig.VALID_USERNAME_REGEX)) {
+        if (!username.matches(LDAPConfig.VALID_USER_CN_REGEX)) {
             logger.atWarn().addKeyValue("username", username).log("Invalid username")
             return IADLdapLoginService.InvalidUsername
         }
@@ -76,7 +76,7 @@ class ADLdapLoginService(
         return try {
             context = ldapRepository.bind(userDn, password)
             val user = ldapRepository.mapUserFromContext(context, userDn)
-            if (!user.accountEnabled) throw Exception("Logged in user '${user.cn}' is disabled, this should never happen")
+            if (!user.accountEnabled) throw Exception("Logged in user '${user.getGUID()}' is disabled, this should never happen")
             IADLdapLoginService.LdapLoginSuccess(user)
         } catch (e: NamingException) {
             logger.debug("LDAP login failed for user $userDn", e)

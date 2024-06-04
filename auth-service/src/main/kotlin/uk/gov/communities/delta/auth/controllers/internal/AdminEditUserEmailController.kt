@@ -10,12 +10,14 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.services.DeltaSystemRole
+import uk.gov.communities.delta.auth.services.UserGUIDMapService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.auth.utils.EmailAddressChecker
 
 class AdminEditUserEmailController(
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val userService: UserService,
 ) : AdminUserController(userLookupService) {
 
@@ -33,7 +35,9 @@ class AdminEditUserEmailController(
         val requestData = call.receive<DeltaEmailChangeRequest>()
         val requestedEmail = requestData.newEmail
 
-        val userToEdit = userLookupService.lookupUserByCn(requestData.userToEditCn)
+        // TODO DT-1022 - get GUID from request directly
+        val userToEditGUID = userGUIDMapService.getGUIDFromCN(requestData.userToEditCn)
+        val userToEdit = userLookupService.lookupUserByGUID(userToEditGUID)
 
         validateEmail(requestedEmail)
         logger.atInfo().addKeyValue("oldUserEmail", userToEdit.email)

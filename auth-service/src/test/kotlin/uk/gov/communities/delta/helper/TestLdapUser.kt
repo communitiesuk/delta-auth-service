@@ -2,6 +2,7 @@ package uk.gov.communities.delta.helper
 
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import java.time.Instant
+import java.util.*
 
 fun testLdapUser(
     dn: String = "dn",
@@ -13,8 +14,8 @@ fun testLdapUser(
     lastName: String = "Surname",
     fullName: String = "Test Surname",
     accountEnabled: Boolean = true,
-    mangledDeltaObjectGuid: String = "mangled-id",
-    javaUUIDObjectGuid: String? = null,
+    mangledDeltaObjectGuid: String? = null,
+    javaUUIDObjectGuid: String? = UUID.randomUUID().toString(),
     telephone: String? = null,
     mobile: String? = null,
     positionInOrganisation: String? = null,

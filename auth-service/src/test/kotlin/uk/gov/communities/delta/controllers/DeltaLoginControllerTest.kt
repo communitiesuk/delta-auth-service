@@ -161,9 +161,8 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPostSuccess() = testSuspend {
-        loginResult = IADLdapLoginService.LdapLoginSuccess(
-            testLdapUser(cn = "username", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER))
-        )
+        val testUser = testLdapUser(cn = "username", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER))
+        loginResult = IADLdapLoginService.LdapLoginSuccess(testUser)
         testClient.submitForm(
             url = "/login?response_type=code&client_id=delta-website&state=1234",
             formParameters = parameters {
@@ -177,8 +176,8 @@ class DeltaLoginControllerTest {
             }
             verify(exactly = 0) { failedLoginCounter.increment(1.0) }
             verify(exactly = 1) { successfulLoginCounter.increment(1.0) }
-            coVerify(exactly = 1) { authorizationCodeService.generateAndStore(any(), any(), any(), false)}
-            coVerify(exactly = 1) { userAuditService.userFormLoginAudit("username", any()) }
+            coVerify(exactly = 1) { authorizationCodeService.generateAndStore(any(), any(), any(), false) }
+            coVerify(exactly = 1) { userAuditService.userFormLoginAudit(testUser.getGUID(), any()) }
         }
     }
 
@@ -224,7 +223,7 @@ class DeltaLoginControllerTest {
         every { successfulLoginCounter.increment(1.0) } returns Unit
         coEvery { userAuditService.userFormLoginAudit(any(), any()) } returns Unit
         coEvery { authorizationCodeService.generateAndStore(any(), any(), any(), any()) } answers {
-            AuthCode("test-auth-code", "user", client, Instant.now(), "trace", false)
+            AuthCode("test-auth-code", user.getGUID(), client, Instant.now(), "trace", false)
         }
     }
 
@@ -233,6 +232,7 @@ class DeltaLoginControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
         private val deltaConfig = DeltaConfig.fromEnv()
+        val user = testLdapUser(cn = "user")
         val client = testServiceClient()
         val failedLoginCounter = mockk<Counter>()
         val successfulLoginCounter = mockk<Counter>()

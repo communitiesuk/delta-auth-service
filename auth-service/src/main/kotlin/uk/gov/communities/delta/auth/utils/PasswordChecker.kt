@@ -17,7 +17,7 @@ class PasswordChecker {
         return wordsInUserEmail.any { lowerCasePassword.contains(it) && it.length > 4 }
     }
 
-    suspend fun checkPasswordForErrors(call: ApplicationCall, userCN: String): Pair<String?, String> {
+    suspend fun checkPasswordForErrors(call: ApplicationCall, userEmail: String): Pair<String?, String> {
         val formParameters = call.receiveParameters()
         val newPassword = formParameters["newPassword"].orEmpty()
         val confirmPassword = formParameters["confirmPassword"].orEmpty()
@@ -31,7 +31,7 @@ class PasswordChecker {
         else if (containsCommonString(lowerCasePassword)) "Password must not be a commonly used password."
         else if (containsPartOfUserEmail(
                 lowerCasePassword,
-                userCN
+                userEmail
             )
         ) "Password must not contain any part(s) your username"
         else null

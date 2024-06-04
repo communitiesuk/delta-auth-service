@@ -11,20 +11,23 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
-import jakarta.mail.Authenticator
-import jakarta.mail.PasswordAuthentication
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.apache.commons.lang3.builder.EqualsBuilder
 import org.junit.*
-import uk.gov.communities.delta.auth.config.*
+import uk.gov.communities.delta.auth.config.AzureADSSOClient
+import uk.gov.communities.delta.auth.config.AzureADSSOConfig
+import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.controllers.internal.AdminUserCreationController
 import uk.gov.communities.delta.auth.controllers.internal.DeltaUserDetailsRequest
 import uk.gov.communities.delta.auth.controllers.internal.DeltaUserPermissionsRequestMapper
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.plugins.NoUserException
 import uk.gov.communities.delta.auth.plugins.configureSerialization
+import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
@@ -33,14 +36,14 @@ import uk.gov.communities.delta.auth.withBearerTokenAuth
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import java.util.*
-import javax.naming.NameNotFoundException
 import kotlin.test.assertEquals
 
 class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateUser() = testSuspend {
+        val ldapUser = getLdapUserWithDetails(NEW_STANDARD_USER_EMAIL)
+        coEvery { userService.createUser(capture(user), any(), any(), any()) } returns ldapUser
         testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_STANDARD_USER_EMAIL))
@@ -58,16 +61,8 @@ class AdminUserCreationControllerTest {
             )
             assertCapturedUserIsAsExpected(expectedUser)
             verifyCorrectGroupsAdded()
-            coVerify(exactly = 1) {
-                emailService.sendSetPasswordEmail(
-                    expectedUser.givenName,
-                    any(),
-                    expectedUser.cn,
-                    adminSession,
-                    any(),
-                    any()
-                )
-            }
+            val expectedLdapUser = getLdapUserWithDetails(NEW_STANDARD_USER_EMAIL)
+            coVerify(exactly = 1) { emailService.sendSetPasswordEmail(expectedLdapUser, any(), adminSession, any()) }
             verify {
                 accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
                     AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(
@@ -92,8 +87,10 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testUserMakingRequestNotExisting() = testSuspend {
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } throws NameNotFoundException()
-        Assert.assertThrows(NameNotFoundException::class.java) {
+        coEvery {
+            userLookupService.lookupCurrentUser(adminSession)
+        } throws NoUserException("Test exception")
+        Assert.assertThrows(NoUserException::class.java) {
             runBlocking {
                 testClient.post("/create-user") {
                     contentType(ContentType.Application.Json)
@@ -103,6 +100,9 @@ class AdminUserCreationControllerTest {
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
                 }
+            }.apply {
+                coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
+                coVerify(exactly = 0) { userGUIDMapService.addNewUser(any()) }
             }
         }
     }
@@ -122,11 +122,15 @@ class AdminUserCreationControllerTest {
             }
         }.apply {
             assertEquals("forbidden", errorCode)
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { userGUIDMapService.addNewUser(any()) }
         }
     }
 
     @Test
     fun testAdminCreateSSOUser() = testSuspend {
+        val ldapUser = getLdapUserWithDetails(NEW_SSO_USER_EMAIL)
+        coEvery { userService.createUser(capture(user), any(), any(), any()) } returns ldapUser
         testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_SSO_USER_EMAIL))
@@ -144,7 +148,7 @@ class AdminUserCreationControllerTest {
             )
             assertCapturedUserIsAsExpected(expectedUser, false)
             verifyCorrectGroupsAdded()
-            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { emailService.sendSetPasswordEmail(any(), any(), any(), any()) }
             assertEquals(
                 "{\"message\":\"User created. Single Sign On (SSO) is enabled for this user based on their email domain. The account has been activated automatically, no email has been sent.\"}",
                 bodyAsText()
@@ -154,6 +158,8 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testAdminCreateNotRequiredSSOUser() = testSuspend {
+        val ldapUser = getLdapUserWithDetails(NEW_NOT_REQUIRED_SSO_USER)
+        coEvery { userService.createUser(capture(user), any(), any(), any()) } returns ldapUser
         testClient.post("/create-user") {
             contentType(ContentType.Application.Json)
             setBody(getUserDetailsJson(NEW_NOT_REQUIRED_SSO_USER))
@@ -171,16 +177,8 @@ class AdminUserCreationControllerTest {
             )
             assertCapturedUserIsAsExpected(expectedUser)
             verifyCorrectGroupsAdded()
-            coVerify(exactly = 1) {
-                emailService.sendSetPasswordEmail(
-                    expectedUser.givenName,
-                    any(),
-                    expectedUser.cn,
-                    adminSession,
-                    any(),
-                    any()
-                )
-            }
+            val expectedLdapUser = getLdapUserWithDetails(NEW_NOT_REQUIRED_SSO_USER)
+            coVerify(exactly = 1) { emailService.sendSetPasswordEmail(expectedLdapUser, any(), adminSession, any()) }
             assertEquals("{\"message\":\"User created successfully\"}", bodyAsText())
         }
     }
@@ -244,7 +242,10 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testErrorHandlingDuringAddingToGroup() = testSuspend {
-        coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } throws Exception()
+        coEvery {
+            userService.createUser(capture(user), any(), any(), any())
+        } returns getLdapUserWithDetails(NEW_STANDARD_USER_EMAIL)
+        coEvery { groupService.addUserToGroup(any(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/create-user") {
@@ -263,7 +264,10 @@ class AdminUserCreationControllerTest {
 
     @Test
     fun testErrorHandlingDuringEmailSending() = testSuspend {
-        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) } throws Exception()
+        coEvery {
+            userService.createUser(capture(user), any(), any(), any())
+        } returns getLdapUserWithDetails(NEW_STANDARD_USER_EMAIL)
+        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any()) } throws Exception()
         Assert.assertThrows(ApiError::class.java) {
             runBlocking {
                 testClient.post("/create-user") {
@@ -284,30 +288,19 @@ class AdminUserCreationControllerTest {
     fun resetMocks() {
         user.clear()
         clearAllMocks()
+        coEvery { oauthSessionService.retrieveFromAuthToken(adminSession.authToken, client) } answers { adminSession }
+        coEvery { oauthSessionService.retrieveFromAuthToken(userSession.authToken, client) } answers { userSession }
+        coEvery { userLookupService.lookupCurrentUser(adminSession) } returns adminUser
+        coEvery { userLookupService.lookupCurrentUser(userSession) } returns regularUser
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_STANDARD_USER_EMAIL) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_INVALID_USER_EMAIL) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_SSO_USER_EMAIL) } returns null
+        coEvery { userGUIDMapService.userGUIDFromEmailIfExists(NEW_NOT_REQUIRED_SSO_USER) } returns null
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
-                adminSession.authToken,
-                client
-            )
-        } answers { adminSession }
-        coEvery {
-            oauthSessionService.retrieveFomAuthToken(
-                userSession.authToken,
-                client
-            )
-        } answers { userSession }
-        coEvery { userLookupService.lookupUserByCn(adminUser.cn) } returns adminUser
-        coEvery { userLookupService.lookupUserByCn(regularUser.cn) } returns regularUser
-        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_STANDARD_USER_EMAIL)) } returns false
-        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_INVALID_USER_EMAIL)) } returns false
-        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_SSO_USER_EMAIL)) } returns false
-        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(NEW_NOT_REQUIRED_SSO_USER)) } returns false
-        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_STANDARD_USER_EMAIL)) } returns true
-        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_SSO_USER_EMAIL)) } returns true
-        coEvery { userLookupService.userExists(LDAPConfig.emailToCN(OLD_NOT_REQUIRED_SSO_USER)) } returns true
-        coEvery { userService.createUser(capture(user), any(), any(), any()) } just runs
-        coEvery { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) } just runs
-        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any(), any(), any()) } just runs
+            userGUIDMapService.userGUIDFromEmailIfExists(OLD_STANDARD_USER_EMAIL)
+        } returns getLdapUserWithDetails(OLD_STANDARD_USER_EMAIL).getGUID()
+        coEvery { groupService.addUserToGroup(any(), any(), any(), any()) } just runs
+        coEvery { emailService.sendSetPasswordEmail(any(), any(), any(), any()) } just runs
         coEvery { setPasswordTokenService.createToken(any()) } returns "passwordToken"
         coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
             OrganisationNameAndCode("orgCode1", "Org 1"), OrganisationNameAndCode("orgCode2", "Org 2")
@@ -337,13 +330,8 @@ class AdminUserCreationControllerTest {
 
         private val ssoConfig =
             AzureADSSOConfig(listOf(requiredSSOClient, notRequiredSSOClient))
-        private val authenticator: Authenticator = object : Authenticator() {
-            override fun getPasswordAuthentication(): PasswordAuthentication {
-                return PasswordAuthentication("", "")
-            }
-        }
-        private val emailConfig = EmailConfig(Properties(), authenticator, "", "", "", "", false, emptyList())
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
         private val userService = mockk<UserService>()
         private val groupService = mockk<GroupService>()
         private val emailService = mockk<EmailService>()
@@ -358,10 +346,12 @@ class AdminUserCreationControllerTest {
         private val adminUser = testLdapUser(cn = "admin", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
         private val regularUser = testLdapUser(cn = "user", memberOfCNs = emptyList())
 
-        private val adminSession =
-            OAuthSession(1, adminUser.cn, client, "adminAccessToken", Instant.now(), "trace", false)
-        private val userSession =
-            OAuthSession(1, regularUser.cn, client, "userAccessToken", Instant.now(), "trace", false)
+        private val adminSession = OAuthSession(
+            1, adminUser.cn, adminUser.getGUID(), client, "adminAccessToken", Instant.now(), "trace", false
+        )
+        private val userSession = OAuthSession(
+            1, regularUser.cn, regularUser.getGUID(), client, "userAccessToken", Instant.now(), "trace", false
+        )
 
         private fun getUserDetailsJson(email: String): JsonElement {
             return Json.parseToJsonElement(
@@ -405,58 +395,45 @@ class AdminUserCreationControllerTest {
             )
         }
 
+        private fun getLdapUserWithDetails(email: String): LdapUser {
+            val cn = LDAPConfig.emailToCN(email)
+            return testLdapUser(
+                dn = ldapConfig.deltaUserDnFormat.format(cn),
+                cn = cn,
+                memberOfCNs = groups,
+                email = email,
+                firstName = "testFirst",
+                lastName = "testLast",
+                fullName = "testFirst testLast",
+                accountEnabled = false,
+                javaUUIDObjectGuid = "00112233-4455-1677-8899-aabbccddeeff",
+                telephone = "0123456789",
+                mobile = "0987654321",
+                comment = "test comment",
+                notificationStatus = "active",
+            )
+        }
+
+        private val groups = listOf(
+            "datamart-delta-user",
+            "datamart-delta-user-orgCode1",
+            "datamart-delta-user-orgCode2",
+            "datamart-delta-access-group-2",
+            "datamart-delta-access-group-2-orgCode1",
+            "datamart-delta-access-group-2-orgCode2",
+            "datamart-delta-access-group-1",
+            "datamart-delta-delegate-access-group-2",
+            "datamart-delta-data-certifiers",
+            "datamart-delta-data-certifiers-orgCode1",
+            "datamart-delta-data-certifiers-orgCode2",
+            "datamart-delta-data-providers",
+            "datamart-delta-data-providers-orgCode1",
+            "datamart-delta-data-providers-orgCode2",
+        )
+
         private fun verifyCorrectGroupsAdded() {
-            coVerify(exactly = 1) { groupService.addUserToGroup(any(), "datamart-delta-user", any(), adminSession) }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-user-orgCode1", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-user-orgCode2", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-access-group-2", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-access-group-2-orgCode1", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-access-group-2-orgCode2", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-access-group-1", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-delegate-access-group-2", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(
-                    any(),
-                    "datamart-delta-data-certifiers",
-                    any(),
-                    adminSession
-                )
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode1", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-data-certifiers-orgCode2", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(
-                    any(),
-                    "datamart-delta-data-providers",
-                    any(),
-                    adminSession
-                )
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-data-providers-orgCode1", any(), adminSession)
-            }
-            coVerify(exactly = 1) {
-                groupService.addUserToGroup(any(), "datamart-delta-data-providers-orgCode2", any(), adminSession)
-            }
-            coVerify(exactly = 14) { groupService.addUserToGroup(any<UserService.ADUser>(), any(), any(), any()) }
+            groups.forEach { coVerify(exactly = 1) { groupService.addUserToGroup(any(), it, any(), adminSession) } }
+            coVerify(exactly = groups.size) { groupService.addUserToGroup(any(), any(), any(), any()) }
         }
 
         private fun assertCapturedUserIsAsExpected(
@@ -489,8 +466,6 @@ class AdminUserCreationControllerTest {
         private const val NEW_SSO_USER_EMAIL = "new.user@required.sso.domain.uk"
         private const val NEW_NOT_REQUIRED_SSO_USER = "new.user@not.required.sso.domain.uk"
         private const val OLD_STANDARD_USER_EMAIL = "old.user@test.com"
-        private const val OLD_SSO_USER_EMAIL = "old.user@required.sso.domain.uk"
-        private const val OLD_NOT_REQUIRED_SSO_USER = "old.user@not.required.sso.domain.uk"
 
         @BeforeClass
         @JvmStatic
@@ -498,8 +473,8 @@ class AdminUserCreationControllerTest {
             controller = AdminUserCreationController(
                 ldapConfig,
                 ssoConfig,
-                emailConfig,
                 userLookupService,
+                userGUIDMapService,
                 userService,
                 groupService,
                 emailService,
@@ -514,7 +489,7 @@ class AdminUserCreationControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"

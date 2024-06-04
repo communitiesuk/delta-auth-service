@@ -12,11 +12,12 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.getModificationItem
-import javax.naming.NameNotFoundException
+import uk.gov.communities.delta.auth.utils.getUserGUIDFromCallParameters
 import javax.naming.directory.ModificationItem
 
 class AdminEditUserController(
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val userService: UserService,
     private val groupService: GroupService,
     private val deltaUserPermissionsRequestMapper: DeltaUserPermissionsRequestMapper,
@@ -35,22 +36,18 @@ class AdminEditUserController(
             arrayOf(DeltaSystemRole.ADMIN), call
         )
 
-        val cn = call.request.queryParameters["userCn"]!!
-        logger.atInfo().log("Request to update user {}", cn)
+        val userToUpdateGUID = getUserGUIDFromCallParameters(
+            call.request.queryParameters,
+            userGUIDMapService,
+            "Something went wrong, please try again",
+            "update_user_as_admin"
+        )
+        val (userToUpdate, userToUpdateRoles) = userLookupService.lookupUserByGUIDAndLoadRoles(userToUpdateGUID)
 
-        val (userToUpdate, userToUpdateRoles) = try {
-            userLookupService.lookupUserByCNAndLoadRoles(cn)
-        } catch (e: NameNotFoundException) {
-            throw ApiError(
-                HttpStatusCode.BadRequest,
-                "no_existing_user",
-                "Attempting to update a user that doesn't exist",
-            )
-        }
-
+        logger.atInfo().log("Updating user with GUID ${userToUpdate.getGUID()}")
         val updatedDeltaUserDetailsRequest = call.receive<DeltaUserDetailsRequest>()
 
-        if (updatedDeltaUserDetailsRequest.id.replace("@", "!") != cn) throw ApiError(
+        if (LDAPConfig.emailToCN(updatedDeltaUserDetailsRequest.id) != userToUpdate.cn) throw ApiError(
             HttpStatusCode.BadRequest,
             "username_changed",
             "Username has been changed"
@@ -76,14 +73,10 @@ class AdminEditUserController(
 
         if (modifications.isNotEmpty()) userService.updateUser(userToUpdate, modifications, session, call)
 
-        groupsToAddToUser.forEach {
-            groupService.addUserToGroup(userToUpdate.cn, userToUpdate.dn, it, call, session)
-        }
-        groupsToRemoveFromUser.forEach {
-            groupService.removeUserFromGroup(userToUpdate.cn, userToUpdate.dn, it, call, session)
-        }
+        groupsToAddToUser.forEach { groupService.addUserToGroup(userToUpdate, it, call, session) }
+        groupsToRemoveFromUser.forEach { groupService.removeUserFromGroup(userToUpdate, it, call, session) }
 
-        logger.atInfo().log("User $cn successfully updated")
+        logger.atInfo().log("User ${userToUpdate.getGUID()} successfully updated")
 
         accessGroupDCLGMembershipUpdateEmailService.sendNotificationEmailsForChangeToUserAccessGroups(
             AccessGroupDCLGMembershipUpdateEmailService.UpdatedUser(userToUpdate),

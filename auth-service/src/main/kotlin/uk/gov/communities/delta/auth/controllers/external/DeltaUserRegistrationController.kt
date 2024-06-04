@@ -19,7 +19,6 @@ class DeltaUserRegistrationController(
     private val ssoConfig: AzureADSSOConfig,
     private val organisationService: OrganisationService,
     private val registrationService: RegistrationService,
-    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
     private val emailAddressChecker = EmailAddressChecker()
@@ -184,7 +183,7 @@ class DeltaUserRegistrationController(
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
         return when (registrationResult) {
             is RegistrationService.UserCreated -> {
-                respondSuccessPage(registrationResult.user.mail)
+                respondSuccessPage(registrationResult.user.email!!)
             }
 
             is RegistrationService.SSOUserCreated -> {
@@ -192,7 +191,7 @@ class DeltaUserRegistrationController(
             }
 
             is RegistrationService.UserAlreadyExists -> {
-                respondSuccessPage(registrationResult.user.mail)
+                respondSuccessPage(registrationResult.user.email!!)
             }
 
             is RegistrationService.RegistrationFailure -> {

@@ -7,6 +7,8 @@ import org.jetbrains.annotations.Blocking
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
+import java.util.*
+import java.time.Instant
 
 class UserAuditTrailRepo {
     enum class AuditAction(val action: String) {
@@ -34,57 +36,96 @@ class UserAuditTrailRepo {
     }
 
     @Blocking
-    fun getAuditForUser(conn: Connection, userCn: String, limitOffset: Pair<Int, Int>? = null): List<UserAuditRow> {
+    fun getAuditForUser(conn: Connection, userGUID: UUID, limitOffset: Pair<Int, Int>? = null): List<UserAuditRow> {
         val stmt = conn.prepareStatement(
-            "SELECT action, timestamp, user_cn, editing_user_cn, request_id, action_data " +
-                    "FROM user_audit WHERE user_cn = ? " +
-                    "ORDER BY timestamp DESC " +
+            "SELECT action, timestamp, ugm_user.user_cn AS user_cn, user_audit.user_guid, " +
+                "ugm_editing_user.user_cn AS editing_user_cn, editing_user_guid, request_id, action_data " +
+                "FROM user_audit " +
+                "LEFT JOIN user_guid_map ugm_user ON user_audit.user_guid = ugm_user.user_guid " +
+                "LEFT JOIN user_guid_map ugm_editing_user ON user_audit.editing_user_guid = ugm_editing_user.user_guid " +
+                "WHERE user_audit.user_guid = ? " +
+                "ORDER BY timestamp DESC " +
                     if (limitOffset != null) "LIMIT ? OFFSET ?" else ""
         )
-        stmt.setString(1, userCn)
+        stmt.setObject(1, userGUID)
         if (limitOffset != null) {
             stmt.setInt(2, limitOffset.first)
             stmt.setInt(3, limitOffset.second)
         }
 
-        return stmt.executeQuery().map {
-            UserAuditRow(
-                AuditAction.fromActionString(it.getString("action")),
-                it.getTimestamp("timestamp"),
-                it.getString("user_cn"),
-                it.getString("editing_user_cn"),
-                it.getString("request_id"),
-                Json.parseToJsonElement(it.getString("action_data")).jsonObject,
-            )
-        }
+        return stmt.executeQuery().map(::mapUserAuditRow)
+    }
+
+    @Blocking
+    fun getAuditForAllUsers(conn: Connection, from: Instant, to: Instant): List<UserAuditRow> {
+        val stmt = conn.prepareStatement(
+            "SELECT action, timestamp, ugm_user.user_cn AS user_cn, user_audit.user_guid, " +
+                "ugm_editing_user.user_cn AS editing_user_cn, editing_user_guid, request_id, action_data " +
+                "FROM user_audit " +
+                "LEFT JOIN user_guid_map ugm_user ON user_audit.user_guid = ugm_user.user_guid " +
+                "LEFT JOIN user_guid_map ugm_editing_user ON user_audit.editing_user_guid = ugm_editing_user.user_guid " +
+                "WHERE timestamp >= ? " +
+                "AND timestamp < ? " +
+                "ORDER BY timestamp DESC "
+        )
+        stmt.setTimestamp(1, Timestamp.from(from))
+        stmt.setTimestamp(2, Timestamp.from(to))
+
+        return stmt.executeQuery().map(::mapUserAuditRow)
+    }
+
+    private fun mapUserAuditRow(row: ResultSet) = UserAuditRow(
+        AuditAction.fromActionString(row.getString("action")),
+        row.getTimestamp("timestamp"),
+        row.getString("user_cn")?:"",
+        row.getObject("user_guid", UUID::class.java),
+        row.getString("editing_user_cn"),
+        row.getObject("editing_user_guid", UUID::class.java),
+        row.getString("request_id"),
+        Json.parseToJsonElement(row.getString("action_data")).jsonObject,
+    )
+
+    @Blocking
+    fun getAuditItemCount(conn: Connection, userGUID: UUID): Int {
+        val stmt = conn.prepareStatement(
+            "SELECT COUNT(*) " +
+                "FROM user_audit " +
+                "WHERE user_guid = ?"
+        )
+        stmt.setObject(1, userGUID)
+        val resultSet = stmt.executeQuery()
+        resultSet.next()
+        return resultSet.getInt(1)
     }
 
     @Blocking
     fun insertAuditRow(
         conn: Connection,
         action: AuditAction,
-        userCn: String,
-        editingUserCn: String?,
+        userGUID: UUID,
+        editingUserGUID: UUID?,
         requestId: String,
         encodedActionData: String,
     ) {
         val stmt = conn.prepareStatement(
-            "INSERT INTO user_audit (action, timestamp, user_cn, editing_user_cn, request_id, action_data) VALUES " +
-                    "(?, now(), ?, ?, ?, ? ::jsonb)"
+            "INSERT INTO user_audit (action, timestamp, request_id, action_data, user_guid, editing_user_guid) " +
+                "VALUES (?, now(), ?, ? ::jsonb, ?, ?)"
         )
         stmt.setString(1, action.action)
-        stmt.setString(2, userCn)
-        stmt.setString(3, editingUserCn)
-        stmt.setString(4, requestId)
-        stmt.setString(5, encodedActionData)
+        stmt.setString(2, requestId)
+        stmt.setString(3, encodedActionData)
+        stmt.setObject(4, userGUID)
+        stmt.setObject(5, editingUserGUID)
         stmt.executeUpdate()
     }
 
     data class UserAuditRow(
         val action: AuditAction,
         val timestamp: Timestamp,
-        val userCn: String,
-        val editingUserCn: String?,
+        val userCN: String,
+        val userGUID: UUID,
+        val editingUserCN: String?,
+        val editingUserGUID: UUID?,
         val requestId: String,
         val actionData: JsonObject,
     )

@@ -9,7 +9,10 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.plugins.ApiError
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.GroupService
+import uk.gov.communities.delta.auth.services.OAuthSession
+import uk.gov.communities.delta.auth.services.OrganisationService
+import uk.gov.communities.delta.auth.services.UserLookupService
 
 class EditOrganisationsController(
     private val userLookupService: UserLookupService,
@@ -28,8 +31,8 @@ class EditOrganisationsController(
     // not in their domain, these will NOT be affected by this endpoint.
     private suspend fun updateUserOrganisations(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
-        val (callingUser, callingUserRoles) = userLookupService.lookupUserByCNAndLoadRoles(session.userCn)
-        logger.atInfo().log("Updating organisations for user {}", session.userCn)
+        val (callingUser, callingUserRoles) = userLookupService.lookupCurrentUserAndLoadRoles(session)
+        logger.atInfo().log("Updating organisations for user {}", session.userGUID)
 
         val requestedOrganisations = call.receive<DeltaUserOrganisations>().selectedDomainOrganisationCodes
         val userDomainOrgCodes = organisationService.findAllByEmail(callingUser.email).map { it.code }.toSet()
@@ -48,7 +51,7 @@ class EditOrganisationsController(
         for (org in orgsToAdd) {
             for (role in callingUserRoles.systemRoles) {
                 val roleGroupString = role.role.adCn(org)
-                groupService.addUserToGroup(callingUser.cn, callingUser.dn, roleGroupString, call, null)
+                groupService.addUserToGroup(callingUser, roleGroupString, call, null)
             }
         }
 
@@ -56,11 +59,10 @@ class EditOrganisationsController(
             for (group in callingUser.memberOfCNs) {
                 if (group.endsWith("-$org")) {
                     groupService.removeUserFromGroup(
-                        callingUser.cn,
-                        callingUser.dn,
+                        callingUser,
                         group,
                         call,
-                        null
+                        null,
                     )
                 }
             }

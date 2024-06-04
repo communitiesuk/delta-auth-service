@@ -9,17 +9,20 @@ import io.ktor.server.routing.*
 import io.ktor.server.thymeleaf.*
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.PasswordChecker
+import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
+import uk.gov.communities.delta.auth.utils.getUserGUIDFromCallParameters
+import java.util.*
 
 class DeltaSetPasswordController(
     private val deltaConfig: DeltaConfig,
-    private val ldapConfig: LDAPConfig,
     private val userService: UserService,
     private val setPasswordTokenService: SetPasswordTokenService,
     private val userLookupService: UserLookupService,
+    private val userGUIDMapService: UserGUIDMapService,
     private val emailService: EmailService,
     private val userAuditService: UserAuditService,
 ) {
@@ -48,15 +51,25 @@ class DeltaSetPasswordController(
     }
 
     private suspend fun setPasswordGet(call: ApplicationCall) {
-        val userCN = call.request.queryParameters["userCN"].orEmpty()
+        val userGUID = try {
+            getUserGUIDFromCallParameters(
+                call.request.queryParameters,
+                userGUIDMapService,
+                setPasswordExceptionUserVisibleMessage,
+                "set_password_get"
+            )
+        } catch (e: ApiError) {
+            throw InvalidSetPassword()
+        }
         val token = call.request.queryParameters["token"].orEmpty()
-        when (val tokenResult = setPasswordTokenService.validateToken(token, userCN)) {
+        when (val tokenResult = setPasswordTokenService.validateToken(token, userGUID)) {
             is PasswordTokenService.NoSuchToken -> {
-                throw SetPasswordException("set_password_no_token", "Set password token did not exist")
+                throw InvalidSetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {
-                call.respondExpiredTokenPage(tokenResult)
+                val userEmail = userLookupService.lookupUserByGUID(userGUID).email!!
+                call.respondExpiredTokenPage(tokenResult, userEmail)
             }
 
             is PasswordTokenService.ValidToken -> {
@@ -67,67 +80,64 @@ class DeltaSetPasswordController(
 
     private suspend fun setPasswordExpiredPost(call: ApplicationCall) {
         val formParameters = call.receiveParameters()
-        val userCN = formParameters["userCN"].orEmpty()
+        val userGUID = UUID.fromString(formParameters["userGUID"]!!)
+        val user = userLookupService.lookupUserByGUID(userGUID)
         val token = formParameters["token"].orEmpty()
-        val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, userCN)
+        val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, userGUID)
         if (tokenResult is PasswordTokenService.ExpiredToken) {
             emailService.sendNotYetEnabledEmail(
-                userLookupService.lookupUserByCn(userCN),
-                setPasswordTokenService.createToken(userCN),
+                userLookupService.lookupUserByGUID(userGUID),
+                setPasswordTokenService.createToken(userGUID),
                 call
             )
-            call.respondNewEmailSentPage(userCN.replace("!", "@"))
+            call.respondNewEmailSentPage(user.email!!)
         } else throw Exception("tokenResult was $tokenResult when trying to send a new set password email")
     }
 
     private suspend fun setPasswordPost(call: ApplicationCall) {
-        val userCN = call.request.queryParameters["userCN"].orEmpty()
+        val user = try {
+            getUserFromCallParameters(
+                call.request.queryParameters,
+                userLookupService,
+                userGUIDMapService,
+                setPasswordExceptionUserVisibleMessage,
+                "set_password"
+            )
+        } catch (e: ApiError) {
+            throw InvalidSetPassword()
+        }
+
         val token = call.request.queryParameters["token"].orEmpty()
-
-        if (Strings.isNullOrEmpty(userCN)) throw SetPasswordException(
-            "set_password_no_user_cn",
-            "User CN not present on setting password"
-        )
-
         if (Strings.isNullOrEmpty(token)) throw SetPasswordException(
             "set_password_no_token",
             "Token not present on setting password"
         )
 
-        val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, userCN)
+        val (message, newPassword) = passwordChecker.checkPasswordForErrors(call, user.email!!)
         if (message != null) return call.respondSetPasswordPage(message)
 
-        when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, userCN)) {
+        when (val tokenResult = setPasswordTokenService.consumeTokenIfValid(token, user.getGUID())) {
             is PasswordTokenService.NoSuchToken -> {
-                throw SetPasswordException(
-                    "set_password_invalid_token",
-                    "Token did not exist on setting password"
-                )
+                InvalidSetPassword()
             }
 
             is PasswordTokenService.ExpiredToken -> {
-                call.respondExpiredTokenPage(tokenResult)
+                val userEmail = user.email
+                call.respondExpiredTokenPage(tokenResult, userEmail)
             }
 
             is PasswordTokenService.ValidToken -> {
-                val userDN = String.format(ldapConfig.deltaUserDnFormat, tokenResult.userCN)
                 try {
-                    userService.setPasswordAndEnable(userDN, newPassword)
+                    userService.setPasswordAndEnable(user.dn, newPassword)
                 } catch (e: Exception) {
-                    logger.atError().addKeyValue("UserDN", userDN).log("Error setting password for user", e)
+                    logger.atError().addKeyValue("UserDN", user.dn).log("Error setting password for user", e)
                     throw e
                 }
-                userAuditService.setPasswordAudit(userCN, call)
+                userAuditService.setPasswordAudit(user.getGUID(), call)
                 call.respondRedirect("/delta/set-password/success")
             }
         }
     }
-
-    class SetPasswordException(
-        errorCode: String,
-        exceptionMessage: String,
-        userVisibleMessage: String = "Something went wrong, please click the link in your latest account activation email",
-    ) : UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Set Password Error")
 
     private suspend fun ApplicationCall.respondNewEmailSentPage(userEmail: String) =
         respond(
@@ -158,24 +168,41 @@ class DeltaSetPasswordController(
         )
     }
 
-    private suspend fun ApplicationCall.respondExpiredTokenPage(tokenResult: PasswordTokenService.ExpiredToken) =
-        respond(
-            ThymeleafContent(
-                "expired-set-password",
-                mapOf(
-                    "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                    "userEmail" to tokenResult.userCN.replace("!", "@"),
-                    "userCN" to tokenResult.userCN,
-                    "token" to tokenResult.token,
-                )
+    private suspend fun ApplicationCall.respondExpiredTokenPage(
+        tokenResult: PasswordTokenService.ExpiredToken,
+        userEmail: String
+    ) = respond(
+        ThymeleafContent(
+            "expired-set-password",
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "userEmail" to userEmail,
+                "userGUID" to tokenResult.userGUID,
+                "token" to tokenResult.token,
             )
         )
+    )
 }
 
-fun getSetPasswordURL(token: String, userCN: String, authServiceUrl: String) =
+const val setPasswordExceptionUserVisibleMessage =
+    "Something went wrong, please click the link in your latest account activation email"
+
+open class SetPasswordException(
+    errorCode: String,
+    exceptionMessage: String,
+    userVisibleMessage: String = setPasswordExceptionUserVisibleMessage,
+) : UserVisibleServerError(errorCode, exceptionMessage, userVisibleMessage, "Set Password Error")
+
+class InvalidSetPassword :
+    SetPasswordException(
+        "set_password_invalid",
+        "Token and user combination did not exist on setting password"
+    )
+
+fun getSetPasswordURL(token: String, userGUID: UUID, authServiceUrl: String) =
     String.format(
-        "%s/delta/set-password?userCN=%s&token=%s",
+        "%s/delta/set-password?userGUID=%s&token=%s",
         authServiceUrl,
-        userCN.encodeURLParameter(),
+        userGUID.toString().encodeURLParameter(),
         token.encodeURLParameter()
     )

@@ -51,38 +51,22 @@ class EditAccessGroupsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-1-orgCode2",
-                    any(),
-                    null
+                    externalUser, "datamart-delta-access-group-1-orgCode2", any(), null,
                 )
             }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-2-orgCode2",
-                    any(),
-                    null
+                    externalUser, "datamart-delta-access-group-2-orgCode2", any(), null
                 )
             }
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-1-orgCode3",
-                    any(),
-                    null
+                    externalUser, "datamart-delta-access-group-1-orgCode3", any(), null
                 )
             }
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-2-orgCode1",
-                    any(),
-                    null
+                    externalUser, "datamart-delta-access-group-2-orgCode1", any(), null
                 )
             }
             confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
@@ -115,11 +99,7 @@ class EditAccessGroupsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    internalUser.cn,
-                    internalUser.dn,
-                    "datamart-delta-access-group-3-dclg",
-                    any(),
-                    null
+                    internalUser, "datamart-delta-access-group-3-dclg", any(), null
                 )
             }
             verify(exactly = 1) {
@@ -176,29 +156,17 @@ class EditAccessGroupsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-1-orgCode2",
-                    any(),
-                    null
+                    externalUser, "datamart-delta-access-group-1-orgCode2", any(), null
                 )
             }
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-2",
-                    any(),
-                    null
+                    externalUser, "datamart-delta-access-group-2", any(), null
                 )
             }
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-2-orgCode1",
-                    any(),
-                    null
+                    externalUser, "datamart-delta-access-group-2-orgCode1", any(), null
                 )
             }
             confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
@@ -346,29 +314,23 @@ class EditAccessGroupsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-3",
-                    any(),
-                    internalUserSession
+                    externalUser, "datamart-delta-access-group-3", any(), internalUserSession,
                 )
             }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    externalUser.cn,
-                    externalUser.dn,
+                    externalUser,
                     "datamart-delta-access-group-3-orgCode1",
                     any(),
-                    internalUserSession
+                    internalUserSession,
                 )
             }
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    externalUser.cn,
-                    externalUser.dn,
+                    externalUser,
                     "datamart-delta-access-group-3-orgCode2",
                     any(),
-                    internalUserSession
+                    internalUserSession,
                 )
             }
             confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
@@ -402,11 +364,7 @@ class EditAccessGroupsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.addUserToGroup(
-                    internalUser.cn,
-                    internalUser.dn,
-                    "datamart-delta-access-group-3-dclg",
-                    any(),
-                    internalUserSession
+                    internalUser, "datamart-delta-access-group-3-dclg", any(), internalUserSession,
                 )
             }
             verify(exactly = 1) {
@@ -474,20 +432,15 @@ class EditAccessGroupsControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
-                    "datamart-delta-access-group-2",
-                    any(),
-                    internalUserSession
+                    externalUser, "datamart-delta-access-group-2", any(), internalUserSession,
                 )
             }
             coVerify(exactly = 1) {
                 groupService.removeUserFromGroup(
-                    externalUser.cn,
-                    externalUser.dn,
+                    externalUser,
                     "datamart-delta-access-group-2-orgCode1",
                     any(),
-                    internalUserSession
+                    internalUserSession,
                 )
             }
             confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
@@ -498,19 +451,19 @@ class EditAccessGroupsControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 externalUserSession.authToken,
                 client
             )
         } answers { externalUserSession }
         coEvery {
-            oauthSessionService.retrieveFomAuthToken(
+            oauthSessionService.retrieveFromAuthToken(
                 internalUserSession.authToken,
                 client
             )
         } answers { internalUserSession }
-        coEvery { userLookupService.lookupUserByCn(externalUser.cn) } returns externalUser
-        coEvery { userLookupService.lookupUserByCn(internalUser.cn) } returns internalUser
+        coEvery { userGUIDMapService.getGUIDFromCN(externalUser.cn) } returns externalUser.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(internalUser.cn) } returns internalUser.getGUID()
         coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
             OrganisationNameAndCode("orgCode2", "Organisation Name 2"),
@@ -538,14 +491,14 @@ class EditAccessGroupsControllerTest {
         )
         mockUserLookupService(
             userLookupService,
-            listOf(internalUser, externalUser),
+            listOf(Pair(internalUser, internalUserSession), Pair(externalUser, externalUserSession)),
             runBlocking { organisationService.findAllNamesAndCodes() },
             runBlocking { accessGroupsService.getAllAccessGroups() },
         )
-        coEvery { groupService.addUserToGroup(externalUser.cn, externalUser.dn, any(), any(), any()) } just runs
-        coEvery { groupService.removeUserFromGroup(externalUser.cn, externalUser.dn, any(), any(), any()) } just runs
-        coEvery { groupService.addUserToGroup(internalUser.cn, externalUser.dn, any(), any(), any()) } just runs
-        coEvery { groupService.removeUserFromGroup(internalUser.cn, externalUser.dn, any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(externalUser, any(), any(), any()) } just runs
+        coEvery { groupService.removeUserFromGroup(externalUser, any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(internalUser, any(), any(), any()) } just runs
+        coEvery { groupService.removeUserFromGroup(internalUser, any(), any(), any()) } just runs
     }
 
     companion object {
@@ -556,6 +509,7 @@ class EditAccessGroupsControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
 
         private val userLookupService = mockk<UserLookupService>()
+        private val userGUIDMapService = mockk<UserGUIDMapService>()
         private val groupService = mockk<GroupService>()
         private val organisationService = mockk<OrganisationService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
@@ -605,15 +559,34 @@ class EditAccessGroupsControllerTest {
         )
 
         private val externalUserSession =
-            OAuthSession(1, externalUser.cn, client, "externalUserToken", Instant.now(), "trace", false)
+            OAuthSession(
+                1,
+                externalUser.cn,
+                externalUser.getGUID(),
+                client,
+                "externalUserToken",
+                Instant.now(),
+                "trace",
+                false
+            )
         private val internalUserSession =
-            OAuthSession(1, internalUser.cn, client, "internalUserToken", Instant.now(), "trace", false)
+            OAuthSession(
+                1,
+                internalUser.cn,
+                internalUser.getGUID(),
+                client,
+                "internalUserToken",
+                Instant.now(),
+                "trace",
+                false
+            )
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             controller = EditAccessGroupsController(
                 userLookupService,
+                userGUIDMapService,
                 groupService,
                 organisationService,
                 accessGroupsService,
@@ -627,7 +600,7 @@ class EditAccessGroupsControllerTest {
                     authentication {
                         bearer(OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME) {
                             realm = "auth-service"
-                            authenticate { oauthSessionService.retrieveFomAuthToken(it.token, client) }
+                            authenticate { oauthSessionService.retrieveFromAuthToken(it.token, client) }
                         }
                         clientHeaderAuth(CLIENT_HEADER_AUTH_NAME) {
                             headerName = "Delta-Client"
