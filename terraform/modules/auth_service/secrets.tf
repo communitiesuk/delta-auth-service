@@ -7,6 +7,16 @@ data "aws_secretsmanager_secret" "saml_certificate" {
   name = "api-saml-certificate-${var.environment}"
 }
 
+# TODO 836 ticket specific release action: manually create these secrets, copying the current values from the API secrets, so they can be referenced here
+# See api/README.md and terraform/test/main.tf in the Delta repository for setup instructions
+data "aws_secretsmanager_secret" "delta_saml_private_key" {
+  name = "delta-saml-private-key-${var.environment}"
+}
+
+data "aws_secretsmanager_secret" "delta_saml_private_key" {
+  name = "delta-saml-certificate-${var.environment}"
+}
+
 resource "aws_kms_key" "auth_service" {
   description         = "auth-service-${var.environment}"
   enable_key_rotation = true

@@ -40,7 +40,7 @@ class ExternalDeltaApiTokenControllerTest {
                 tokenService.validateApiClientIdAndSecret(validClientId, validClientSecret)
             }
             coVerify(exactly = 1) {
-                tokenService.createAndStoreApiToken(testUser.cn, validClientId, testUser.javaUUIDObjectGuid, any())
+                tokenService.createAndStoreApiToken(testUser.cn, validClientId, testUser.getGUID(), any())
             }
             confirmVerified(tokenService)
         }

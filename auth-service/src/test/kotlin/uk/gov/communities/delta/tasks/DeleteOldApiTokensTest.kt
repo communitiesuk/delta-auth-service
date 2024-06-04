@@ -14,19 +14,21 @@ import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.dbintegration.testDbPool
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.*
 import kotlin.test.assertEquals
 
 class DeleteOldApiTokensTest {
     @Test
     fun deleteOldApiTokensTest() = testSuspend {
         clearAllMocks()
-        val userGuid = null
+        val newUserGuid = UUID.randomUUID()
+        val oldUserGuid = UUID.randomUUID()
         val userClientId = "valid_id"
         val fakeCall = mockk<ApplicationCall>()
         coEvery { userAuditService.apiTokenCreationAudit(any(), any()) } just runs
-        deltaApiTokenService.createAndStoreApiToken("newTokenUser", userClientId, userGuid, fakeCall)
+        deltaApiTokenService.createAndStoreApiToken("newTokenUser", userClientId, newUserGuid, fakeCall)
         time = { Instant.now().minus(2, ChronoUnit.DAYS) }
-        deltaApiTokenService.createAndStoreApiToken("oldTokenUser", userClientId, userGuid, fakeCall)
+        deltaApiTokenService.createAndStoreApiToken("oldTokenUser", userClientId, oldUserGuid, fakeCall)
         time = { Instant.now() }
 
         testDbPool.useConnectionBlocking("test") {

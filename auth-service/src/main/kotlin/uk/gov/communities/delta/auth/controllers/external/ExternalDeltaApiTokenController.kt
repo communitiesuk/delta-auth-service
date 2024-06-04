@@ -65,7 +65,7 @@ class ExternalDeltaApiTokenController(
             )
         }
 
-        val apiToken = tokenService.createAndStoreApiToken(userCn, clientId, loginResult.user.javaUUIDObjectGuid, call)
+        val apiToken = tokenService.createAndStoreApiToken(userCn, clientId, loginResult.user.getGUID(), call)
         return call.respond(mapOf(
             "access_token" to apiToken,
             "expires_in" to (DeltaApiTokenService.API_TOKEN_EXPIRY_HOURS * 3600).toString(),

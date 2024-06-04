@@ -51,7 +51,7 @@ class InternalDeltaApiTokenController(
 
             val token = samlTokenService.generate(
                 systemClient.client.samlCredential,
-                userLookupService.lookupUserByCn(userCn),
+                userLookupService.lookupUserByCN(userCn),
                 validFrom,
                 validTo
             )
@@ -62,7 +62,7 @@ class InternalDeltaApiTokenController(
                     token = token,
                     expiry = DateTimeFormatter.ISO_INSTANT.format(validTo),
                     clientId = clientId,
-                    userGuid = userGuid,
+                    userGuid = userGuid.toString(),
                 )
             )
         } else {

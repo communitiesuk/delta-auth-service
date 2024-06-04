@@ -27,6 +27,7 @@ import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.DeltaApiTokenService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -81,8 +82,8 @@ class InternalDeltaApiTokenControllerTest {
     fun resetMocks() {
         clearAllMocks()
         coEvery { tokenService.validateApiToken(any()) } returns null
-        coEvery { tokenService.validateApiToken(apiToken)} returns Triple(testUser.cn, testUserClientId, testUser.javaUUIDObjectGuid)
-        coEvery { userLookupService.lookupUserByCn(testUser.cn) } returns testUser
+        coEvery { tokenService.validateApiToken(apiToken)} returns Triple(testUser.cn, testUserClientId, testUser.getGUID())
+        coEvery { userLookupService.lookupUserByCN(testUser.cn) } returns testUser
         coEvery { samlTokenService.generate(serviceClient.samlCredential, testUser, any(), any())} returns samlToken
     }
 
@@ -98,7 +99,7 @@ class InternalDeltaApiTokenControllerTest {
         private val apiToken = "valid_api_token"
         private val samlToken = "saml_token"
 
-        private val testUser = testLdapUser(javaUUIDObjectGuid = "testGuid")
+        private val testUser = testLdapUser()
         private val testUserClientId = "client_id"
 
         private val serviceClient = Client("test-client", "test-secret", SAMLConfig.insecureHardcodedCredentials())

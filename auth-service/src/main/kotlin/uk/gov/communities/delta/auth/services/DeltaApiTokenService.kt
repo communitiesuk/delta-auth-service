@@ -1,7 +1,6 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.application.*
-import kotlinx.serialization.json.Json
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.repositories.DbPool
@@ -13,6 +12,7 @@ import java.security.MessageDigest
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.*
 
 class DeltaApiTokenService(
     private val dbPool: DbPool,
@@ -39,7 +39,7 @@ class DeltaApiTokenService(
         }
     }
 
-    suspend fun createAndStoreApiToken(username: String, clientId: String, userGuid: String?, call: ApplicationCall): String {
+    suspend fun createAndStoreApiToken(username: String, clientId: String, userGuid: UUID, call: ApplicationCall): String {
         logger.atInfo().addKeyValue("clientId", clientId).log("Creating new API token for client")
         val apiToken = randomBase64(32)
 
@@ -47,7 +47,7 @@ class DeltaApiTokenService(
         return apiToken
     }
 
-    suspend fun validateApiToken(apiToken: String): Triple<String, String, String?>? {
+    suspend fun validateApiToken(apiToken: String): Triple<String, String, UUID>? {
         return dbPool.useConnectionNonBlocking("Validate client id and secret") {
             val stmt = it.prepareStatement(
                 "SELECT created_at, created_by_user_cn, created_by_client_id, created_by_user_guid FROM api_tokens " +
@@ -63,15 +63,15 @@ class DeltaApiTokenService(
                 Triple(
                     result.getString("created_by_user_cn"),
                     result.getString("created_by_client_id"),
-                    result.getString("created_by_user_guid")
+                    UUID.fromString(result.getString("created_by_user_guid"))
                 )
             }
         }
     }
 
     @Blocking
-    private suspend fun insertApiToken(token: String, now: Instant, username: String, userGuid: String?, clientId: String, call: ApplicationCall) {
-        userAuditService.apiTokenCreationAudit(username, call)
+    private suspend fun insertApiToken(token: String, now: Instant, username: String, userGuid: UUID, clientId: String, call: ApplicationCall) {
+        userAuditService.apiTokenCreationAudit(userGuid, call)
 
         return dbPool.useConnectionBlocking("Insert api_token") {
             val stmt = it.prepareStatement(
@@ -81,7 +81,7 @@ class DeltaApiTokenService(
             stmt.setBytes(1, hashBase64String(token))
             stmt.setTimestamp(2, Timestamp.from(now))
             stmt.setString(3, username)
-            stmt.setString(4, userGuid)
+            stmt.setObject(4, userGuid)
             stmt.setString(5, clientId)
             stmt.executeUpdate()
 
