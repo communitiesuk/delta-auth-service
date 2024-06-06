@@ -11,10 +11,30 @@ data "aws_secretsmanager_secret" "saml_certificate" {
 # See api/README.md and terraform/test/main.tf in the Delta repository for setup instructions
 data "aws_secretsmanager_secret" "delta_saml_private_key" {
   name = "delta-saml-private-key-${var.environment}"
+
+  //noinspection HCLUnknownBlockType
+  lifecycle {
+    //noinspection HCLUnknownBlockType
+    postcondition {
+      //noinspection HILUnresolvedReference
+      condition     = self.kms_key_id == aws_kms_key.auth_service.arn
+      error_message = "Secret must use the auth service KMS key"
+    }
+  }
 }
 
 data "aws_secretsmanager_secret" "delta_saml_certificate" {
   name = "delta-saml-certificate-${var.environment}"
+
+  //noinspection HCLUnknownBlockType
+  lifecycle {
+    //noinspection HCLUnknownBlockType
+    postcondition {
+      //noinspection HILUnresolvedReference
+      condition     = self.kms_key_id == aws_kms_key.auth_service.arn
+      error_message = "Secret must use the auth service KMS key"
+    }
+  }
 }
 
 resource "aws_kms_key" "auth_service" {
