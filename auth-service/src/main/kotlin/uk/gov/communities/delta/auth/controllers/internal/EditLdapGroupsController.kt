@@ -23,7 +23,7 @@ class EditLdapGroupsController(
     suspend fun addUserToGroup(call: ApplicationCall) {
         validateAuthorisation(call)
         val groupName = call.parameters.getOrFail("groupName")
-        val groupCn = LDAPConfig.DATAMART_DELTA_PREFIX + groupName
+        val groupCn = if (groupName.startsWith(LDAPConfig.DATAMART_DELTA_PREFIX)) groupName else LDAPConfig.DATAMART_DELTA_PREFIX + groupName
 
         val user = getUserFromCallParameters(
             call.parameters,
@@ -32,7 +32,7 @@ class EditLdapGroupsController(
             "An error occurred adding groups to the user",
             "add_ldap_group"
         )
-        
+
         if (!user.memberOfCNs.contains(groupCn)) {
             logger.info("Adding user {} to group CN={}", user.getGUID(), groupCn)
             groupService.addUserToGroup(user, groupCn, call, null)
