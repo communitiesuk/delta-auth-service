@@ -43,6 +43,10 @@ fun Application.configureRouting(injection: Injection) {
             injection.externalDeltaResetPasswordController(),
             injection.externalDeltaForgotPasswordController(),
         )
+        deltaApiRoutes(
+            injection.externalDeltaApiTokenController(),
+            injection.internalDeltaApiTokenController(),
+        )
     }
 }
 
@@ -239,6 +243,20 @@ fun Route.internalRoutes(injection: Injection) {
 fun Route.oauthTokenRoute(oauthTokenController: OAuthTokenController) {
     route("/token") {
         oauthTokenController.route(this)
+    }
+}
+
+fun Route.deltaApiRoutes(
+    externalDeltaApiTokenController: ExternalDeltaApiTokenController,
+    internalDeltaApiTokenController: InternalDeltaApiTokenController,
+) {
+    route("/delta-api/oauth/token") {
+        externalDeltaApiTokenController.route(this)
+    }
+    authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+        route("/internal/delta-api/validate") {
+            internalDeltaApiTokenController.route(this)
+        }
     }
 }
 

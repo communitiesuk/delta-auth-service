@@ -7,6 +7,36 @@ data "aws_secretsmanager_secret" "saml_certificate" {
   name = "api-saml-certificate-${var.environment}"
 }
 
+# TODO 836 ticket specific release action: manually create these secrets, copying the current values from the API secrets, so they can be referenced here
+# See api/README.md and terraform/test/main.tf in the Delta repository for setup instructions
+data "aws_secretsmanager_secret" "delta_saml_private_key" {
+  name = "delta-saml-private-key-${var.environment}"
+
+  //noinspection HCLUnknownBlockType
+  lifecycle {
+    //noinspection HCLUnknownBlockType
+    postcondition {
+      //noinspection HILUnresolvedReference
+      condition     = self.kms_key_id == aws_kms_key.auth_service.arn
+      error_message = "Secret must use the auth service KMS key"
+    }
+  }
+}
+
+data "aws_secretsmanager_secret" "delta_saml_certificate" {
+  name = "delta-saml-certificate-${var.environment}"
+
+  //noinspection HCLUnknownBlockType
+  lifecycle {
+    //noinspection HCLUnknownBlockType
+    postcondition {
+      //noinspection HILUnresolvedReference
+      condition     = self.kms_key_id == aws_kms_key.auth_service.arn
+      error_message = "Secret must use the auth service KMS key"
+    }
+  }
+}
+
 resource "aws_kms_key" "auth_service" {
   description         = "auth-service-${var.environment}"
   enable_key_rotation = true
@@ -131,4 +161,22 @@ data "aws_secretsmanager_secret" "delta_ses_credentials" {
   count = var.mail_settings.smtp_secret_name != null ? 1 : 0
 
   name = var.mail_settings.smtp_secret_name
+}
+
+resource "random_password" "client_secret_delta_api" {
+  length  = 32
+  special = false
+}
+
+# No CMK, secret is shared between multiple services
+# tfsec:ignore:aws-ssm-secret-use-customer-key
+resource "aws_secretsmanager_secret" "client_secret_delta_api" {
+  name                    = "tf-${var.environment}-delta-api-client-secret"
+  description             = "Shared secret for Delta API Gateway -> auth service for internal API calls"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "client_secret_delta_api" {
+  secret_id     = aws_secretsmanager_secret.client_secret_delta_api.id
+  secret_string = random_password.client_secret_delta_api.result
 }

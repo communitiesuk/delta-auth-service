@@ -71,11 +71,11 @@ class Injection(
         Runtime.getRuntime().addShutdownHook(Thread { close() })
     }
 
+    val dbPool = DbPool(databaseConfig)
+
     private val samlTokenService = SAMLTokenService()
     private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
     private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
-
-    val dbPool = DbPool(databaseConfig)
 
     val userAuditTrailRepo = UserAuditTrailRepo()
     val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
@@ -107,6 +107,8 @@ class Injection(
             ldapConfig,
             ldapRepository
         )
+
+    private val deltaApiTokenService = DeltaApiTokenService(dbPool, TimeSource.System, userAuditService)
 
     private val emailService = EmailService(
         emailConfig,
@@ -163,8 +165,9 @@ class Injection(
     fun tasksMap(): Map<String, AuthServiceTask> {
         val deleteOldAuthCodesTask = DeleteOldAuthCodes(dbPool)
         val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
+        val deleteOldApiTokensTask = DeleteOldApiTokens(dbPool)
         val updateUserGuidMapTask = UpdateUserGUIDMap(ldapConfig, dbPool)
-        val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask, updateUserGuidMapTask)
+        val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask, deleteOldApiTokensTask, updateUserGuidMapTask)
         return tasks.associateBy { it.name }
     }
 
@@ -244,6 +247,16 @@ class Injection(
         organisationService,
         ::MemberOfToDeltaRolesMapper
     )
+
+    fun externalDeltaApiTokenController(): ExternalDeltaApiTokenController {
+        val adLoginService = ADLdapLoginService(
+            ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
+            ldapRepository
+        )
+        return ExternalDeltaApiTokenController(deltaApiTokenService, adLoginService)
+    }
+
+    fun internalDeltaApiTokenController() = InternalDeltaApiTokenController(deltaApiTokenService, samlTokenService, userLookupService)
 
     fun refreshUserInfoController() = RefreshUserInfoController(
         userLookupService,

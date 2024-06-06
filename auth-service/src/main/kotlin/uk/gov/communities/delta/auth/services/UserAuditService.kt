@@ -89,6 +89,7 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
     val userUpdateAudit = insertAnonDetailedAuditRowFun(UserAuditTrailRepo.AuditAction.USER_UPDATE)
     val userEnableAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.USER_ENABLE_BY_ADMIN)
     val userDisableAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.USER_DISABLE_BY_ADMIN)
+    val apiTokenCreationAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.API_TOKEN_CREATE)
 
     // A user doing something to their own account with no extra data
     private fun insertAnonSimpleAuditRowFun(auditAction: UserAuditTrailRepo.AuditAction): suspend (UUID, ApplicationCall) -> Unit {
