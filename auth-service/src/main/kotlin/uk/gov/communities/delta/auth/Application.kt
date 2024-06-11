@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.cors.routing.*
+import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
@@ -26,7 +27,7 @@ fun main() {
         }
         module {
             install(CORS) {
-                allowHost("api.delta.test.communities.gov.uk")
+                allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
                 allowHeader(HttpHeaders.ContentType)
                 allowHeader("Delta-Client")
             }
