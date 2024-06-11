@@ -1,8 +1,11 @@
 package uk.gov.communities.delta.auth
 
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.cors.routing.*
+import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
@@ -23,6 +26,13 @@ fun main() {
             port = 8443
         }
         module {
+            install(CORS) {
+                // this is to allow access from Swagger
+                allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
+                allowMethod(HttpMethod.Options)
+                allowHeader(HttpHeaders.ContentType)
+                allowHeader("Delta-Client")
+            }
             Injection.startupInitFromEnvironment().registerShutdownHook()
             appModule()
         }

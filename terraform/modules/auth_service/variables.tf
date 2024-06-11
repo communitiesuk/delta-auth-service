@@ -131,6 +131,11 @@ variable "dclg_access_group_notification_settings" {
   })
 }
 
+variable "api_origin" {
+  type        = string
+  description = "Origin domain name for the delta API"
+}
+
 locals {
   auth_metrics_namespace = "${var.environment}/AuthService"
 }

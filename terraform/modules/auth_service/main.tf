@@ -129,6 +129,10 @@ module "fargate" {
       name  = "DCLG_ACCESS_GROUP_UPDATE_ADDITIONAL_RECIPIENTS"
       value = join(";", var.dclg_access_group_notification_settings.additional_recipient_emails)
     },
+    {
+      name  = "API_ORIGIN"
+      value = var.api_origin
+    }
   ]
   secrets = [for s in [
     {
