@@ -62,9 +62,6 @@ dependencies {
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
     implementation("io.micrometer:micrometer-registry-cloudwatch2:1.13.0")
 
-    // CORS
-    implementation("io.ktor:ktor-server-cors:$ktorVersion")
-
     // Emails
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
