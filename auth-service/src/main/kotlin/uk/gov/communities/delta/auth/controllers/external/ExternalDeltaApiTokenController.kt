@@ -9,6 +9,7 @@ import io.ktor.server.util.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.DeltaApiTokenService
@@ -37,6 +38,8 @@ class ExternalDeltaApiTokenController(
             .addKeyValue("userCn", username)
             .addKeyValue("clientId", clientId)
             .log("Received API token request")
+
+        call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
 
         if (grant_type != "password") {
             throw ApiError(
