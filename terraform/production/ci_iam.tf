@@ -2,7 +2,7 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 resource "aws_iam_role" "github_actions_delta_auth_ci" {
-  name = "github-actions-delta-auth-ci"
+  name               = "github-actions-delta-auth-ci"
   assume_role_policy = data.aws_iam_policy_document.github_actions_delta_auth_assume_role.json
 }
 
@@ -26,8 +26,8 @@ data "aws_iam_policy_document" "github_actions_delta_auth_assume_role" {
     }
 
     condition {
-      test     = "StringLike"
-      values   = [
+      test = "StringLike"
+      values = [
         "repo:communitiesuk/delta-auth-service:*"
       ]
       variable = "token.actions.githubusercontent.com:sub"
