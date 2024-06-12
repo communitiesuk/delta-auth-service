@@ -28,10 +28,10 @@ fun main() {
         module {
             install(CORS) {
                 // this is to allow access from Swagger
-                allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
+                allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080"))
                 allowMethod(HttpMethod.Options)
                 allowHeader(HttpHeaders.ContentType)
-                allowHeader("Delta-Client")
+                allowHeader(HttpHeaders.AccessControlAllowOrigin)
             }
             Injection.startupInitFromEnvironment().registerShutdownHook()
             appModule()
