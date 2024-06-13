@@ -24,6 +24,7 @@ module "fargate" {
   ecs_cloudwatch_log_expiration_days = var.cloudwatch_log_expiration_days
   alarms_sns_topic_arn               = var.alarms_sns_topic_arn
   task_role_arn                      = aws_iam_role.auth_service_task_role.arn
+  enable_adot_sidecar                = var.enable_telemetry
   target_groups = [
     {
       tg_arn        = aws_lb_target_group.internal.arn
@@ -36,7 +37,7 @@ module "fargate" {
       lb_arn_suffix = var.external_alb.arn_suffix
     }
   ]
-  environment_variables = [
+  environment_variables = [for env in [
     {
       name  = "DELTA_LDAP_URL"
       value = var.ldap_config.DELTA_LDAP_URL
@@ -132,8 +133,12 @@ module "fargate" {
     {
       name  = "API_ORIGIN"
       value = var.api_origin
-    }
-  ]
+    },
+    var.enable_telemetry ? {
+      name  = "AUTH_TELEMETRY_PREFIX"
+      value = var.environment
+    } : null,
+  ] : env if env != null]
   secrets = [for s in [
     {
       name      = "DELTA_SAML_PRIVATE_KEY"
@@ -184,5 +189,7 @@ module "fargate" {
       valueFrom = data.aws_secretsmanager_secret.delta_ses_credentials[0].arn
     },
   ] : s if s != null]
-  secret_kms_key_arns = compact([aws_kms_key.auth_service.arn, var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id])
+  secret_kms_key_arns = compact([
+    aws_kms_key.auth_service.arn, var.ml_secret_kms_key_arn, data.aws_secretsmanager_secret.saml_certificate.kms_key_id
+  ])
 }

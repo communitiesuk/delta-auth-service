@@ -46,3 +46,12 @@ data "aws_iam_policy_document" "auth_service_metrics_access" {
     }
   }
 }
+
+resource "aws_iam_role_policy_attachment" "x_ray_role_policy_attachment" {
+  role       = aws_iam_role.auth_service_task_role.name
+  policy_arn = data.aws_iam_policy.AWSXRayDaemonWriteAccess.arn
+}
+
+data "aws_iam_policy" "AWSXRayDaemonWriteAccess" {
+  arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}

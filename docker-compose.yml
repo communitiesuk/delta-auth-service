@@ -29,6 +29,23 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
+  # AWS OpenTelemetry collector for sending traces to AWS X-Ray
+  # In hosted environments this runs as a sidecar in ECS
+  telemetry:
+    image: amazon/aws-otel-collector:latest
+    command: [ "--config=/etc/otel-agent-config.yaml" ]
+    env_file:
+      # Should contain AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY, or equivalent session credentials
+      # for a user with at least AWSXRayDaemonWriteAccess permissions
+      - auth-service/.env
+    environment:
+      - AWS_REGION=eu-west-1
+    volumes:
+      - ./terraform/modules/fargate/adot-config.yml:/etc/otel-agent-config.yaml
+    ports:
+      - "4317:4317" # OTLP receiver
+    profiles:
+      - tracing
 
 volumes:
   pgdata:

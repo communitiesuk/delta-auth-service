@@ -16,7 +16,7 @@ resource "aws_kms_key" "log_encryption_key" {
   policy = templatefile("${path.module}/policies/logging_kms_policy.json", {
     account_id        = data.aws_caller_identity.current.account_id
     region            = data.aws_region.current.name
-    log_group_pattern = local.log_group_name
+    log_group_pattern = "${local.log_group_name}*"
   })
 }
 
@@ -33,6 +33,12 @@ resource "aws_cloudwatch_log_group" "ecs_logs" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+resource "aws_cloudwatch_log_group" "sidecar" {
+  name              = "${local.log_group_name}/otel-sidecar"
+  retention_in_days = var.ecs_cloudwatch_log_expiration_days
+  kms_key_id        = aws_kms_key.log_encryption_key.arn
 }
 
 // We use this to keep the image tag in the Terraform state
@@ -54,17 +60,19 @@ resource "aws_ecs_task_definition" "main" {
   memory                   = var.memory
   execution_role_arn       = aws_iam_role.ecs_image_runner_role.arn
   task_role_arn            = var.task_role_arn
-  container_definitions = jsonencode([{
+  container_definitions = jsonencode(concat([{
     name        = "${var.app_name}-container-${var.environment}"
     image       = var.container_image
     essential   = true
     environment = var.environment_variables
     secrets     = var.secrets
-    portMappings = [{
-      protocol      = "tcp"
-      containerPort = var.container_port
-      hostPort      = var.container_port
-    }]
+    portMappings = [
+      {
+        protocol      = "tcp"
+        containerPort = var.container_port
+        hostPort      = var.container_port
+      }
+    ]
     logConfiguration = {
       logDriver = "awslogs",
       options = {
@@ -73,7 +81,36 @@ resource "aws_ecs_task_definition" "main" {
         awslogs-stream-prefix = "${var.app_name}-${var.environment}"
       }
     }
-  }])
+    }],
+    var.enable_adot_sidecar ? [{
+      name : "aws-otel-collector"
+      # Requires a pull through cache to be configured for ecr-public
+      image : "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/ecr-public/aws-observability/aws-otel-collector:latest"
+      command : [""]
+      essential : true
+      environment = [
+        {
+          name : "AOT_CONFIG_CONTENT"
+          value : file("${path.module}/adot-config.yml")
+        }
+      ]
+      logConfiguration : {
+        logDriver : "awslogs"
+        options : {
+          "awslogs-group" : aws_cloudwatch_log_group.sidecar.name
+          "awslogs-region" : data.aws_region.current.name
+          "awslogs-stream-prefix" : "ecs"
+        }
+      },
+      healthCheck : {
+        command : ["/healthcheck"]
+        interval : 5
+        timeout : 6
+        retries : 5
+        startPeriod : 1
+      }
+    }] : [],
+  ))
   family = local.task_definition_family
 }
 
