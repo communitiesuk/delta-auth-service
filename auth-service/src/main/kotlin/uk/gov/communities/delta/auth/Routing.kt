@@ -4,6 +4,7 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
+import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -252,6 +253,12 @@ fun Route.deltaApiRoutes(
 ) {
     route("/delta-api/oauth/token") {
         externalDeltaApiTokenController.route(this)
+        options {
+            call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
+            call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "POST, OPTIONS")
+            call.response.headers.append(HttpHeaders.AccessControlAllowHeaders, "Authorization, Content-Type")
+            call.respond(HttpStatusCode(200, "OK"))
+        }
     }
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         route("/internal/delta-api/validate") {

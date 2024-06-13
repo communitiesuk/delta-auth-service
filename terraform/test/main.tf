@@ -75,7 +75,7 @@ module "auth_service" {
   delta_hostname            = data.terraform_remote_state.common_infra.outputs.public_albs.delta.primary_hostname
   bastion_security_group_id = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
   private_dns               = data.terraform_remote_state.common_infra.outputs.private_dns
-  api_origin                = "api.delta.test.communities.gov.uk"
+  api_origin                = "https://api.delta.test.communities.gov.uk"
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-test.s3.amazonaws.com/CASRVTEST2/CASRVtest2.dluhctest.local_CASRVtest2.crt"

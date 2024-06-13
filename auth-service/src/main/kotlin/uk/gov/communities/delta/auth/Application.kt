@@ -26,13 +26,6 @@ fun main() {
             port = 8443
         }
         module {
-            install(CORS) {
-                // this is to allow access from Swagger
-                allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
-                allowMethod(HttpMethod.Options)
-                allowHeader(HttpHeaders.ContentType)
-                allowHeader("Delta-Client")
-            }
             Injection.startupInitFromEnvironment().registerShutdownHook()
             appModule()
         }
