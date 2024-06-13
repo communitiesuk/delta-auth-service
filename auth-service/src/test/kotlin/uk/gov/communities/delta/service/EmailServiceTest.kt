@@ -37,7 +37,7 @@ class EmailServiceTest {
     )
     private val emailService = EmailService(
         emailConfig,
-        DeltaConfig("http://delta", 10, ""),
+        DeltaConfig("http://delta", 10, "", "localhost"),
         AuthServiceConfig("http://authservice", null),
         userAuditService,
         emailRepository
