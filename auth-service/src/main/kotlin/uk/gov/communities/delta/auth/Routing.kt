@@ -4,6 +4,7 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.http.content.*
+import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -251,7 +252,15 @@ fun Route.deltaApiRoutes(
     internalDeltaApiTokenController: InternalDeltaApiTokenController,
 ) {
     route("/delta-api/oauth/token") {
+        install(CORS) {
+            // this is to allow access from Swagger
+            allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080"))
+            allowHeader("X-Requested-With")
+        }
         externalDeltaApiTokenController.route(this)
+        options {
+            call.respond(HttpStatusCode(200, "OK"))
+        }
     }
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         route("/internal/delta-api/validate") {

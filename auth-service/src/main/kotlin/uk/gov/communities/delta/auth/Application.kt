@@ -26,11 +26,6 @@ fun main() {
             port = 8443
         }
         module {
-            install(CORS) {
-                // this is to allow access from Swagger
-                allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080"))
-                allowHeader("X-Requested-With")
-            }
             Injection.startupInitFromEnvironment().registerShutdownHook()
             appModule()
         }
