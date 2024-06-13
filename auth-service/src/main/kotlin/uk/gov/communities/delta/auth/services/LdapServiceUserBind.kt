@@ -21,17 +21,20 @@ class LdapServiceUserBind(
             callsInPlace(block, InvocationKind.AT_MOST_ONCE)
         }
         return withContext(Dispatchers.IO) {
-            val ctx = ldapRepository.bind(
-                ldapConfig.authServiceUserDn,
-                ldapConfig.authServiceUserPassword,
-                poolConnection = true
-            )
             val span = ldapSpanFactory("AD-ldap-service-user").startSpan()
             val scope = span.makeCurrent()
             try {
-                block(ctx)
+                val ctx = ldapRepository.bind(
+                    ldapConfig.authServiceUserDn,
+                    ldapConfig.authServiceUserPassword,
+                    poolConnection = true
+                )
+                try {
+                    block(ctx)
+                } finally {
+                    ctx.close()
+                }
             } finally {
-                ctx.close()
                 scope.close()
                 span.end()
             }

@@ -6,7 +6,7 @@
 * Forward localhost:2636 to port 636 of the test environment Active Directory,
   see the delta-common-infrastructure repository for details of the bastion host,
   and delta for port forwarding commands
-* Copy `.env.template` to `.env` and fill it in as instructed in that file
+* Copy `.env.template` to `.env` and fill in the uncommented variables as instructed in that file
 * Postgres, by default on port 5438, use `docker compose up -d`
 * Add LDAPS CA certificate to your certificate store (we have to use LDAPS for password resets)
     * Run this on your local machine. The `keytool` command will need to be run as admin (Windows) or with sudo (MacOS).
@@ -35,7 +35,7 @@ below image for an example)
 Set the `io.ktor.development` property to `true` (`-Dio.ktor.development=true` JVM arg) to enable development mode (
 faster restarts, reloading of templates).
 
-## Tests
+### Tests
 
 * `./gradlew test`
 * Postgres must be running
@@ -55,13 +55,22 @@ or in PowerShell
 Note that Gradle will still say "EXECUTING", but the logs say "Application started" the app will be running on port 8088.
 The `io.ktor.development` property is automatically set when using gradle run.
 
-### With metrics
+### Metrics
 
 To run locally with AWS metrics set the `AUTH_METRICS_NAMESPACE` and start the app with AWS credentials.
 For example:
 
 ```shell
 AUTH_METRICS_NAMESPACE="localYourName/AuthService" aws-vault exec <profile> -- ./gradlew run
+```
+
+### Tracing
+
+Tracing is disabled locally by default, to enable it uncomment and fill in the values in .env.template,
+then start the collector.
+
+```shell
+docker compose --profile tracing up
 ```
 
 ### Migrations
