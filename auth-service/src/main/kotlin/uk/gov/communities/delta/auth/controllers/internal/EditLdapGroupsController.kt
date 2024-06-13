@@ -12,6 +12,7 @@ import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_N
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.utils.getUserFromCallParameters
+import javax.naming.NameAlreadyBoundException
 
 class EditLdapGroupsController(
     private val groupService: GroupService,
@@ -35,7 +36,11 @@ class EditLdapGroupsController(
 
         if (!user.memberOfCNs.contains(groupCn)) {
             logger.info("Adding user {} to group CN={}", user.getGUID(), groupCn)
-            groupService.addUserToGroup(user, groupCn, call, null)
+            try {
+                groupService.addUserToGroup(user, groupCn, call, null)
+            } catch (e: NameAlreadyBoundException) {
+                logger.warn("NameAlreadyBoundException trying to add user {} to group CN={}. Ignoring error.", user.getGUID(), groupCn)
+            }
         }
         call.response.status(HttpStatusCode.NoContent)
     }
