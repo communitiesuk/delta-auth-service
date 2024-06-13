@@ -50,7 +50,7 @@ data "aws_iam_policy_document" "ecr_push_access" {
     ]
 
     resources = [
-      "468442790030.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service"
+      "${data.aws_caller_identity.current.account_id}.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service"
     ]
   }
 
