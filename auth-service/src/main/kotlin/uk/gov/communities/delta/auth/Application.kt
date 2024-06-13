@@ -1,11 +1,8 @@
 package uk.gov.communities.delta.auth
 
-import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.cors.routing.*
-import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.plugins.configureMonitoring
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.plugins.configureStatusPages
