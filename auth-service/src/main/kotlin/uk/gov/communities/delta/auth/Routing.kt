@@ -252,12 +252,6 @@ fun Route.deltaApiRoutes(
 ) {
     route("/delta-api/oauth/token") {
         externalDeltaApiTokenController.route(this)
-        options {
-            call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
-            call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "POST, OPTIONS")
-            call.response.headers.append(HttpHeaders.AccessControlAllowHeaders, "Authorization, Content-Type")
-            call.respond(HttpStatusCode(200, "OK"))
-        }
     }
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
         route("/internal/delta-api/validate") {
