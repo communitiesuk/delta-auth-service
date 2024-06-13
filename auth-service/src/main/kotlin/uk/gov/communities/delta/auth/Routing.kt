@@ -252,11 +252,13 @@ fun Route.deltaApiRoutes(
     internalDeltaApiTokenController: InternalDeltaApiTokenController,
 ) {
     route("/delta-api/oauth/token") {
+        install(CORS) {
+            // this is to allow access from Swagger
+            allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080"))
+            allowHeader("X-Requested-With")
+        }
         externalDeltaApiTokenController.route(this)
         options {
-            call.response.headers.append(HttpHeaders.AccessControlAllowOrigin, Env.getRequiredOrDevFallback("API_ORIGIN", "http://localhost:8080"))
-            call.response.headers.append(HttpHeaders.AccessControlAllowMethods, "POST, OPTIONS")
-            call.response.headers.append(HttpHeaders.AccessControlAllowHeaders, "Authorization, Content-Type")
             call.respond(HttpStatusCode(200, "OK"))
         }
     }
