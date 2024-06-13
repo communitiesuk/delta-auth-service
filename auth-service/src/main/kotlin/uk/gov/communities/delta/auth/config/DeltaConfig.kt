@@ -6,6 +6,7 @@ class DeltaConfig(
     val deltaWebsiteUrl: String,
     val rateLimit: Int,
     val masterStoreBaseNoAuth: String,
+    val apiOrigin: String,
 ) {
     companion object {
         fun fromEnv() = DeltaConfig(
@@ -15,6 +16,7 @@ class DeltaConfig(
                 "DELTA_MARKLOGIC_LDAP_AUTH_APP_SERVICE",
                 "http://localhost:8030/"
             ),
+            apiOrigin = Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080")
         )
 
         const val DATAMART_DELTA_USER = LDAPConfig.DATAMART_DELTA_PREFIX + "user"
@@ -26,7 +28,9 @@ class DeltaConfig(
     }
 
     fun log(logger: LoggingEventBuilder) {
-        logger.addKeyValue("DELTA_WEBSITE_URL", deltaWebsiteUrl).addKeyValue("AUTH_RATE_LIMIT", rateLimit)
+        logger.addKeyValue("DELTA_WEBSITE_URL", deltaWebsiteUrl)
+            .addKeyValue("AUTH_RATE_LIMIT", rateLimit)
+            .addKeyValue("API_ORIGIN", apiOrigin)
             .log("Delta config")
     }
 }
