@@ -133,7 +133,7 @@ variable "dclg_access_group_notification_settings" {
 
 variable "api_origin" {
   type        = string
-  description = "Origin domain name for the delta API"
+  description = "Domain name for the Delta API Swagger page, used by the auth service to set CORS headers on the API authentication endpoint"
 }
 
 locals {

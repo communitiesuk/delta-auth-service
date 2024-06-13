@@ -45,6 +45,7 @@ fun Application.configureRouting(injection: Injection) {
             injection.externalDeltaForgotPasswordController(),
         )
         deltaApiRoutes(
+            injection.deltaConfig,
             injection.externalDeltaApiTokenController(),
             injection.internalDeltaApiTokenController(),
         )
@@ -248,13 +249,14 @@ fun Route.oauthTokenRoute(oauthTokenController: OAuthTokenController) {
 }
 
 fun Route.deltaApiRoutes(
+    deltaConfig: DeltaConfig,
     externalDeltaApiTokenController: ExternalDeltaApiTokenController,
     internalDeltaApiTokenController: InternalDeltaApiTokenController,
 ) {
     route("/delta-api/oauth/token") {
         install(CORS) {
             // this is to allow access from Swagger
-            allowHost(Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080"))
+            allowHost(deltaConfig.apiOrigin)
             allowHeader("X-Requested-With")
         }
         externalDeltaApiTokenController.route(this)
