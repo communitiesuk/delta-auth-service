@@ -50,7 +50,7 @@ fun Application.appModule() {
         injection.forgotPasswordRateLimitCounter,
     )
     configureSecurity(injection)
-    configureMonitoring(injection.meterRegistry)
+    configureMonitoring(injection.meterRegistry, injection.openTelemetry)
     configureSerialization()
     configureTemplating(developmentMode)
     configureRouting(injection)

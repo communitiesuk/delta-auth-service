@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.services
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.plugins.SpanFactory
 import uk.gov.communities.delta.auth.repositories.LdapRepository
 import javax.naming.ldap.InitialLdapContext
 import kotlin.contracts.ExperimentalContracts
@@ -12,6 +13,7 @@ import kotlin.contracts.contract
 class LdapServiceUserBind(
     private val ldapConfig: LDAPConfig,
     private val ldapRepository: LdapRepository,
+    private val ldapSpanFactory: SpanFactory,
 ) {
     @OptIn(ExperimentalContracts::class)
     suspend fun <R> useServiceUserBind(block: (InitialLdapContext) -> R): R {
@@ -24,10 +26,14 @@ class LdapServiceUserBind(
                 ldapConfig.authServiceUserPassword,
                 poolConnection = true
             )
+            val span = ldapSpanFactory("AD-ldap-service-user").startSpan()
+            val scope = span.makeCurrent()
             try {
                 block(ctx)
             } finally {
                 ctx.close()
+                scope.close()
+                span.end()
             }
         }
     }

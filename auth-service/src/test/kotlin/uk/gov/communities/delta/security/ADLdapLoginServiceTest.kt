@@ -10,6 +10,7 @@ import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.helper.testLdapUser
+import uk.gov.communities.delta.helper.testOpenTelemetry
 import javax.naming.ldap.InitialLdapContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,7 +27,7 @@ class ADLdapLoginServiceTest {
         loginService = ADLdapLoginService(
             ADLdapLoginService.Configuration("CN=%s,OU=Users,DC=test"),
             ldapRepository,
-        )
+        ) { testOpenTelemetry.getTracer("test-ldap-login-service").spanBuilder("test") }
         val mockContext = mockk<InitialLdapContext>(relaxed = true)
         user = testLdapUser()
         every { ldapRepository.bind("CN=username,OU=Users,DC=test", "password") }.returns(mockContext)

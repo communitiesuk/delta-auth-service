@@ -86,6 +86,18 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("io.mockk:mockk:1.13.11")
+
+    // OpenTelemetry
+    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.4.0-alpha"))
+    implementation("io.opentelemetry:opentelemetry-api")
+    implementation("io.opentelemetry:opentelemetry-sdk")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+    testImplementation("io.opentelemetry:opentelemetry-exporter-logging")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
+
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.36.0-alpha")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.36.0")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.

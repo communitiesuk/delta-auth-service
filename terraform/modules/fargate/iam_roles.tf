@@ -69,3 +69,26 @@ data "aws_iam_policy_document" "ecs_kms_decrypt" {
     }
   }
 }
+
+resource "aws_iam_role_policy_attachment" "ecs_image_runner_role_create_pull_through_cache" {
+  count = var.enable_adot_sidecar ? 1 : 0
+
+  role       = aws_iam_role.ecs_image_runner_role.name
+  policy_arn = aws_iam_policy.ecr_create_pull_through_repository.arn
+}
+
+resource "aws_iam_policy" "ecr_create_pull_through_repository" {
+  name   = "${var.app_name}-ecr-create-pull-through-cache-${var.environment}"
+  policy = data.aws_iam_policy_document.ecr_create_pull_through_repository.json
+}
+
+# Required for the ECR pull-through cache. The private repository is created on first use
+# and then updated ("BatchImportUpstreamImage") on pull
+# tfsec:ignore:aws-iam-no-policy-wildcards
+data "aws_iam_policy_document" "ecr_create_pull_through_repository" {
+  statement {
+    actions   = ["ecr:BatchImportUpstreamImage", "ecr:CreateRepository"]
+    effect    = "Allow"
+    resources = ["*"]
+  }
+}

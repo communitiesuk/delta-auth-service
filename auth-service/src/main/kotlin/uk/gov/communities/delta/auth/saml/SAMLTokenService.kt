@@ -1,5 +1,7 @@
 package uk.gov.communities.delta.auth.saml
 
+import io.opentelemetry.api.trace.Tracer
+import io.opentelemetry.context.Context
 import org.opensaml.core.config.InitializationService
 import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport
 import org.opensaml.core.xml.schema.XSString
@@ -25,44 +27,61 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
 
-class SAMLTokenService {
+class SAMLTokenService(private val tracer: Tracer) {
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
     fun generate(credential: BasicX509Credential, user: LdapUser, validFrom: Instant, validTo: Instant) =
         logger.timed("Generate SAML token") {
-            if (!initialised.get()) {
-                // Lazily initialise the OpenSAML library as it takes a second or so to start
-                initialiseOpenSaml()
-            }
+            val span = tracer.spanBuilder("generate-saml-token")
+                .setAttribute("saml-token-user-guid", user.javaUUIDObjectGuid!!)
+                .setParent(Context.current())
+                .startSpan()
             try {
-                val roles = user.memberOfCNs.filter { it.startsWith(LDAPConfig.DATAMART_DELTA_PREFIX) }
-                val assertion = makeAssertionElement(user.cn, roles, validFrom, validTo)
-
-                // This block of code reportedly comes from MarkLogic support, though we no longer have access to the original ticket
-                // Build a SAML Response and add required information
-                val response = ResponseBuilder().buildObject()
-                response.version = SAMLVersion.VERSION_20
-                // * Issue Timestamp (Use same value from Assertion)
-                response.issueInstant = assertion.issueInstant
-                // * Status Code SUCCESS
-                val stat = StatusBuilder().buildObject()
-                val statCode = StatusCodeBuilder().buildObject()
-                statCode.value = "urn:oasis:names:tc:SAML:2.0:status:Success"
-                stat.statusCode = statCode
-                response.status = stat
-                // * ID (Any Random GUID but must be different from Assertion ID)
-                response.id = assertion.id + "-1"
-                // * Sign the assertion with our self-signed key and certificate
-                val signedAssertion = SAMLAssertionSigner(credential).signAssertion(assertion)
-                response.assertions.add(signedAssertion)
-                // End build SAML response
-                val token = marshalToString(response)
-                val encodedToken = base64Encode(token)
-                encodedToken
-            } catch (ex: Exception) {
-                throw RuntimeException("Failed to generate SAML token", ex)
+                generateInternal(credential, user, validFrom, validTo)
+            } finally {
+                span.end()
             }
         }
+
+    private fun generateInternal(
+        credential: BasicX509Credential,
+        user: LdapUser,
+        validFrom: Instant,
+        validTo: Instant
+    ): String {
+        if (!initialised.get()) {
+            // Lazily initialise the OpenSAML library as it takes a second or so to start
+            initialiseOpenSaml()
+        }
+        try {
+            val roles = user.memberOfCNs.filter { it.startsWith(LDAPConfig.DATAMART_DELTA_PREFIX) }
+            val assertion = makeAssertionElement(user.cn, roles, validFrom, validTo)
+
+            // This block of code reportedly comes from MarkLogic support, though we no longer have access to the original ticket
+            // Build a SAML Response and add required information
+            val response = ResponseBuilder().buildObject()
+            response.version = SAMLVersion.VERSION_20
+            // * Issue Timestamp (Use same value from Assertion)
+            response.issueInstant = assertion.issueInstant
+            // * Status Code SUCCESS
+            val stat = StatusBuilder().buildObject()
+            val statCode = StatusCodeBuilder().buildObject()
+            statCode.value = "urn:oasis:names:tc:SAML:2.0:status:Success"
+            stat.statusCode = statCode
+            response.status = stat
+            // * ID (Any Random GUID but must be different from Assertion ID)
+            response.id = assertion.id + "-1"
+            // * Sign the assertion with our self-signed key and certificate
+            val signedAssertion = SAMLAssertionSigner(credential).signAssertion(assertion)
+            response.assertions.add(signedAssertion)
+            // End build SAML response
+            val token = marshalToString(response)
+            val encodedToken = base64Encode(token)
+            return encodedToken
+        } catch (ex: Exception) {
+            throw RuntimeException("Failed to generate SAML token", ex)
+        }
+    }
 
     private fun base64Encode(s: String): String {
         val bytes = s.toByteArray(StandardCharsets.UTF_8)

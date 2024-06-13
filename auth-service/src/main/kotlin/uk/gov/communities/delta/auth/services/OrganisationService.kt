@@ -8,6 +8,8 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.opentelemetry.api.OpenTelemetry
+import io.opentelemetry.instrumentation.ktor.v2_0.client.KtorClientTracing
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -66,7 +68,7 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
     }
 
     companion object {
-        fun makeHTTPClient(): HttpClient {
+        fun makeHTTPClient(openTelemetry: OpenTelemetry): HttpClient {
             return HttpClient(Java) {
                 install(ContentNegotiation) {
                     json(Json { ignoreUnknownKeys = true })
@@ -75,6 +77,15 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
                     requestTimeoutMillis = 20.seconds.inWholeMilliseconds
                 }
                 defaultRequest { headers.append("Accept", "application/json") }
+                install(KtorClientTracing) {
+                    setOpenTelemetry(openTelemetry)
+                    attributeExtractor {
+                        onStart {
+                            attributes.put("peer.service", "MarkLogic")
+                            attributes.put("delta.request-to", "marklogic-organisations")
+                        }
+                    }
+                }
             }
         }
     }

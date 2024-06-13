@@ -42,6 +42,7 @@ class ApplicationTest {
                 EmailConfig.fromEnv(),
                 AzureADSSOConfig(emptyList()),
                 AuthServiceConfig("testInvalidServiceUrl", null),
+                TracingConfig(null),
             )
             Injection.instance.logConfig(NOPLogger.NOP_LOGGER)
             testApp = TestApplication {
