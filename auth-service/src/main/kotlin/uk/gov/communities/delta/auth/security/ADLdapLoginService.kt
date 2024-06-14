@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.Blocking
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
+import uk.gov.communities.delta.auth.plugins.SpanFactory
 import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import javax.naming.AuthenticationException
@@ -43,6 +44,7 @@ interface IADLdapLoginService {
 class ADLdapLoginService(
     private val config: Configuration,
     private val ldapRepository: LdapRepository,
+    private val ldapSpanFactory: SpanFactory,
 ) : IADLdapLoginService {
     data class Configuration(val userDnFormat: String)
 
@@ -73,6 +75,7 @@ class ADLdapLoginService(
     @Blocking
     private fun ldapBind(userDn: String, password: String): IADLdapLoginService.LdapLoginResult {
         var context: InitialDirContext? = null
+        val span = ldapSpanFactory("AD-ldap-user-bind").startSpan()
         return try {
             context = ldapRepository.bind(userDn, password)
             val user = ldapRepository.mapUserFromContext(context, userDn)
@@ -83,6 +86,7 @@ class ADLdapLoginService(
             handleLdapException(e)
         } finally {
             context?.close()
+            span.end()
         }
     }
 

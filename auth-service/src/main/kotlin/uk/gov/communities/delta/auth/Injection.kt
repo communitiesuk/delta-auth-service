@@ -5,11 +5,14 @@ import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.opentelemetry.context.Context
 import org.slf4j.Logger
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.*
+import uk.gov.communities.delta.auth.plugins.SpanFactory
+import uk.gov.communities.delta.auth.plugins.initOpenTelemetry
 import uk.gov.communities.delta.auth.repositories.*
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
@@ -31,6 +34,7 @@ class Injection(
     val emailConfig: EmailConfig,
     val azureADSSOConfig: AzureADSSOConfig,
     val authServiceConfig: AuthServiceConfig,
+    val tracingConfig: TracingConfig,
 ) {
     companion object {
         lateinit var instance: Injection
@@ -47,6 +51,7 @@ class Injection(
                 EmailConfig.fromEnv(),
                 AzureADSSOConfig.fromEnv(),
                 AuthServiceConfig.fromEnv(),
+                TracingConfig.fromEnv(),
             )
             return instance
         }
@@ -60,6 +65,7 @@ class Injection(
         clientConfig.log(logger.atInfo())
         azureADSSOConfig.log(logger.atInfo())
         authServiceConfig.log(logger.atInfo())
+        tracingConfig.log(logger.atInfo())
     }
 
     fun close() {
@@ -71,11 +77,21 @@ class Injection(
         Runtime.getRuntime().addShutdownHook(Thread { close() })
     }
 
-    val dbPool = DbPool(databaseConfig)
+    val openTelemetry = initOpenTelemetry(tracingConfig)
 
-    private val samlTokenService = SAMLTokenService()
+    private val samlTracer = openTelemetry.getTracer("delta.auth.samlTokenGenerator")
+    private val ldapTracer = openTelemetry.getTracer("delta.auth.ldap")
+    private val ldapSpanFactory: SpanFactory = {
+        ldapTracer.spanBuilder(it).setParent(Context.current())
+            .setAttribute("peer.service", "ActiveDirectory")
+            .setAttribute("delta.request-to", "AD-ldap")
+    }
+
+    private val samlTokenService = SAMLTokenService(samlTracer)
+    val dbPool = DbPool(databaseConfig, openTelemetry)
+
     private val ldapRepository = LdapRepository(ldapConfig, LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING)
-    private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository)
+    private val ldapServiceUserBind = LdapServiceUserBind(ldapConfig, ldapRepository, ldapSpanFactory)
 
     val userAuditTrailRepo = UserAuditTrailRepo()
     val userAuditService = UserAuditService(userAuditTrailRepo, dbPool)
@@ -86,7 +102,7 @@ class Injection(
 
     val setPasswordTokenService = SetPasswordTokenService(dbPool, TimeSource.System)
     val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
-    val organisationService = OrganisationService(OrganisationService.makeHTTPClient(), deltaConfig)
+    val organisationService = OrganisationService(OrganisationService.makeHTTPClient(openTelemetry), deltaConfig)
 
     private val userLookupService = UserLookupService(
         ldapConfig.deltaUserDnFormat,
@@ -137,7 +153,7 @@ class Injection(
     val ssoLoginStateService = SSOLoginSessionStateService()
     val ssoOAuthClientProviderLookupService =
         SSOOAuthClientProviderLookupService(azureADSSOConfig, ssoLoginStateService)
-    val microsoftGraphService = MicrosoftGraphService()
+    val microsoftGraphService = MicrosoftGraphService(openTelemetry)
     val deltaUserDetailsRequestMapper = DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService)
     val meterRegistry =
         if (authServiceConfig.metricsNamespace.isNullOrEmpty()) SimpleMeterRegistry() else CloudWatchMeterRegistry(
@@ -167,7 +183,8 @@ class Injection(
         val deleteOldDeltaSessionsTask = DeleteOldDeltaSessions(dbPool)
         val deleteOldApiTokensTask = DeleteOldApiTokens(dbPool)
         val updateUserGuidMapTask = UpdateUserGUIDMap(ldapConfig, dbPool)
-        val tasks = listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask, deleteOldApiTokensTask, updateUserGuidMapTask)
+        val tasks =
+            listOf(deleteOldAuthCodesTask, deleteOldDeltaSessionsTask, deleteOldApiTokensTask, updateUserGuidMapTask)
         return tasks.associateBy { it.name }
     }
 
@@ -176,7 +193,7 @@ class Injection(
     fun ldapServiceUserAuthenticationService(): LdapAuthenticationService {
         val adLoginService = ADLdapLoginService(
             ADLdapLoginService.Configuration(ldapConfig.serviceUserDnFormat),
-            ldapRepository
+            ldapRepository, ldapSpanFactory
         )
         return LdapAuthenticationService(adLoginService, ldapConfig.serviceUserRequiredGroupCn)
     }
@@ -186,7 +203,7 @@ class Injection(
     fun externalDeltaLoginController(): DeltaLoginController {
         val adLoginService = ADLdapLoginService(
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
-            ldapRepository
+            ldapRepository, ldapSpanFactory
         )
         return DeltaLoginController(
             clientConfig.oauthClients,
@@ -251,12 +268,13 @@ class Injection(
     fun externalDeltaApiTokenController(): ExternalDeltaApiTokenController {
         val adLoginService = ADLdapLoginService(
             ADLdapLoginService.Configuration(ldapConfig.deltaUserDnFormat),
-            ldapRepository
+            ldapRepository, ldapSpanFactory
         )
         return ExternalDeltaApiTokenController(deltaApiTokenService, adLoginService)
     }
 
-    fun internalDeltaApiTokenController() = InternalDeltaApiTokenController(deltaApiTokenService, samlTokenService, userLookupService)
+    fun internalDeltaApiTokenController() =
+        InternalDeltaApiTokenController(deltaApiTokenService, samlTokenService, userLookupService)
 
     fun refreshUserInfoController() = RefreshUserInfoController(
         userLookupService,
@@ -377,5 +395,6 @@ class Injection(
 
     fun editRolesController() = EditRolesController(userLookupService, groupService)
 
-    fun editOrganisationsController() = EditOrganisationsController(userLookupService, groupService, organisationService)
+    fun editOrganisationsController() =
+        EditOrganisationsController(userLookupService, groupService, organisationService)
 }

@@ -3,8 +3,9 @@ WORKDIR /app
 
 COPY gradlew build.gradle.kts gradle.properties settings.gradle.kts ./
 COPY gradle gradle
-# Build will fail, but will download gradle + dependencies
-RUN chmod +x gradlew && ./gradlew build || return 0
+# Use to download dependencies and make better use of the build cache, useful for running in Docker locally
+# Left commented out as it's built from a clean slate in CI anyway
+# RUN chmod +x gradlew && ./gradlew build || return 0
 
 COPY src src
 RUN ./gradlew buildFatJar

@@ -131,6 +131,11 @@ variable "dclg_access_group_notification_settings" {
   })
 }
 
+variable "enable_telemetry" {
+  type    = bool
+  default = false
+}
+
 variable "api_origin" {
   type        = string
   description = "Domain name for the Delta API Swagger page, used by the auth service to set CORS headers on the API authentication endpoint"

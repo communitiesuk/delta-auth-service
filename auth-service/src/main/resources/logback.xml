@@ -3,8 +3,8 @@
         <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
             <providers>
                 <timestamp/>
-                <message/>
                 <loggerName/>
+                <message/>
                 <threadName/>
                 <logLevel/>
                 <stackTrace/>

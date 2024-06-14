@@ -21,6 +21,7 @@ import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_N
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.helper.testLdapUser
+import uk.gov.communities.delta.helper.testOpenTelemetry
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -30,7 +31,7 @@ class SamlTokenTest {
         application {
             configureSerialization()
             fakeSecurityConfig()
-            val controller = GenerateSAMLTokenController(SAMLTokenService())
+            val controller = GenerateSAMLTokenController(SAMLTokenService(testOpenTelemetry.getTracer("test-generate-saml")))
             routing {
                 samlTokenRoutes(controller)
             }
