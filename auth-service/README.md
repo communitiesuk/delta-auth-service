@@ -196,9 +196,11 @@ curl --request POST 'http://localhost:8088/delta-api/oauth/token' \
 --data-urlencode 'password=<password>'
 ```
 
+The `Origin` header checks that Swagger will work.
+
 #### Exchanging an API token
 
-Once obtained, the API token can be exchanged for a SAML token:
+Once obtained, the API token can be exchanged for a SAML token. This request is normally performed by the delta API gateway (`/api/gateway` in Delta repo), not by the local authority or swagger.
 
 ```sh
 curl --request POST 'localhost:8088/internal/delta-api/validate' \
