@@ -179,6 +179,38 @@ curl 'http://localhost:8088/auth-internal/bearer/user-info' \
 
 The response is similar to above, though the access token is not repeated.
 
+### Authenticating with the Delta API
+
+#### Obtaining an API token
+
+This endpoint requires authenticating with a valid AD username and password, and also a valid client id and secret combination. If running locally an id and secret must be added manually to the database. The test auth service DB contains `dev` and `dev` as an ID and secret pair. The stage auth service DB contains an id `dev-client` and a secret that can be found in AWS by the name `auth-service-dev-api-client-secret-staging`. When testing on test or stage, the domain should be replaced as appropriate. The origin domain should be `api.delta.[environment].communities.gov.uk`.
+
+```sh
+curl --request POST 'http://localhost:8088/delta-api/oauth/token' \
+--header 'Content-Type: application/x-www-form-urlencoded' \
+--header 'Origin: http://localhost:8080' \
+--data-urlencode 'grant_type=password' \
+--data-urlencode 'client_id=<client-id>' \
+--data-urlencode 'client_secret=<client-secret>' \
+--data-urlencode 'username=<username>' \
+--data-urlencode 'password=<password>'
+```
+
+The `Origin` header checks that Swagger will work.
+
+#### Exchanging an API token
+
+Once obtained, the API token can be exchanged for a SAML token. This request is normally performed by the delta API gateway (`/api/gateway` in Delta repo), not by the local authority or swagger.
+
+```sh
+curl --request POST 'localhost:8088/internal/delta-api/validate' \
+--header 'Content-Type: application/json' \
+--header 'Delta-Client: delta-api:<client-secret>' \
+-d '{"token": "<token>"}' -v
+```
+
+If running locally, the client secret can be set with the `CLIENT_SECRET_DELTA_API` environment variable or the default value from `ClientConfig.kt` can be used. If testing remotely, the secret is stored in AWS under the name `tf-[environment]-delta-api-client-secret`
+
 ### Other endpoints that accept bearer tokens
 
 #### Get user audit trail
