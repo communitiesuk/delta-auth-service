@@ -5,6 +5,7 @@ import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.opentelemetry.api.trace.SpanKind
 import io.opentelemetry.context.Context
 import org.slf4j.Logger
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
@@ -84,6 +85,7 @@ class Injection(
     private val ldapSpanFactory: SpanFactory = {
         ldapTracer.spanBuilder(it).setParent(Context.current())
             .setAttribute("peer.service", "ActiveDirectory")
+            .setSpanKind(SpanKind.CLIENT)
             .setAttribute("delta.request-to", "AD-ldap")
     }
 

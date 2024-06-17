@@ -13,6 +13,7 @@ import io.opentelemetry.instrumentation.ktor.v2_0.client.KtorClientTracing
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import kotlin.time.Duration.Companion.seconds
 
 class MicrosoftGraphService(openTelemetry: OpenTelemetry) {
@@ -30,6 +31,7 @@ class MicrosoftGraphService(openTelemetry: OpenTelemetry) {
                 onStart {
                     attributes.put("peer.service", "Microsoft Graph")
                     attributes.put("delta.request-to", "microsoft-graph")
+                    attributes.put("MDC-requestId", MDC.get("requestId"))
                 }
             }
         }
