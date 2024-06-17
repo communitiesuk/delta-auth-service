@@ -1,6 +1,10 @@
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+locals {
+  ecr_repo = "${data.aws_caller_identity.current.account_id}.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service"
+}
+
 resource "aws_iam_role" "github_actions_delta_auth_ci" {
   name               = "github-actions-delta-auth-ci"
   assume_role_policy = data.aws_iam_policy_document.github_actions_delta_auth_assume_role.json
@@ -28,7 +32,7 @@ data "aws_iam_policy_document" "github_actions_delta_auth_assume_role" {
     condition {
       test = "StringLike"
       values = [
-        "repo:communitiesuk/delta-auth-service:*"
+        "repo:communitiesuk/delta-auth-service:environment:publish"
       ]
       variable = "token.actions.githubusercontent.com:sub"
     }
@@ -50,7 +54,7 @@ data "aws_iam_policy_document" "ecr_push_access" {
     ]
 
     resources = [
-      "${data.aws_caller_identity.current.account_id}.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service"
+      local.ecr_repo
     ]
   }
 
