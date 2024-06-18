@@ -249,13 +249,14 @@ class UserService(
         }
     }
 
-    suspend fun setPasswordAndEnable(userDN: String, password: String) {
+    suspend fun setPasswordAndEnableAccountAndNotifications(userDN: String, password: String) {
         val modificationItems = arrayOf(
             ModificationItem(DirContext.REPLACE_ATTRIBUTE, ADUser.getPasswordAttribute(password)),
             ModificationItem(
                 DirContext.REPLACE_ATTRIBUTE,
                 BasicAttribute("userAccountControl", ADUser.accountFlags(true))
-            )
+            ),
+            ModificationItem(DirContext.REPLACE_ATTRIBUTE, BasicAttribute("st", "active"))
         )
         ldapServiceUserBind.useServiceUserBind {
             it.modifyAttributes(userDN, modificationItems)

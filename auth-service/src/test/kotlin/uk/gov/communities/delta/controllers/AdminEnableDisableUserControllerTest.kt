@@ -88,7 +88,7 @@ class AdminEnableDisableUserControllerTest {
 
         enableRequestAsAdminUser(user).apply {
             assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) { userService.setPasswordAndEnable(user.dn, any()) }
+            coVerify(exactly = 1) { userService.setPasswordAndEnableAccountAndNotifications(user.dn, any()) }
             coVerify(exactly = 1) { auditService.userEnableAudit(user.getGUID(), adminUser.getGUID(), any()) }
             confirmVerified(userService, auditService)
         }
