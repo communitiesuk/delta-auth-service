@@ -12,8 +12,8 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.*
-import uk.gov.communities.delta.auth.plugins.SpanFactory
-import uk.gov.communities.delta.auth.plugins.initOpenTelemetry
+import uk.gov.communities.delta.auth.plugins.monitoring.SpanFactory
+import uk.gov.communities.delta.auth.plugins.monitoring.initOpenTelemetry
 import uk.gov.communities.delta.auth.repositories.*
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService

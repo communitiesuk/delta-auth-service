@@ -31,9 +31,14 @@ class SamlTokenTest {
         application {
             configureSerialization()
             fakeSecurityConfig()
-            val controller = GenerateSAMLTokenController(SAMLTokenService(testOpenTelemetry.getTracer("test-generate-saml")))
+            val controller =
+                GenerateSAMLTokenController(SAMLTokenService(testOpenTelemetry.getTracer("test-generate-saml")))
             routing {
-                samlTokenRoutes(controller)
+                route("/service-user") {
+                    authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+                        samlTokenRoutes(controller)
+                    }
+                }
             }
         }
         client.post("/service-user/generate-saml-token") {

@@ -203,8 +203,8 @@ class RefreshUserInfoControllerTest {
                     }
                     routing {
                         withBearerTokenAuth {
-                            route("/user-info") {
-                                controller.route(this)
+                            get("/user-info") {
+                                controller.refreshUserInfo(call)
                             }
                             post("/user-impersonate") {
                                 controller.impersonateUser(call)
