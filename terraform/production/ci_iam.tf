@@ -30,7 +30,7 @@ data "aws_iam_policy_document" "github_actions_delta_auth_assume_role" {
     }
 
     condition {
-      test = "StringLike"
+      test = "StringEquals"
       values = [
         "repo:communitiesuk/delta-auth-service:environment:publish"
       ]
