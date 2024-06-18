@@ -10,10 +10,11 @@ jobs:
   publish_image:
     name: Push auth service image to ECR
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     environment: publish
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_ci }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key_ci }}
       AWS_REGION: "eu-west-1"
       VERSION: "13.1"
       REPOSITORY: "delta-auth-service"
@@ -26,6 +27,12 @@ jobs:
         with:
           # Use deploy key so we have write access for pushing the git tag later
           ssh-key: ${{ secrets.REPO_WRITE_DEPLOY_KEY }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::468442790030:role/github-actions-delta-auth-ci
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Docker login
         run: aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_PATH
