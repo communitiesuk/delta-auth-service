@@ -16,6 +16,7 @@ processors:
 exporters:
   awsxray:
     indexed_attributes: ["delta.username"]
+    aws_log_groups: ["${log_group}"]
 
 service:
   pipelines:

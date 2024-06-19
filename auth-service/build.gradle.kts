@@ -91,6 +91,7 @@ dependencies {
     api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.4.0-alpha"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")
+    implementation("io.opentelemetry:opentelemetry-extension-kotlin")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp")
     testImplementation("io.opentelemetry:opentelemetry-exporter-logging")
     implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")

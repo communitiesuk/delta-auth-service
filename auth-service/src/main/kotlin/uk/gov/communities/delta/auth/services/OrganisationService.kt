@@ -14,6 +14,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.utils.emailToDomain
 import uk.gov.communities.delta.auth.utils.timedSuspend
@@ -83,6 +84,7 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
                         onStart {
                             attributes.put("peer.service", "MarkLogic")
                             attributes.put("delta.request-to", "marklogic-organisations")
+                            attributes.put("MDC-requestId", MDC.get("requestId"))
                         }
                     }
                 }

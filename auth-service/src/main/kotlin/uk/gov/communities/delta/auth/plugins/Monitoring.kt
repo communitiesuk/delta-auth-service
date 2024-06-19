@@ -51,6 +51,10 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry, openTelemetry:
         filter { it.request.path() != "/health" }
         mdc("username") { it.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)?.username }
         mdc("IPAddress") { it.request.origin.remoteAddress }
+        mdc("XRayTraceId") {
+            val context = Span.current().spanContext
+            if (context.isValid) context.traceId else null
+        }
         disableDefaultColors()
     }
     install(CallId) {

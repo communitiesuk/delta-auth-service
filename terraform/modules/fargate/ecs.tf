@@ -91,7 +91,9 @@ resource "aws_ecs_task_definition" "main" {
       environment = [
         {
           name : "AOT_CONFIG_CONTENT"
-          value : file("${path.module}/adot-config.yml")
+          value : templatefile("${path.module}/adot-config.yml", {
+            log_group = aws_cloudwatch_log_group.ecs_logs.name
+          })
         }
       ]
       logConfiguration : {

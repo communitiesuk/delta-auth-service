@@ -1,5 +1,6 @@
 package uk.gov.communities.delta.auth.saml
 
+import io.opentelemetry.api.trace.SpanKind
 import io.opentelemetry.api.trace.Tracer
 import io.opentelemetry.context.Context
 import org.opensaml.core.config.InitializationService
@@ -35,6 +36,7 @@ class SAMLTokenService(private val tracer: Tracer) {
             val span = tracer.spanBuilder("generate-saml-token")
                 .setAttribute("saml-token-user-guid", user.javaUUIDObjectGuid!!)
                 .setParent(Context.current())
+                .setSpanKind(SpanKind.INTERNAL)
                 .startSpan()
             try {
                 generateInternal(credential, user, validFrom, validTo)
