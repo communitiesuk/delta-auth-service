@@ -329,13 +329,16 @@ class UserServiceTest {
 
     @Test
     fun testSetUserPassword() = testSuspend {
-        userService.setPasswordAndEnable(user.dn, "TestPassword")
+        userService.setPasswordAndEnableAccountAndNotifications(user.dn, "TestPassword")
         verify(exactly = 1) { context.modifyAttributes(user.dn, any()) }
+        assertEquals(3, modificationItems.captured.size)
         // User has normal and enabled account
         assertEquals(DirContext.REPLACE_ATTRIBUTE, modificationItems.captured[1].modificationOp)
         assertEquals("512", modificationItems.captured[1].attribute.get())
         // User has a password set
         assert(modificationItems.captured[0].attribute.get() as ByteArray? != null)
+        // Notifications enabled
+        assertEquals("st", modificationItems.captured[2].attribute.id)
     }
 
     @Test

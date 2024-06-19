@@ -43,7 +43,7 @@ class AdminEnableDisableUserController(
             if (user.isSSORequiredUser()) {
                 logger.atInfo().addKeyValue("targetUserGUID", user.getGUID())
                     .log("Setting random password and enabling SSO user")
-                userService.setPasswordAndEnable(user.dn, randomBase64(18))
+                userService.setPasswordAndEnableAccountAndNotifications(user.dn, randomBase64(18))
                 auditService.userEnableAudit(user.getGUID(), session.userGUID, call)
                 return call.respond(mapOf("message" to "User ${user.email} enabled"))
             } else {

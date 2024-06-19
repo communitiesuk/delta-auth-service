@@ -214,7 +214,7 @@ class DeltaSetPasswordControllerTest {
         } returns PasswordTokenService.NoSuchToken
         coEvery { setPasswordTokenService.consumeTokenIfValid("", any()) } returns PasswordTokenService.NoSuchToken
         coEvery { setPasswordTokenService.createToken(user.getGUID()) } returns "token"
-        coEvery { userService.setPasswordAndEnable(user.dn, validPassword) } just runs
+        coEvery { userService.setPasswordAndEnableAccountAndNotifications(user.dn, validPassword) } just runs
         coEvery { emailService.sendNotYetEnabledEmail(any(), any(), any()) } just runs
         coEvery { userGUIDMapService.getGUIDFromCN(user.cn) } returns user.getGUID()
         coEvery { userLookupService.lookupUserByGUID(user.getGUID()) } returns user

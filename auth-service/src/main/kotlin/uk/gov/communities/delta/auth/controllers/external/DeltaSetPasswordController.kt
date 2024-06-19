@@ -128,7 +128,7 @@ class DeltaSetPasswordController(
 
             is PasswordTokenService.ValidToken -> {
                 try {
-                    userService.setPasswordAndEnable(user.dn, newPassword)
+                    userService.setPasswordAndEnableAccountAndNotifications(user.dn, newPassword)
                 } catch (e: Exception) {
                     logger.atError().addKeyValue("UserDN", user.dn).log("Error setting password for user", e)
                     throw e
