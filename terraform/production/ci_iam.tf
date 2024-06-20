@@ -2,7 +2,7 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  ecr_repo = "${data.aws_caller_identity.current.account_id}.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service"
+  ecr_repo = "arn:aws:ecr:eu-west-1:${data.aws_caller_identity.current.account_id}:repository/delta-auth-service"
 }
 
 resource "aws_iam_role" "github_actions_delta_auth_ci" {
