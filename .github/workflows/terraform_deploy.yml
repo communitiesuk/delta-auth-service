@@ -7,28 +7,30 @@ on:
         required: true
         type: string
         description: Desired image tag to be deployed
-    secrets:
-      aws_access_key_tf:
-        required: true
-      aws_secret_key_tf:
-        required: true
 
 jobs:
   apply:
     name: Terraform apply
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     concurrency: terraform
     environment: test
     defaults:
       run:
         working-directory: terraform/test
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_tf }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key_tf }}
       AWS_REGION: "eu-west-1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::486283582667:role/github-actions-terraform-admin
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
