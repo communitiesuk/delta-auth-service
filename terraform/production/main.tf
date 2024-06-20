@@ -41,7 +41,7 @@ module "auth_service" {
   source                         = "../modules/auth_service"
   subnet_ids                     = data.terraform_remote_state.common_infra.outputs.auth_service_private_subnet_ids
   environment                    = local.environment
-  container_image                = "${local.ecr_repo}:${var.image_tag}"
+  container_image                = "468442790030.dkr.ecr.eu-west-1.amazonaws.com/delta-auth-service:${var.image_tag}"
   vpc_id                         = data.terraform_remote_state.common_infra.outputs.vpc_id
   cloudwatch_log_expiration_days = local.cloudwatch_log_expiration_days
   alarms_sns_topic_arn           = data.terraform_remote_state.common_infra.outputs.alarms_sns_topic_arn

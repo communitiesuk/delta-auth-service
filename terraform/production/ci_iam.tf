@@ -1,10 +1,6 @@
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
-locals {
-  ecr_repo = "arn:aws:ecr:eu-west-1:${data.aws_caller_identity.current.account_id}:repository/delta-auth-service"
-}
-
 resource "aws_iam_role" "github_actions_delta_auth_ci" {
   name               = "github-actions-delta-auth-ci"
   assume_role_policy = data.aws_iam_policy_document.github_actions_delta_auth_assume_role.json
@@ -54,7 +50,7 @@ data "aws_iam_policy_document" "ecr_push_access" {
     ]
 
     resources = [
-      local.ecr_repo
+      "arn:aws:ecr:eu-west-1:${data.aws_caller_identity.current.account_id}:repository/delta-auth-service"
     ]
   }
 
