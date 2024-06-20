@@ -57,6 +57,9 @@ jobs:
           git push origin $TAG
   deploy_to_test:
     name: Deploy new image to test environment
+    permissions:
+      id-token: write
+      contents: read
     uses: "./.github/workflows/terraform_deploy.yml"
     needs: publish_image
     if: github.ref == 'refs/heads/main'
