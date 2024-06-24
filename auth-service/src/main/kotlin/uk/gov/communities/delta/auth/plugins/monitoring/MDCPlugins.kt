@@ -10,7 +10,7 @@ import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.MDC
 import uk.gov.communities.delta.auth.plugins.BeforeCall
-import uk.gov.communities.delta.auth.plugins.BeforeMonitoring
+import uk.gov.communities.delta.auth.plugins.MonitoringHook
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.ClientPrincipal
 import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME
@@ -18,7 +18,7 @@ import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.OAuthSession
 
 val initMDC = createApplicationPlugin("InitMDCForCall") {
-    on(BeforeMonitoring) { call, proceed ->
+    on(MonitoringHook) { call, proceed ->
         val remoteAddress = call.request.origin.remoteAddress
         val spanContext = Span.current().spanContext
         if (!spanContext.isValid) throw Exception("Invalid span context")

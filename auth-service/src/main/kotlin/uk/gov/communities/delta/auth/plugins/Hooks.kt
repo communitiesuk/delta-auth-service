@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.plugins
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.util.*
+import io.ktor.util.pipeline.*
 
 internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) -> Unit> {
     override fun install(
@@ -15,7 +16,21 @@ internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) 
     }
 }
 
-internal object BeforeMonitoring : Hook<suspend (ApplicationCall, suspend () -> Unit) -> Unit> {
+internal object NewPhaseBeforeMonitoring : Hook<suspend (ApplicationCall, suspend () -> Unit) -> Unit> {
+    override fun install(
+        pipeline: ApplicationCallPipeline,
+        handler: suspend (ApplicationCall, suspend () -> Unit) -> Unit,
+    ) {
+        val phase = PipelinePhase("BeforeOpenTelemetry")
+        pipeline.insertPhaseBefore(ApplicationCallPipeline.Monitoring, phase)
+
+        pipeline.intercept(phase) {
+            handler(call, ::proceed)
+        }
+    }
+}
+
+internal object MonitoringHook : Hook<suspend (ApplicationCall, suspend () -> Unit) -> Unit> {
     override fun install(
         pipeline: ApplicationCallPipeline,
         handler: suspend (ApplicationCall, suspend () -> Unit) -> Unit,
