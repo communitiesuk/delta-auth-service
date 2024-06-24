@@ -82,6 +82,7 @@ class Injection(
 
     private val samlTracer = openTelemetry.getTracer("delta.auth.samlTokenGenerator")
     private val ldapTracer = openTelemetry.getTracer("delta.auth.ldap")
+    private val emailTracer = openTelemetry.getTracer("delta.email-sending")
     private val ldapSpanFactory: SpanFactory = {
         ldapTracer.spanBuilder(it).setParent(Context.current())
             .setAttribute("peer.service", "ActiveDirectory")
@@ -134,6 +135,7 @@ class Injection(
         authServiceConfig,
         userAuditService,
         emailRepository,
+        emailTracer,
     )
 
     private val accessGroupDCLGMembershipUpdateEmailService =

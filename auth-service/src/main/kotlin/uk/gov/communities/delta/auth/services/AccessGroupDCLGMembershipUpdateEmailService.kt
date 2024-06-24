@@ -1,5 +1,7 @@
 package uk.gov.communities.delta.auth.services
 
+import io.opentelemetry.context.Context
+import io.opentelemetry.extension.kotlin.asContextElement
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -90,7 +92,7 @@ class AccessGroupDCLGMembershipUpdateEmailService(
         val mdcContextMap = MDC.getCopyOfContextMap() ?: mutableMapOf()
         mdcContextMap["backgroundJob"] = "SendAccessGroupDCLGMembershipUpdateEmail"
 
-        CoroutineScope(supervisorJob + Dispatchers.IO + MDCContext(mdcContextMap)).launch {
+        CoroutineScope(supervisorJob + Dispatchers.IO + MDCContext(mdcContextMap) + Context.current().asContextElement()).launch {
             try {
                 for (group in addedGroups) {
                     sendEmailsForAddedToDCLGInAccessGroup(group, user, actingUser.email ?: actingUser.cn)

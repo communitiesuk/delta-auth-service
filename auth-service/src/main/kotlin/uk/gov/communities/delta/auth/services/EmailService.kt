@@ -1,6 +1,8 @@
 package uk.gov.communities.delta.auth.services
 
 import io.ktor.server.application.*
+import io.opentelemetry.api.trace.SpanKind
+import io.opentelemetry.api.trace.Tracer
 import jakarta.mail.Address
 import jakarta.mail.internet.InternetAddress
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ class EmailService(
     private val authServiceConfig: AuthServiceConfig,
     private val userAuditService: UserAuditService,
     private val emailRepository: EmailRepository,
+    private val tracer: Tracer,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -36,7 +39,18 @@ class EmailService(
                 "Send templated email",
                 { listOf(Pair("emailTemplate", template)) }
             ) {
-                emailRepository.sendEmail(template, emailContacts, subject, mappedValues)
+                val span = tracer.spanBuilder("send-template-email")
+                    .setSpanKind(SpanKind.INTERNAL)
+                    .setAttribute("delta.request-to", "SMTP")
+                    .setAttribute("delta.email-template", template)
+                    .startSpan()
+                val scope = span.makeCurrent()
+                try {
+                    emailRepository.sendEmail(template, emailContacts, subject, mappedValues)
+                } finally {
+                    scope.close()
+                    span.end()
+                }
             }
         }
     }

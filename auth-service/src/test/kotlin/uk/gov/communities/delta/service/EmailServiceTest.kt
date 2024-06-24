@@ -12,8 +12,12 @@ import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.EmailConfig
 import uk.gov.communities.delta.auth.repositories.EmailRepository
-import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.services.EmailContacts
+import uk.gov.communities.delta.auth.services.EmailService
+import uk.gov.communities.delta.auth.services.OAuthSession
+import uk.gov.communities.delta.auth.services.UserAuditService
 import uk.gov.communities.delta.helper.testLdapUser
+import uk.gov.communities.delta.helper.testOpenTelemetry
 import java.util.*
 
 class EmailServiceTest {
@@ -40,7 +44,8 @@ class EmailServiceTest {
         DeltaConfig("http://delta", 10, "", "localhost"),
         AuthServiceConfig("http://authservice", null),
         userAuditService,
-        emailRepository
+        emailRepository,
+        testOpenTelemetry.getTracer("test-email-tracer"),
     )
     private val user = testLdapUser(email = "test@user.com")
     private val adminGUID = UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100")
