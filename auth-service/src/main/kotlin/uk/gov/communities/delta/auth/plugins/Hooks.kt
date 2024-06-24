@@ -44,7 +44,7 @@ internal object MonitoringHook : Hook<suspend (ApplicationCall, suspend () -> Un
 internal object ResponseSent : Hook<suspend (ApplicationCall) -> Unit> {
     override fun install(pipeline: ApplicationCallPipeline, handler: suspend (ApplicationCall) -> Unit) {
         pipeline.sendPipeline.intercept(ApplicationSendPipeline.Engine) {
-            // This phase gets triggered twice by Status Pages, make sure tis only runs once
+            // This phase gets triggered twice by Status Pages, make sure it only runs once
             if (call.attributes.contains(responseSentMarker)) return@intercept
 
             call.attributes.put(responseSentMarker, Unit)
