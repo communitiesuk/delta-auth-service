@@ -85,7 +85,7 @@ class Injection(
     private val emailTracer = openTelemetry.getTracer("delta.email-sending")
     private val ldapSpanFactory: SpanFactory = {
         ldapTracer.spanBuilder(it).setParent(Context.current())
-            .setAttribute("peer.service", "ActiveDirectory")
+            .setAttribute("peer.service", "${tracingConfig.prefix}-ActiveDirectory")
             .setSpanKind(SpanKind.CLIENT)
             .setAttribute("delta.request-to", "AD-ldap")
     }
@@ -105,7 +105,7 @@ class Injection(
 
     val setPasswordTokenService = SetPasswordTokenService(dbPool, TimeSource.System)
     val resetPasswordTokenService = ResetPasswordTokenService(dbPool, TimeSource.System)
-    val organisationService = OrganisationService(OrganisationService.makeHTTPClient(openTelemetry), deltaConfig)
+    val organisationService = OrganisationService(OrganisationService.makeHTTPClient(openTelemetry, tracingConfig), deltaConfig)
 
     private val userLookupService = UserLookupService(
         ldapConfig.deltaUserDnFormat,
