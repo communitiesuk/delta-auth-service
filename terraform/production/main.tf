@@ -55,6 +55,7 @@ module "auth_service" {
   db_backup_retention_days  = 14
   private_dns               = data.terraform_remote_state.common_infra.outputs.private_dns
   api_origin                = "api.delta.communities.gov.uk"
+  enable_telemetry          = true
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-production.s3.amazonaws.com/CASRVPRODUCTION/CASRVproduction.dluhcdata.local_CASRVproduction.crt"

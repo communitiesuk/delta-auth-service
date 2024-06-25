@@ -54,6 +54,7 @@ module "auth_service" {
   bastion_security_group_id = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
   private_dns               = data.terraform_remote_state.common_infra.outputs.private_dns
   api_origin                = "api.delta.stage.communities.gov.uk"
+  enable_telemetry          = true
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-staging.s3.amazonaws.com/CASRVSTAGING/CASRVstaging.dluhcdata.local_CASRVstaging.crt"
