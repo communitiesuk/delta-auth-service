@@ -81,3 +81,19 @@ module "auth_service" {
   }
   dclg_access_group_notification_settings = local.dclg_access_group_notification_settings
 }
+
+# Default is always sample 1 request per second if available (reservoir_size)
+# then sample 5% (fixed_rate)
+resource "aws_xray_sampling_rule" "main" {
+  rule_name      = "auth-service-${local.environment}"
+  priority       = 100
+  version        = 1
+  reservoir_size = 20
+  fixed_rate     = 0.05
+  url_path       = "*"
+  host           = "*"
+  http_method    = "*"
+  service_type   = "*"
+  service_name   = "*"
+  resource_arn   = "*"
+}
