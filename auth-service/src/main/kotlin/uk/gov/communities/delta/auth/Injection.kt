@@ -12,8 +12,8 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
 import uk.gov.communities.delta.auth.config.*
 import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.*
-import uk.gov.communities.delta.auth.plugins.SpanFactory
-import uk.gov.communities.delta.auth.plugins.initOpenTelemetry
+import uk.gov.communities.delta.auth.plugins.monitoring.SpanFactory
+import uk.gov.communities.delta.auth.plugins.monitoring.initOpenTelemetry
 import uk.gov.communities.delta.auth.repositories.*
 import uk.gov.communities.delta.auth.saml.SAMLTokenService
 import uk.gov.communities.delta.auth.security.ADLdapLoginService
@@ -82,6 +82,7 @@ class Injection(
 
     private val samlTracer = openTelemetry.getTracer("delta.auth.samlTokenGenerator")
     private val ldapTracer = openTelemetry.getTracer("delta.auth.ldap")
+    private val emailTracer = openTelemetry.getTracer("delta.email-sending")
     private val ldapSpanFactory: SpanFactory = {
         ldapTracer.spanBuilder(it).setParent(Context.current())
             .setAttribute("peer.service", "ActiveDirectory")
@@ -134,6 +135,7 @@ class Injection(
         authServiceConfig,
         userAuditService,
         emailRepository,
+        emailTracer,
     )
 
     private val accessGroupDCLGMembershipUpdateEmailService =

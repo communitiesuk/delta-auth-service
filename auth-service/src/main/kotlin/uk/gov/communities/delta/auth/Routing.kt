@@ -16,7 +16,12 @@ import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.Env
 import uk.gov.communities.delta.auth.controllers.external.*
 import uk.gov.communities.delta.auth.controllers.internal.*
-import uk.gov.communities.delta.auth.plugins.*
+import uk.gov.communities.delta.auth.plugins.BrowserSecurityHeaders
+import uk.gov.communities.delta.auth.plugins.installCachingHeaders
+import uk.gov.communities.delta.auth.plugins.monitoring.addBearerSessionInfoToMDC
+import uk.gov.communities.delta.auth.plugins.monitoring.addClientIdToMDC
+import uk.gov.communities.delta.auth.plugins.monitoring.addServiceUserUsernameToMDC
+import uk.gov.communities.delta.auth.plugins.originHeaderCheck
 import uk.gov.communities.delta.auth.security.*
 
 // A session cookie used during the login flow and cleared after.
@@ -183,11 +188,16 @@ fun Route.deltaLoginRoutes(
     }
 }
 
-fun deltaWebsiteLoginRoute(deltaUrl: String, ssoClientInternalId: String?, email: String?, redirectReason: String?): String {
+fun deltaWebsiteLoginRoute(
+    deltaUrl: String,
+    ssoClientInternalId: String?,
+    email: String?,
+    redirectReason: String?
+): String {
     return "$deltaUrl/oauth2/authorization/delta-auth" +
-            mapOf("sso-client" to ssoClientInternalId, "expected-email" to email, "reason" to redirectReason)
-                .mapNotNull { if (it.value != null) "${it.key}=${it.value!!.encodeURLParameter()}" else null }
-                .joinToString(prefix = "?", separator = "&")
+        mapOf("sso-client" to ssoClientInternalId, "expected-email" to email, "reason" to redirectReason)
+            .mapNotNull { if (it.value != null) "${it.key}=${it.value!!.encodeURLParameter()}" else null }
+            .joinToString(prefix = "?", separator = "&")
 }
 
 fun oauthClientLoginRoute(ssoClientInternalId: String, email: String? = null) =
@@ -265,6 +275,7 @@ fun Route.deltaApiRoutes(
         }
     }
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+        install(addClientIdToMDC)
         route("/internal/delta-api/validate") {
             internalDeltaApiTokenController.route(this)
         }
@@ -300,8 +311,8 @@ fun Route.bearerTokenRoutes(
 ) {
     route("/bearer") {
         withBearerTokenAuth {
-            route("/user-info") {
-                refreshUserInfoController.route(this)
+            get("/user-info") {
+                refreshUserInfoController.refreshUserInfo(call)
             }
             route("/user-audit") {
                 fetchUserAuditController.route(this)
@@ -362,11 +373,11 @@ fun Route.serviceUserRoutes(
     samlTokenController: GenerateSAMLTokenController,
     editLdapGroupsController: EditLdapGroupsController
 ) {
-    samlTokenRoutes(samlTokenController)
+    route("/service-user") {
+        authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
+            install(addServiceUserUsernameToMDC)
 
-    authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-        install(addServiceUserUsernameToMDC)
-        route("/service-user") {
+            samlTokenRoutes(samlTokenController)
             post("/ldap/groups/{groupName}/members/{userCn}") {
                 editLdapGroupsController.addUserToGroup(call)
             }
@@ -376,17 +387,9 @@ fun Route.serviceUserRoutes(
 
 fun Route.samlTokenRoutes(samlTokenController: GenerateSAMLTokenController) {
     authenticate(CLIENT_HEADER_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-        authenticate(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME, strategy = AuthenticationStrategy.Required) {
-            install(addServiceUserUsernameToMDC)
-            route("/service-user") {
-                get("/auth-diag") {
-                    val principal = call.principal<DeltaLdapPrincipal>(DELTA_AD_LDAP_SERVICE_USERS_AUTH_NAME)!!
-                    call.respond(principal)
-                }
-                route("/generate-saml-token") {
-                    samlTokenController.route(this)
-                }
-            }
+        install(addClientIdToMDC)
+        route("/generate-saml-token") {
+            samlTokenController.route(this)
         }
     }
 }

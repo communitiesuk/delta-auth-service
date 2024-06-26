@@ -3,7 +3,7 @@ package uk.gov.communities.delta.auth.services
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.plugins.SpanFactory
+import uk.gov.communities.delta.auth.plugins.monitoring.SpanFactory
 import uk.gov.communities.delta.auth.repositories.LdapRepository
 import javax.naming.ldap.InitialLdapContext
 import kotlin.contracts.ExperimentalContracts

@@ -13,7 +13,7 @@ import io.opentelemetry.sdk.resources.Resource
 import io.opentelemetry.sdk.trace.SdkTracerProvider
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import io.opentelemetry.sdk.trace.samplers.Sampler
-import uk.gov.communities.delta.auth.plugins.NoHealthChecksSampler
+import uk.gov.communities.delta.auth.plugins.monitoring.NoHealthChecksSampler
 
 val testOpenTelemetry: OpenTelemetry by lazy {
     val resource = Resource.getDefault().toBuilder()

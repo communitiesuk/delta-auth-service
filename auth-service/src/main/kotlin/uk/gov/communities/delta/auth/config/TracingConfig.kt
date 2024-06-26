@@ -5,6 +5,9 @@ import org.slf4j.spi.LoggingEventBuilder
 class TracingConfig(val prefix: String?) {
     companion object {
         fun fromEnv(): TracingConfig {
+            if (Env.getEnv("RUN_TASK")?.isNotEmpty() == true) {
+                return TracingConfig(null) // Disable telemetry in scheduled jobs
+            }
             val prefix = Env.getEnv("AUTH_TELEMETRY_PREFIX")
             return TracingConfig(if (prefix.isNullOrEmpty()) null else prefix)
         }

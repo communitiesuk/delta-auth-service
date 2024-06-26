@@ -6,7 +6,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.response.*
-import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -34,10 +33,6 @@ class RefreshUserInfoController(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun route(route: Route) {
-        route.get { refreshUserInfo(call)}
-    }
-
     private suspend fun getUserInfo(call: ApplicationCall, user: LdapUser): UserInfoResponse {
         val session = call.principal<OAuthSession>()!!
         return coroutineScope {
@@ -55,7 +50,7 @@ class RefreshUserInfoController(
         }
     }
 
-    private suspend fun refreshUserInfo(call: ApplicationCall) {
+    suspend fun refreshUserInfo(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         ensureNotAlreadyImpersonating(session)
         val user = userLookupService.lookupCurrentUser(session)
