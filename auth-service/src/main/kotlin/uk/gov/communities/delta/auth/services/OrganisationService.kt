@@ -16,6 +16,7 @@ import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import uk.gov.communities.delta.auth.config.DeltaConfig
+import uk.gov.communities.delta.auth.config.TracingConfig
 import uk.gov.communities.delta.auth.utils.emailToDomain
 import uk.gov.communities.delta.auth.utils.timedSuspend
 import java.time.LocalDate
@@ -69,7 +70,7 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
     }
 
     companion object {
-        fun makeHTTPClient(openTelemetry: OpenTelemetry): HttpClient {
+        fun makeHTTPClient(openTelemetry: OpenTelemetry, tracingConfig: TracingConfig): HttpClient {
             return HttpClient(Java) {
                 install(ContentNegotiation) {
                     json(Json { ignoreUnknownKeys = true })
@@ -82,7 +83,7 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
                     setOpenTelemetry(openTelemetry)
                     attributeExtractor {
                         onStart {
-                            attributes.put("peer.service", "MarkLogic")
+                            attributes.put("peer.service", "${tracingConfig.prefix}-MarkLogic")
                             attributes.put("delta.request-to", "marklogic-organisations")
                             attributes.put("MDC-requestId", MDC.get("requestId"))
                         }

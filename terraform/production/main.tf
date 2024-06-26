@@ -55,6 +55,7 @@ module "auth_service" {
   db_backup_retention_days  = 14
   private_dns               = data.terraform_remote_state.common_infra.outputs.private_dns
   api_origin                = "api.delta.communities.gov.uk"
+  enable_telemetry          = true
 
   ldap_config = {
     CA_S3_URL                   = "https://data-collection-service-ldaps-crl-production.s3.amazonaws.com/CASRVPRODUCTION/CASRVproduction.dluhcdata.local_CASRVproduction.crt"
@@ -80,4 +81,20 @@ module "auth_service" {
     smtp_secret_name = "tf-smtp-ses-user-delta-app-${local.environment}"
   }
   dclg_access_group_notification_settings = local.dclg_access_group_notification_settings
+}
+
+# Default is always sample 1 request per second if available (reservoir_size)
+# then sample 5% (fixed_rate)
+resource "aws_xray_sampling_rule" "main" {
+  rule_name      = "auth-service-${local.environment}"
+  priority       = 100
+  version        = 1
+  reservoir_size = 20
+  fixed_rate     = 0.05
+  url_path       = "*"
+  host           = "*"
+  http_method    = "*"
+  service_type   = "*"
+  service_name   = "*"
+  resource_arn   = "*"
 }
