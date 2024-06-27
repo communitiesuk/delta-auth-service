@@ -95,8 +95,9 @@ class RefreshUserInfoController(
                 "You do not have the necessary permissions to do this"
             )
         }
+        val rolesToTakeOn = userToImpersonate.memberOfCNs.filter { !it.startsWith(DeltaSystemRole.PERSONAL_DATA_OWNERS.adCn()) }
         val originalUserWithImpersonatedRoles = originalUser.copy(
-            memberOfCNs = userToImpersonate.memberOfCNs,
+            memberOfCNs = rolesToTakeOn,
         )
         val userInfoResponse = getUserInfo(call, originalUserWithImpersonatedRoles)
         userInfoResponse.impersonatedUserCn = impersonatedUsersCn
