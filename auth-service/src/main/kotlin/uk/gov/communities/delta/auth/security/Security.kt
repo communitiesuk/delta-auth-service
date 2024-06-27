@@ -8,7 +8,9 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
+import io.opentelemetry.instrumentation.ktor.v2_0.client.KtorClientTracing
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
@@ -41,6 +43,16 @@ fun Application.configureSecurity(injection: Injection) {
         }
         install(HttpTimeout) {
             requestTimeoutMillis = 10.seconds.inWholeMilliseconds
+        }
+        install(KtorClientTracing) {
+            setOpenTelemetry(injection.openTelemetry)
+            attributeExtractor {
+                onStart {
+                    attributes.put("peer.service", "Microsoft Login")
+                    attributes.put("delta.request-to", "azure-ad-token")
+                    attributes.put("MDC-requestId", MDC.get("requestId"))
+                }
+            }
         }
     }
 
