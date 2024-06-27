@@ -86,8 +86,13 @@ class RefreshUserInfoControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val response = Json.parseToJsonElement(bodyAsText()).jsonObject
-            assertEquals("Admin With Impersonated Groups SAML Token", response["saml_token"].toString().trim('"'))
-            assertEquals("adminUser", response["delta_ldap_user"]!!.jsonObject["cn"].toString().trim('"'))
+            assertEquals("Admin With Impersonated Groups SAML Token", response["saml_token"]!!.jsonPrimitive.content)
+            assertEquals("adminUser", response["delta_ldap_user"]!!.jsonObject["cn"]!!.jsonPrimitive.content)
+            assertEquals(userToImpersonate.cn, response["impersonatedUserCn"]!!.jsonPrimitive.content)
+            assertEquals(
+                userToImpersonate.getGUID().toString(),
+                response["impersonatedUserGuid"]!!.jsonPrimitive.content
+            )
             assert(
                 response["delta_user_roles"]!!.jsonObject["systemRoles"]!!.jsonArray.any {
                     it.jsonObject["name"]!!.jsonPrimitive.content == "read-only-admin"
@@ -117,6 +122,11 @@ class RefreshUserInfoControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val response = Json.parseToJsonElement(bodyAsText()).jsonObject
+            assertEquals(userWithPersonalDataRole.cn, response["impersonatedUserCn"]!!.jsonPrimitive.content)
+            assertEquals(
+                userWithPersonalDataRole.getGUID().toString(),
+                response["impersonatedUserGuid"]!!.jsonPrimitive.content
+            )
             assert(
                 response["delta_user_roles"]!!.jsonObject["systemRoles"]!!.jsonArray.none {
                     it.jsonObject["name"]!!.jsonPrimitive.content == DeltaSystemRole.PERSONAL_DATA_OWNERS.adRoleName
@@ -159,7 +169,11 @@ class RefreshUserInfoControllerTest {
         private val userWithPersonalDataRole =
             testLdapUser(
                 cn = "userWithPersonalDataRole",
-                memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN, DeltaSystemRole.PERSONAL_DATA_OWNERS.adCn())
+                memberOfCNs = listOf(
+                    DeltaConfig.DATAMART_DELTA_USER,
+                    DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN,
+                    DeltaSystemRole.PERSONAL_DATA_OWNERS.adCn()
+                )
             )
         private val adminImpersonatingUser =
             testLdapUser(

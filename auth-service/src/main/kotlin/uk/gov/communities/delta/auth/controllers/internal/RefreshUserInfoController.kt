@@ -101,6 +101,7 @@ class RefreshUserInfoController(
         )
         val userInfoResponse = getUserInfo(call, originalUserWithImpersonatedRoles)
         userInfoResponse.impersonatedUserCn = impersonatedUsersCn
+        userInfoResponse.impersonatedUserGuid = userToImpersonate.javaUUIDObjectGuid
         withContext(Dispatchers.IO) {
             oAuthSessionService.updateWithImpersonatedGUID(
                 session.id,
@@ -123,7 +124,8 @@ class RefreshUserInfoController(
         val delta_user_roles: MemberOfToDeltaRolesMapper.Roles,
         val expires_at_epoch_second: Long,
         val is_sso: Boolean,
-        var impersonatedUserCn: String? = null, // TODO DT-1022 - use GUID not CN
+        var impersonatedUserCn: String? = null,
+        var impersonatedUserGuid: String? = null,
     )
 
     private fun ensureNotAlreadyImpersonating(session: OAuthSession) {
