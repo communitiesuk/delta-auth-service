@@ -67,6 +67,17 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testImpersonateUserEndpoint() = testSuspend {
+        coEvery {
+            userAuditService.insertImpersonatingUserAuditRow(
+                adminSession,
+                userToImpersonate.getGUID(),
+                any()
+            )
+        } just runs
+        coEvery {
+            oauthSessionService.updateWithImpersonatedGUID(adminSession.id, userToImpersonate.getGUID())
+        } just runs
+
         testClient.post("/user-impersonate?userToImpersonate=${userToImpersonate.cn}") {
             headers {
                 append("Authorization", "Bearer ${adminSession.authToken}")
@@ -75,11 +86,50 @@ class RefreshUserInfoControllerTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val response = Json.parseToJsonElement(bodyAsText()).jsonObject
-            assertEquals("Admin With Impersonated Groups SAML Token", response["saml_token"].toString().trim('"'))
-            assertEquals("adminUser", response["delta_ldap_user"]!!.jsonObject["cn"].toString().trim('"'))
+            assertEquals("Admin With Impersonated Groups SAML Token", response["saml_token"]!!.jsonPrimitive.content)
+            assertEquals("adminUser", response["delta_ldap_user"]!!.jsonObject["cn"]!!.jsonPrimitive.content)
+            assertEquals(userToImpersonate.cn, response["impersonatedUserCn"]!!.jsonPrimitive.content)
+            assertEquals(
+                userToImpersonate.getGUID().toString(),
+                response["impersonatedUserGuid"]!!.jsonPrimitive.content
+            )
             assert(
-                response["delta_user_roles"]!!.jsonObject["systemRoles"]!!.jsonArray.any<JsonElement> {
+                response["delta_user_roles"]!!.jsonObject["systemRoles"]!!.jsonArray.any {
                     it.jsonObject["name"]!!.jsonPrimitive.content == "read-only-admin"
+                }
+            )
+        }
+    }
+
+    @Test
+    fun testImpersonateUserEndpointRemovesPersonalDataRole() = testSuspend {
+        coEvery {
+            userAuditService.insertImpersonatingUserAuditRow(
+                adminSession,
+                userWithPersonalDataRole.getGUID(),
+                any()
+            )
+        } just runs
+        coEvery {
+            oauthSessionService.updateWithImpersonatedGUID(adminSession.id, userWithPersonalDataRole.getGUID())
+        } just runs
+
+        testClient.post("/user-impersonate?userToImpersonate=${userWithPersonalDataRole.cn}") {
+            headers {
+                append("Authorization", "Bearer ${adminSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val response = Json.parseToJsonElement(bodyAsText()).jsonObject
+            assertEquals(userWithPersonalDataRole.cn, response["impersonatedUserCn"]!!.jsonPrimitive.content)
+            assertEquals(
+                userWithPersonalDataRole.getGUID().toString(),
+                response["impersonatedUserGuid"]!!.jsonPrimitive.content
+            )
+            assert(
+                response["delta_user_roles"]!!.jsonObject["systemRoles"]!!.jsonArray.none {
+                    it.jsonObject["name"]!!.jsonPrimitive.content == DeltaSystemRole.PERSONAL_DATA_OWNERS.adRoleName
                 }
             )
         }
@@ -100,6 +150,9 @@ class RefreshUserInfoControllerTest {
         private lateinit var testClient: HttpClient
         private lateinit var controller: RefreshUserInfoController
 
+        private lateinit var userAuditService: UserAuditService
+        private lateinit var oauthSessionService: OAuthSessionService
+
         private val client = testServiceClient()
         private val user = testLdapUser(cn = "user", memberOfCNs = listOf("datamart-delta-user-dclg"))
         private val adminUser = testLdapUser(cn = "adminUser", memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_ADMIN))
@@ -112,6 +165,15 @@ class RefreshUserInfoControllerTest {
             testLdapUser(
                 cn = "userToImpersonate",
                 memberOfCNs = listOf(DeltaConfig.DATAMART_DELTA_USER, DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN)
+            )
+        private val userWithPersonalDataRole =
+            testLdapUser(
+                cn = "userWithPersonalDataRole",
+                memberOfCNs = listOf(
+                    DeltaConfig.DATAMART_DELTA_USER,
+                    DeltaConfig.DATAMART_DELTA_READ_ONLY_ADMIN,
+                    DeltaSystemRole.PERSONAL_DATA_OWNERS.adCn()
+                )
             )
         private val adminImpersonatingUser =
             testLdapUser(
@@ -126,18 +188,19 @@ class RefreshUserInfoControllerTest {
             val userLookupService = mockk<UserLookupService>()
             val userGUIDMapService = mockk<UserGUIDMapService>()
             val samlTokenService = mockk<SAMLTokenService>()
-            val oauthSessionService = mockk<OAuthSessionService>()
+            oauthSessionService = mockk<OAuthSessionService>()
             val accessGroupsService = mockk<AccessGroupsService>()
             val organisationService = mockk<OrganisationService>()
             val adminEmailController = mockk<AdminEmailController>()
-            val userAuditService = mockk<UserAuditService>()
-
+            userAuditService = mockk<UserAuditService>()
 
 
             coEvery { userLookupService.lookupCurrentUser(session) } answers { user }
             coEvery { userLookupService.lookupCurrentUser(adminSession) } answers { adminUser }
             coEvery { userGUIDMapService.getGUIDFromCN(userToImpersonate.cn) } returns userToImpersonate.getGUID()
             coEvery { userLookupService.lookupUserByGUID(userToImpersonate.getGUID()) } returns userToImpersonate
+            coEvery { userGUIDMapService.getGUIDFromCN(userWithPersonalDataRole.cn) } returns userWithPersonalDataRole.getGUID()
+            coEvery { userLookupService.lookupUserByGUID(userWithPersonalDataRole.getGUID()) } returns userWithPersonalDataRole
             every {
                 samlTokenService.generate(
                     client.samlCredential,
@@ -163,17 +226,7 @@ class RefreshUserInfoControllerTest {
             coEvery {
                 oauthSessionService.retrieveFromAuthToken(adminSession.authToken, client)
             } answers { adminSession }
-            coEvery {
-                oauthSessionService.updateWithImpersonatedGUID(adminSession.id, userToImpersonate.getGUID())
-            } just runs
             coEvery { adminEmailController.route(any()) } just runs
-            coEvery {
-                userAuditService.insertImpersonatingUserAuditRow(
-                    adminSession,
-                    userToImpersonate.getGUID(),
-                    any()
-                )
-            } just runs
 
             controller = RefreshUserInfoController(
                 userLookupService,
