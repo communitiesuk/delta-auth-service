@@ -23,7 +23,7 @@
       127.0.0.1 dluhctest.local
       ```
     * If tunneling into the staging environment, you will need a line for `dluhcdata.local` as well
- 
+
 ## Run
 
 Open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
@@ -107,6 +107,9 @@ aws-vault exec <profile> -- bash ./scripts/run-scheduled-task.sh test DeleteOldA
 
 Replace `<delta-app-password>` with the value of delta-website-ldap-password-test from AWS Secrets Manager.
 
+The basic authentication header is a service user which is authenticated against Active Directory.
+The "Delta-Client" header is used to identify which service is calling the endpoint, and includes a client secret shared with that service as an additional layer of authentication.
+
 ```shell
 curl -X POST 'http://localhost:8088/auth-internal/service-user/generate-saml-token' \
   -u 'delta.app:<delta-app-password>' \
@@ -126,12 +129,13 @@ service `http://localhost:8088/delta/login?response_type=code&client_id=delta-we
 (use `client-id=delta-website` for non-dev environments).
 
 The user will be shown a login page and provide a username and password as a standard form submission,
-or with Single Sign On through Azure AD if configured.
+or with Single Sign On (SSO) through Azure AD if configured.
 
 #### 2. Authorization code redirect
 
-The user's credentials are validated by performing an LDAP bind against AD.
-The auth service will then redirect the user back to delta with an authorization code
+The user's credentials are validated by performing an LDAP bind against AD, or with another OAuth flow for SSO with the auth service as the client.
+
+If valid credentials have been provided the auth service will then redirect the user back to delta with an authorization code
 `http://delta/login/oauth2/redirect?code=4321&state=1234`.
 
 #### 3. Code exchange
@@ -179,39 +183,9 @@ curl 'http://localhost:8088/auth-internal/bearer/user-info' \
 
 The response is similar to above, though the access token is not repeated.
 
-### Authenticating with the Delta API
-
-#### Obtaining an API token
-
-This endpoint requires authenticating with a valid AD username and password, and also a valid client id and secret combination. If running locally an id and secret must be added manually to the database. The test auth service DB contains `dev` and `dev` as an ID and secret pair. The stage auth service DB contains an id `dev-client` and a secret that can be found in AWS by the name `auth-service-dev-api-client-secret-staging`. When testing on test or stage, the domain should be replaced as appropriate. The origin domain should be `api.delta.[environment].communities.gov.uk`.
-
-```sh
-curl --request POST 'http://localhost:8088/delta-api/oauth/token' \
---header 'Content-Type: application/x-www-form-urlencoded' \
---header 'Origin: http://localhost:8080' \
---data-urlencode 'grant_type=password' \
---data-urlencode 'client_id=<client-id>' \
---data-urlencode 'client_secret=<client-secret>' \
---data-urlencode 'username=<username>' \
---data-urlencode 'password=<password>'
-```
-
-The `Origin` header checks that Swagger will work.
-
-#### Exchanging an API token
-
-Once obtained, the API token can be exchanged for a SAML token. This request is normally performed by the delta API gateway (`/api/gateway` in Delta repo), not by the local authority or swagger.
-
-```sh
-curl --request POST 'localhost:8088/internal/delta-api/validate' \
---header 'Content-Type: application/json' \
---header 'Delta-Client: delta-api:<client-secret>' \
--d '{"token": "<token>"}' -v
-```
-
-If running locally, the client secret can be set with the `CLIENT_SECRET_DELTA_API` environment variable or the default value from `ClientConfig.kt` can be used. If testing remotely, the secret is stored in AWS under the name `tf-[environment]-delta-api-client-secret`
-
 ### Other endpoints that accept bearer tokens
+
+This isn't exhaustive, just some examples.
 
 #### Get user audit trail
 
@@ -229,6 +203,43 @@ curl -X POST 'http://localhost:8088/auth-internal/bearer/roles' \
   --header 'Delta-Client: delta-website-dev:dev-delta-website-client-secret' \
   -d '{"addToRoles": ["data-providers"], "removeFromRoles": []}'
 ```
+
+### Authenticating with the Delta API
+
+#### Obtaining an API token
+
+The auth service handles generating bearer tokens for the Delta API (<https://api.delta.stage.communities.gov.uk/>).
+These are separate to the bearer tokens generated for Delta in the OAuth flow above.
+
+This endpoint requires authenticating with:
+
+* a Delta (i.e. Active Directory user) username and password
+* an API client id and secret. These are API specific and typically represent the supplier/system used to provide data rather than a specific user or Local Authority.
+
+If running locally an API client id and secret must be added manually to the database. The test auth service DB contains `dev` and `dev` as an ID and secret pair. The stage auth service DB contains an id `dev-client` and a secret that can be found in AWS by the name `auth-service-dev-api-client-secret-staging`. When testing on test or stage, the domain should be replaced as appropriate. The origin domain should be `api.delta.[environment].communities.gov.uk`.
+
+```sh
+curl --request POST 'http://localhost:8088/delta-api/oauth/token' \
+--header 'Content-Type: application/x-www-form-urlencoded' \
+--data-urlencode 'grant_type=password' \
+--data-urlencode 'client_id=<client-id>' \
+--data-urlencode 'client_secret=<client-secret>' \
+--data-urlencode 'username=<username>' \
+--data-urlencode 'password=<password>'
+```
+
+#### Exchanging an API token
+
+Once obtained, the API token can be exchanged for a SAML token. This request is performed by the delta API gateway (`/api/gateway` in Delta repo) which sits in the same VPC and can access the internal API.
+
+```sh
+curl --request POST 'localhost:8088/internal/delta-api/validate' \
+--header 'Content-Type: application/json' \
+--header 'Delta-Client: delta-api:<client-secret>' \
+-d '{"token": "<token>"}' -v
+```
+
+If running locally, the client secret can be set with the `CLIENT_SECRET_DELTA_API` environment variable or the default value from `ClientConfig.kt` can be used. If testing remotely, the secret is stored in AWS under the name `tf-[environment]-delta-api-client-secret`
 
 ## GOV.UK Frontend
 
