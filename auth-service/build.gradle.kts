@@ -1,10 +1,10 @@
-val ktorVersion = "2.3.11"
-val kotlinVersion = "1.9.24"
+val ktorVersion = "2.3.12"
+val kotlinVersion = "2.0.0"
 
 plugins {
-    kotlin("jvm") version "1.9.24"
+    kotlin("jvm") version "2.0.0"
     id("io.ktor.plugin") version "2.3.11"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.24"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
 }
 
 group = "uk.gov.communities.delta.auth"
