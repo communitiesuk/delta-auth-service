@@ -1,5 +1,6 @@
 val ktorVersion = "2.3.12"
 val kotlinVersion = "2.0.0"
+val flywayVersion = "10.17.0"
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -79,7 +80,8 @@ dependencies {
     // Database
     implementation("org.postgresql:postgresql:42.7.3")
     implementation("com.zaxxer:HikariCP:5.1.0") // Connection pool
-    implementation("org.flywaydb:flyway-core:10.17.0") // Migrations
+    implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
+    implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
