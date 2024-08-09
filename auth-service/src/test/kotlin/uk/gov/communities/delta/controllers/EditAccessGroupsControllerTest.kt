@@ -510,6 +510,7 @@ class EditAccessGroupsControllerTest {
 
         private val userLookupService = mockk<UserLookupService>()
         private val userGUIDMapService = mockk<UserGUIDMapService>()
+        private val userService = mockk<UserService>()
         private val groupService = mockk<GroupService>()
         private val organisationService = mockk<OrganisationService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
@@ -587,6 +588,7 @@ class EditAccessGroupsControllerTest {
             controller = EditAccessGroupsController(
                 userLookupService,
                 userGUIDMapService,
+                userService,
                 groupService,
                 organisationService,
                 accessGroupsService,
