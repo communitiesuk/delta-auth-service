@@ -120,6 +120,4 @@ data class DeltaUserDetailsRequest(
     @SerialName("organisations") val organisations: List<String>,
     @SerialName("comment") val comment: String? = null,
     @SerialName("classificationType") val classificationType: String? = null, //Not used anywhere yet
-    @SerialName("userObjectGuid") val userObjectGuid: String? = null,
-    @SerialName("isAdmin") val isAdmin: String? = null,
 )

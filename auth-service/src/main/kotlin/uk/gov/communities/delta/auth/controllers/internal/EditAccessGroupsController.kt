@@ -31,7 +31,7 @@ class EditAccessGroupsController(
 
     // This endpoint takes a single user cn, single access group cn, a list of organisation codes and a comment.
     // It will assign the user to that access group and the given list of organisations for that access group.
-    // If a comment is posted, it also checks the comments for any modifications and updates them accordingly
+    // If a comment is posted, it appends the comment to existing comments
     suspend fun addUserToAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupCurrentUser(session)
@@ -82,13 +82,10 @@ class EditAccessGroupsController(
             }
         }
 
-        val commentModifications = comment?.let { getCommentModifications(targetUser, it) }
+        val commentModification = comment?.let { getCommentModifications(targetUser, it) }
 
-        if (commentModifications != null) {
-            if (commentModifications.isNotEmpty()) commentModifications.let {
-                userService.updateUser(targetUser,
-                    it, session, call)
-            }
+        commentModification?.let {
+            userService.updateUser(targetUser, arrayOf(commentModification), session, call)
         }
 
         return call.respond(mapOf("message" to "User ${targetUser.email} added to access group $targetGroupName and organisations ${targetOrganisationCodes}."))
@@ -400,19 +397,15 @@ class EditAccessGroupsController(
     private fun getGroupOrgADName(targetGroupName: String, targetOrganisationCode: String?) =
         LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName + if (targetOrganisationCode.isNullOrEmpty()) "" else "-$targetOrganisationCode"
 
-    private fun getCommentModifications(
+    fun getCommentModifications(
         currentUser: LdapUser,
         newComment: String
-    ): Array<ModificationItem> {
-        var modifications = arrayOf<ModificationItem>()
-
-        if (newComment.isNotEmpty()) {
-            if (newComment != currentUser.comment) {
-                val updatedComment = "${currentUser.comment}\n$newComment"
-                getModificationItem("comment", currentUser.comment, updatedComment)?.let { modifications += it }
-            }
+    ): ModificationItem? {
+            if (newComment.isNotEmpty() && newComment != currentUser.comment) {
+            val updatedComment = "${currentUser.comment}\n$newComment"
+            return getModificationItem("comment", currentUser.comment, updatedComment)
         }
-        return modifications
+        return null
     }
 
     class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String) :
