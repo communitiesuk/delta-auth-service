@@ -401,9 +401,13 @@ class EditAccessGroupsController(
         currentUser: LdapUser,
         newComment: String
     ): ModificationItem? {
-            if (newComment.isNotEmpty() && newComment != currentUser.comment) {
-            val updatedComment = "${currentUser.comment}\n$newComment"
-            return getModificationItem("comment", currentUser.comment, updatedComment)
+        if (newComment.isNotEmpty() && newComment != currentUser.comment) {
+            val updatedComment = if (currentUser.comment != null) {
+                "${currentUser.comment}\n$newComment"
+            } else {
+                newComment
+            }
+        return getModificationItem("comment", currentUser.comment, updatedComment)
         }
         return null
     }
