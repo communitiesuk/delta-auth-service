@@ -589,6 +589,12 @@ class EditAccessGroupsControllerTest {
             Organisation("orgCode3", "Organisation Name 3"),
             Organisation("orgCode4", "Organisation Name 4"),
         )
+        coEvery { organisationService.findAllByEmail(externalUserWithExistingComments.email) } returns listOf(
+            Organisation("orgCode1", "Organisation Name 1"),
+            Organisation("orgCode2", "Organisation Name 2"),
+            Organisation("orgCode3", "Organisation Name 3"),
+            Organisation("orgCode4", "Organisation Name 4"),
+        )
         coEvery { organisationService.findAllByEmail(internalUser.email) } returns listOf(
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
@@ -602,13 +608,14 @@ class EditAccessGroupsControllerTest {
         )
         mockUserLookupService(
             userLookupService,
-            listOf(Pair(internalUser, internalUserSession), Pair(externalUserWithExistingComments, externalUserSession)),
+            listOf(Pair(internalUser, internalUserSession), Pair(externalUserWithExistingComments, externalUserWithExistingCommentsSession)),
             runBlocking { organisationService.findAllNamesAndCodes() },
             runBlocking { accessGroupsService.getAllAccessGroups() },
         )
         coEvery { groupService.addUserToGroup(externalUser, any(), any(), any()) } just runs
         coEvery { groupService.addUserToGroup(externalUserWithExistingComments, any(), any(), any()) } just runs
         coEvery { groupService.removeUserFromGroup(externalUser, any(), any(), any()) } just runs
+        coEvery { groupService.removeUserFromGroup(externalUserWithExistingComments, any(), any(), any()) } just runs
         coEvery { groupService.addUserToGroup(internalUser, any(), any(), any()) } just runs
         coEvery { groupService.removeUserFromGroup(internalUser, any(), any(), any()) } just runs
         coEvery { userService.updateUser(externalUser, any(), any(), any()) } just runs
@@ -703,6 +710,19 @@ class EditAccessGroupsControllerTest {
                 "trace",
                 false
             )
+
+        private val externalUserWithExistingCommentsSession =
+            OAuthSession(
+                1,
+                externalUserWithExistingComments.cn,
+                externalUserWithExistingComments.getGUID(),
+                client,
+                "externalUserWithCommentsToken",
+                Instant.now(),
+                "trace",
+                false
+            )
+
         private val internalUserSession =
             OAuthSession(
                 1,
