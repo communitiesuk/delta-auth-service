@@ -1,10 +1,11 @@
-val ktorVersion = "2.3.11"
-val kotlinVersion = "1.9.24"
+val ktorVersion = "2.3.12"
+val kotlinVersion = "2.0.0"
+val flywayVersion = "10.17.0"
 
 plugins {
-    kotlin("jvm") version "1.9.24"
+    kotlin("jvm") version "2.0.0"
     id("io.ktor.plugin") version "2.3.11"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.24"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -59,7 +60,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.13.0")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.13.2")
 
     // CORS
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
@@ -79,15 +80,16 @@ dependencies {
     // Database
     implementation("org.postgresql:postgresql:42.7.3")
     implementation("com.zaxxer:HikariCP:5.1.0") // Connection pool
-    implementation("org.flywaydb:flyway-core:9.22.3") // Migrations
+    implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
+    implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.13.11")
+    testImplementation("io.mockk:mockk:1.13.12")
 
     // Tracing - sending traces to AWS X-Ray via OpenTelemetry
-    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.4.0-alpha"))
+    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.6.0-alpha"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")
     implementation("io.opentelemetry:opentelemetry-extension-kotlin")
@@ -96,8 +98,8 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.36.0-alpha")
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.36.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.37.0-alpha")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.37.0")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
