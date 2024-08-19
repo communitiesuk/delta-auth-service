@@ -82,7 +82,7 @@ class EditAccessGroupsController(
             }
         }
 
-        val commentModification = comment?.let { getCommentModifications(targetUser, it) }
+        val commentModification = comment?.let { getCommentModification(targetUser, it) }
 
         commentModification?.let {
             userService.updateUser(targetUser, arrayOf(commentModification), session, call)
@@ -397,7 +397,7 @@ class EditAccessGroupsController(
     private fun getGroupOrgADName(targetGroupName: String, targetOrganisationCode: String?) =
         LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName + if (targetOrganisationCode.isNullOrEmpty()) "" else "-$targetOrganisationCode"
 
-    fun getCommentModifications(
+    fun getCommentModification(
         currentUser: LdapUser,
         newComment: String
     ): ModificationItem? {
