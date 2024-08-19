@@ -11,6 +11,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import junit.framework.TestCase
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.config.DeltaConfig
@@ -23,10 +24,13 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.controllers.AdminEditUserControllerTest.Companion
 import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
+import javax.naming.directory.DirContext
+import javax.naming.directory.ModificationItem
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -338,6 +342,106 @@ class EditAccessGroupsControllerTest {
     }
 
     @Test
+    fun userCanAddAccessGroupWithComment() = testSuspend {
+        coEvery { accessGroupsService.getAccessGroup("access-group-3") } returns mockk<AccessGroup>()
+        testClient.post("/access-groups/add") {
+            headers {
+                append("Authorization", "Bearer ${internalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(
+                "{" +
+                    "\"userToEditCn\": \"${externalUser.cn}\"" +
+                    ", \"accessGroupName\": \"access-group-3\"" +
+                    ", \"organisationCodes\": [\"orgCode1\", \"orgCode2\"]" +
+                    ", \"comment\": \"Mockk comment 1\"}"
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser, "datamart-delta-access-group-3", any(), internalUserSession,
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser,
+                    "datamart-delta-access-group-3-orgCode1",
+                    any(),
+                    internalUserSession,
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUser,
+                    "datamart-delta-access-group-3-orgCode2",
+                    any(),
+                    internalUserSession,
+                )
+            }
+            coVerify(exactly = 1) {
+                userService.updateUser(externalUser, capture(modifications), internalUserSession, any())
+            }
+            assertEquals(1, modifications.captured.size)
+            assertTrue(modifications.captured.any { it.modificationOp == DirContext.ADD_ATTRIBUTE && it.attribute.id == "comment" && it.attribute.get() == "Mockk comment 1" })
+
+            // Confirm all verifications
+            confirmVerified( groupService, accessGroupDCLGMembershipUpdateEmailService, userService )
+        }
+    }
+
+    @Test
+    fun userCanAddAccessGroupWithCommentToExistingComment() = testSuspend {
+        coEvery { accessGroupsService.getAccessGroup("access-group-3") } returns mockk<AccessGroup>()
+        testClient.post("/access-groups/add") {
+            headers {
+                append("Authorization", "Bearer ${internalUserSession.authToken}")
+                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(
+                "{" +
+                    "\"userToEditCn\": \"${externalUserWithExistingComments.cn}\"" +
+                    ", \"accessGroupName\": \"access-group-3\"" +
+                    ", \"organisationCodes\": [\"orgCode1\", \"orgCode2\"]" +
+                    ", \"comment\": \"Mockk comment 1\"}"
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUserWithExistingComments, "datamart-delta-access-group-3", any(), internalUserSession,
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUserWithExistingComments,
+                    "datamart-delta-access-group-3-orgCode1",
+                    any(),
+                    internalUserSession,
+                )
+            }
+            coVerify(exactly = 1) {
+                groupService.addUserToGroup(
+                    externalUserWithExistingComments,
+                    "datamart-delta-access-group-3-orgCode2",
+                    any(),
+                    internalUserSession,
+                )
+            }
+            coVerify(exactly = 1) {
+                userService.updateUser(externalUserWithExistingComments, capture(modifications), internalUserSession, any())
+            }
+            assertEquals(1, modifications.captured.size)
+            assertTrue(modifications.captured.any { it.modificationOp == DirContext.REPLACE_ATTRIBUTE && it.attribute.id == "comment" && it.attribute.get() == "Existing comment 1\nMockk comment 1" })
+
+            // Confirm all verifications
+            confirmVerified( groupService, accessGroupDCLGMembershipUpdateEmailService, userService )
+        }
+    }
+
+    @Test
     fun testAddDCLGMembership() = testSuspend {
         @Suppress("BooleanLiteralArgument")
         coEvery { accessGroupsService.getAccessGroup("access-group-3") } returns AccessGroup(
@@ -463,6 +567,7 @@ class EditAccessGroupsControllerTest {
             )
         } answers { internalUserSession }
         coEvery { userGUIDMapService.getGUIDFromCN(externalUser.cn) } returns externalUser.getGUID()
+        coEvery { userGUIDMapService.getGUIDFromCN(externalUserWithExistingComments.cn) } returns externalUserWithExistingComments.getGUID()
         coEvery { userGUIDMapService.getGUIDFromCN(internalUser.cn) } returns internalUser.getGUID()
         coEvery { organisationService.findAllNamesAndCodes() } returns listOf(
             OrganisationNameAndCode("orgCode1", "Organisation Name 1"),
@@ -484,6 +589,12 @@ class EditAccessGroupsControllerTest {
             Organisation("orgCode3", "Organisation Name 3"),
             Organisation("orgCode4", "Organisation Name 4"),
         )
+        coEvery { organisationService.findAllByEmail(externalUserWithExistingComments.email) } returns listOf(
+            Organisation("orgCode1", "Organisation Name 1"),
+            Organisation("orgCode2", "Organisation Name 2"),
+            Organisation("orgCode3", "Organisation Name 3"),
+            Organisation("orgCode4", "Organisation Name 4"),
+        )
         coEvery { organisationService.findAllByEmail(internalUser.email) } returns listOf(
             Organisation("orgCode1", "Organisation Name 1"),
             Organisation("orgCode2", "Organisation Name 2"),
@@ -495,10 +606,20 @@ class EditAccessGroupsControllerTest {
             runBlocking { organisationService.findAllNamesAndCodes() },
             runBlocking { accessGroupsService.getAllAccessGroups() },
         )
+        mockUserLookupService(
+            userLookupService,
+            listOf(Pair(internalUser, internalUserSession), Pair(externalUserWithExistingComments, externalUserWithExistingCommentsSession)),
+            runBlocking { organisationService.findAllNamesAndCodes() },
+            runBlocking { accessGroupsService.getAllAccessGroups() },
+        )
         coEvery { groupService.addUserToGroup(externalUser, any(), any(), any()) } just runs
+        coEvery { groupService.addUserToGroup(externalUserWithExistingComments, any(), any(), any()) } just runs
         coEvery { groupService.removeUserFromGroup(externalUser, any(), any(), any()) } just runs
+        coEvery { groupService.removeUserFromGroup(externalUserWithExistingComments, any(), any(), any()) } just runs
         coEvery { groupService.addUserToGroup(internalUser, any(), any(), any()) } just runs
         coEvery { groupService.removeUserFromGroup(internalUser, any(), any(), any()) } just runs
+        coEvery { userService.updateUser(externalUser, any(), any(), any()) } just runs
+        coEvery { userService.updateUser(externalUserWithExistingComments, any(), any(), any()) } just runs
     }
 
     companion object {
@@ -510,6 +631,7 @@ class EditAccessGroupsControllerTest {
 
         private val userLookupService = mockk<UserLookupService>()
         private val userGUIDMapService = mockk<UserGUIDMapService>()
+        private val userService = mockk<UserService>()
         private val groupService = mockk<GroupService>()
         private val organisationService = mockk<OrganisationService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
@@ -534,6 +656,25 @@ class EditAccessGroupsControllerTest {
             ),
             mobile = "0123456789",
             telephone = "0987654321",
+        )
+
+        private val externalUserWithExistingComments = testLdapUser(
+            cn = "external!user2.com",
+            email = "external@user2.com",
+            memberOfCNs = listOf(
+                DeltaConfig.DATAMART_DELTA_USER,
+                "datamart-delta-user-orgCode1",
+                "datamart-delta-user-orgCode2",
+                "datamart-delta-user-orgCode3",
+                "datamart-delta-access-group-1",
+                "datamart-delta-access-group-1-orgCode1",
+                "datamart-delta-access-group-1-orgCode3",
+                "datamart-delta-access-group-2",
+                "datamart-delta-access-group-2-orgCode1",
+            ),
+            mobile = "0123456789",
+            telephone = "0987654321",
+            comment = "Existing comment 1",
         )
 
         private val internalUser = testLdapUser(
@@ -569,6 +710,19 @@ class EditAccessGroupsControllerTest {
                 "trace",
                 false
             )
+
+        private val externalUserWithExistingCommentsSession =
+            OAuthSession(
+                1,
+                externalUserWithExistingComments.cn,
+                externalUserWithExistingComments.getGUID(),
+                client,
+                "externalUserWithCommentsToken",
+                Instant.now(),
+                "trace",
+                false
+            )
+
         private val internalUserSession =
             OAuthSession(
                 1,
@@ -581,12 +735,15 @@ class EditAccessGroupsControllerTest {
                 false
             )
 
+        private val modifications = slot<Array<ModificationItem>>()
+
         @BeforeClass
         @JvmStatic
         fun setup() {
             controller = EditAccessGroupsController(
                 userLookupService,
                 userGUIDMapService,
+                userService,
                 groupService,
                 organisationService,
                 accessGroupsService,

@@ -13,10 +13,13 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.repositories.isInternal
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.auth.utils.getModificationItem
+import javax.naming.directory.ModificationItem
 
 class EditAccessGroupsController(
     private val userLookupService: UserLookupService,
     private val userGUIDMapService: UserGUIDMapService,
+    private val userService: UserService,
     private val groupService: GroupService,
     private val organisationService: OrganisationService,
     private val accessGroupsService: AccessGroupsService,
@@ -26,8 +29,9 @@ class EditAccessGroupsController(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    // This endpoint takes a single user cn, single access group cn and a list of organisation codes.
+    // This endpoint takes a single user cn, single access group cn, a list of organisation codes and a comment.
     // It will assign the user to that access group and the given list of organisations for that access group.
+    // If a comment is posted, it appends the comment to existing comments
     suspend fun addUserToAccessGroup(call: ApplicationCall) {
         val session = call.principal<OAuthSession>()!!
         val callingUser = userLookupService.lookupCurrentUser(session)
@@ -40,6 +44,7 @@ class EditAccessGroupsController(
 
         val targetGroupName = addGroupRequest.accessGroupName
         val targetOrganisationCodes = addGroupRequest.organisationCodes
+        val comment = addGroupRequest.comment
 
         logger.info(
             "Adding user {} to access group {} and organisations {}",
@@ -75,6 +80,12 @@ class EditAccessGroupsController(
                     )
                 }
             }
+        }
+
+        val commentModification = comment?.let { getCommentModification(targetUser, it) }
+
+        commentModification?.let {
+            userService.updateUser(targetUser, arrayOf(commentModification), session, call)
         }
 
         return call.respond(mapOf("message" to "User ${targetUser.email} added to access group $targetGroupName and organisations ${targetOrganisationCodes}."))
@@ -386,6 +397,21 @@ class EditAccessGroupsController(
     private fun getGroupOrgADName(targetGroupName: String, targetOrganisationCode: String?) =
         LDAPConfig.DATAMART_DELTA_PREFIX + targetGroupName + if (targetOrganisationCode.isNullOrEmpty()) "" else "-$targetOrganisationCode"
 
+    fun getCommentModification(
+        currentUser: LdapUser,
+        newComment: String
+    ): ModificationItem? {
+        if (newComment.isNotEmpty() && newComment != currentUser.comment) {
+            val updatedComment = if (currentUser.comment != null) {
+                "${currentUser.comment}\n$newComment"
+            } else {
+                newComment
+            }
+        return getModificationItem("comment", currentUser.comment, updatedComment)
+        }
+        return null
+    }
+
     class AddAccessGroupOrganisationAction(accessGroupName: String, organisationCode: String) :
         AccessGroupAction(accessGroupName, organisationCode)
 
@@ -413,5 +439,6 @@ class EditAccessGroupsController(
         @SerialName("userToEditCn") val userToEditCn: String, // TODO DT-1022 - use GUID
         @SerialName("accessGroupName") val accessGroupName: String,
         @SerialName("organisationCodes") val organisationCodes: List<String>,
+        @SerialName("comment") val comment: String? = null,
     )
 }

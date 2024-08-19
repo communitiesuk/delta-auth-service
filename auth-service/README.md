@@ -82,6 +82,15 @@ You can also run only the migrations without starting the app:
 ./gradlew migrate
 ```
 
+### User GUID Mapping
+
+If setting up for the first time, Delta may throw an error about not finding a corresponding user for a particular a GUID when attempting to log in. This can be resolved by manually adding the user_guid and user_cn to the postgres database within Auth Service. 
+
+```shell
+INSERT INTO user_guid_map (user_guid, user_cn) VALUES ("{guid}", "{username}")
+```
+
+
 ### Scheduled tasks
 
 You can run a task locally by setting the RUN_TASK environment variable and using the "runTask" gradle task, for example
