@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" class="govuk-template " xmlns:th="http://www.thymeleaf.org">
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="title" type="java.lang.String" */-->
+<!--/*@thymesVar id="heading" type="java.lang.String" */-->
+<!--/*@thymesVar id="message" type="java.lang.String" */-->
+<!--/*@thymesVar id="requestId" type="java.lang.String" */-->
+
+<head th:replace="~{fragments/template.html :: head (title=${title})}">
+    <title>Error</title>
+</head>
+
+<body class="govuk-template__body govuk-body">
+<a href="#main-content" class="govuk-skip-link" data-module="govuk-skip-link">Skip to main content</a>
+<header th:replace="~{fragments/template.html :: header}"></header>
+
+<div class="govuk-width-container ">
+    <main class="govuk-main-wrapper " id="main-content" role="main">
+        <h1 class="govuk-heading-xl" th:text="${heading}">Error</h1>
+        <p>
+            <span th:text="${message}">Something went wrong</span>.
+            <span th:if="${requestId != ''}">
+                If you need to report a fault, please contact the
+                <a data-th-href="${deltaUrl + '/contact-us'}">Service desk</a>
+                and quote this request id
+                "<span style="font-family: monospace" data-th-text="${'auth:' + requestId}">REQUEST_ID</span>".
+            </span>
+        </p>
+        <br/>
+        <a th:href="${deltaUrl} + '/login'" role="button" draggable="false"
+           class="govuk-button"
+           data-module="govuk-button">
+            Sign in to Delta
+        </a>
+    </main>
+</div>
+
+<footer th:replace="~{fragments/template.html :: footer (deltaUrl=${deltaUrl})}"></footer>
+</body>
+</html>

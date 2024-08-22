@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: No User Account')}">
+    <title>DLUHC Delta: No User Account</title>
+</head>
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+
+<body>
+<p> You are receiving this email because you tried to send a reset password link to this email address for
+    <a th:href="${deltaUrl}">Delta</a>,
+    the online data collection system of the Department for Levelling Up, Housing and Communities (DLUHC).
+</p>
+
+<p>There is no account linked to this email address.</p>
+
+<p>If this was you please check this is the email address linked to your account or click the link below to create an
+    account.</p>
+<p>
+    <a href="/delta/register">Create an account</a>
+</p>
+<p>If this wasn't you no action is required.</p>
+<p>
+    If you have any questions or need help please email the DLUHC Service Desk on <a
+        href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a> or call
+    0203 829 0743.
+</p>
+<p>
+    Regards
+</p>
+<p>
+    <strong>DLUHC Delta Administrator</strong>
+</p>
+<div th:replace="~{fragments/template.html :: disclaimer}"></div>
+</body>
+</html>

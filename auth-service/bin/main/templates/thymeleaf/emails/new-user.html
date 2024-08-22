@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: Registration request accepted')}">
+    <title>DLUHC Delta: Registration request accepted</title>
+</head>
+
+<body>
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="userFirstName" type="java.lang.String" */-->
+<!--/*@thymesVar id="setPasswordUrl" type="java.lang.String" */-->
+
+<p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
+
+<p>
+    Following your on-line request, you are receiving this email because you have requested a new user account on <a
+        th:href="@{${deltaUrl}}">Delta</a>, the online data collection and grants administration system
+    of the Department for Levelling Up, Housing and Communities (DLUHC).
+</p>
+
+<p>Please note that your username will be the email address to which this email has been sent.</p>
+
+<p>Please click on the link below to set your password and activate your account.</p>
+
+<p>
+    <a th:href="@{${setPasswordUrl}}">Activate your Delta account</a>. <b>This link is only valid for 24 hours so
+    please activate your
+    account now</b>.
+</p>
+<p>
+    Please note the Delta User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
+    application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
+</p>
+<p>
+    If you have any questions or need help please email the DLUHC Service Desk on <a
+        href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a> or call
+    0203 829 0743.
+</p>
+<p>
+    Regards
+</p>
+<p>
+    <strong>DLUHC Delta Administrator</strong>
+</p>
+<div th:replace="~{fragments/template.html :: disclaimer}"></div>
+</body>
+</html>

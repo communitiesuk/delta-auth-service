@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html class="govuk-template " lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/template.html :: head (title='Delta | Sign in')}">
+    <title>Delta | Sign in</title>
+</head>
+
+<body class="govuk-template__body govuk-body">
+<!--
+ We don't currently need any JS
+<script>
+    document.body.className = ((document.body.className) ? document.body.className + ' js-enabled' : 'js-enabled');
+</script>
+-->
+<a class="govuk-skip-link" data-module="govuk-skip-link" href="#main-content">Skip to main content</a>
+<header th:replace="~{fragments/template.html :: header}"></header>
+
+<!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="ssoClients" type="java.util.List<uk.gov.communities.delta.auth.config.AzureADSSOClient>" */-->
+<!--/*@thymesVar id="errorMessage" type="java.lang.String" */-->
+<!--/*@thymesVar id="errorLink" type="java.lang.String" */-->
+<!--/*@thymesVar id="username" type="java.lang.String" */-->
+<!--/*@thymesVar id="password" type="java.lang.String" */-->
+
+<div class="govuk-width-container ">
+    <main class="govuk-main-wrapper " id="main-content" role="main">
+        <h1 class="govuk-heading-xl">Sign in to Delta</h1>
+        <div class="govuk-error-summary" data-module="govuk-error-summary"
+             th:if="${not #strings.isEmpty(errorMessage)}">
+            <div role="alert">
+                <h2 class="govuk-error-summary__title">
+                    There is a problem
+                </h2>
+                <div class="govuk-error-summary__body">
+                    <ul class="govuk-list govuk-error-summary__list">
+                        <li>
+                            <a href="#" th:href="${errorLink}" th:text="${errorMessage}">Error message</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="govuk-grid-row">
+            <div class="govuk-grid-column-two-thirds">
+                <form method="POST">
+                    <div class="govuk-form-group">
+                        <label class="govuk-label" for="username">
+                            Username
+                        </label>
+                        <input autocomplete="username" autofocus class="govuk-input govuk-!-width-two-thirds"
+                               id="username" name="username" th:value="${username}" type="text">
+                    </div>
+                    <div class="govuk-form-group">
+                        <label class="govuk-label" for="password">
+                            Password
+                        </label>
+                        <input autocomplete="current-password" class="govuk-input govuk-!-width-two-thirds"
+                               id="password"
+                               name="password" th:value="${password}" type="password">
+                    </div>
+                    <p>
+                        You can <a href="/delta/forgot-password">reset your password here</a>
+                    </p>
+                    <button class="govuk-button" data-module="govuk-button" type="submit">
+                        Sign in to Delta
+                    </button>
+                </form>
+            </div>
+
+            <div class="govuk-grid-column-one-third">
+                <h2 class="govuk-heading-m">Not a user?</h2>
+                <a class="govuk-button govuk-button--secondary" draggable="false" href="/delta/register"
+                   role="button">
+                    Create Delta account
+                </a>
+                <div th:if="${ssoClients.size() > 0}">
+                    <h2 class="govuk-heading-m">DLUHC users</h2>
+                    <a class="govuk-button govuk-button--secondary govuk-!-margin-right-4" draggable="false" role="button"
+                       href="/delta/oauth/login" th:each="ssoClient: ${ssoClients}"
+                       th:href="'/delta/oauth/' + ${ssoClient.internalId} + '/login'" th:text="${ssoClient.buttonText}">
+                        Single Sign On
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div>
+            <p>By signing in, you are confirming that you have read, understood and will comply with the requirements of
+                the <a th:href="${deltaUrl} + '/usage-policy'">Delta usage policy</a></p>
+            <p>If you need help or support please <a th:href="${deltaUrl} + '/contact-us'">contact us</a></p>
+        </div>
+    </main>
+</div>
+
+
+<footer th:replace="~{fragments/template.html :: footer (deltaUrl=${deltaUrl})}"></footer>
+<!--
+We don't currently need any JS
+<script src="/static/govuk-frontend-4.8.0.min.js"></script>
+<script>
+    window.GOVUKFrontend.initAll()
+</script>
+-->
+</body>
+</html>
