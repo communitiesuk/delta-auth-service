@@ -33,7 +33,7 @@ locals {
   cloudwatch_log_expiration_days = 731
   dclg_access_group_notification_settings = {
     enabled                     = true
-    additional_recipient_emails = ["Group-DLUHCDeltaNotifications@softwire.com", "delta-notifications@levellingup.gov.uk", "DELTAadmin@levellingup.gov.uk", "DELTAStatSupport@levellingup.gov.uk"]
+    additional_recipient_emails = ["Group-DLUHCDeltaNotifications@softwire.com", "delta-notifications@communities.gov.uk", "DELTAadmin@levellingup.gov.uk", "DELTAStatSupport@levellingup.gov.uk"]
   }
 }
 
@@ -77,7 +77,7 @@ module "auth_service" {
     from_name        = "Delta System"
     from_address     = "delta@datacollection.levellingup.gov.uk"
     reply_to_name    = "DLUHC Digital Services"
-    reply_to_address = "no-reply@levellingup.gov.uk"
+    reply_to_address = "no-reply@communities.gov.uk"
     smtp_secret_name = "tf-smtp-ses-user-delta-app-${local.environment}"
   }
   dclg_access_group_notification_settings = local.dclg_access_group_notification_settings
