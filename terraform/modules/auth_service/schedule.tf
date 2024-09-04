@@ -109,7 +109,7 @@ resource "aws_iam_policy" "scheduler" {
 data "aws_iam_policy_document" "scheduler" {
   statement {
     actions   = ["ecs:RunTask"]
-    resources = [module.fargate.latest_task_definition_arn]
+    resources = ["${module.fargate.latest_task_definition_arn}:*"]
   }
   statement {
     actions   = ["iam:PassRole"]
