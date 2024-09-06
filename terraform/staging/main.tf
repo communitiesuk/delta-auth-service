@@ -75,7 +75,7 @@ module "auth_service" {
     smtp_port        = "465"
     from_name        = "Delta System (Staging)"
     from_address     = "delta-staging@datacollection.test.levellingup.gov.uk"
-    reply_to_name    = "DLUHC Digital Services"
+    reply_to_name    = "MHCLG Digital Services"
     reply_to_address = "no-reply@communities.gov.uk"
     smtp_secret_name = "tf-smtp-ses-user-delta-app-${local.environment}"
   }
