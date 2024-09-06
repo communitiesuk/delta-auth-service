@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/template.html :: email-head (title='DLUHC Delta: Set Your Password')}">
-    <title>DLUHC Delta: Set Your Password</title>
+<head th:replace="~{fragments/template.html :: email-head (title='MHCLG Delta: Set Your Password')}">
+    <title>MHCLG Delta: Set Your Password</title>
 </head>
 
 <body>
@@ -15,7 +15,7 @@
 <p>
     You are receiving this email because you have tried to use an expired password setting link on <a
         th:href="@{${deltaUrl}}">Delta</a>, the online data collection and grants administration system
-    of the Department for Levelling Up, Housing and Communities (DLUHC).
+    of the Ministry of Housing, Communities and Local Government (MHCLG).
 </p>
 
 <p>Please click on the link below to set your password and activate your account.</p>
@@ -32,15 +32,15 @@
     application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
 </p>
 <p>
-    If you have any questions or need help please email the DLUHC Service Desk on <a
-        href="mailto:dluhc.digital-services@levellingup.gov.uk">dluhc.digital-services@levellingup.gov.uk</a> or call
+    If you have any questions or need help please email the MHCLG Service Desk on <a
+        href="mailto:mhclg.digital-services@communities.gov.uk">mhclg.digital-services@communities.gov.uk</a> or call
     0203 829 0743.
 </p>
 <p>
     Regards
 </p>
 <p>
-    <strong>DLUHC Delta Administrator</strong>
+    <strong>MHCLG Delta Administrator</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>
 </body>
