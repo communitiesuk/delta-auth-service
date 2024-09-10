@@ -16,7 +16,7 @@ jobs:
     environment: publish
     env:
       AWS_REGION: "eu-west-1"
-      VERSION: "17.0"
+      VERSION: "17.1"
       REPOSITORY: "delta-auth-service"
       ECR_PATH: "468442790030.dkr.ecr.eu-west-1.amazonaws.com"
     outputs:
