@@ -35,6 +35,9 @@ class LdapRepository(
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
+    private val datamartDeltaPrefix = "datamart-delta-"
+    private val datamartDeltaDataProviders = "CN=datamart-delta-data-providers-"
+    private val datamartDeltaDataCertifiers = "CN=datamart-delta-data-certifiers-"
 
     @Blocking
     fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialLdapContext {
@@ -197,6 +200,81 @@ class LdapRepository(
     private fun win32FileTimeToInstant(fileTime: Long): Instant {
         return Instant.ofEpochMilli(fileTime / 10000 - 11644473600000L)
     }
+
+    fun getUsersForOrgAccessGroupWithRoles(accessGroupName: String, organisationId: String): List<UserWithRoles> {
+
+        val formattedAccessGroupName = "${datamartDeltaPrefix}$accessGroupName-$organisationId"
+
+        val ctx = bind(ldapConfig.authServiceUserDn, ldapConfig.authServiceUserPassword)
+        try {
+            val searchControls = SearchControls().apply {
+                searchScope = SearchControls.SUBTREE_SCOPE
+                returningAttributes = arrayOf("cn", "objectGUID", "userAccountControl", "mail", "givenName", "sn", "memberOf")
+            }
+
+            val results = ctx.search(
+                ldapConfig.userContainerDn,
+                "(&(objectClass=user)(memberOf=cn=$formattedAccessGroupName,${ldapConfig.groupContainerDn}))",
+                searchControls
+            )
+
+            val usersWithRoles = mutableListOf<UserWithRoles>()
+
+            while (results.hasMore()) {
+
+                val userAttrs = results.next().attributes
+
+                if(!userAttrs.getAccountEnabled()) {
+                    continue
+                }
+
+                val allGroups = userAttrs.get("memberOf")?.all?.toList()?.map { it.toString() } ?: emptyList()
+
+                if (allGroups.any { it.contains("CN=datamart-delta-user-dclg", ignoreCase = true) }) {
+                    continue
+                }
+
+                usersWithRoles.add(createUserWithRoles(userAttrs, allGroups, organisationId))
+            }
+
+            logger.info("Retrieved ${usersWithRoles.size} users with their roles for organisation '$organisationId' and access group '$accessGroupName'")
+            return usersWithRoles
+        } finally {
+            ctx.close()
+        }
+    }
+
+    private fun createUserWithRoles(userAttrs: Attributes, allGroups: List<String>, organisationId: String): UserWithRoles {
+        val userRoles = allGroups.filter {
+            it.contains("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) ||
+                it.contains("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true)
+        }.map { role ->
+            when {
+                role.contains("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
+                role.contains("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
+                else -> role
+            }
+        }
+        val givenName = userAttrs.get("givenName")?.get()?.toString() ?: ""
+        val surname = userAttrs.get("sn")?.get()?.toString() ?: ""
+
+        return UserWithRoles(
+            cn = userAttrs.get("cn")?.get()?.toString() ?: "",
+            objectGUID = (userAttrs.get("objectGUID")?.get() as ByteArray?)?.toGUIDString() ?: "",
+            mail = userAttrs.get("mail")?.get()?.toString() ?: "",
+            fullName = "$givenName $surname",
+            roles = userRoles
+        )
+    }
+
+    @Serializable
+    data class UserWithRoles(
+        val cn: String,
+        val objectGUID: String,
+        val mail: String,
+        val fullName: String,
+        val roles: List<String>
+    )
 }
 
 // These attributes should be treated as binary i.e.

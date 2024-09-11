@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.config.LDAPConfig
 import uk.gov.communities.delta.auth.plugins.ApiError
+import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.repositories.LdapUser
 import uk.gov.communities.delta.auth.repositories.isInternal
 import uk.gov.communities.delta.auth.services.*
@@ -19,6 +20,7 @@ import javax.naming.directory.ModificationItem
 class EditAccessGroupsController(
     private val userLookupService: UserLookupService,
     private val userGUIDMapService: UserGUIDMapService,
+    private val ldapRepository: LdapRepository,
     private val userService: UserService,
     private val groupService: GroupService,
     private val organisationService: OrganisationService,
@@ -126,6 +128,47 @@ class EditAccessGroupsController(
         } else {
             logger.warn("User {} already not member of access group {}", targetUser.getGUID(), targetGroupADName)
             return call.respond(mapOf("message" to "User ${targetUser.email} already not member of access group ${targetGroupName}."))
+        }
+    }
+
+    // This endpoint takes a single access group and organisation id and retrieves the members and their roles of that AD group.
+    suspend fun getAccessGroupMembers(call: ApplicationCall) {
+        val accessGroupMembersRequest = call.receive<AccessGroupMembersRequest>()
+        val accessGroupName = accessGroupMembersRequest.accessGroupName
+        val organisationId = accessGroupMembersRequest.organisationId
+
+        validateRequestFields(accessGroupName, organisationId)
+        validateAccessGroupName(accessGroupName)
+
+        try {
+            val accessGroupMembers = ldapRepository.getUsersForOrgAccessGroupWithRoles(accessGroupName, organisationId)
+            call.respond(HttpStatusCode.OK, accessGroupMembers)
+        }  catch (e: Exception) {
+            logger.error("Failed to retrieve group members due to: ${e.localizedMessage}")
+            throw ApiError(HttpStatusCode.InternalServerError,
+                "internal_error",
+                e.localizedMessage)
+        }
+    }
+
+    private fun validateRequestFields(accessGroupName: String, organisationId: String) {
+        val missingFieldError: Pair<String, String>? = when {
+            accessGroupName.isEmpty() -> Pair("no_access_group_name", "Access group name is missing in request")
+            organisationId.isEmpty() -> Pair("no_organisation_id", "Organisation ID is missing in request")
+            else -> null
+        }
+
+        missingFieldError?.let {
+            throw ApiError(HttpStatusCode.BadRequest, it.first, it.second)
+        }
+    }
+
+    private fun validateAccessGroupName(accessGroupName: String) {
+        val datamartDeltaPrefix = "datamart-delta-"
+        val validGroupNameRegex = Regex("^[a-z][a-z0-9\\-]+")
+
+        if (!validGroupNameRegex.matches(accessGroupName) || accessGroupName.startsWith(datamartDeltaPrefix)) {
+            throw ApiError(HttpStatusCode.BadRequest, "invalid_access_group_name", "Invalid access group name '$accessGroupName'")
         }
     }
 
@@ -440,5 +483,11 @@ class EditAccessGroupsController(
         @SerialName("accessGroupName") val accessGroupName: String,
         @SerialName("organisationCodes") val organisationCodes: List<String>,
         @SerialName("comment") val comment: String? = null,
+    )
+
+    @Serializable
+    data class AccessGroupMembersRequest(
+        @SerialName("accessGroupName") val accessGroupName: String,
+        @SerialName("organisationId") val organisationId: String
     )
 }

@@ -379,6 +379,7 @@ class Injection(
     fun editAccessGroupsController() = EditAccessGroupsController(
         userLookupService,
         userGUIDMapService,
+        ldapRepository,
         userService,
         groupService,
         organisationService,
