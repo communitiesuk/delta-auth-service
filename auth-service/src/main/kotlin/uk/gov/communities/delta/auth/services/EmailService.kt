@@ -63,7 +63,7 @@ class EmailService(
         sendTemplateEmail(
             "already-a-user",
             contacts,
-            "DLUHC Delta - Existing Account",
+            "MHCLG Delta - Existing Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to firstName,
@@ -81,7 +81,7 @@ class EmailService(
         sendTemplateEmail(
             "new-user",
             EmailContacts(user.email!!, user.fullName, emailConfig),
-            "DLUHC Delta - New User Account",
+            "MHCLG Delta - New User Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
@@ -110,7 +110,7 @@ class EmailService(
                 emailAddress,
                 emailConfig
             ),
-            "DLUHC Delta - No User Account",
+            "MHCLG Delta - No User Account",
             mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)
         )
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent no-user-account email")
@@ -120,7 +120,7 @@ class EmailService(
         sendTemplateEmail(
             "not-yet-enabled-user",
             EmailContacts(user.email!!, user.fullName, emailConfig),
-            "DLUHC Delta - Set Your Password",
+            "MHCLG Delta - Set Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
@@ -139,7 +139,7 @@ class EmailService(
         sendTemplateEmail(
             "password-never-set",
             EmailContacts(user.email!!, user.fullName, emailConfig),
-            "DLUHC Delta - Set Password",
+            "MHCLG Delta - Set Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "setPasswordUrl" to getSetPasswordURL(
@@ -163,7 +163,7 @@ class EmailService(
         sendTemplateEmail(
             "reset-password",
             EmailContacts(user.email!!, user.fullName, emailConfig),
-            "DLUHC Delta - Reset Your Password",
+            "MHCLG Delta - Reset Your Password",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFirstName" to user.firstName,
@@ -192,7 +192,7 @@ class EmailService(
         sendTemplateEmail(
             "user-added-to-dclg-in-access-group",
             EmailContacts(recipients, emailConfig),
-            "Delta: DLUHC user has been added to collection group '$accessGroupDisplayName'",
+            "Delta: MHCLG user has been added to collection group '$accessGroupDisplayName'",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "userFullName" to userName,
@@ -204,7 +204,7 @@ class EmailService(
 
         logger.atInfo().addKeyValue("userEmail", userEmail).addKeyValue("accessGroupName", accessGroupDisplayName)
             .addKeyValue("emailRecipients", recipients.joinToString(";") { it.email })
-            .log("Sent dluhc-user-added-to-collection email")
+            .log("Sent user-added-to-dclg-in-access-group email")
     }
 }
 

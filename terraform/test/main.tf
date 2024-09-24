@@ -97,7 +97,7 @@ module "auth_service" {
     smtp_port        = "1025"
     from_name        = "Delta System (Test)"
     from_address     = "delta-test@datacollection.dluhc-dev.uk"
-    reply_to_name    = "DLUHC Digital Services"
+    reply_to_name    = "MHCLG Digital Services"
     reply_to_address = "no-reply@datacollection.dluhc-dev.uk"
   }
 }

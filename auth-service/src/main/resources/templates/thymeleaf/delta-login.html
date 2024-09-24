@@ -74,7 +74,7 @@
                     Create Delta account
                 </a>
                 <div th:if="${ssoClients.size() > 0}">
-                    <h2 class="govuk-heading-m">DLUHC users</h2>
+                    <h2 class="govuk-heading-m">MHCLG users</h2>
                     <a class="govuk-button govuk-button--secondary govuk-!-margin-right-4" draggable="false" role="button"
                        href="/delta/oauth/login" th:each="ssoClient: ${ssoClients}"
                        th:href="'/delta/oauth/' + ${ssoClient.internalId} + '/login'" th:text="${ssoClient.buttonText}">
