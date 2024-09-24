@@ -35,7 +35,6 @@ class LdapRepository(
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
-    private val datamartDeltaPrefix = "datamart-delta-"
     private val datamartDeltaDataProviders = "CN=datamart-delta-data-providers-"
     private val datamartDeltaDataCertifiers = "CN=datamart-delta-data-certifiers-"
 
@@ -203,7 +202,7 @@ class LdapRepository(
 
     fun getUsersForOrgAccessGroupWithRoles(accessGroupName: String, organisationId: String): List<UserWithRoles> {
 
-        val formattedAccessGroupName = "${datamartDeltaPrefix}$accessGroupName-$organisationId"
+        val formattedAccessGroupName = "${LDAPConfig.DATAMART_DELTA_PREFIX}$accessGroupName-$organisationId"
 
         val ctx = bind(ldapConfig.authServiceUserDn, ldapConfig.authServiceUserPassword)
         try {
@@ -214,7 +213,7 @@ class LdapRepository(
 
             val results = ctx.search(
                 ldapConfig.userContainerDn,
-                "(&(objectClass=user)(memberOf=cn=$formattedAccessGroupName,${ldapConfig.groupContainerDn}))",
+                "(&(objectClass=user)(memberOf=cn=$formattedAccessGroupName,${ldapConfig.accessGroupContainerDn}))",
                 searchControls
             )
 
@@ -244,7 +243,7 @@ class LdapRepository(
         }
     }
 
-    private fun createUserWithRoles(userAttrs: Attributes, allGroups: List<String>, organisationId: String): UserWithRoles {
+    fun createUserWithRoles(userAttrs: Attributes, allGroups: List<String>, organisationId: String): UserWithRoles {
         val userRoles = allGroups.filter {
             it.contains("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) ||
                 it.contains("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true)

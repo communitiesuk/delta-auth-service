@@ -12,15 +12,12 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.junit.*
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.controllers.internal.EditAccessGroupsController
 import uk.gov.communities.delta.auth.controllers.internal.EditAccessGroupsController.*
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
-import uk.gov.communities.delta.auth.repositories.LdapRepository
 import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
@@ -30,8 +27,7 @@ import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import javax.naming.directory.DirContext
-import javax.naming.directory.ModificationItem
+import javax.naming.directory.*
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -552,117 +548,6 @@ class EditAccessGroupsControllerTest {
         }
     }
 
-    @Test
-    fun testGetAccessGroupMembersEmptyAccessGroupName() {
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest("", "test-org-id")
-
-        Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                testClient.post("/access-groups/members") {
-                    headers {
-                        append("Authorization", "Bearer ${internalUserSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                    contentType(ContentType.Application.Json)
-                    setBody(Json.encodeToString(mockAccessGroupMembersRequest))
-                }
-            }
-        }.apply {
-            assertEquals(HttpStatusCode.BadRequest, this.statusCode)
-            assertEquals("no_access_group_name", this.errorCode)
-            assertEquals("Access group name is missing in request", this.errorDescription)
-        }
-    }
-
-    @Test
-    fun testGetAccessGroupMembersEmptyOrganisationId() {
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest("test-group-name", "")
-
-        Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                testClient.post("/access-groups/members") {
-                    headers {
-                        append("Authorization", "Bearer ${internalUserSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                    contentType(ContentType.Application.Json)
-                    setBody(Json.encodeToString(mockAccessGroupMembersRequest))
-                }
-            }
-        }.apply {
-            assertEquals(HttpStatusCode.BadRequest, this.statusCode)
-            assertEquals("no_organisation_id", this.errorCode)
-            assertEquals("Organisation ID is missing in request", this.errorDescription)
-        }
-    }
-
-    @Test
-    fun testUserCanRetrieveAccessGroupMembers() = testSuspend {
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest("test-group-name", "test-org-id")
-        every { ldapRepository.getUsersForOrgAccessGroupWithRoles(any(), any()) } returns listOf()
-
-        testClient.post("/access-groups/members") {
-            headers {
-                append("Authorization", "Bearer ${externalUserSession.authToken}")
-                append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-            }
-            contentType(ContentType.Application.Json)
-            setBody(Json.encodeToString(mockAccessGroupMembersRequest))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            coVerify(exactly = 1) {
-                ldapRepository.getUsersForOrgAccessGroupWithRoles(mockAccessGroupMembersRequest.accessGroupName, mockAccessGroupMembersRequest.organisationId)
-            }
-            confirmVerified(ldapRepository)
-        }
-    }
-
-    @Test
-    fun testGetAccessGroupMembersInvalidAccessGroupNameFormat() {
-        val invalidAccessGroupName = "invalidGroupName$"
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest(invalidAccessGroupName, "testOrganisationId")
-
-        Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                testClient.post("/access-groups/members") {
-                    headers {
-                        append("Authorization", "Bearer ${internalUserSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                    contentType(ContentType.Application.Json)
-                    setBody(Json.encodeToString(mockAccessGroupMembersRequest))
-                }
-            }
-        }.apply {
-            assertEquals(HttpStatusCode.BadRequest, this.statusCode)
-            assertEquals("invalid_access_group_name", this.errorCode)
-            assertEquals("Invalid access group name '${invalidAccessGroupName}'", this.errorDescription)
-        }
-    }
-
-    @Test
-    fun testGetAccessGroupMembersInvalidAccessGroupNamePrefix() {
-        val invalidAccessGroupName = "datamart-delta-access-group"
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest(invalidAccessGroupName, "testOrganisationId")
-
-        Assert.assertThrows(ApiError::class.java) {
-            runBlocking {
-                testClient.post("/access-groups/members") {
-                    headers {
-                        append("Authorization", "Bearer ${internalUserSession.authToken}")
-                        append("Delta-Client", "${client.clientId}:${client.clientSecret}")
-                    }
-                    contentType(ContentType.Application.Json)
-                    setBody(Json.encodeToString(mockAccessGroupMembersRequest))
-                }
-            }
-        }.apply {
-            assertEquals(HttpStatusCode.BadRequest, this.statusCode)
-            assertEquals("invalid_access_group_name", this.errorCode)
-            assertEquals("Invalid access group name '${invalidAccessGroupName}'", this.errorDescription)
-        }
-    }
-
 
     @Before
     fun resetMocks() {
@@ -744,7 +629,6 @@ class EditAccessGroupsControllerTest {
 
         private val userLookupService = mockk<UserLookupService>()
         private val userGUIDMapService = mockk<UserGUIDMapService>()
-        private val ldapRepository = mockk<LdapRepository>()
         private val userService = mockk<UserService>()
         private val groupService = mockk<GroupService>()
         private val organisationService = mockk<OrganisationService>()
@@ -857,7 +741,6 @@ class EditAccessGroupsControllerTest {
             controller = EditAccessGroupsController(
                 userLookupService,
                 userGUIDMapService,
-                ldapRepository,
                 userService,
                 groupService,
                 organisationService,
@@ -889,9 +772,6 @@ class EditAccessGroupsControllerTest {
                             }
                             post("/access-groups/remove") {
                                 controller.removeUserFromAccessGroup(call)
-                            }
-                            post("/access-groups/members") {
-                                controller.getAccessGroupMembers(call)
                             }
                         }
                     }

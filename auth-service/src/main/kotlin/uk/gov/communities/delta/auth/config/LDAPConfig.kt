@@ -11,7 +11,7 @@ data class LDAPConfig(
     val serviceUserRequiredGroupCn: String,
     // Container with an empty group for each access group and system role
     val accessGroupContainerDn: String,
-    val groupContainerDn: String,
+    //val groupContainerDn: String,
     val userContainerDn: String,
     val authServiceUserCn: String,
     val authServiceUserPassword: String,
@@ -37,10 +37,10 @@ data class LDAPConfig(
                 "ACCESS_GROUP_CONTAINER_DN",
                 "CN=datamart-delta,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
             ),
-            groupContainerDn = Env.getRequiredOrDevFallback(
-                "ACCESS_GROUP_CONTAINER_DN",
-                "OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
-            ),
+//            groupContainerDn = Env.getRequiredOrDevFallback(
+//                "ACCESS_GROUP_CONTAINER_DN",
+//                "OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
+//            ),
             userContainerDn = Env.getRequiredOrDevFallback(
                 "USER_CONTAINER_DN",
                 "CN=Datamart,OU=Users,OU=dluhctest,DC=dluhctest,DC=local"

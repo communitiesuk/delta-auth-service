@@ -35,7 +35,7 @@ class ApplicationTest {
         fun setup() {
             val deltaConfig = DeltaConfig.fromEnv()
             Injection.instance = Injection(
-                LDAPConfig("testInvalidUrl", "", "", "", "","", "", "", "", "", ""),
+                LDAPConfig("testInvalidUrl", "", "", "", "","", "", "", "", ""),
                 DatabaseConfig("testInvalidUrl", "", ""),
                 ClientConfig.fromEnv(deltaConfig),
                 deltaConfig,
