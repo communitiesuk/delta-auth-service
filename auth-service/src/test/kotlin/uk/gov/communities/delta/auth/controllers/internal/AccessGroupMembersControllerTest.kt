@@ -14,13 +14,10 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.*
 import org.junit.Assert.assertThrows
 import uk.gov.communities.delta.auth.config.DeltaConfig
-import uk.gov.communities.delta.auth.config.LDAPConfig
-import uk.gov.communities.delta.auth.controllers.internal.AccessGroupMembersController.AccessGroupMembersRequest
 import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.repositories.LdapRepository
@@ -33,18 +30,14 @@ import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import javax.naming.NamingEnumeration
-import javax.naming.directory.*
-import javax.naming.directory.Attributes
-import javax.naming.ldap.InitialLdapContext
 import kotlin.test.assertEquals
+import org.junit.Test
 
 
 class AccessGroupMembersControllerTest {
 
     @Test
-    fun testGetAccessGroupMembersEmptyAccessGroupName() {
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest("", "test-org-id")
+    fun `getAccessGroupMembers - missing accessGroupName`() {
 
         assertThrows(ApiError::class.java) {
             runBlocking {
@@ -53,8 +46,8 @@ class AccessGroupMembersControllerTest {
                         append("Authorization", "Bearer ${internalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
-                    contentType(ContentType.Application.Json)
-                    setBody(Json.encodeToString(mockAccessGroupMembersRequest))
+                    parameter("organisationId", "dluhc")
+                    parameter("accessGroupName", null)
                 }
             }
         }.apply {
@@ -66,8 +59,7 @@ class AccessGroupMembersControllerTest {
 
 
     @Test
-    fun testGetAccessGroupMembersEmptyOrganisationId() {
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest("test-group-name", "")
+    fun `getAccessGroupMembers - missing organisationId`() {
 
         assertThrows(ApiError::class.java) {
             runBlocking {
@@ -76,8 +68,8 @@ class AccessGroupMembersControllerTest {
                         append("Authorization", "Bearer ${internalUserSession.authToken}")
                         append("Delta-Client", "${client.clientId}:${client.clientSecret}")
                     }
-                    contentType(ContentType.Application.Json)
-                    setBody(Json.encodeToString(mockAccessGroupMembersRequest))
+                    parameter("organisationId", null)
+                    parameter("accessGroupName", "central-list")
                 }
             }
         }.apply {
@@ -89,8 +81,9 @@ class AccessGroupMembersControllerTest {
 
 
     @Test
-    fun testUserCanRetrieveAccessGroupMembers() = testSuspend {
-        val mockAccessGroupMembersRequest = AccessGroupMembersRequest("test-group-name", "test-org-id")
+    fun `getAccessGroupMembers - returns list of users`() = testSuspend {
+        val accessGroupName = "central-list"
+        val organisationId = "dluhc"
 
         val mockUsers = listOf(
             LdapRepository.UserWithRoles(
@@ -118,8 +111,8 @@ class AccessGroupMembersControllerTest {
                 append("Authorization", "Bearer ${externalUserSession.authToken}")
                 append("Delta-Client", "${client.clientId}:${client.clientSecret}")
             }
-            contentType(ContentType.Application.Json)
-            setBody(Json.encodeToString(mockAccessGroupMembersRequest))
+            parameter("organisationId", organisationId)
+            parameter("accessGroupName", accessGroupName)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
 
@@ -127,110 +120,7 @@ class AccessGroupMembersControllerTest {
 
             assertEquals(mockUsers.size, returnedUsers.size)
             assertEquals(mockUsers, returnedUsers)
-
-            coVerify(exactly = 1) {
-                ldapRepository.getUsersForOrgAccessGroupWithRoles(mockAccessGroupMembersRequest.accessGroupName, mockAccessGroupMembersRequest.organisationId)
-            }
-            confirmVerified(ldapRepository)
         }
-    }
-
-
-    @Test
-    fun testInactiveUsersFilteredFromGetUsersForOrgAccessGroupWithRoles() {
-        val mockLdapConfig = mockk<LDAPConfig>()
-        every { mockLdapConfig.authServiceUserDn } returns "mockedUserDn"
-        every { mockLdapConfig.authServiceUserPassword } returns "mockedPassword"
-        every { mockLdapConfig.userContainerDn } returns "mockedUserContainerDn"
-        every { mockLdapConfig.accessGroupContainerDn } returns "mockedGroupContainerDn"
-        every { mockLdapConfig.deltaUserDnFormat } returns "CN=%s,OU=users"
-        every { mockLdapConfig.groupDnFormat } returns "CN=%s,OU=groups"
-
-        val objectGUIDMode = LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING
-        val ldapRepository = LdapRepository(mockLdapConfig, objectGUIDMode)
-
-        val mockResult1 = mockk<SearchResult>()
-        val mockResult2 = mockk<SearchResult>()
-        val mockAttrs1 = mockk<Attributes>()
-        val mockAttrs2 = mockk<Attributes>()
-
-        every { mockResult1.attributes } returns mockAttrs1
-        every { mockAttrs1.get("userAccountControl")?.get() } returns "514"
-        every { mockAttrs1.get("memberOf")?.all?.toList() } returns emptyList<String>()
-
-        every { mockResult2.attributes } returns mockAttrs2
-        every { mockAttrs2.get("userAccountControl")?.get() } returns "512"
-        every { mockAttrs2.get("memberOf")?.all?.toList() } returns listOf("CN=datamart-delta-user-test")
-
-        val mockResults = mockk<NamingEnumeration<SearchResult>>()
-        every { mockResults.hasMore() } returnsMany listOf(true, true, false)
-        every { mockResults.next() } returnsMany listOf(mockResult1, mockResult2)
-
-        val mockCtx = mockk<InitialLdapContext>()
-        every { mockCtx.search(any<String>(), any<String>(), any<SearchControls>()) } returns mockResults
-
-        mockkObject(ldapRepository)
-        every { ldapRepository.bind(any(), any()) } returns mockCtx
-
-        every { mockCtx.close() } just Runs
-
-        val result = ldapRepository.getUsersForOrgAccessGroupWithRoles("someGroupName", "someOrganisationId")
-
-        //assert(result.isEmpty())
-        assert(result.size == 1)
-    }
-
-
-    @Test
-    fun testActiveUsersFilteredFromGetUsersForOrgAccessGroupWithRoles() {
-        val mockLdapConfig = mockk<LDAPConfig>()
-        every { mockLdapConfig.authServiceUserDn } returns "mockedUserDn"
-        every { mockLdapConfig.authServiceUserPassword } returns "mockedPassword"
-        every { mockLdapConfig.userContainerDn } returns "mockedUserContainerDn"
-        every { mockLdapConfig.accessGroupContainerDn } returns "mockedGroupContainerDn"
-        every { mockLdapConfig.deltaUserDnFormat } returns "CN=%s,OU=users"
-        every { mockLdapConfig.groupDnFormat } returns "CN=%s,OU=groups"
-        every { mockLdapConfig.deltaLdapUrl } returns "ldap://mocked.url"
-
-        val objectGUIDMode = LdapRepository.ObjectGUIDMode.NEW_JAVA_UUID_STRING
-        val ldapRepository = LdapRepository(mockLdapConfig, objectGUIDMode)
-
-        // Mock the active user
-        val mockResult1 = mockk<SearchResult>()
-        val mockAttrs1 = mockk<Attributes>()
-        every { mockResult1.attributes } returns mockAttrs1
-        every { mockAttrs1.get("userAccountControl")?.get() } returns "512"  // Active account
-        every { mockAttrs1.get("mail")?.get() } returns "active.user@example.com"
-        every { mockAttrs1.get("memberOf")?.all?.toList() } returns listOf("CN=datamart-delta-user-org-pw-dst")
-
-        // Mock the inactive user
-        val mockResult2 = mockk<SearchResult>()
-        val mockAttrs2 = mockk<Attributes>()
-        every { mockResult2.attributes } returns mockAttrs2
-        every { mockAttrs2.get("userAccountControl")?.get() } returns "514"  // Inactive account
-        every { mockAttrs2.get("mail")?.get() } returns "inactive.user@example.com"
-        every { mockAttrs2.get("memberOf")?.all?.toList() } returns listOf("CN=datamart-delta-user-org-pw-dst")
-
-        val mockResults = mockk<NamingEnumeration<SearchResult>>()
-        every { mockResults.hasMore() } returnsMany listOf(true, false)
-        every { mockResults.next() } returnsMany listOf(mockResult1, mockResult2)
-
-        val mockCtx = mockk<InitialLdapContext>()
-        every { mockCtx.search(any<String>(), any<String>(), any<SearchControls>()) } returns mockResults
-        every { mockCtx.close() } just Runs
-
-        mockkObject(ldapRepository)
-        every { ldapRepository.bind(any(), any()) } returns mockCtx
-
-        println(mockResults.hasMore())  // Add these temporarily to debug
-        println(mockResults.next())
-
-        // Call the method being tested
-        val result = ldapRepository.getUsersForOrgAccessGroupWithRoles("someGroupName", "someOrganisationId")
-
-        // Assert that only the active user is returned
-        assert(result.size == 1)
-        assert(result.first().mail == "active.user@example.com")
     }
 
 

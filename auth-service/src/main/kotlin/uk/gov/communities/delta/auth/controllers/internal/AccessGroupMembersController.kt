@@ -2,7 +2,6 @@ package uk.gov.communities.delta.auth.controllers.internal
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -21,15 +20,16 @@ class AccessGroupMembersController (
 
     // This endpoint takes a single access group and organisation id and retrieves the members and their roles of that AD group.
     suspend fun getAccessGroupMembers(call: ApplicationCall) {
-        val accessGroupMembersRequest = call.receive<AccessGroupMembersRequest>()
-        val accessGroupName = accessGroupMembersRequest.accessGroupName
-        val organisationId = accessGroupMembersRequest.organisationId
+        val accessGroupName = call.request.queryParameters["accessGroupName"]
+        val organisationId = call.request.queryParameters["organisationId"]
 
         validateRequestFields(accessGroupName, organisationId)
-        validateAccessGroupName(accessGroupName)
+        accessGroupName?.let { validateAccessGroupName(it) }
 
         try {
-            val accessGroupMembers = ldapRepository.getUsersForOrgAccessGroupWithRoles(accessGroupName, organisationId)
+            val accessGroupMembers = ldapRepository.getUsersForOrgAccessGroupWithRoles(accessGroupName.toString(),
+                organisationId.toString()
+            )
             call.respond(HttpStatusCode.OK, accessGroupMembers)
         }  catch (e: Exception) {
             logger.error("Failed to retrieve group members due to: ${e.localizedMessage}")
@@ -39,10 +39,10 @@ class AccessGroupMembersController (
         }
     }
 
-    fun validateRequestFields(accessGroupName: String, organisationId: String) {
+    fun validateRequestFields(accessGroupName: String?, organisationId: String?) {
         val missingFieldError: Pair<String, String>? = when {
-            accessGroupName.isEmpty() -> Pair("no_access_group_name", "Access group name is missing in request")
-            organisationId.isEmpty() -> Pair("no_organisation_id", "Organisation ID is missing in request")
+            accessGroupName.isNullOrEmpty() -> Pair("no_access_group_name", "Access group name is missing in request")
+            organisationId.isNullOrEmpty() -> Pair("no_organisation_id", "Organisation ID is missing in request")
             else -> null
         }
 

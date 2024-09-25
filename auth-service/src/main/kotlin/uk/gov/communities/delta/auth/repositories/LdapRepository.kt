@@ -213,7 +213,7 @@ class LdapRepository(
 
             val results = ctx.search(
                 ldapConfig.userContainerDn,
-                "(&(objectClass=user)(memberOf=cn=$formattedAccessGroupName,${ldapConfig.accessGroupContainerDn}))",
+                "(&(objectClass=user)(memberOf=cn=$formattedAccessGroupName,${ldapConfig.groupContainerDn}))",
                 searchControls
             )
 
