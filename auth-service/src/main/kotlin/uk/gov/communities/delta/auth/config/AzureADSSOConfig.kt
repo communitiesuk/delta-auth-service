@@ -15,7 +15,7 @@ data class AzureADSSOClient(
     // Only allows the SSO provider to log users in under this domain. Must include the "@" prefix.
     val emailDomain: String,
     // Accept JWTs with this as the email domain, but log in the user with the above domain in their CN instead.
-    // This is a workaround for DLUHC users having "@levellingup.gov.uk" as their username in Delta,
+    // This is a workaround for MHCLG users having "@levellingup.gov.uk" as their username in Delta,
     // but "@communities.gov.uk" as their username in Azure AD.
     val convertFromEmailDomain: String? = null,
     // Force users with a matching email domain to use the SSO flow rather than username + password
