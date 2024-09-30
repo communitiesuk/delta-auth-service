@@ -64,10 +64,4 @@ class AccessGroupMembersController (
             throw ApiError(HttpStatusCode.BadRequest, "invalid_access_group_name_prefix", {e.message}.toString())
         }
     }
-
-    @Serializable
-    data class AccessGroupMembersRequest(
-        @SerialName("accessGroupName") val accessGroupName: String,
-        @SerialName("organisationId") val organisationId: String
-    )
 }
