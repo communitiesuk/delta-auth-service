@@ -67,8 +67,9 @@ class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, 
     }
 
     suspend fun getAccessGroup(accessGroupName: String): AccessGroup? {
-        if (accessGroupName.startsWith(DATAMART_DELTA_PREFIX)) throw IllegalArgumentException("Non-prefixed name expected")
-        if (!VALID_ACCESS_GROUP_NAME_REGEX.matches(accessGroupName)) throw IllegalArgumentException("Invalid access group name '$accessGroupName'")
+
+        checkAccessGroupPrefixIsValid(accessGroupName)
+        checkAccessGroupNameIsValid(accessGroupName)
 
         return ldapServiceUserBind.useServiceUserBind { ctx ->
             try {
@@ -83,6 +84,14 @@ class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, 
                 null
             }
         }
+    }
+
+    fun checkAccessGroupNameIsValid (accessGroupName: String) {
+        if (!VALID_ACCESS_GROUP_NAME_REGEX.matches(accessGroupName)) throw IllegalArgumentException("Invalid access group name '$accessGroupName'")
+    }
+
+    fun checkAccessGroupPrefixIsValid (accessGroupPrefix: String) {
+        if (accessGroupPrefix.startsWith(DATAMART_DELTA_PREFIX)) throw IllegalArgumentException("Invalid access group prefix '$accessGroupPrefix'")
     }
 
     private fun searchControls(): SearchControls {

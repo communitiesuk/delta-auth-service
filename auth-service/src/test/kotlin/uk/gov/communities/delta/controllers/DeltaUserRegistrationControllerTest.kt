@@ -272,7 +272,7 @@ class DeltaUserRegistrationControllerTest {
         fun setup() {
             val registrationService = RegistrationService(
                 EmailConfig.fromEnv(),
-                LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
+                LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", "", "", ""),
                 setPasswordTokenService,
                 emailService,
                 userService,
