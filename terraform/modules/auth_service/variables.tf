@@ -62,6 +62,7 @@ variable "ldap_config" {
     LDAP_DOMAIN_REALM           = string
     ACCESS_GROUP_CONTAINER_DN   = string
     GROUP_CONTAINER_DN          = string
+    USER_CONTAINER_DN           = string
   })
 }
 

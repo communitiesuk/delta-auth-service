@@ -71,6 +71,7 @@ data class LDAPConfig(
             .addKeyValue("LDAP_AUTH_SERVICE_USER", authServiceUserCn)
             .addKeyValue("ACCESS_GROUP_CONTAINER_DN", accessGroupContainerDn)
             .addKeyValue("GROUP_CONTAINER_DN", groupContainerDn)
+            .addKeyValue("USER_CONTAINER_DN", userContainerDn)
             .log("LDAP config")
     }
 }

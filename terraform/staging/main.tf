@@ -65,6 +65,7 @@ module "auth_service" {
     LDAP_DOMAIN_REALM           = "dluhcdata.local"
     ACCESS_GROUP_CONTAINER_DN   = "CN=datamart-delta,OU=Groups,OU=dluhcdata,DC=dluhcdata,DC=local"
     GROUP_CONTAINER_DN          = "OU=Groups,OU=dluhcdata,DC=dluhcdata,DC=local"
+    USER_CONTAINER_DN           = "CN=Datamart,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
   }
   ecs = {
     cpu           = 256
