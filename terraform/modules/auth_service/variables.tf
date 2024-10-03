@@ -61,6 +61,7 @@ variable "ldap_config" {
     CA_S3_URL                   = string
     LDAP_DOMAIN_REALM           = string
     ACCESS_GROUP_CONTAINER_DN   = string
+    GROUP_CONTAINER_DN          = string
   })
 }
 

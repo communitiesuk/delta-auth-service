@@ -86,6 +86,7 @@ module "auth_service" {
     LDAP_GROUP_DN_FORMAT        = "CN=%s,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
     LDAP_DOMAIN_REALM           = "dluhctest.local"
     ACCESS_GROUP_CONTAINER_DN   = "CN=datamart-delta,OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
+    GROUP_CONTAINER_DN          = "OU=Groups,OU=dluhctest,DC=dluhctest,DC=local"
   }
   dclg_access_group_notification_settings = local.dclg_access_group_notification_settings
 
