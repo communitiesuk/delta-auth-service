@@ -227,6 +227,7 @@ fun Route.internalRoutes(injection: Injection) {
     val editAccessGroupsController = injection.editAccessGroupsController()
     val editLdapGroupsController = injection.editLdapGroupsController()
     val editUserDetailsController = injection.editUserDetailsController()
+    val accessGroupMembersController = injection.accessGroupMembersController()
 
     route("/auth-internal") {
         serviceUserRoutes(generateSAMLTokenController, editLdapGroupsController)
@@ -248,6 +249,7 @@ fun Route.internalRoutes(injection: Injection) {
             editOrganisationsController,
             editAccessGroupsController,
             editUserDetailsController,
+            accessGroupMembersController,
         )
     }
 }
@@ -308,6 +310,7 @@ fun Route.bearerTokenRoutes(
     editOrganisationsController: EditOrganisationsController,
     editAccessGroupsController: EditAccessGroupsController,
     editUserDetailsController: EditUserDetailsController,
+    accessGroupMembersController: AccessGroupMembersController
 ) {
     route("/bearer") {
         withBearerTokenAuth {
@@ -358,6 +361,9 @@ fun Route.bearerTokenRoutes(
             }
             post("/access-groups/remove") {
                 editAccessGroupsController.removeUserFromAccessGroup(call)
+            }
+            get("/access-group-members") {
+                accessGroupMembersController.getAccessGroupMembers(call)
             }
             route("/organisations") {
                 editOrganisationsController.route(this)

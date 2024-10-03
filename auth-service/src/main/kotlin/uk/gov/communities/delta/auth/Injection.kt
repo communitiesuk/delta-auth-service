@@ -402,4 +402,6 @@ class Injection(
 
     fun editOrganisationsController() =
         EditOrganisationsController(userLookupService, groupService, organisationService)
+
+    fun accessGroupMembersController() = AccessGroupMembersController(ldapRepository, accessGroupsService)
 }

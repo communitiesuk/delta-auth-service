@@ -31,7 +31,7 @@ import kotlin.test.assertEquals
 class UserServiceTest {
     private val ldapServiceUserBind = mockk<LdapServiceUserBind>()
     private val deltaUserDnFormat = "CN=%s"
-    private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "")
+    private val ldapConfig = LDAPConfig("testInvalidUrl", "", deltaUserDnFormat, "", "", "", "", "", "", "", "")
     private val userLookupService = mockk<UserLookupService>()
     private val userGUIDMapService = mockk<UserGUIDMapService>()
     private val userAuditService = mockk<UserAuditService>()

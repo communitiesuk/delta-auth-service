@@ -11,7 +11,6 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
-import junit.framework.TestCase
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import uk.gov.communities.delta.auth.config.DeltaConfig
@@ -24,13 +23,11 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
-import uk.gov.communities.delta.controllers.AdminEditUserControllerTest.Companion
 import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
-import javax.naming.directory.DirContext
-import javax.naming.directory.ModificationItem
+import javax.naming.directory.*
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -550,6 +547,7 @@ class EditAccessGroupsControllerTest {
             confirmVerified(groupService, accessGroupDCLGMembershipUpdateEmailService)
         }
     }
+
 
     @Before
     fun resetMocks() {

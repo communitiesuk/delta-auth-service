@@ -323,7 +323,7 @@ class AdminUserCreationControllerTest {
 
         private val oauthSessionService = mockk<OAuthSessionService>()
 
-        private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", "")
+        private val ldapConfig = LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", "", "", "",)
         private val requiredSSOClient = AzureADSSOClient("dev", "", "", "", "@required.sso.domain.uk", required = true)
         private val notRequiredSSOClient =
             AzureADSSOClient("dev", "", "", "", "@not.required.sso.domain.uk", required = false)

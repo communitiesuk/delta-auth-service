@@ -31,7 +31,7 @@ class RegistrationServiceTest {
 
     private val registrationService = RegistrationService(
         EmailConfig.fromEnv(),
-        LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", ""),
+        LDAPConfig("testInvalidUrl", "", "", "", "", "", "", "", "", "", ""),
         setPasswordTokenService,
         emailService,
         userService,
