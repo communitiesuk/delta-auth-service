@@ -91,6 +91,7 @@ class AccessGroupMembersControllerTest {
                 objectGUID = "guid1",
                 mail = "user1@example.com",
                 fullName = "User One",
+                organisationID = "orgCode1",
                 roles = listOf("Data provider")
             ),
             LdapRepository.UserWithRoles(
@@ -98,6 +99,7 @@ class AccessGroupMembersControllerTest {
                 objectGUID = "guid2",
                 mail = "user2@example.com",
                 fullName = "User Two",
+                organisationID = "orgCode2",
                 roles = listOf("Data certifier")
             )
         )
