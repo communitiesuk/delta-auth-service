@@ -249,10 +249,10 @@ class LdapRepository(
             when {
                 role.equals("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
                 role.equals("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
-                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId",ignoreCase = true) -> "Stats data certifier"
+                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId",ignoreCase = true) -> "Data certifier"
                 else -> null
             }
-        }
+        }.distinct()
         val givenName = userAttrs.get("givenName")?.get()?.toString() ?: ""
         val surname = userAttrs.get("sn")?.get()?.toString() ?: ""
 
