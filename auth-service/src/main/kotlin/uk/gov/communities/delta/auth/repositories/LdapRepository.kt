@@ -37,6 +37,7 @@ class LdapRepository(
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
     private val datamartDeltaDataProviders = "CN=datamart-delta-data-providers-"
     private val datamartDeltaDataCertifiers = "CN=datamart-delta-data-certifiers-"
+    private val datamartDeltaStatsDataCertifiers = "CN=datamart-delta-stats-data-certifiers-"
 
     @Blocking
     fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialLdapContext {
@@ -244,14 +245,12 @@ class LdapRepository(
     }
 
     fun createUserWithRoles(userAttrs: Attributes, allGroups: List<String>, organisationId: String): UserWithRoles {
-        val userRoles = allGroups.filter {
-            it.contains("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) ||
-                it.contains("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true)
-        }.map { role ->
+        val userRoles = allGroups.mapNotNull { role ->
             when {
-                role.contains("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
-                role.contains("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
-                else -> role
+                role.equals("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
+                role.equals("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
+                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId",ignoreCase = true) -> "Stats data certifier"
+                else -> null
             }
         }
         val givenName = userAttrs.get("givenName")?.get()?.toString() ?: ""
