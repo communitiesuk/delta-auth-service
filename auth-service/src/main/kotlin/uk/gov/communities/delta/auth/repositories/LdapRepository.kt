@@ -28,6 +28,7 @@ import kotlin.time.Duration.Companion.seconds
 class LdapRepository(
     private val ldapConfig: LDAPConfig,
     private val objectGUIDMode: ObjectGUIDMode,
+    private val initialLdapContextFactory: ((Hashtable<String, String>) -> InitialLdapContext)? = null
 ) {
     enum class ObjectGUIDMode {
         OLD_MANGLED, NEW_JAVA_UUID_STRING;
@@ -35,9 +36,9 @@ class LdapRepository(
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
-    private val datamartDeltaDataProviders = "CN=datamart-delta-data-providers-"
-    private val datamartDeltaDataCertifiers = "CN=datamart-delta-data-certifiers-"
-    private val datamartDeltaStatsDataCertifiers = "CN=datamart-delta-stats-data-certifiers-"
+    private val datamartDeltaDataProviders = "datamart-delta-data-providers-"
+    private val datamartDeltaDataCertifiers = "datamart-delta-data-certifiers-"
+    private val datamartDeltaStatsDataCertifiers = "datamart-delta-stats-data-certifiers-"
 
     @Blocking
     fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialLdapContext {
@@ -59,7 +60,7 @@ class LdapRepository(
         }
 
         return try {
-            val context = InitialLdapContext(env, null)
+            val context = initialLdapContextFactory?.invoke(env) ?: InitialLdapContext(env, null)
             logger.debug("Successful bind for DN {}", userDn)
             context
         } catch (e: NamingException) {
@@ -202,14 +203,13 @@ class LdapRepository(
     }
 
     fun getUsersForOrgAccessGroupWithRoles(accessGroupName: String, organisationId: String): List<UserWithRoles> {
-
         val formattedAccessGroupName = "${LDAPConfig.DATAMART_DELTA_PREFIX}$accessGroupName-$organisationId"
 
         val ctx = bind(ldapConfig.authServiceUserDn, ldapConfig.authServiceUserPassword)
         try {
             val searchControls = SearchControls().apply {
                 searchScope = SearchControls.SUBTREE_SCOPE
-                returningAttributes = arrayOf("cn", "objectGUID", "userAccountControl", "mail", "givenName", "sn", "memberOf")
+                returningAttributes = attributeNames
             }
 
             val results = ctx.search(
@@ -221,20 +221,14 @@ class LdapRepository(
             val usersWithRoles = mutableListOf<UserWithRoles>()
 
             while (results.hasMore()) {
-
                 val userAttrs = results.next().attributes
+                val user = getUserFromAttributes(userAttrs)
 
-                if(!userAttrs.getAccountEnabled()) {
+                if (user.memberOfCNs.contains("datamart-delta-user-dclg") || !user.accountEnabled) {
                     continue
                 }
 
-                val allGroups = userAttrs.get("memberOf")?.all?.toList()?.map { it.toString() } ?: emptyList()
-
-                if (allGroups.any { it.contains("CN=datamart-delta-user-dclg", ignoreCase = true) }) {
-                    continue
-                }
-
-                usersWithRoles.add(createUserWithRoles(userAttrs, allGroups, organisationId))
+                usersWithRoles.add(createUserWithRoles(user, organisationId))
             }
 
             logger.info("Retrieved ${usersWithRoles.size} users with their roles for organisation '$organisationId' and access group '$accessGroupName'")
@@ -244,23 +238,22 @@ class LdapRepository(
         }
     }
 
-    fun createUserWithRoles(userAttrs: Attributes, allGroups: List<String>, organisationId: String): UserWithRoles {
+    private fun createUserWithRoles(user: LdapUser, organisationId: String): UserWithRoles {
+        val allGroups = user.memberOfCNs
         val userRoles = allGroups.mapNotNull { role ->
             when {
                 role.equals("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
                 role.equals("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
-                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId",ignoreCase = true) -> "Data certifier"
+                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
                 else -> null
             }
         }.distinct()
-        val givenName = userAttrs.get("givenName")?.get()?.toString() ?: ""
-        val surname = userAttrs.get("sn")?.get()?.toString() ?: ""
 
         return UserWithRoles(
-            cn = userAttrs.get("cn")?.get()?.toString() ?: "",
-            objectGUID = (userAttrs.get("objectGUID")?.get() as ByteArray?)?.toGUIDString() ?: "",
-            mail = userAttrs.get("mail")?.get()?.toString() ?: "",
-            fullName = "$givenName $surname",
+            cn = user.cn,
+            objectGUID = user.getGUID().toString(),
+            mail = user.email ?: "",
+            fullName = user.fullName,
             roles = userRoles
         )
     }
