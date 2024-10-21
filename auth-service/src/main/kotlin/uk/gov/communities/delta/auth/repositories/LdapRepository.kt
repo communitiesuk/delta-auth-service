@@ -261,7 +261,6 @@ class LdapRepository(
             objectGUID = (userAttrs.get("objectGUID")?.get() as ByteArray?)?.toGUIDString() ?: "",
             mail = userAttrs.get("mail")?.get()?.toString() ?: "",
             fullName = "$givenName $surname",
-            organisationID = organisationId,
             roles = userRoles
         )
     }
@@ -272,7 +271,6 @@ class LdapRepository(
         val objectGUID: String,
         val mail: String,
         val fullName: String,
-        val organisationID: String,
         val roles: List<String>
     )
 }
