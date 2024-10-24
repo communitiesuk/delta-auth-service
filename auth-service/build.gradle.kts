@@ -1,10 +1,10 @@
 val ktorVersion = "2.3.12"
-val kotlinVersion = "2.0.0"
-val flywayVersion = "10.17.0"
+val kotlinVersion = "2.0.21"
+val flywayVersion = "10.19.0"
 
 plugins {
     kotlin("jvm") version "2.0.0"
-    id("io.ktor.plugin") version "2.3.11"
+    id("io.ktor.plugin") version "2.3.12"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
 }
 
@@ -69,27 +69,27 @@ dependencies {
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.6")
+    implementation("ch.qos.logback:logback-classic:1.5.10")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.9.0")
 
     // OpenSAML
     implementation("org.opensaml:opensaml-core:4.3.2")
     implementation("org.opensaml:opensaml-saml-impl:4.3.2")
 
     // Database
-    implementation("org.postgresql:postgresql:42.7.3")
-    implementation("com.zaxxer:HikariCP:5.1.0") // Connection pool
+    implementation("org.postgresql:postgresql:42.7.4")
+    implementation("com.zaxxer:HikariCP:6.0.0") // Connection pool
     implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
 
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.13.12")
+    testImplementation("io.mockk:mockk:1.13.13")
 
     // Tracing - sending traces to AWS X-Ray via OpenTelemetry
-    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.6.0-alpha"))
+    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.8.0-alpha"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")
     implementation("io.opentelemetry:opentelemetry-extension-kotlin")
@@ -98,8 +98,8 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.37.0-alpha")
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.37.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.39.0-alpha")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.39.0")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
