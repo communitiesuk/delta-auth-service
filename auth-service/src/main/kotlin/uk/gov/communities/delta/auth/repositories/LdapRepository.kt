@@ -244,7 +244,7 @@ class LdapRepository(
             when {
                 role.equals("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
                 role.equals("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
-                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
+                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier (stats collections)"
                 else -> null
             }
         }.distinct()
