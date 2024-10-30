@@ -14,6 +14,7 @@ import uk.gov.communities.delta.auth.utils.TimeSource
 import uk.gov.communities.delta.dbintegration.testDbPool
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -45,7 +46,7 @@ class DeltaApiTokenServiceTest {
 
     @Test
     fun rejectsInvalidApiToken() = testSuspend {
-        val token = "fake_token"
+        val token = Base64.getEncoder().encodeToString("fake_token".toByteArray())
         val result = service.validateApiToken(token)
         assertEquals(null, result)
     }
