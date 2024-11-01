@@ -261,7 +261,7 @@ To update them:
 * See <https://frontend.design-system.service.gov.uk/install-using-precompiled-files/> for general instructions and
   download links
 * Download the updated bundle and replace the existing files, following the folder structure in this repo. They can be found in `auth-service/src/main/resources/static`
-* Find and replace in the CSS file to change links to "/assets/" to "/static/assets/"
+* Find and replace in the CSS file to change links to "/assets/" to "/static/assets/" for **govuk-frontend**.
 * Update the version numbers linked from the HTML header (`auth-service/src/main/resources/templates/thymeleaf/fragments/template.html`)
 
 ## Coroutines and Ktor
