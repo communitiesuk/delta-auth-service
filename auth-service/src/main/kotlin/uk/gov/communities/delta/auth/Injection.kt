@@ -4,6 +4,8 @@ import io.micrometer.cloudwatch2.CloudWatchConfig
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.config.MeterFilter
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.opentelemetry.api.trace.SpanKind
 import io.opentelemetry.context.Context
@@ -160,7 +162,11 @@ class Injection(
     val microsoftGraphService = MicrosoftGraphService(openTelemetry)
     val deltaUserDetailsRequestMapper = DeltaUserPermissionsRequestMapper(organisationService, accessGroupsService)
     val meterRegistry =
-        if (authServiceConfig.metricsNamespace.isNullOrEmpty()) SimpleMeterRegistry() else CloudWatchMeterRegistry(
+        if (authServiceConfig.metricsNamespace.isNullOrEmpty())
+            SimpleMeterRegistry().apply {
+                this.config().applyFilters()
+            }
+        else CloudWatchMeterRegistry(
             object : CloudWatchConfig {
                 private val configuration = mapOf(
                     "cloudwatch.namespace" to authServiceConfig.metricsNamespace,
@@ -171,7 +177,20 @@ class Injection(
             },
             Clock.SYSTEM,
             CloudWatchAsyncClient.create()
-        )
+        ).apply {
+            this.config().applyFilters()
+        }
+
+    fun MeterRegistry.Config.applyFilters() {
+        this.meterFilter(MeterFilter.acceptNameStartsWith("login."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("registration."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("setPassword."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("resetPassword."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("forgotPassword."))
+            .meterFilter(MeterFilter.acceptNameStartsWith("tasks."))
+            .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics
+    }
+
     val failedLoginCounter: Counter = meterRegistry.counter("login.failedLogins")
     val loginRateLimitCounter: Counter = meterRegistry.counter("login.rateLimitedRequests")
     val successfulLoginCounter: Counter = meterRegistry.counter("login.successfulLogins")

@@ -4,7 +4,6 @@ import io.ktor.server.application.*
 import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.callid.*
 import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.config.MeterFilter
 import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.api.trace.Span
 import io.opentelemetry.context.Context
@@ -26,14 +25,6 @@ fun Application.configureMonitoring(meterRegistry: MeterRegistry, openTelemetry:
     install(MicrometerMetrics) {
         registry = meterRegistry
         meterBinders = emptyList()
-        registry.config()
-            .meterFilter(MeterFilter.acceptNameStartsWith("login."))
-            .meterFilter(MeterFilter.acceptNameStartsWith("registration."))
-            .meterFilter(MeterFilter.acceptNameStartsWith("setPassword."))
-            .meterFilter(MeterFilter.acceptNameStartsWith("resetPassword."))
-            .meterFilter(MeterFilter.acceptNameStartsWith("forgotPassword."))
-            .meterFilter(MeterFilter.acceptNameStartsWith("tasks."))
-            .meterFilter(MeterFilter.deny()) // Currently don't want any other metrics
     }
     // Install this before KtorServerTracing so it runs first
     install(checkOpenTelemetrySpanContext)
