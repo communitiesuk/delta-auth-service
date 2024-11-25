@@ -189,22 +189,23 @@ class EmailService(
         recipients: List<EmailRecipient>,
         accessGroupDisplayName: String,
     ) {
-        sendTemplateEmail(
-            "user-added-to-dclg-in-access-group",
-            EmailContacts(recipients, emailConfig),
-            "Delta: MHCLG user has been added to collection group '$accessGroupDisplayName'",
-            mapOf(
-                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "userFullName" to userName,
-                "userEmailAddress" to userEmail,
-                "actingUserEmail" to actingUserEmail,
-                "accessGroupName" to accessGroupDisplayName
+        for (recipient in recipients) {
+            sendTemplateEmail(
+                "user-added-to-dclg-in-access-group",
+                EmailContacts(listOf(recipient), emailConfig),
+                "Delta: MHCLG user has been added to collection group '$accessGroupDisplayName'",
+                mapOf(
+                    "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                    "userFullName" to userName,
+                    "userEmailAddress" to userEmail,
+                    "actingUserEmail" to actingUserEmail,
+                    "accessGroupName" to accessGroupDisplayName
+                )
             )
-        )
-
-        logger.atInfo().addKeyValue("userEmail", userEmail).addKeyValue("accessGroupName", accessGroupDisplayName)
-            .addKeyValue("emailRecipients", recipients.joinToString(";") { it.email })
-            .log("Sent user-added-to-dclg-in-access-group email")
+            logger.atInfo().addKeyValue("userEmail", userEmail).addKeyValue("accessGroupName", accessGroupDisplayName)
+                .addKeyValue("emailRecipients", recipient.email)
+                .log("Sent user-added-to-dclg-in-access-group email")
+        }
     }
 }
 
