@@ -27,7 +27,7 @@ class AccessGroupsService(private val ldapServiceUserBind: LdapServiceUserBind, 
 
     companion object {
         private const val PAGE_SIZE = 200
-        private val VALID_ACCESS_GROUP_NAME_REGEX = Regex("^[a-z][a-z0-9\\-]+")
+        private val VALID_ACCESS_GROUP_NAME_REGEX = Regex("^[a-z][a-z0-9-]*[a-z0-9]$")
     }
 
     suspend fun getAllAccessGroups(): List<AccessGroup> {
