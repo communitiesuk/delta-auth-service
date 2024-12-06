@@ -68,8 +68,8 @@ module "auth_service" {
     USER_CONTAINER_DN           = "CN=Datamart,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
   }
   ecs = {
-    cpu           = 256
-    memory        = 512
+    cpu           = 512
+    memory        = 1024
     desired_count = 1
   }
   mail_settings = {
