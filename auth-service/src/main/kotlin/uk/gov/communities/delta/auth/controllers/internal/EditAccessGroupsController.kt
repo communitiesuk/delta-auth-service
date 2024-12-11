@@ -104,6 +104,8 @@ class EditAccessGroupsController(
         val targetUserGUID = userGUIDMapService.getGUIDFromCN(removeGroupRequest.userToEditCn)
         val targetUser = userLookupService.lookupUserByGUID(targetUserGUID)
 
+        val comment = removeGroupRequest.comment
+
         val targetGroupName = removeGroupRequest.accessGroupName
         validateAccessGroupExists(targetGroupName)
 
@@ -122,6 +124,12 @@ class EditAccessGroupsController(
                     )
                 }
             }
+
+            val commentModification = comment?.let { getCommentModification(targetUser, it) }
+            commentModification?.let {
+                userService.updateUser(targetUser, arrayOf(commentModification), session, call)
+            }
+
             return call.respond(mapOf("message" to "User ${targetUser.email} removed from access group ${targetGroupName}."))
         } else {
             logger.warn("User {} already not member of access group {}", targetUser.getGUID(), targetGroupADName)
@@ -432,6 +440,7 @@ class EditAccessGroupsController(
     data class DeltaUserSingleAccessGroupRequest(
         @SerialName("userToEditCn") val userToEditCn: String, // TODO DT-1022 - use GUID
         @SerialName("accessGroupName") val accessGroupName: String,
+        @SerialName("comment") val comment: String? = null,
     )
 
     @Serializable
