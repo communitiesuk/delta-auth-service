@@ -69,7 +69,7 @@ dependencies {
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.10")
+    implementation("ch.qos.logback:logback-classic:1.5.13")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.9.0")
 
