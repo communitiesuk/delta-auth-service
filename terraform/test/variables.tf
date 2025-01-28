@@ -10,5 +10,6 @@ variable "default_tags" {
 }
 
 variable "image_tag" {
-  type = string
+  description = "Tag of docker image to deploy to ECS, usually release-x.y"
+  type        = string
 }
