@@ -8,7 +8,7 @@
   and delta for port forwarding commands
 * Copy `.env.template` to `.env` and fill in the uncommented variables as instructed in that file
 * Postgres, by default on port 5438, use `docker compose up -d`
-    * When connecting to the local db, both the username and password are `postgres`
+    * When connecting to the local db, both the username and password are `postgres` (as set in [DatabaseConfig.kt](src/main/kotlin/uk/gov/communities/delta/auth/config/DatabaseConfig.kt)).
 * Add LDAPS CA certificate to your certificate store (we have to use LDAPS for password resets)
     * Run this on your local machine. The `keytool` command will need to be run as admin (Windows) or with sudo (MacOS).
     ```sh
