@@ -36,9 +36,9 @@ class LdapRepository(
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
-    private val datamartDeltaDataProviders = "datamart-delta-data-providers-"
-    private val datamartDeltaDataCertifiers = "datamart-delta-data-certifiers-"
-    private val datamartDeltaStatsDataCertifiers = "datamart-delta-stats-data-certifiers-"
+    private val datamartDeltaDataProviders = "datamart-delta-data-providers"
+    private val datamartDeltaDataCertifiers = "datamart-delta-data-certifiers"
+    private val datamartDeltaStatsDataCertifiers = "datamart-delta-stats-data-certifiers"
 
     @Blocking
     fun bind(userDn: String, password: String, poolConnection: Boolean = false): InitialLdapContext {
@@ -242,9 +242,9 @@ class LdapRepository(
         val allGroups = user.memberOfCNs
         val userRoles = allGroups.mapNotNull { role ->
             when {
-                role.equals("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
-                role.equals("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
-                role.equals("${datamartDeltaStatsDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier (stats collections)"
+                role.equals(datamartDeltaDataProviders, ignoreCase = true) -> "Data provider"
+                role.equals(datamartDeltaDataCertifiers, ignoreCase = true) -> "Data certifier"
+                role.equals(datamartDeltaStatsDataCertifiers, ignoreCase = true) -> "Data certifier (stats collections)"
                 else -> null
             }
         }.distinct()
