@@ -28,6 +28,7 @@ class OAuthTokenController(
     private val accessGroupsService: AccessGroupsService,
     private val organisationService: OrganisationService,
     private val memberOfToDeltaRolesMapperFactory: MemberOfToDeltaRolesMapperFactory,
+    private val userAuditService: UserAuditService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -66,10 +67,11 @@ class OAuthTokenController(
             val allAccessGroups = async { accessGroupsService.getAllAccessGroups() }
 
             val samlToken = samlTokenService.samlTokenForSession(userSession.session, userSession.user)
-
+            val guid = userSession.user.getGUID()
             val roles = memberOfToDeltaRolesMapperFactory(
-                userSession.user.getGUID(), allOrganisations.await(), allAccessGroups.await()
+                guid, allOrganisations.await(), allAccessGroups.await()
             ).map(userSession.user.memberOfCNs)
+            val isNewUser = userAuditService.checkIsNewUser(guid)
 
             logger.atInfo().withSession(userSession.session).log("Successful token request")
 
@@ -80,7 +82,8 @@ class OAuthTokenController(
                     saml_token = samlToken.token,
                     expires_at_epoch_second = samlToken.expiry.epochSecond,
                     delta_user_roles = roles,
-                    is_sso = userSession.session.isSso
+                    is_sso = userSession.session.isSso,
+                    is_new_user = isNewUser,
                 )
             )
         }
@@ -106,7 +109,8 @@ class OAuthTokenController(
         val expires_at_epoch_second: Long,
         val token_type: String = "bearer",
         val expires_in: String = TOKEN_EXPIRY_SECONDS.toString(),
-        val is_sso: Boolean
+        val is_sso: Boolean,
+        val is_new_user: Boolean
     )
 }
 
