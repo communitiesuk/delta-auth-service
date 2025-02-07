@@ -56,6 +56,12 @@ class ExternalDeltaApiTokenController(
         val userCn = username.replace('@', '!')
         val loginResult = ldapService.ldapLogin(userCn, password)
         if (loginResult !is IADLdapLoginService.LdapLoginSuccess) {
+
+            logger.atInfo()
+                .addKeyValue("userCn", userCn)
+                .addKeyValue("loginFailureType", loginResult.javaClass.simpleName)
+                .log("Login failed")
+
             throw ApiError(
                 HttpStatusCode.Unauthorized,
                 "invalid_grant",
