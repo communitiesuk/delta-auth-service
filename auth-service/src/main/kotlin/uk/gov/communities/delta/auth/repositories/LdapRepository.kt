@@ -37,7 +37,7 @@ class LdapRepository(
     private val logger = LoggerFactory.getLogger(javaClass)
     private val groupDnToCnRegex = Regex(ldapConfig.groupDnFormat.replace("%s", "([\\w-]+)"))
     private val datamartDeltaDataProviders = "datamart-delta-data-providers-"
-    private val datamartDeltaDataCertifiers = "datamart-delta-data-certifiers-"
+    private val datamartDeltaDataCertifiers = "datamart-delta-data-certifiers"
     private val datamartDeltaStatsDataCertifiers = "datamart-delta-stats-data-certifiers-"
 
     @Blocking
@@ -243,7 +243,7 @@ class LdapRepository(
         val userRoles = allGroups.mapNotNull { role ->
             when {
                 role.equals("${datamartDeltaDataProviders}$organisationId", ignoreCase = true) -> "Data provider"
-                role.equals("${datamartDeltaDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier"
+                role.equals(datamartDeltaDataCertifiers, ignoreCase = true) -> "Data certifier"
                 role.equals("${datamartDeltaStatsDataCertifiers}$organisationId", ignoreCase = true) -> "Data certifier (stats collections)"
                 else -> null
             }

@@ -28,7 +28,7 @@ class LdapRepositoryTest {
     fun `getUsersForOrgAccessGroupWithRoles constructs UserWithRoles correctly`() {
         val allGroups = listOf(
             "CN=datamart-delta-data-providers-my-org,OU=Groups,OU=test,DC=example,DC=local",
-            "CN=datamart-delta-data-certifiers-my-org,OU=Groups,OU=test,DC=example,DC=local",
+            "CN=datamart-delta-data-certifiers,OU=Groups,OU=test,DC=example,DC=local",
             "CN=some-other-group,OU=Groups,OU=test,DC=example,DC=com"
         )
         val searchResult = buildUser(allGroups)
