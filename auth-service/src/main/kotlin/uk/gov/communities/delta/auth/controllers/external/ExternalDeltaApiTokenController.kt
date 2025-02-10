@@ -58,7 +58,8 @@ class ExternalDeltaApiTokenController(
         if (loginResult !is IADLdapLoginService.LdapLoginSuccess) {
 
             logger.atInfo()
-                .addKeyValue("userCn", userCn)
+                .addKeyValue("userCn", username)
+                .addKeyValue("clientId", clientId)
                 .addKeyValue("loginFailureType", loginResult.javaClass.simpleName)
                 .log("Login failed")
 
