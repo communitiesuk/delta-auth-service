@@ -93,6 +93,7 @@ class OAuthTokenControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
         private val organisationService = mockk<OrganisationService>()
+        private val userAuditService = mockk<UserAuditService>()
         private val memberOfToDeltaRolesMapper = mockk<MemberOfToDeltaRolesMapper>()
 
         @Suppress("MoveLambdaOutsideParentheses")
@@ -123,7 +124,7 @@ class OAuthTokenControllerTest {
             } answers { "SAML Token" }
             controller = OAuthTokenController(
                 listOf(client), authorizationCodeService, userLookupService, samlTokenService, oauthSessionService,
-                accessGroupsService, organisationService, { _, _, _ -> memberOfToDeltaRolesMapper }
+                accessGroupsService, organisationService, { _, _, _ -> memberOfToDeltaRolesMapper }, userAuditService
             )
 
             testApp = TestApplication {

@@ -106,7 +106,6 @@ class UserAuditTrailRepo {
         stmt.setObject(1, userGUID)
         val resultSet = stmt.executeQuery()
         resultSet.next()
-        resultSet.getInt(1)
         return resultSet.getInt(1) == 1
     }
 
