@@ -106,6 +106,7 @@ class OAuthTokenControllerTest {
             coEvery { userLookupService.lookupCurrentUser(session) }.returns(user)
             coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
             coEvery { organisationService.findAllNamesAndCodes() }.returns(listOf())
+            coEvery { userAuditService.checkIsNewUser(user.getGUID()) }.returns(false)
             every { memberOfToDeltaRolesMapper.map(any()) }.returns(
                 MemberOfToDeltaRolesMapper.Roles(
                     emptyList(),
