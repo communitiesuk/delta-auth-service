@@ -55,9 +55,31 @@ class UserAuditTrailRepoTest {
     fun testAllUserAudit() {
         testDbPool.useConnectionBlocking("test_login_audit") { conn ->
             val all = repo.getAuditForAllUsers(conn, Instant.now().minusSeconds(60), Instant.now().plusSeconds(10))
+            assertEquals(4, all.size)
             assertEquals(2, all.filter { it.userGUID == user.getGUID() }.size)
             val allAfterNow = repo.getAuditForAllUsers(conn, Instant.now().plusSeconds(60), Instant.now().plusSeconds(100))
             assertEquals(0, allAfterNow.size)
+        }
+    }
+
+    @Test
+    fun testIsNewUserReturnsTrueWhenTrue() {
+        testDbPool.useConnectionBlocking("check_is_new_user") {
+            assertEquals(true, repo.checkIsNewUser(it,user.getGUID()))
+        }
+    }
+
+    @Test
+    fun testIsNewUserReturnsFalseAsNoUser() {
+        testDbPool.useConnectionBlocking("check_is_new_user") {
+            assertEquals(false, repo.checkIsNewUser(it,otherUser.getGUID()))
+        }
+    }
+
+    @Test
+    fun testIsNewUserReturnsFalseAsOldUser() {
+        testDbPool.useConnectionBlocking("check_is_new_user") {
+            assertEquals(false, repo.checkIsNewUser(it,oldUser.getGUID()))
         }
     }
 
@@ -66,6 +88,7 @@ class UserAuditTrailRepoTest {
         private lateinit var userGUIDMapRepo: UserGUIDMapRepo
         private val user = testLdapUser(cn = "testUser")
         private val otherUser = testLdapUser(cn = "otherTestUser")
+        private val oldUser = testLdapUser(cn = "oldTestUser")
 
         @BeforeClass
         @JvmStatic
@@ -83,7 +106,16 @@ class UserAuditTrailRepoTest {
                     "requestId",
                     "{\"key\": \"value\"}"
                 )
-                it.commit() // So that the next row has a different timestamp, and we can check ordering (newest first)
+                it.commit()
+                repo.insertAuditRow(
+                    it,
+                    UserAuditTrailRepo.AuditAction.FORM_LOGIN,
+                    oldUser.getGUID(),
+                    null,
+                    "requestId",
+                    "{\"key\": \"value\"}"
+                )
+                it.commit()// So that the next row has a different timestamp, and we can check ordering (newest first)
                 Thread.sleep(1)
                 repo.insertAuditRow(
                     it,
@@ -93,8 +125,17 @@ class UserAuditTrailRepoTest {
                     "requestId2",
                     "{}"
                 )
+                repo.insertAuditRow(
+                    it,
+                    UserAuditTrailRepo.AuditAction.FORM_LOGIN,
+                    oldUser.getGUID(),
+                    null,
+                    "requestId",
+                    "{\"key\": \"value\"}"
+                )
                 userGUIDMapRepo.newUser(it, user)
                 userGUIDMapRepo.newUser(it, otherUser)
+                userGUIDMapRepo.newUser(it, oldUser)
                 it.commit()
             }
         }

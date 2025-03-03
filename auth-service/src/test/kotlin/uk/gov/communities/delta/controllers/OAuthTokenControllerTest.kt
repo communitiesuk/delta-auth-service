@@ -43,6 +43,7 @@ class OAuthTokenControllerTest {
             assertEquals(session.authToken, response["access_token"].toString().trim('"'))
             assertEquals("SAML Token", response["saml_token"].toString().trim('"'))
             assertEquals("user", response["delta_ldap_user"]!!.jsonObject["cn"].toString().trim('"'))
+            assertEquals("false", response["is_new_user"].toString().trim('"'))
         }
     }
 
