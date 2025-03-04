@@ -2,6 +2,7 @@ package uk.gov.communities.delta.dbintegration
 
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.repositories.UserAuditTrailRepo
@@ -112,7 +113,7 @@ class UserAuditTrailRepoTest {
                     UserAuditTrailRepo.AuditAction.FORM_LOGIN,
                     oldUser.getGUID(),
                     null,
-                    "requestId",
+                    "requestId2",
                     "{\"key\": \"value\"}"
                 )
                 it.commit()// So that the next row has a different timestamp, and we can check ordering (newest first)
@@ -122,7 +123,7 @@ class UserAuditTrailRepoTest {
                     UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL,
                     user.getGUID(),
                     null,
-                    "requestId2",
+                    "requestId3",
                     "{}"
                 )
                 repo.insertAuditRow(
@@ -130,12 +131,23 @@ class UserAuditTrailRepoTest {
                     UserAuditTrailRepo.AuditAction.FORM_LOGIN,
                     oldUser.getGUID(),
                     null,
-                    "requestId",
+                    "requestId3",
                     "{\"key\": \"value\"}"
                 )
                 userGUIDMapRepo.newUser(it, user)
                 userGUIDMapRepo.newUser(it, otherUser)
                 userGUIDMapRepo.newUser(it, oldUser)
+                it.commit()
+            }
+        }
+
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            testDbPool.useConnectionBlocking("test_data_removal") {
+                it.createStatement().execute("DELETE FROM user_audit")
+                it.createStatement().execute("DELETE FROM user_guid_map")
                 it.commit()
             }
         }

@@ -4,10 +4,7 @@ import io.ktor.server.application.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
+import org.junit.*
 import uk.gov.communities.delta.auth.plugins.NoUserException
 import uk.gov.communities.delta.auth.repositories.UserGUIDMapRepo
 import uk.gov.communities.delta.auth.services.UserGUIDMapService
@@ -96,6 +93,15 @@ class UserGUIDMapTest {
         fun setup() {
             val repo = UserGUIDMapRepo()
             service = UserGUIDMapService(repo, userLookupService, testDbPool)
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            testDbPool.useConnectionBlocking("test_data_removal") {
+                it.createStatement().execute("DELETE FROM user_guid_map")
+                it.commit()
+            }
         }
     }
 

@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
@@ -111,6 +112,16 @@ class UserAuditServiceTest {
             service = UserAuditService(repo, testDbPool)
             userGUIDMapRepo = UserGUIDMapRepo()
             every { call.callId } returns "request-id-1234"
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            testDbPool.useConnectionBlocking("test_data_removal") {
+                it.createStatement().execute("DELETE FROM user_audit")
+                it.createStatement().execute("DELETE FROM user_guid_map")
+                it.commit()
+            }
         }
     }
 }
