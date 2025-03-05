@@ -99,6 +99,17 @@ class UserAuditTrailRepo {
     }
 
     @Blocking
+    fun checkIsNewUser(conn: Connection, userGUID: UUID): Boolean {
+        val stmt = conn.prepareStatement(
+            "SELECT COUNT(*) FROM (SELECT * FROM user_audit WHERE user_guid= ? AND action='form_login' LIMIT 2) AS a"
+        )
+        stmt.setObject(1, userGUID)
+        val resultSet = stmt.executeQuery()
+        resultSet.next()
+        return resultSet.getInt(1) == 1
+    }
+
+    @Blocking
     fun insertAuditRow(
         conn: Connection,
         action: AuditAction,

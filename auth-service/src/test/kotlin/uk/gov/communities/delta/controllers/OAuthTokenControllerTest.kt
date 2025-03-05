@@ -43,6 +43,7 @@ class OAuthTokenControllerTest {
             assertEquals(session.authToken, response["access_token"].toString().trim('"'))
             assertEquals("SAML Token", response["saml_token"].toString().trim('"'))
             assertEquals("user", response["delta_ldap_user"]!!.jsonObject["cn"].toString().trim('"'))
+            assertEquals("false", response["is_new_user"].toString().trim('"'))
         }
     }
 
@@ -93,6 +94,7 @@ class OAuthTokenControllerTest {
         private val oauthSessionService = mockk<OAuthSessionService>()
         private val accessGroupsService = mockk<AccessGroupsService>()
         private val organisationService = mockk<OrganisationService>()
+        private val userAuditService = mockk<UserAuditService>()
         private val memberOfToDeltaRolesMapper = mockk<MemberOfToDeltaRolesMapper>()
 
         @Suppress("MoveLambdaOutsideParentheses")
@@ -105,6 +107,7 @@ class OAuthTokenControllerTest {
             coEvery { userLookupService.lookupCurrentUser(session) }.returns(user)
             coEvery { accessGroupsService.getAllAccessGroups() }.returns(listOf())
             coEvery { organisationService.findAllNamesAndCodes() }.returns(listOf())
+            coEvery { userAuditService.checkIsNewUser(user.getGUID()) }.returns(false)
             every { memberOfToDeltaRolesMapper.map(any()) }.returns(
                 MemberOfToDeltaRolesMapper.Roles(
                     emptyList(),
@@ -123,7 +126,7 @@ class OAuthTokenControllerTest {
             } answers { "SAML Token" }
             controller = OAuthTokenController(
                 listOf(client), authorizationCodeService, userLookupService, samlTokenService, oauthSessionService,
-                accessGroupsService, organisationService, { _, _, _ -> memberOfToDeltaRolesMapper }
+                accessGroupsService, organisationService, { _, _, _ -> memberOfToDeltaRolesMapper }, userAuditService
             )
 
             testApp = TestApplication {

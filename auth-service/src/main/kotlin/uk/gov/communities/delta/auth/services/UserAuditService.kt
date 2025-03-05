@@ -73,6 +73,14 @@ class UserAuditService(private val userAuditTrailRepo: UserAuditTrailRepo, priva
         )
     }
 
+    suspend fun checkIsNewUser(userGUID: UUID): Boolean {
+        return withContext(Dispatchers.IO) {
+            dbPool.useConnectionBlocking("check_is_new_user") {
+                userAuditTrailRepo.checkIsNewUser(it,userGUID)
+            }
+        }
+    }
+
     val userFormLoginAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.FORM_LOGIN)
     val resetPasswordEmailAudit = insertAnonSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)
     val adminResetPasswordEmailAudit = insertSimpleAuditRowFun(UserAuditTrailRepo.AuditAction.RESET_PASSWORD_EMAIL)

@@ -285,7 +285,8 @@ class Injection(
         oauthSessionService,
         accessGroupsService,
         organisationService,
-        ::MemberOfToDeltaRolesMapper
+        ::MemberOfToDeltaRolesMapper,
+        userAuditService,
     )
 
     fun externalDeltaApiTokenController(): ExternalDeltaApiTokenController {

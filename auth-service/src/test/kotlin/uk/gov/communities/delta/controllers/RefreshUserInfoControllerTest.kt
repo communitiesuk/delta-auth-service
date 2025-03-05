@@ -36,6 +36,8 @@ class RefreshUserInfoControllerTest {
 
     @Test
     fun testUserInfoEndpoint() = testSuspend {
+        coEvery { userAuditService.checkIsNewUser(user.getGUID()) }.returns(false)
+
         testClient.get("/user-info") {
             headers {
                 append("Authorization", "Bearer ${session.authToken}")
@@ -50,11 +52,13 @@ class RefreshUserInfoControllerTest {
                 "dclg",
                 response["delta_user_roles"]!!.jsonObject["organisations"]!!.jsonArray.single().jsonObject["code"]!!.jsonPrimitive.content
             )
+            assertEquals("false", response["is_new_user"].toString().trim('"'))
         }
     }
 
     @Test
     fun testInvalidBearerToken() = testSuspend {
+
         testClient.get("/user-info") {
             headers {
                 append("Authorization", "Bearer invalid_token")
@@ -74,6 +78,7 @@ class RefreshUserInfoControllerTest {
                 any()
             )
         } just runs
+
         coEvery {
             oauthSessionService.updateWithImpersonatedGUID(adminSession.id, userToImpersonate.getGUID())
         } just runs
@@ -110,6 +115,7 @@ class RefreshUserInfoControllerTest {
                 any()
             )
         } just runs
+
         coEvery {
             oauthSessionService.updateWithImpersonatedGUID(adminSession.id, userWithPersonalDataRole.getGUID())
         } just runs
@@ -201,6 +207,7 @@ class RefreshUserInfoControllerTest {
             coEvery { userLookupService.lookupUserByGUID(userToImpersonate.getGUID()) } returns userToImpersonate
             coEvery { userGUIDMapService.getGUIDFromCN(userWithPersonalDataRole.cn) } returns userWithPersonalDataRole.getGUID()
             coEvery { userLookupService.lookupUserByGUID(userWithPersonalDataRole.getGUID()) } returns userWithPersonalDataRole
+            coEvery { userAuditService.checkIsNewUser(adminUser.getGUID()) }.returns(false)
             every {
                 samlTokenService.generate(
                     client.samlCredential,

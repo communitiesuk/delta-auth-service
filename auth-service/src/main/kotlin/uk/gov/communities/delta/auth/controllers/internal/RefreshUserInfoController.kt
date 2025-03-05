@@ -44,9 +44,9 @@ class RefreshUserInfoController(
             val roles = memberOfToDeltaRolesMapperFactory(
                 user.getGUID(), allOrganisations.await(), allAccessGroups.await()
             ).map(user.memberOfCNs)
-
+            val isNewUser = userAuditService.checkIsNewUser(user.getGUID())
             logger.info("Retrieved updated user info")
-            UserInfoResponse(user, samlToken.token, roles, samlToken.expiry.epochSecond, session.isSso)
+            UserInfoResponse(user, samlToken.token, roles, samlToken.expiry.epochSecond, session.isSso, isNewUser)
         }
     }
 
@@ -124,6 +124,7 @@ class RefreshUserInfoController(
         val delta_user_roles: MemberOfToDeltaRolesMapper.Roles,
         val expires_at_epoch_second: Long,
         val is_sso: Boolean,
+        val is_new_user: Boolean,
         var impersonatedUserCn: String? = null,
         var impersonatedUserGuid: String? = null,
     )

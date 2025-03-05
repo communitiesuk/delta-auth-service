@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import uk.gov.communities.delta.auth.config.AzureADSSOClient
@@ -65,6 +66,38 @@ class UserAuditServiceTest {
         assertEquals("az-123", audit[0].actionData.jsonObject["azureUserObjectId"]!!.jsonPrimitive.content)
     }
 
+    @Test
+    fun testIsNewUserReturnsTrue() = testSuspend {
+        val userGUID = UUID.randomUUID()
+        val userCN = "auditServiceNewUserTestCN"
+        testDbPool.useConnectionBlocking("add_test_user_to_guid_map") {
+            userGUIDMapRepo.newUser(it, testLdapUser(cn = userCN, javaUUIDObjectGuid = userGUID.toString()))
+            it.commit()
+            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUserCNCaseSensitive(it, userCN))
+        }
+        assertEquals(0, service.getAuditForUser(userGUID).size)
+        service.userFormLoginAudit(userGUID, call)
+
+        assertEquals(true,service.checkIsNewUser(userGUID))
+    }
+
+    @Test
+    fun testIsNewUserReturnsFalseIfUserNotNew() = testSuspend {
+        val userGUID = UUID.randomUUID()
+        val userCN = "auditServiceOldUserTestCN"
+        testDbPool.useConnectionBlocking("add_test_user_to_guid_map") {
+            userGUIDMapRepo.newUser(it, testLdapUser(cn = userCN, javaUUIDObjectGuid = userGUID.toString()))
+            it.commit()
+            assertEquals(userGUID, userGUIDMapRepo.getGUIDForUserCNCaseSensitive(it, userCN))
+        }
+        assertEquals(0, service.getAuditForUser(userGUID).size)
+        service.userFormLoginAudit(userGUID, call)
+        service.userFormLoginAudit(userGUID, call)
+
+        assertEquals(false,service.checkIsNewUser(userGUID))
+    }
+
+
     companion object {
         lateinit var service: UserAuditService
         val client = testServiceClient()
@@ -79,6 +112,16 @@ class UserAuditServiceTest {
             service = UserAuditService(repo, testDbPool)
             userGUIDMapRepo = UserGUIDMapRepo()
             every { call.callId } returns "request-id-1234"
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            testDbPool.useConnectionBlocking("test_data_removal") {
+                it.createStatement().execute("DELETE FROM user_audit")
+                it.createStatement().execute("DELETE FROM user_guid_map")
+                it.commit()
+            }
         }
     }
 }
