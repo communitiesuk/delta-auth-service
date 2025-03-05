@@ -52,6 +52,7 @@ class RefreshUserInfoControllerTest {
                 "dclg",
                 response["delta_user_roles"]!!.jsonObject["organisations"]!!.jsonArray.single().jsonObject["code"]!!.jsonPrimitive.content
             )
+            assertEquals("false", response["is_new_user"].toString().trim('"'))
         }
     }
 
