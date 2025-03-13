@@ -177,7 +177,8 @@ class DeltaUserRegistrationController(
     }
 
     private fun hasDisallowedSpecialCharacters(word: String): Boolean {
-        return word.contains("[<>\"=&]")
+        val badChars = listOf('<', '>', '"', '=', '&')
+        return badChars.any { word.contains(it) }
     }
 
     private suspend fun ApplicationCall.respondToResult(registrationResult: RegistrationService.RegistrationResult) {
