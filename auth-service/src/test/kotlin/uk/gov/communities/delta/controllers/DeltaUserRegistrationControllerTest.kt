@@ -88,6 +88,42 @@ class DeltaUserRegistrationControllerTest {
     }
 
     @Test
+    fun testRegistrationFormFirstNameSpecialCharValidationError() = testSuspend {
+        // Testing stays on same page if there are validation errors - testing with different email addresses
+        testClient.submitForm(
+            url = "/register",
+            formParameters = parameters {
+                append("firstName", "<Test/>")
+                append("lastName", "Name")
+                append("emailAddress", "user@example.com")
+                append("confirmEmailAddress", "differentUser@example.com")
+            }
+        ).apply {
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
+            assertFormPage(bodyAsText(), status)
+            assertContains(bodyAsText(), "First name must not contain special characters")
+        }
+    }
+
+    @Test
+    fun testRegistrationFormLastNameSpecialCharValidationError() = testSuspend {
+        // Testing stays on same page if there are validation errors - testing with different email addresses
+        testClient.submitForm(
+            url = "/register",
+            formParameters = parameters {
+                append("firstName", "Test")
+                append("lastName", "Name&Name")
+                append("emailAddress", "user@example.com")
+                append("confirmEmailAddress", "differentUser@example.com")
+            }
+        ).apply {
+            coVerify(exactly = 0) { userService.createUser(any(), any(), any(), any()) }
+            assertFormPage(bodyAsText(), status)
+            assertContains(bodyAsText(), "Last name must not contain special characters")
+        }
+    }
+
+    @Test
     fun testRegistrationFormValidationDomainError() = testSuspend {
         coEvery { organisationService.findAllByDomain(any()) } returns listOf()
         testClient.submitForm(
