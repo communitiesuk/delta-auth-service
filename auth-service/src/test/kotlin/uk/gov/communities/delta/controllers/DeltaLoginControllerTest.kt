@@ -50,7 +50,7 @@ class DeltaLoginControllerTest {
     }
 
     @Test
-    fun testLoginPageNotDisplaysNonProdWarning() = testSuspend {
+    fun testLoginPageDoesNotDisplayNonProdWarning() = testSuspend {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "This is a staging site, used for internal testing.")
@@ -63,6 +63,23 @@ class DeltaLoginControllerTest {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertFalse(bodyAsText().contains( "This is a staging site, used for internal testing."))
+        }
+    }
+
+    @Test
+    fun testLoginPageHasNoIndexWarning() = testSuspend {
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(bodyAsText(), "<meta name=\"robots\" content=\"noindex\">")
+        }
+    }
+
+    @Test
+    fun testLoginPageDoesNotHaveNoIndexWarning() = testSuspend {
+        every { deltaConfig.isProduction }  returns true
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertFalse(bodyAsText().contains( "<meta name=\"robots\" content=\"noindex\">"))
         }
     }
 

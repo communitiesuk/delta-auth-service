@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="govuk-template " lang="en" xmlns:th="http://www.thymeleaf.org">
-
-<head th:fragment="head (title, isProduction)">
+<!--/*@thymesVar id="isProduction" type="java.lang.Boolean" */-->
+<head th:fragment="head (title)">
     <meta charset="utf-8">
     <title th:text="${title}">Delta</title>
     <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport">
@@ -40,7 +40,7 @@
     </div>
 </header>
 
-<div th:fragment="environment-warning-message" class="">
+<div th:fragment="environment-warning-message">
     <div th:unless="${isProduction}">
         <div class="govuk-width-container govuk-!-margin-top-2">
             <div class="govuk-notification-banner" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
