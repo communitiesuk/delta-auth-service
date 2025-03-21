@@ -98,7 +98,8 @@ class DeltaForgotPasswordController(
                 "reset-password-email-sent",
                 mapOf(
                     "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                    "emailAddress" to emailAddress
+                    "emailAddress" to emailAddress,
+                    "isProduction" to deltaConfig.isProduction
                 )
             )
         )

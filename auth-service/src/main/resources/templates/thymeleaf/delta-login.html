@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="govuk-template " lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{fragments/template.html :: head (title='Delta | Sign in')}">
+<head th:replace="~{fragments/template.html :: head (title='Delta | Sign in', isProduction=${isProduction})}">
     <title>Delta | Sign in</title>
 </head>
 
@@ -14,6 +14,7 @@
 -->
 <a class="govuk-skip-link" data-module="govuk-skip-link" href="#main-content">Skip to main content</a>
 <header th:replace="~{fragments/template.html :: header}"></header>
+<div th:replace="~{fragments/template.html :: environment-warning-message}"></div>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
 <!--/*@thymesVar id="ssoClients" type="java.util.List<uk.gov.communities.delta.auth.config.AzureADSSOClient>" */-->

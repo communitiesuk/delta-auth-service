@@ -7,6 +7,7 @@ class DeltaConfig(
     val rateLimit: Int,
     val masterStoreBaseNoAuth: String,
     val apiOrigin: String,
+    val isProduction: Boolean,
 ) {
     companion object {
         fun fromEnv() = DeltaConfig(
@@ -16,7 +17,8 @@ class DeltaConfig(
                 "DELTA_MARKLOGIC_LDAP_AUTH_APP_SERVICE",
                 "http://localhost:8030/"
             ),
-            apiOrigin = Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080")
+            apiOrigin = Env.getRequiredOrDevFallback("API_ORIGIN", "localhost:8080"),
+            isProduction = Env.getRequiredOrDevFallback("ENVIRONMENT", "") == "production"
         )
 
         const val DATAMART_DELTA_USER = LDAPConfig.DATAMART_DELTA_PREFIX + "user"
