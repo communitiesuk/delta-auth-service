@@ -110,7 +110,8 @@ class DeltaForgotPasswordController(
     ) {
         val mapOfValues = mutableMapOf(
             "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-        )
+            "isProduction" to deltaConfig.isProduction,
+            )
         if (message != null) mapOfValues += "message" to message
         if (emailAddress != null) mapOfValues += "emailAddress" to emailAddress
         respond(
