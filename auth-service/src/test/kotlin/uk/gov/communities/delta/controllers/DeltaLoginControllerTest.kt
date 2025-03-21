@@ -35,6 +35,7 @@ import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
 
@@ -45,6 +46,40 @@ class DeltaLoginControllerTest {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Sign in to Delta")
+        }
+    }
+
+    @Test
+    fun testLoginPageDoesNotDisplayNonProdWarning() = testSuspend {
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(bodyAsText(), "This is a staging site, used for internal testing.")
+        }
+    }
+
+    @Test
+    fun testLoginPageDisplaysNonProdWarning() = testSuspend {
+        every { deltaConfig.isProduction }  returns true
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertFalse(bodyAsText().contains( "This is a staging site, used for internal testing."))
+        }
+    }
+
+    @Test
+    fun testLoginPageHasNoIndexWarning() = testSuspend {
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertContains(bodyAsText(), "<meta name=\"robots\" content=\"noindex\">")
+        }
+    }
+
+    @Test
+    fun testLoginPageDoesNotHaveNoIndexWarning() = testSuspend {
+        every { deltaConfig.isProduction }  returns true
+        testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertFalse(bodyAsText().contains( "<meta name=\"robots\" content=\"noindex\">"))
         }
     }
 
@@ -219,6 +254,9 @@ class DeltaLoginControllerTest {
     @Before
     fun resetMocks() {
         clearAllMocks()
+        every { deltaConfig.deltaWebsiteUrl }  returns "http://localhost:8080"
+        every { deltaConfig.isProduction }  returns false
+        every { deltaConfig.rateLimit }  returns 100
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit
         coEvery { userAuditService.userFormLoginAudit(any(), any()) } returns Unit
@@ -231,7 +269,7 @@ class DeltaLoginControllerTest {
         private lateinit var testApp: TestApplication
         private lateinit var testClient: HttpClient
         private lateinit var loginResult: IADLdapLoginService.LdapLoginResult
-        private val deltaConfig = DeltaConfig.fromEnv()
+        val deltaConfig = mockk<DeltaConfig>()
         val user = testLdapUser(cn = "user")
         val client = testServiceClient()
         val failedLoginCounter = mockk<Counter>()
@@ -242,6 +280,7 @@ class DeltaLoginControllerTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
+
             val controller = DeltaLoginController(
                 listOf(client),
                 AzureADSSOConfig(listOf(AzureADSSOClient("dev", "", "", "", "@sso.domain", required = true))),

@@ -142,6 +142,10 @@ module "fargate" {
       name  = "API_ORIGIN"
       value = var.api_origin
     },
+    {
+      name  = "ENVIRONMENT",
+      value = var.environment
+    },
     var.enable_telemetry ? {
       name  = "AUTH_TELEMETRY_PREFIX"
       value = var.environment

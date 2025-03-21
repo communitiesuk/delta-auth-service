@@ -6,7 +6,6 @@
 <!--/*@thymesVar id="heading" type="java.lang.String" */-->
 <!--/*@thymesVar id="message" type="java.lang.String" */-->
 <!--/*@thymesVar id="requestId" type="java.lang.String" */-->
-
 <head th:replace="~{fragments/template.html :: head (title=${title})}">
     <title>Error</title>
 </head>
@@ -14,6 +13,8 @@
 <body class="govuk-template__body govuk-body">
 <a href="#main-content" class="govuk-skip-link" data-module="govuk-skip-link">Skip to main content</a>
 <header th:replace="~{fragments/template.html :: header}"></header>
+
+<div th:replace="~{fragments/template.html :: environment-warning-message}"></div>
 
 <div class="govuk-width-container ">
     <main class="govuk-main-wrapper " id="main-content" role="main">
