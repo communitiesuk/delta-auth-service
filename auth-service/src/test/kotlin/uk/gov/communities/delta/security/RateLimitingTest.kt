@@ -196,7 +196,7 @@ class RateLimitingTest {
                     configureStatusPages(
                         "test.url",
                         AzureADSSOConfig(emptyList()),
-                        DeltaConfig("url", rateLimitValue, "", "localhost")
+                        DeltaConfig("url", rateLimitValue, "", "localhost", false)
                     )
                     routing {
                         rateLimit(RateLimitName(loginRateLimitName)) {

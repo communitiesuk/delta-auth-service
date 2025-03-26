@@ -244,6 +244,7 @@ class DeltaUserRegistrationController(
                     "confirmEmailErrorMessages" to confirmEmailAddressErrors,
                     "confirmEmailAddress" to confirmEmailAddress,
                     "errorSummary" to errorSummary,
+                    "isProduction" to deltaConfig.isProduction
                 )
             )
         )

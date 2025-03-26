@@ -118,6 +118,7 @@ class DeltaLoginController(
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,
+                "isProduction" to deltaConfig.isProduction
             )
         )
     )

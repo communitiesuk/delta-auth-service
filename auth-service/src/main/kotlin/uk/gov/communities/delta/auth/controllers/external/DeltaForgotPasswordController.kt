@@ -98,7 +98,8 @@ class DeltaForgotPasswordController(
                 "reset-password-email-sent",
                 mapOf(
                     "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                    "emailAddress" to emailAddress
+                    "emailAddress" to emailAddress,
+                    "isProduction" to deltaConfig.isProduction
                 )
             )
         )
@@ -109,7 +110,8 @@ class DeltaForgotPasswordController(
     ) {
         val mapOfValues = mutableMapOf(
             "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-        )
+            "isProduction" to deltaConfig.isProduction,
+            )
         if (message != null) mapOfValues += "message" to message
         if (emailAddress != null) mapOfValues += "emailAddress" to emailAddress
         respond(

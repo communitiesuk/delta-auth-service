@@ -157,6 +157,7 @@ class DeltaResetPasswordController(
                 mapOf(
                     "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                     "emailAddress" to userEmail,
+                    "isProduction" to deltaConfig.isProduction,
                 )
             )
         )
