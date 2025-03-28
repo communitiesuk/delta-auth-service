@@ -111,7 +111,10 @@ class EmailService(
                 emailConfig
             ),
             "MHCLG Delta - No User Account",
-            mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "authServiceUrl" to authServiceConfig.serviceUrl
+            )
         )
         logger.atInfo().addKeyValue("emailAddress", emailAddress).log("Sent no-user-account email")
     }
