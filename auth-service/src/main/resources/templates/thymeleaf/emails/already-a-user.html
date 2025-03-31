@@ -6,6 +6,7 @@
 <body>
 
 <!--/*@thymesVar id="deltaUrl" type="java.lang.String" */-->
+<!--/*@thymesVar id="authServiceUrl" type="java.lang.String" */-->
 <!--/*@thymesVar id="userFirstName" type="java.lang.String" */-->
 
 <p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
@@ -18,7 +19,7 @@
     password, you can reset it with following link.
 </p>
 <p>
-    <a href="/delta/forgot-password">Forgotten Password</a>.
+    <a th:href="@{${authServiceUrl} + '/delta/forgot-password'}">Forgotten Password</a>.
 </p>
 <p>
     When you have logged in to Delta please go to My Account to complete the set-up of your account.
