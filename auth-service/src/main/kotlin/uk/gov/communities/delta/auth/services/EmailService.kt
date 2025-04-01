@@ -66,6 +66,7 @@ class EmailService(
             "MHCLG Delta - Existing Account",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "authServiceUrl" to authServiceConfig.serviceUrl,
                 "userFirstName" to firstName,
             )
         )
