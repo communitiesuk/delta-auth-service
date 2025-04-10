@@ -40,6 +40,7 @@ class DeltaUserRegistrationController(
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                         "emailAddress" to call.parameters["emailAddress"]!!,
+                        "isProduction" to deltaConfig.isProduction,
                     )
                 )
             )

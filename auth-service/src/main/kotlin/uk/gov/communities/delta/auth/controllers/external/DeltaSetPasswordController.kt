@@ -152,13 +152,19 @@ class DeltaSetPasswordController(
         )
 
     private suspend fun ApplicationCall.respondSuccessPage() =
-        respond(ThymeleafContent("set-password-success", mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl)))
+        respond(ThymeleafContent("set-password-success",
+            mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "isProduction" to deltaConfig.isProduction,
+            )
+        )
+    )
 
     private suspend fun ApplicationCall.respondSetPasswordPage(
         message: String? = null,
     ) {
         val mapOfValues = mutableMapOf(
             "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+            "isProduction" to deltaConfig.isProduction,
         )
         if (message != null) mapOfValues += "message" to message
         respond(
@@ -180,6 +186,7 @@ class DeltaSetPasswordController(
                 "userEmail" to userEmail,
                 "userGUID" to tokenResult.userGUID,
                 "token" to tokenResult.token,
+                "isProduction" to deltaConfig.isProduction,
             )
         )
     )
