@@ -165,8 +165,8 @@ class DeltaResetPasswordController(
     private suspend fun ApplicationCall.respondSuccessPage() =
         respond(ThymeleafContent("reset-password-success",
             mapOf(
-            "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-            "isProduction" to deltaConfig.isProduction,
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
+                "isProduction" to deltaConfig.isProduction,
             )
         )
     )

@@ -147,13 +147,14 @@ class DeltaSetPasswordController(
                     "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                     "emailAddress" to userEmail,
                     "isProduction" to deltaConfig.isProduction,
-                    )
+                )
             )
         )
 
     private suspend fun ApplicationCall.respondSuccessPage() =
         respond(ThymeleafContent("set-password-success",
-            mapOf("deltaUrl" to deltaConfig.deltaWebsiteUrl,
+            mapOf(
+                "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                 "isProduction" to deltaConfig.isProduction,
             )
         )
