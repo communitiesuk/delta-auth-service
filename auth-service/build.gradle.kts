@@ -78,7 +78,7 @@ dependencies {
     implementation("org.opensaml:opensaml-saml-impl:4.3.2")
 
     // Database
-    implementation("org.postgresql:postgresql:42.7.4")
+    implementation("org.postgresql:postgresql:42.7.7")
     implementation("com.zaxxer:HikariCP:6.0.0") // Connection pool
     implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
