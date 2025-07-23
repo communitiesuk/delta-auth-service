@@ -1,4 +1,4 @@
-val ktorVersion = "2.3.12"
+val ktorVersion = "2.3.13"
 val kotlinVersion = "2.0.21"
 val flywayVersion = "10.19.0"
 
