@@ -12,7 +12,7 @@
 * Add LDAPS CA certificate to your certificate store (we have to use LDAPS for password resets)
     * Run this on your local machine. The `keytool` command will need to be run as admin (Windows) or with sudo (MacOS).
     ```sh
-    curl "https://data-collection-service-ldaps-crl-test.s3.eu-west-1.amazonaws.com/CASRVTEST2/CASRVtest2.dluhctest.local_CASRVtest2.crt" -o dluhctest.crt
+    curl "https://data-collection-service-ldaps-crl-test.s3.eu-west-1.amazonaws.com/CASRVTEST4/CASRVtest4.dluhctest.local_CASRVtest2.crt" -o dluhctest.crt
     openssl x509 -inform der -in dluhctest.crt -outform pem -out dluhctest.pem
     keytool -import -cacerts -alias dluhctest -file dluhctest.pem -noprompt -storepass changeit
     ```
