@@ -1,11 +1,11 @@
-val ktorVersion = "2.3.12"
-val kotlinVersion = "2.0.21"
-val flywayVersion = "10.19.0"
+val ktorVersion = "2.3.13"
+val kotlinVersion = "2.2.0"
+val flywayVersion = "11.10.4"
 
 plugins {
-    kotlin("jvm") version "2.0.0"
-    id("io.ktor.plugin") version "2.3.12"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
+    kotlin("jvm") version "2.2.0"
+    id("io.ktor.plugin") version "2.3.13"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -60,7 +60,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.13.2")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.15.2")
 
     // CORS
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
@@ -69,17 +69,17 @@ dependencies {
     implementation("com.sun.mail:jakarta.mail:2.0.1")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.13")
-    implementation("net.logstash.logback:logstash-logback-encoder:7.4") // Structured log encoder
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.9.0")
+    implementation("ch.qos.logback:logback-classic:1.5.18")
+    implementation("net.logstash.logback:logstash-logback-encoder:8.1") // Structured log encoder
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.10.2")
 
     // OpenSAML
     implementation("org.opensaml:opensaml-core:4.3.2")
     implementation("org.opensaml:opensaml-saml-impl:4.3.2")
 
     // Database
-    implementation("org.postgresql:postgresql:42.7.4")
-    implementation("com.zaxxer:HikariCP:6.0.0") // Connection pool
+    implementation("org.postgresql:postgresql:42.7.7")
+    implementation("com.zaxxer:HikariCP:6.3.0") // Connection pool
     implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
 
@@ -98,8 +98,8 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.39.0-alpha")
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.39.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.48.0-alpha")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.48.0")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
