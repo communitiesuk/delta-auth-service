@@ -23,7 +23,7 @@ jobs:
       image_tag: ${{ steps.determine_tag.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Use deploy key so we have write access for pushing the git tag later
           ssh-key: ${{ secrets.REPO_WRITE_DEPLOY_KEY }}
