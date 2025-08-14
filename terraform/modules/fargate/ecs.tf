@@ -85,7 +85,7 @@ resource "aws_ecs_task_definition" "main" {
     var.enable_adot_sidecar ? [{
       name : "aws-otel-collector"
       # Requires a pull through cache to be configured for ecr-public
-      image : "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/ecr-public/aws-observability/aws-otel-collector:v0.43.3"
+      image : "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/ecr-public/aws-observability/aws-otel-collector:v0.43.2"
       command : [""]
       essential : true
       environment = [
