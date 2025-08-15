@@ -32,7 +32,7 @@ services:
   # AWS OpenTelemetry collector for sending traces to AWS X-Ray
   # In hosted environments this runs as a sidecar in ECS
   telemetry:
-    image: amazon/aws-otel-collector:latest
+    image: amazon/aws-otel-collector:v0.43.2
     command: [ "--config=/etc/otel-agent-config.yaml" ]
     env_file:
       # Should contain AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY, or equivalent session credentials
