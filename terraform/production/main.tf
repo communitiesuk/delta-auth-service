@@ -33,7 +33,7 @@ locals {
   cloudwatch_log_expiration_days = 731
   dclg_access_group_notification_settings = {
     enabled                     = true
-    additional_recipient_emails = ["Group-DLUHCDeltaNotifications@softwire.com", "delta-notifications@communities.gov.uk", "DELTAadmin@communities.gov.uk", "DELTAStatSupport@communities.gov.uk"]
+    additional_recipient_emails = ["delta-notifications@communities.gov.uk", "DELTAadmin@communities.gov.uk", "DELTAStatSupport@communities.gov.uk"]
   }
 }
 
