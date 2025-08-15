@@ -3,7 +3,7 @@ variable "default_tags" {
   default = {
     project           = "Data Collection Service"
     business-unit     = "Digital Delivery"
-    technical-contact = "Team-DLUHC@softwire.com"
+    technical-contact = "delta-notifications@communities.gov.uk"
     environment       = "production"
     repository        = "https://github.com/communitiesuk/delta-auth-service"
   }
