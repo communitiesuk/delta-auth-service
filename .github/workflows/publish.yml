@@ -29,7 +29,7 @@ jobs:
           ssh-key: ${{ secrets.REPO_WRITE_DEPLOY_KEY }}
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: arn:aws:iam::468442790030:role/github-actions-delta-auth-ci
           aws-region: ${{ env.AWS_REGION }}
