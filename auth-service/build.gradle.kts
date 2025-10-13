@@ -4,7 +4,7 @@ val flywayVersion = "11.10.4"
 
 plugins {
     kotlin("jvm") version "2.2.0"
-    id("io.ktor.plugin") version "2.3.13"
+    id("io.ktor.plugin") version "3.3.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
 }
 
