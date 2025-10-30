@@ -13,7 +13,7 @@
 </head>
 <body>
 
-<p>
+<p class="govuk-body">
     This is to notify you that <span th:text="${userFullName}">#userFullName#</span>
     (<span th:text="${userEmailAddress}">user@example.com</span>)
     has
@@ -23,22 +23,22 @@
         : 'been added to the ' + ${accessGroupName} + ' collection group by ' + ${actingUserEmail}"></span>.
 </p>
 
-<p>
+<p class="govuk-body">
     This email is being sent to all delegated administrators and lead testers for <span th:text="${accessGroupName}">#accessGroupName#</span>.
 </p>
 
-<p>
-    If you have any questions or need help please email the MHCLG Service Desk on <a
+<p class="govuk-body">
+    If you have any questions or need help please email the MHCLG Service Desk on <a class="govuk-link"
     href="mailto:mhclg.digital-services@communities.gov.uk">mhclg.digital-services@communities.gov.uk</a>
     or call 0203 829 0743.
 </p>
-<p>
-    Delta can be accessed at <a th:href="${deltaUrl}" th:text="${deltaUrl}">https://delta</a>.
+<p class="govuk-body">
+    Delta can be accessed at <a class="govuk-link" th:href="${deltaUrl}" th:text="${deltaUrl}">https://delta</a>.
 </p>
-<p>
+<p class="govuk-body">
     Regards,
 </p>
-<p>
+<p class="govuk-body">
     <strong>Delta System</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>

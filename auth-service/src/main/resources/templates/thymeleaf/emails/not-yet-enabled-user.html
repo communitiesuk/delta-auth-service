@@ -10,36 +10,36 @@
 <!--/*@thymesVar id="userFirstName" type="java.lang.String" */-->
 <!--/*@thymesVar id="setPasswordUrl" type="java.lang.String" */-->
 
-<p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
+<p class="govuk-body">Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
 
-<p>
+<p class="govuk-body">
     You are receiving this email because you have tried to use an expired password setting link on <a
-        th:href="@{${deltaUrl}}">Delta</a>, the online data collection and grants administration system
+    class="govuk-link" th:href="@{${deltaUrl}}">Delta</a>, the online data collection and grants administration system
     of the Ministry of Housing, Communities and Local Government (MHCLG).
 </p>
 
-<p>Please click on the link below to set your password and activate your account.</p>
+<p class="govuk-body">Please click on the link below to set your password and activate your account.</p>
 
-<p>
-    <a th:href="@{${setPasswordUrl}}">Activate your Delta account</a>. <b>This link is only valid for 24 hours so
+<p class="govuk-body">
+    <a class="govuk-link" th:href="@{${setPasswordUrl}}">Activate your Delta account</a>. <b>This link is only valid for 24 hours so
     please activate your account now</b>.
 </p>
 
-<p>Please note that your username will be the email address to which this email has been sent.</p>
+<p class="govuk-body">Please note that your username will be the email address to which this email has been sent.</p>
 
-<p>
-    Please note the Delta User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
-    application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
+<p class="govuk-body">
+    Please note the Delta User Account <a class="govuk-link" th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
+    application <a class="govuk-link" th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
 </p>
-<p>
-    If you have any questions or need help please email the MHCLG Service Desk on <a
+<p class="govuk-body">
+    If you have any questions or need help please email the MHCLG Service Desk on <a class="govuk-link"
         href="mailto:mhclg.digital-services@communities.gov.uk">mhclg.digital-services@communities.gov.uk</a> or call
     0203 829 0743.
 </p>
-<p>
+<p class="govuk-body">
     Regards
 </p>
-<p>
+<p class="govuk-body">
     <strong>MHCLG Delta Administrator</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>

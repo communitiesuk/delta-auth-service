@@ -8,28 +8,28 @@
 <!--/*@thymesVar id="authServiceUrl" type="java.lang.String" */-->
 
 <body>
-<p> You are receiving this email because you tried to send a reset password link to this email address for
-    <a th:href="${deltaUrl}">Delta</a>,
+<p class="govuk-body"> You are receiving this email because you tried to send a reset password link to this email address for
+    <a class="govuk-link" th:href="${deltaUrl}">Delta</a>,
     the online data collection system of the Ministry of Housing, Communities and Local Government (MHCLG).
 </p>
 
-<p>There is no account linked to this email address.</p>
+<p class="govuk-body">There is no account linked to this email address.</p>
 
-<p>If this was you please check this is the email address linked to your account or click the link below to create an
+<p class="govuk-body">If this was you please check this is the email address linked to your account or click the link below to create an
     account.</p>
-<p>
-    <a th:href="@{${authServiceUrl}+'/delta/register'}">Create an account</a>.
+<p class="govuk-body">
+    <a class="govuk-link" th:href="@{${authServiceUrl}+'/delta/register'}">Create an account</a>.
 </p>
-<p>If this wasn't you, no action is required.</p>
-<p>
-    If you have any questions or need help, please email the MHCLG Service Desk on <a
+<p class="govuk-body">If this wasn't you, no action is required.</p>
+<p class="govuk-body">
+    If you have any questions or need help, please email the MHCLG Service Desk on <a class="govuk-link"
         href="mailto:mhclg.digital-services@communities.gov.uk">mhclg.digital-services@communities.gov.uk</a> or call
     0203 829 0743.
 </p>
-<p>
+<p class="govuk-body">
     Regards
 </p>
-<p>
+<p class="govuk-body">
     <strong>MHCLG Delta Administrator</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>

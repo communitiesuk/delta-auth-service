@@ -40,7 +40,7 @@
                     <ul class="govuk-list govuk-error-summary__list">
                         <li th:each="error: ${allErrors}">
                             <!--/*@thymesVar id="error" type="kotlin.Pair<String, String>"*/-->
-                            <a th:text="${error.first}" th:href="${error.second}" href="#">Error message</a>
+                            <a class="govuk-link" th:text="${error.first}" th:href="${error.second}" href="#">Error message</a>
                         </li>
                     </ul>
                 </div>
@@ -54,10 +54,10 @@
             Note that user accounts will only be set up for individuals with a legitimate requirement to enter or use
             the data on Delta. All account details and actions are fully auditable by MHCLG and external
             audit companies. Please read the Delta <a class="govuk-link" th:href="${deltaUrl} + '/privacy-policy'">Privacy
-            policy</a>, <a href="#" th:href="${deltaUrl} + '/usage-policy'">Usage policy</a> and <a href="#"
+            policy</a>, <a class="govuk-link" href="#" th:href="${deltaUrl} + '/usage-policy'">Usage policy</a> and <a class="govuk-link" href="#"
                                                                                                     th:href="${deltaUrl} + '/terms-and-conditions'">Terms
             & conditions</a> before registering.
-            See <a th:href="${deltaUrl} + '/about-delta'">About Delta</a> for further information on Delta. If you have
+            See <a class="govuk-link" th:href="${deltaUrl} + '/about-delta'">About Delta</a> for further information on Delta. If you have
             any other queries,
             or have an
             existing Delta account that you need updated, please contact the MHCLG Service Desk: <a class="govuk-link"

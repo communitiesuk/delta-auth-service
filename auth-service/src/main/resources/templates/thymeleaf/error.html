@@ -19,11 +19,11 @@
 <div class="govuk-width-container ">
     <main class="govuk-main-wrapper " id="main-content" role="main">
         <h1 class="govuk-heading-xl" th:text="${heading}">Error</h1>
-        <p>
+        <p class="govuk-body">
             <span th:text="${message}">Something went wrong</span>.
             <span th:if="${requestId != ''}">
                 If you need to report a fault, please contact the
-                <a data-th-href="${deltaUrl + '/contact-us'}">Service desk</a>
+                <a class="govuk-link" data-th-href="${deltaUrl + '/contact-us'}">Service desk</a>
                 and quote this request id
                 "<span style="font-family: monospace" data-th-text="${'auth:' + requestId}">REQUEST_ID</span>".
             </span>
