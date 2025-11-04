@@ -35,7 +35,7 @@
                 <div class="govuk-error-summary__body">
                     <ul class="govuk-list govuk-error-summary__list">
                         <li>
-                            <a href="#" th:href="${errorLink}" th:text="${errorMessage}">Error message</a>
+                            <a class="govuk-link" href="#" th:href="${errorLink}" th:text="${errorMessage}">Error message</a>
                         </li>
                     </ul>
                 </div>
@@ -59,8 +59,8 @@
                                id="password"
                                name="password" th:value="${password}" type="password">
                     </div>
-                    <p>
-                        You can <a href="/delta/forgot-password">reset your password here</a>
+                    <p class="govuk-body">
+                        You can <a class="govuk-link" href="/delta/forgot-password">reset your password here</a>
                     </p>
                     <button class="govuk-button" data-module="govuk-button" type="submit">
                         Sign in to Delta
@@ -85,9 +85,9 @@
             </div>
         </div>
         <div>
-            <p>By signing in, you are confirming that you have read, understood and will comply with the requirements of
-                the <a th:href="${deltaUrl} + '/usage-policy'">Delta usage policy</a></p>
-            <p>If you need help or support please <a th:href="${deltaUrl} + '/contact-us'">contact us</a></p>
+            <p class="govuk-body">By signing in, you are confirming that you have read, understood and will comply with the requirements of
+                the <a class="govuk-link" th:href="${deltaUrl} + '/usage-policy'">Delta usage policy</a></p>
+            <p class="govuk-body">If you need help or support please <a class="govuk-link" th:href="${deltaUrl} + '/contact-us'">contact us</a></p>
         </div>
     </main>
 </div>

@@ -9,37 +9,37 @@
 <!--/*@thymesVar id="authServiceUrl" type="java.lang.String" */-->
 <!--/*@thymesVar id="userFirstName" type="java.lang.String" */-->
 
-<p>Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
+<p class="govuk-body">Dear <span th:text="${userFirstName}">#userFirstName#</span>,</p>
 
-<p>You are receiving this email because you have requested an account on <a th:href="@{${deltaUrl}}">Delta</a>,
+<p class="govuk-body">You are receiving this email because you have requested an account on <a class="govuk-link" th:href="@{${deltaUrl}}">Delta</a>,
     the online data collection and grants administration system of the Ministry of Housing, Communities and Local Government (MHCLG).</p>
 
-<p>
+<p class="govuk-body">
     Our records show that you already have a Delta account for this email address. If you have forgotten your Delta
     password, you can reset it with following link.
 </p>
-<p>
-    <a th:href="@{${authServiceUrl} + '/delta/forgot-password'}">Forgotten Password</a>.
+<p class="govuk-body">
+    <a class="govuk-link" th:href="@{${authServiceUrl} + '/delta/forgot-password'}">Forgotten Password</a>.
 </p>
-<p>
+<p class="govuk-body">
     When you have logged in to Delta please go to My Account to complete the set-up of your account.
 </p>
-<p>
-    Please note the Delta User Account <a th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
-    application <a th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
+<p class="govuk-body">
+    Please note the Delta User Account <a class="govuk-link" th:href="@{${deltaUrl}+'/privacy-policy'}">Privacy Policy</a> and the
+    application <a class="govuk-link" th:href="@{${deltaUrl}+'/usage-policy'}">Usage Policy</a>.
 </p>
-<p>
-    If you have any questions or need help please email the MHCLG Service Desk on <a
+<p class="govuk-body">
+    If you have any questions or need help please email the MHCLG Service Desk on <a class="govuk-link"
         href="mailto:mhclg.digital-services@communities.gov.uk">mhclg.digital-services@communities.gov.uk</a> or call
     0203 829 0743.
 </p>
-<p>
-    Delta can be accessed at <a th:href="@{${deltaUrl}}">Delta</a>
+<p class="govuk-body">
+    Delta can be accessed at <a class="govuk-link" th:href="@{${deltaUrl}}">Delta</a>
 </p>
-<p>
+<p class="govuk-body">
     Regards
 </p>
-<p>
+<p class="govuk-body">
     <strong>MHCLG Delta Administrator</strong>
 </p>
 <div th:replace="~{fragments/template.html :: disclaimer}"></div>
