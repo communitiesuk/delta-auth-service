@@ -1,4 +1,4 @@
-FROM amazoncorretto:17 as builder
+FROM amazoncorretto:25 as builder
 WORKDIR /app
 
 COPY gradlew build.gradle.kts gradle.properties settings.gradle.kts ./
@@ -10,7 +10,7 @@ COPY gradle gradle
 COPY src src
 RUN ./gradlew buildFatJar
 
-FROM amazoncorretto:17
+FROM amazoncorretto:25
 WORKDIR /app
 
 RUN yum install wget openssl -y
