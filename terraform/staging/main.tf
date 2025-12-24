@@ -57,7 +57,7 @@ module "auth_service" {
   enable_telemetry          = true
 
   ldap_config = {
-    CA_S3_URL                   = "https://data-collection-service-ldaps-crl-staging.s3.amazonaws.com/CASRVSTAGING/CASRVstaging.dluhcdata.local_CASRVstaging.crt"
+    CA_S3_URL                   = "https://data-collection-service-ldaps-crl-staging.s3.amazonaws.com/CASRVSTAGING2/CASRVstaging2.dluhcdata.local_CASRVstaging2.crt"
     DELTA_LDAP_URL              = "ldaps://dluhcdata.local:636"
     LDAP_SERVICE_USER_DN_FORMAT = "CN=%s,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
     LDAP_DELTA_USER_DN_FORMAT   = "CN=%s,CN=Datamart,OU=Users,OU=dluhcdata,DC=dluhcdata,DC=local"
