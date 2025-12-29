@@ -70,7 +70,7 @@ dependencies {
 
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.18")
-    implementation("net.logstash.logback:logstash-logback-encoder:8.1") // Structured log encoder
+    implementation("net.logstash.logback:logstash-logback-encoder:9.0") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.10.2")
 
     // OpenSAML
