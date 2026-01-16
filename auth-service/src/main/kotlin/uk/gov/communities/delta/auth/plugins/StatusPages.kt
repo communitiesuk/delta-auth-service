@@ -110,7 +110,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
             val errorPage = StatusErrorPageDefinition(
                 HttpStatusCode.InternalServerError,
                 "user_visible_server_error",
-                "Delta | ${ex.title}",
+                "${ex.title} | Delta",
                 ex.title,
                 ex.userVisibleMessage,
                 showServiceDeskMessage = true,
@@ -151,14 +151,14 @@ private val statusErrorPageDefinitions = mapOf(
     HttpStatusCode.NotFound to StatusErrorPageDefinition(
         HttpStatusCode.NotFound,
         "not_found",
-        "Delta | Not Found",
+        "Not found | Delta",
         "Page not found",
         "This page does not exist"
     ),
     HttpStatusCode.InternalServerError to StatusErrorPageDefinition(
         HttpStatusCode.InternalServerError,
         "internal_server_error",
-        "Delta | Error",
+        "Error | Delta",
         "Error",
         "Something went wrong",
         true
