@@ -122,7 +122,7 @@ class RateLimitingTest {
         for (i in 1..rateLimitValue) {
             assertSuccessfulGetRequest(forwardedFor, "/delta/reset-password")
         }
-        assertBlockedGetRequest(forwardedFor, "/delta/reset-password", "<title>Reset password | Delta</title>")
+        assertBlockedGetRequest(forwardedFor, "/delta/reset-password", "<title>Password | Delta</title>")
         verify(exactly = 1) { rateLimitResetPasswordCounter.increment(1.0) }
     }
 
