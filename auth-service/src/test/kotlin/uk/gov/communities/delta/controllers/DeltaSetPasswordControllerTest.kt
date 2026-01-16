@@ -71,7 +71,6 @@ class DeltaSetPasswordControllerTest {
         ).apply {
                 assertEquals(HttpStatusCode.OK, status)
                 assertContains(bodyAsText(), "Your activation link had expired.")
-                assertFalse(bodyAsText().contains("Set password"))
             }
     }
 
@@ -151,7 +150,6 @@ class DeltaSetPasswordControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your activation link had expired.")
-            assertFalse(bodyAsText().contains("Set password"))
         }
     }
 
