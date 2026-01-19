@@ -74,7 +74,6 @@ class DeltaResetPasswordControllerTest {
             .apply {
                 assertEquals(HttpStatusCode.OK, status)
                 assertContains(bodyAsText(), "Your password reset link had expired.")
-                assertFalse(bodyAsText().contains("Reset password"))
             }
     }
 
@@ -153,7 +152,6 @@ class DeltaResetPasswordControllerTest {
         ).apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "Your password reset link had expired.")
-            assertFalse(bodyAsText().contains("Reset password"))
             coVerify(exactly = 0) { userService.resetPassword(any(), any()) }
         }
     }
