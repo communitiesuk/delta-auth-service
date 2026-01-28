@@ -186,7 +186,7 @@ enum class DeltaSystemRole(val adRoleName: String, val classification: DeltaSyst
     // In practice this role is used by the first line helpdesk and can perform some
     // non-read-only actions like enabling/disabling users and sending password reset emails
     READ_ONLY_ADMIN("read-only-admin", DeltaSystemRoleClassification.RESTRICTED),
-    user_feedback_viewer("user-feedback-viewer", DeltaSystemRoleClassification.RESTRICTED),
+    USER_FEEDBACK_VIEWER("user-feedback-viewer", DeltaSystemRoleClassification.RESTRICTED),
     TESTERS("testers", DeltaSystemRoleClassification.INTERNAL),
     DATA_PROVIDERS("data-providers", DeltaSystemRoleClassification.EXTERNAL),
     DATA_CERTIFIERS("data-certifiers", DeltaSystemRoleClassification.EXTERNAL),
