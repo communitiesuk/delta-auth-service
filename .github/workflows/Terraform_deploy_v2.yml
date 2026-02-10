@@ -3,7 +3,7 @@ run-name: Terraform Deploy ${{ inputs.environment }}
 on:
   workflow_dispatch:
     inputs:
-      Environment:
+      environment:
         required: true
         type: choice
         description: Environment to deploy to
@@ -11,7 +11,7 @@ on:
           - test
           - staging
           - production
-    
+
       image_tag:
         required: true
         type: string
