@@ -1,0 +1,190 @@
+name: Terraform Deploy Latest
+run-name: Terraform Deploy ${{ inputs.environment }}
+on:
+  workflow_dispatch:
+    inputs:
+      Environment:
+        required: true
+        type: choice
+        description: Environment to deploy to
+        options:
+          - test
+          - staging
+          - production
+    
+      image_tag:
+        required: true
+        type: string
+        description: Desired image tag to be deployed
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-${{ github.ref }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-west-1
+  TF_WORKING_DIRECTORY: terraform/${{ inputs.environment }}
+  ENVIRONMENT: ${{ inputs.environment }}
+  DEPLOYMENT_ROLE: ${{ inputs.environment == 'production' && 'arn:aws:iam::468442790030:role/terraform-prod-deployment-role' || 'arn:aws:iam::486283582667:role/terraform-test-deployment-role' }}
+  DEPLOYMENT_SESSION_NAME: github-actions-${{ inputs.environment }}-terraform-deployment
+  TERRAFORM_VERSION: "1.9.3"
+
+jobs:
+  plan:
+    name: ${{ inputs.environment }} Terraform Plan
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      pull-requests: write
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Confirming Checked Out Branch
+        run: echo "The checked out branch is ${{ github.ref_name }}"
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
+          role-session-name: ${{ env.DEPLOYMENT_SESSION_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform fmt
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        id: fmt
+        run: terraform fmt -check -diff -recursive
+
+      - name: Terraform init
+        env:
+          COMMON_INFRA_DEPLOY_KEY: ${{ secrets.COMMON_INFRA_DEPLOY_KEY }}
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        id: init
+        run: |
+          mkdir -p ~/.ssh
+          echo "$COMMON_INFRA_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          terraform init -no-color
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        id: plan
+        run: terraform plan -input=false -no-color -out=tfplan
+
+      - name: Terraform show
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        id: show
+        run: terraform show -no-color tfplan > tfplan.txt
+
+      - name: Save Terraform Plan
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: terraform-plan
+          path: |
+            ${{ env.TF_WORKING_DIRECTORY }}/tfplan
+            ${{ env.TF_WORKING_DIRECTORY }}/tfplan.txt
+          retention-days: 5
+
+      - name: Post Plan Summary
+        if: always()
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        run: |
+          {
+            echo "### Terraform Plan Summary"
+            echo "**Environment**: \`${{ env.ENVIRONMENT }}\`"
+            echo "**Branch**: \`${{ github.ref_name }}\`"
+            echo "**Triggered By**: \`${{ github.actor }}\`"
+          
+            echo "### Plan Details"
+            echo "\`\`\`hcl"
+            cat tfplan.txt || echo "Failed to read plan file"
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY    
+
+  apply:
+    name: ${{ inputs.environment }} Terraform Apply
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: plan
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
+          role-session-name: ${{ env.DEPLOYMENT_SESSION_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform init
+        env:
+          COMMON_INFRA_DEPLOY_KEY: ${{ secrets.COMMON_INFRA_DEPLOY_KEY }}
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        id: init
+        run: |
+          mkdir -p ~/.ssh
+          echo "$COMMON_INFRA_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          terraform init -no-color
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TF_WORKING_DIRECTORY }}
+
+      - name: Terraform apply ${{ env.image_tag }}
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        id: apply
+        run: |
+          terraform apply -auto-approve tfplan 2>&1 | tee apply_output.txt
+
+      - name: Post Apply Summary
+        if: always()
+        working-directory: ${{ env.TF_WORKING_DIRECTORY }}
+        run: |
+          {
+            echo "### Terraform Apply Summary"
+            echo "**Environment**: \`${{ env.ENVIRONMENT }}\`"
+            echo "**Branch**: \`${{ github.ref_name }}\`"
+            echo "**Executed By**: \`${{ github.actor }}\`"
+            echo "**Status**: \`${{ steps.apply.outcome }}\`"
+          
+            echo "### Apply Output"
+            echo "\`\`\`"
+            if [ -f apply_output.txt ]; then
+             cat apply_output.txt
+            else
+             echo "No apply output found"
+            fi
+            echo "\`\`\`"
+           } >> $GITHUB_STEP_SUMMARY
