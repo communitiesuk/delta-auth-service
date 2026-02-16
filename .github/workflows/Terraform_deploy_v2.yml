@@ -157,7 +157,7 @@ jobs:
           terraform init -no-color
 
       - name: Download Terraform Plan
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: terraform-plan
           path: ${{ env.TF_WORKING_DIRECTORY }}
