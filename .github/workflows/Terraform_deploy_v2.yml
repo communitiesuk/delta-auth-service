@@ -51,7 +51,7 @@ jobs:
         run: echo "The checked out branch is ${{ github.ref_name }}"
 
       - name: Configure AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           role-session-name: ${{ env.DEPLOYMENT_SESSION_NAME }}
@@ -131,7 +131,7 @@ jobs:
 
     steps:
       - name: Configure AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           role-session-name: ${{ env.DEPLOYMENT_SESSION_NAME }}
