@@ -10,6 +10,11 @@ plugins {
 
 group = "uk.gov.communities.delta.auth"
 version = "0.0.1"
+
+kotlin {
+    jvmToolchain(17)
+}
+
 application {
     mainClass.set("uk.gov.communities.delta.auth.ApplicationKt")
 
@@ -66,11 +71,11 @@ dependencies {
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
 
     // Emails
-    implementation("com.sun.mail:jakarta.mail:2.0.1")
+    implementation("com.sun.mail:jakarta.mail:2.0.2")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.18")
-    implementation("net.logstash.logback:logstash-logback-encoder:8.1") // Structured log encoder
+    implementation("ch.qos.logback:logback-classic:1.5.19")
+    implementation("net.logstash.logback:logstash-logback-encoder:9.0") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.10.2")
 
     // OpenSAML
@@ -98,7 +103,7 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.39.0-alpha")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.52.0-alpha")
     implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.39.0")
 }
 
