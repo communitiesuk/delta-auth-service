@@ -15,7 +15,8 @@ on:
       image_tag:
         required: true
         type: string
-        description: Desired image tag to be deployed
+        description: Desired image tag to be deployed (usually release-x.y)
+        default: 'UNCHANGED'
 
 permissions:
   id-token: write
@@ -37,6 +38,8 @@ jobs:
   plan:
     name: ${{ inputs.environment }} Terraform Plan
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.current_tags.outputs.image_tag }}
     permissions:
       id-token: write
       pull-requests: write
@@ -51,7 +54,7 @@ jobs:
         run: echo "The checked out branch is ${{ github.ref_name }}"
 
       - name: Configure AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           role-session-name: ${{ env.DEPLOYMENT_SESSION_NAME }}
@@ -83,10 +86,34 @@ jobs:
         id: validate
         run: terraform validate -no-color
 
+      - name: Get current tag values
+        id: current_tags
+        run: |
+          # Get current image tag
+           if [ "${{ inputs.image_tag }}" = "UNCHANGED" ]; then
+             echo "Fetching current image tag..."
+             FULL_IMAGE=$(aws ecs describe-task-definition \
+               --task-definition delta-auth-service-${{ inputs.environment }} \
+               --query 'taskDefinition.containerDefinitions[0].image' \
+               --output text)
+             echo "Full image URI: ${FULL_IMAGE}"
+             IMAGE_TAG=$(echo ${FULL_IMAGE} | rev | cut -d':' -f1 | rev)
+             echo "Extracted image tag: ${IMAGE_TAG}"
+             echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+           else
+             echo "Using provided image tag: ${{ inputs.image_tag }}"
+             echo "image_tag=${{ inputs.image_tag }}" >> $GITHUB_OUTPUT
+           fi
+          
+           echo "Final output values:"
+           echo "image tag: $(cat $GITHUB_OUTPUT | grep image_tag | cut -d'=' -f2)"  
+
       - name: Terraform plan
         working-directory: ${{ env.TF_WORKING_DIRECTORY }}
         id: plan
-        run: terraform plan -input=false -no-color -out=tfplan
+        run: |
+          terraform plan -input=false -no-color -out=tfplan \
+          -var="image_tag=${{ steps.current_tags.outputs.image_tag }}"
 
       - name: Terraform show
         working-directory: ${{ env.TF_WORKING_DIRECTORY }}
@@ -95,7 +122,7 @@ jobs:
 
       - name: Save Terraform Plan
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: terraform-plan
           path: |
@@ -112,12 +139,13 @@ jobs:
             echo "**Environment**: \`${{ env.ENVIRONMENT }}\`"
             echo "**Branch**: \`${{ github.ref_name }}\`"
             echo "**Triggered By**: \`${{ github.actor }}\`"
-          
+            echo "**Image Tags**:"
+            echo "* image_tag: \`${{ steps.current_tags.outputs.image_tag }}\`"
             echo "### Plan Details"
             echo "\`\`\`hcl"
             cat tfplan.txt || echo "Failed to read plan file"
             echo "\`\`\`"
-          } >> $GITHUB_STEP_SUMMARY    
+          } >> $GITHUB_STEP_SUMMARY
 
   apply:
     name: ${{ inputs.environment }} Terraform Apply
@@ -131,7 +159,7 @@ jobs:
 
     steps:
       - name: Configure AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           role-session-name: ${{ env.DEPLOYMENT_SESSION_NAME }}
@@ -157,12 +185,12 @@ jobs:
           terraform init -no-color
 
       - name: Download Terraform Plan
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: terraform-plan
           path: ${{ env.TF_WORKING_DIRECTORY }}
 
-      - name: Terraform apply ${{ env.image_tag }}
+      - name: Terraform apply
         working-directory: ${{ env.TF_WORKING_DIRECTORY }}
         id: apply
         run: |
@@ -178,7 +206,8 @@ jobs:
             echo "**Branch**: \`${{ github.ref_name }}\`"
             echo "**Executed By**: \`${{ github.actor }}\`"
             echo "**Status**: \`${{ steps.apply.outcome }}\`"
-          
+            echo "**Image Tags Applied**:"
+            echo "* image_tag: \`${{ needs.plan.outputs.image_tag }}\`"
             echo "### Apply Output"
             echo "\`\`\`"
             if [ -f apply_output.txt ]; then
