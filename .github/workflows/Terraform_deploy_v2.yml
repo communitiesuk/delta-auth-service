@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Confirming Checked Out Branch
         run: echo "The checked out branch is ${{ github.ref_name }}"
@@ -166,7 +166,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
