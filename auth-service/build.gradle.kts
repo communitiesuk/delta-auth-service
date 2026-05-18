@@ -79,8 +79,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.11.0")
 
     // OpenSAML
-    implementation("org.opensaml:opensaml-core:4.3.2")
-    implementation("org.opensaml:opensaml-saml-impl:4.3.2")
+    implementation("org.opensaml:opensaml-core:5.2.2")
+    implementation("org.opensaml:opensaml-saml-impl:5.2.2")
 
     // Database
     implementation("org.postgresql:postgresql:42.7.11")
