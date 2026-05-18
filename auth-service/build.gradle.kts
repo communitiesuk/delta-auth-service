@@ -76,14 +76,14 @@ dependencies {
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.19")
     implementation("net.logstash.logback:logstash-logback-encoder:9.0") // Structured log encoder
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.11.0")
 
     // OpenSAML
     implementation("org.opensaml:opensaml-core:4.3.2")
     implementation("org.opensaml:opensaml-saml-impl:4.3.2")
 
     // Database
-    implementation("org.postgresql:postgresql:42.7.7")
+    implementation("org.postgresql:postgresql:42.7.11")
     implementation("com.zaxxer:HikariCP:7.0.2") // Connection pool
     implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
@@ -104,7 +104,7 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
     implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.52.0-alpha")
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.39.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.52.0")
 }
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
