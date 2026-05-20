@@ -4,7 +4,8 @@ val flywayVersion = "11.11.0"
 
 plugins {
     kotlin("jvm") version "2.2.0"
-    id("io.ktor.plugin") version "2.3.13"
+    application
+    id("com.gradleup.shadow") version "9.0.2"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
 }
 
@@ -109,7 +110,7 @@ dependencies {
 
 // Migrations are run by the application on startup, or on first use of the database in Development mode.
 // Extra task to run Flyway migrations without (re)starting the app.
-task("migrate", JavaExec::class) {
+tasks.register<JavaExec>("migrate") {
     mainClass.set("uk.gov.communities.delta.auth.repositories.DbPoolKt")
     classpath = sourceSets["main"].runtimeClasspath
 }
@@ -126,7 +127,7 @@ fun JavaExec.readEnvFile() {
     }
 }
 
-task("runTask", JavaExec::class) {
+tasks.register<JavaExec>("runTask") {
     mainClass.set("uk.gov.communities.delta.auth.tasks.RunTaskMainKt")
     classpath = sourceSets["main"].runtimeClasspath
     readEnvFile()
