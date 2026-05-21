@@ -1,4 +1,5 @@
-name: "auth service publish"
+name: Publish
+run-name: "Auth-service publish"
 
 on:
   workflow_dispatch:
@@ -60,9 +61,12 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      pull-requests: write
+      packages: write
     uses: "./.github/workflows/terraform_deploy.yml"
     needs: publish_image
     if: github.ref == 'refs/heads/main'
     with:
+      environment: test
       image_tag: ${{ needs.publish_image.outputs.image_tag}}
     secrets: inherit
