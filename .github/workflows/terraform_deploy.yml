@@ -1,6 +1,16 @@
 name: Terraform Deploy
 run-name: Terraform Deploy ${{ inputs.environment }}
 on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: Environment to deploy to
+      image_tag:
+        required: true
+        type: string
+        description: Desired image tag to be deployed (usually release-x.y)
   workflow_dispatch:
     inputs:
       environment:
