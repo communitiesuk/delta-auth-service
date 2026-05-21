@@ -61,6 +61,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      pull-requests: write
+      packages: write
     uses: "./.github/workflows/terraform_deploy.yml"
     needs: publish_image
     if: github.ref == 'refs/heads/main'
