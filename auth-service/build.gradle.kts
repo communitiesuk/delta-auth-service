@@ -27,9 +27,16 @@ application {
 
 tasks {
     shadowJar {
+        archiveFileName.set("auth-all.jar")
         // Required for OpenSAML initialisation, it relies on aliasing config files in META-INF being merged
         mergeServiceFiles()
     }
+}
+
+tasks.register("buildFatJar") {
+    group = "build"
+    description = "Builds the deployable fat jar."
+    dependsOn(tasks.named("shadowJar"))
 }
 
 repositories {
