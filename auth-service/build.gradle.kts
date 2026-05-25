@@ -1,6 +1,6 @@
 val ktorVersion = "2.3.13"
 val kotlinVersion = "2.3.21"
-val flywayVersion = "11.11.0"
+val flywayVersion = "12.6.2"
 
 plugins {
     kotlin("jvm") version "2.2.0"
