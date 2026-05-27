@@ -3,9 +3,9 @@ val kotlinVersion = "2.3.21"
 val flywayVersion = "11.11.0"
 
 plugins {
-    kotlin("jvm") version "2.2.0"
+    kotlin("jvm") version "2.3.21"
     application
-    id("com.gradleup.shadow") version "9.0.2"
+    id("com.gradleup.shadow") version "9.4.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
 }
 
@@ -82,7 +82,7 @@ dependencies {
     implementation("com.sun.mail:jakarta.mail:2.0.2")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.19")
+    implementation("ch.qos.logback:logback-classic:1.5.32")
     implementation("net.logstash.logback:logstash-logback-encoder:9.0") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.11.0")
 
