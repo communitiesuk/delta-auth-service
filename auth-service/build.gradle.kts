@@ -1,11 +1,10 @@
 val ktorVersion = "2.3.13"
-val kotlinVersion = "2.3.21"
+val kotlinVersion = "2.2.0"
 val flywayVersion = "11.11.0"
 
 plugins {
     kotlin("jvm") version "2.2.0"
-    application
-    id("com.gradleup.shadow") version "9.0.2"
+    id("io.ktor.plugin") version "2.3.13"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
 }
 
@@ -27,16 +26,9 @@ application {
 
 tasks {
     shadowJar {
-        archiveFileName.set("auth-all.jar")
         // Required for OpenSAML initialisation, it relies on aliasing config files in META-INF being merged
         mergeServiceFiles()
     }
-}
-
-tasks.register("buildFatJar") {
-    group = "build"
-    description = "Builds the deployable fat jar."
-    dependsOn(tasks.named("shadowJar"))
 }
 
 repositories {
