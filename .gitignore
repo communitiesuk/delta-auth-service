@@ -4,3 +4,5 @@
 terraform.tfvars
 sslKeystore.jks
 *DS_Store
+
+**/.vscode
