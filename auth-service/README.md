@@ -27,6 +27,8 @@
 
 ## Run
 
+### IntelliJ
+
 Open in IntelliJ, add this folder as a Gradle module, then create a new Ktor run configuration
 with `uk.gov.communities.delta.auth.ApplicationKt` as the main class and environment variables set from `.env`. (See
 below image for an example)
@@ -36,7 +38,24 @@ below image for an example)
 Set the `io.ktor.development` property to `true` (`-Dio.ktor.development=true` JVM arg) to enable development mode (
 faster restarts, reloading of templates).
 
-### Tests
+### VSCode
+
+This is to be added to the `launch.json` file - see [launch documentation](https://code.visualstudio.com/docs/debugtest/debugging-configuration#_launch-configurations).
+
+```
+{
+    "type": "java",
+    "name": "AuthService",
+    "request": "launch",
+    "mainClass": "uk.gov.communities.delta.auth.ApplicationKt",
+    "cwd": "${workspaceFolder}",
+    "vmArgs": "-Dio.ktor.development=true",
+    "envFile": "${workspaceFolder}/auth-service/.env",
+    "console": "integratedTerminal"
+}
+```
+
+## Tests
 
 * `./gradlew test`
 * Postgres must be running
