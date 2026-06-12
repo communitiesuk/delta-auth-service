@@ -65,7 +65,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.15.2")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.17.0")
 
     // CORS
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
