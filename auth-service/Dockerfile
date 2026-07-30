@@ -26,6 +26,7 @@ ENV JAVA_TRUSTSTORE_PATH=/app/certs/cacerts \
 
 RUN mkdir -p /app/certs && \
     cp --dereference "${JAVA_HOME}/lib/security/cacerts" "${JAVA_TRUSTSTORE_PATH}" && \
+    chmod 0644 "${JAVA_TRUSTSTORE_PATH}" && \
     chown -R 10001:10001 /app/certs
 
 COPY --chown=10001:10001 certs/rds-ca-bundle.pem /app/certs/rds-ca-bundle.pem
