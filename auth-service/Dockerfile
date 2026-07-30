@@ -1,7 +1,7 @@
 FROM amazoncorretto:17-al2023 AS builder
 WORKDIR /app
 
-RUN dnf install -y findutils && \
+RUN dnf install -y findutils-4.8.0-2.amzn2023.0.2 && \
     dnf clean all
 
 COPY gradlew build.gradle.kts gradle.properties settings.gradle.kts ./
@@ -16,7 +16,9 @@ RUN ./gradlew buildFatJar
 FROM amazoncorretto:17-al2023-headless
 WORKDIR /app
 
-RUN dnf install -y wget openssl && \
+RUN dnf install -y \
+        openssl-3.5.5-1.amzn2023.0.5 \
+        wget-1.21.3-1.amzn2023.0.4 && \
     dnf clean all
 
 ENV JAVA_TRUSTSTORE_PATH=/app/certs/cacerts \
