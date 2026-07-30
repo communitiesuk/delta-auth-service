@@ -42,7 +42,7 @@ env:
   ENVIRONMENT: ${{ inputs.environment }}
   DEPLOYMENT_ROLE: ${{ inputs.environment == 'production' && 'arn:aws:iam::468442790030:role/terraform-prod-deployment-role' || 'arn:aws:iam::486283582667:role/terraform-test-deployment-role' }}
   DEPLOYMENT_SESSION_NAME: github-actions-${{ inputs.environment }}-terraform-deployment
-  TERRAFORM_VERSION: "1.9.3"
+  TERRAFORM_VERSION: "1.9.8"
 
 jobs:
   plan:
