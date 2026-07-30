@@ -1,5 +1,8 @@
-FROM amazoncorretto:17 as builder
+FROM amazoncorretto:17-al2023 AS builder
 WORKDIR /app
+
+RUN dnf install -y findutils-4.8.0-2.amzn2023.0.2 && \
+    dnf clean all
 
 COPY gradlew build.gradle.kts gradle.properties settings.gradle.kts ./
 COPY gradle gradle
@@ -10,16 +13,25 @@ COPY gradle gradle
 COPY src src
 RUN ./gradlew buildFatJar
 
-FROM amazoncorretto:17
+FROM amazoncorretto:17-al2023-headless
 WORKDIR /app
 
-RUN yum install wget openssl -y
+RUN dnf install -y \
+        openssl-3.5.5-1.amzn2023.0.5 \
+        wget-1.21.3-1.amzn2023.0.4 && \
+    dnf clean all
 
-RUN mkdir -p /root/.postgresql && \
-    wget https://truststore.pki.rds.amazonaws.com/eu-west-1/eu-west-1-bundle.pem -O /root/.postgresql/ca-bundle.pem
+ENV JAVA_TRUSTSTORE_PATH=/app/certs/cacerts \
+    JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=/app/certs/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
 
-COPY entrypoint.sh /app/entrypoint.sh
+RUN mkdir -p /app/certs && \
+    cp --dereference "${JAVA_HOME}/lib/security/cacerts" "${JAVA_TRUSTSTORE_PATH}" && \
+    wget https://truststore.pki.rds.amazonaws.com/eu-west-1/eu-west-1-bundle.pem -O /app/certs/rds-ca-bundle.pem && \
+    chown -R 10001:10001 /app/certs
+
+COPY --chown=10001:10001 entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
-COPY --from=builder /app/build/libs/auth-all.jar .
+COPY --from=builder --chown=10001:10001 /app/build/libs/auth-all.jar .
 
+USER 10001:10001
 ENTRYPOINT ["bash", "/app/entrypoint.sh"]
