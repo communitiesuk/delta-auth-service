@@ -26,9 +26,9 @@ ENV JAVA_TRUSTSTORE_PATH=/app/certs/cacerts \
 
 RUN mkdir -p /app/certs && \
     cp --dereference "${JAVA_HOME}/lib/security/cacerts" "${JAVA_TRUSTSTORE_PATH}" && \
-    wget https://truststore.pki.rds.amazonaws.com/eu-west-1/eu-west-1-bundle.pem -O /app/certs/rds-ca-bundle.pem && \
     chown -R 10001:10001 /app/certs
 
+COPY --chown=10001:10001 certs/rds-ca-bundle.pem /app/certs/rds-ca-bundle.pem
 COPY --chown=10001:10001 entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 COPY --from=builder --chown=10001:10001 /app/build/libs/auth-all.jar .
