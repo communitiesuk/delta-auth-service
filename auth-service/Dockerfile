@@ -1,4 +1,4 @@
-FROM amazoncorretto:17-al2023 AS builder
+FROM amazoncorretto:26-al2023 AS builder
 WORKDIR /app
 
 RUN dnf install -y findutils-4.8.0-2.amzn2023.0.2 && \
@@ -13,7 +13,7 @@ COPY gradle gradle
 COPY src src
 RUN ./gradlew buildFatJar
 
-FROM amazoncorretto:17-al2023-headless
+FROM amazoncorretto:26-al2023-headless
 WORKDIR /app
 
 RUN dnf install -y \
