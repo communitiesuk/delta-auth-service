@@ -15,6 +15,4 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: tfsec
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        run: docker run --rm -v "${GITHUB_WORKSPACE}:/src:ro" aquasec/tfsec:v1.28.14 --force-all-dirs /src/terraform

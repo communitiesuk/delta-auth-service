@@ -11,7 +11,9 @@ if [[ -v CA_S3_URL ]]; then
   echo_json "Fetching CA Certificate from ${CA_S3_URL}"
   wget -q "${CA_S3_URL}" -O /tmp/dluhcldapsca.crt
   openssl x509 -inform der -in /tmp/dluhcldapsca.crt -outform pem -out /tmp/dluhcldapsca.pem
-  keytool -import -cacerts -alias dluhcldapsca -file /tmp/dluhcldapsca.pem -noprompt -storepass changeit
+  keytool -importcert -keystore "${JAVA_TRUSTSTORE_PATH}" -alias dluhcldapsca \
+    -file /tmp/dluhcldapsca.pem -noprompt -storepass changeit
+  rm -f /tmp/dluhcldapsca.crt /tmp/dluhcldapsca.pem
 fi
 
 if [ -v RUN_TASK ]; then
