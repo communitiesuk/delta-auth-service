@@ -139,10 +139,6 @@ module "fargate" {
       value = join(";", var.dclg_access_group_notification_settings.additional_recipient_emails)
     },
     {
-      name  = "API_ORIGIN"
-      value = var.api_origin
-    },
-    {
       name  = "ENVIRONMENT",
       value = var.environment
     },

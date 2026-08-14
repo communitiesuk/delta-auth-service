@@ -24,6 +24,17 @@ import kotlin.test.assertEquals
 
 class ExternalDeltaApiTokenControllerTest {
     @Test
+    fun browserPreflightIsNotSupported() = testSuspend {
+        testClient.options("/delta-api/oauth/token") {
+            header(HttpHeaders.Origin, "https://api.delta.communities.gov.uk")
+            header(HttpHeaders.AccessControlRequestMethod, HttpMethod.Post.value)
+        }.apply {
+            Assert.assertNotEquals(HttpStatusCode.OK, status)
+            assertEquals(null, headers[HttpHeaders.AccessControlAllowOrigin])
+        }
+    }
+
+    @Test
     fun testCreateApiToken() = testSuspend {
         testClient.submitForm(
             url = "/delta-api/oauth/token",

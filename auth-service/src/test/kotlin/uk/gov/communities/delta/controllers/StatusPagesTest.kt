@@ -19,7 +19,7 @@ class StatusPagesTest {
         val app = TestApplication {
             application {
                 configureTemplating(false)
-                configureStatusPages("http://delta", AzureADSSOConfig(emptyList()), DeltaConfig("url", 10, "", "localhost", false))
+                configureStatusPages("http://delta", AzureADSSOConfig(emptyList()), DeltaConfig("url", 10, "", false))
                 routing {
                     get("/userVisibleError") {
                         throw UserVisibleServerError("code", "internal message", "user message")
