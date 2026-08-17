@@ -187,7 +187,7 @@ enum class DeltaSystemRole(val adRoleName: String, val classification: DeltaSyst
     // non-read-only actions like enabling/disabling users and sending password reset emails
     READ_ONLY_ADMIN("read-only-admin", DeltaSystemRoleClassification.RESTRICTED),
     USER_FEEDBACK_VIEWER("user-feedback-viewer", DeltaSystemRoleClassification.RESTRICTED),
-    CHANGE_PAYMENT_STATUS("change_payment_status", DeltaSystemRoleClassification.RESTRICTED),
+    CHANGE_PAYMENT_STATUS("change-payment-status", DeltaSystemRoleClassification.RESTRICTED),
     TESTERS("testers", DeltaSystemRoleClassification.INTERNAL),
     DATA_PROVIDERS("data-providers", DeltaSystemRoleClassification.EXTERNAL),
     DATA_CERTIFIERS("data-certifiers", DeltaSystemRoleClassification.EXTERNAL),
