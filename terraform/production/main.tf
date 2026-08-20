@@ -54,7 +54,6 @@ module "auth_service" {
   bastion_security_group_id = data.terraform_remote_state.common_infra.outputs.bastion_sg_id
   db_backup_retention_days  = 14
   private_dns               = data.terraform_remote_state.common_infra.outputs.private_dns
-  api_origin                = "api.delta.communities.gov.uk"
   enable_telemetry          = true
 
   ldap_config = {

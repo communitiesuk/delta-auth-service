@@ -138,11 +138,6 @@ variable "enable_telemetry" {
   default = false
 }
 
-variable "api_origin" {
-  type        = string
-  description = "Domain name for the Delta API Swagger page, used by the auth service to set CORS headers on the API authentication endpoint"
-}
-
 locals {
   auth_metrics_namespace = "${var.environment}/AuthService"
 }
