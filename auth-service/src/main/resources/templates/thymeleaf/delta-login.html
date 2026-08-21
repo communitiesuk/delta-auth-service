@@ -19,6 +19,21 @@
 
 <div class="govuk-width-container ">
     <main class="govuk-main-wrapper govuk-main-wrapper--auto-spacing" id="main-content" role="main">
+        <div class="govuk-notification-banner" role="region" aria-labelledby="delta-changes-banner-title"
+             data-module="govuk-notification-banner">
+            <div class="govuk-notification-banner__header">
+                <h2 class="govuk-notification-banner__title" id="delta-changes-banner-title">
+                    Important
+                </h2>
+            </div>
+            <div class="govuk-notification-banner__content">
+                <p class="govuk-notification-banner__heading">
+                    We have made changes which means Delta looks different. The way you use Delta has not changed and
+                    all your data, forms and previous submissions are still available. If you have any questions,
+                    <a class="govuk-notification-banner__link" th:href="${deltaUrl} + '/contact-us'">contact the Delta Help Desk</a>.
+                </p>
+            </div>
+        </div>
         <h1 class="govuk-heading-xl">Sign in to Delta</h1>
         <div class="govuk-error-summary" data-module="govuk-error-summary"
              th:if="${not #strings.isEmpty(errorMessage)}">
