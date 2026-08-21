@@ -77,13 +77,13 @@ fun Route.externalRoutes(
         install(BrowserSecurityHeaders)
     }
 
-    val faviconBytes = javaClass.classLoader.getResourceAsStream("static/assets/images/favicon.ico")!!.readAllBytes()
+    val faviconBytes = javaClass.classLoader.getResourceAsStream("static/assets/images/mhclg-icon-32x32.png")!!.readAllBytes()
 
     // We override the link in our HTML, but this saves us some spurious 404s when browsers request it anyway
     get("/favicon.ico") {
         call.respondBytes(
             faviconBytes,
-            ContentType.Image.XIcon
+            ContentType.Image.PNG
         )
     }
 
