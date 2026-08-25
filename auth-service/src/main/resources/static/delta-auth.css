@@ -1,0 +1,78 @@
+:root {
+    --govuk-brand-colour: #00625e;
+    --govuk-template-background-colour: #f2f7f7;
+    --govuk-surface-background-colour: #f2f7f7;
+    --govuk-surface-border-colour: #80b1af;
+}
+
+.delta-mhclg-header {
+    border-bottom: 10px solid var(--govuk-brand-colour, #00625e);
+}
+
+.delta-mhclg-header__container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.delta-mhclg-header__logo {
+    min-width: 0;
+}
+
+.delta-mhclg-header__homepage-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.delta-mhclg-header__crest {
+    display: inline-flex;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 32px;
+}
+
+.delta-mhclg-header__crest img {
+    width: 36px;
+    height: 32px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.delta-mhclg-header__product-name {
+    font-family: "GDS Transport", arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-weight: 400;
+    font-size: 1.3125rem;
+    line-height: 1.1904761905;
+    white-space: nowrap;
+}
+
+@media (min-width: 40.0625em) {
+    .delta-mhclg-header__product-name {
+        font-size: 1.5rem;
+        line-height: 1.25;
+    }
+}
+
+@media (max-width: 40.0525em) {
+    .delta-mhclg-header__container {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0;
+        padding-bottom: 15px;
+    }
+
+    .delta-mhclg-header__logo {
+        padding-bottom: 10px;
+    }
+}
+
+@media print {
+    .delta-mhclg-header__product-name {
+        font-family: sans-serif;
+        font-size: 18pt;
+        line-height: 1.15;
+    }
+}

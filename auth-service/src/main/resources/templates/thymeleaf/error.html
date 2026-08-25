@@ -17,7 +17,7 @@
 <div th:replace="~{fragments/template.html :: environment-warning-message}"></div>
 
 <div class="govuk-width-container ">
-    <main class="govuk-main-wrapper " id="main-content" role="main">
+    <main class="govuk-main-wrapper govuk-main-wrapper--auto-spacing" id="main-content" role="main">
         <h1 class="govuk-heading-xl" th:text="${heading}">Error</h1>
         <p class="govuk-body">
             <span th:text="${message}">Something went wrong</span>.
