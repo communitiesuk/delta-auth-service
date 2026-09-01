@@ -94,6 +94,12 @@ resource "aws_ecs_task_definition" "main" {
           value : templatefile("${path.module}/adot-config.yml", {
             log_group = aws_cloudwatch_log_group.ecs_logs.name
           })
+        },
+        # The network path to X-Ray drops Go's larger post-quantum TLS handshake,
+        # so use the established classical key exchange to prevent request timeouts.
+        {
+          name : "GODEBUG"
+          value : "tlsmlkem=0"
         }
       ]
       logConfiguration : {
