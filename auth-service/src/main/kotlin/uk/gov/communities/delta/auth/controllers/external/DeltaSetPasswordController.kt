@@ -146,7 +146,8 @@ class DeltaSetPasswordController(
                 mapOf(
                     "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                     "emailAddress" to userEmail,
-                    "isProduction" to deltaConfig.isProduction,
+                    "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                    "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                 )
             )
         )
@@ -155,7 +156,8 @@ class DeltaSetPasswordController(
         respond(ThymeleafContent("set-password-success",
             mapOf(
                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-                "isProduction" to deltaConfig.isProduction,
+                "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
             )
         )
     )
@@ -165,7 +167,8 @@ class DeltaSetPasswordController(
     ) {
         val mapOfValues = mutableMapOf(
             "deltaUrl" to deltaConfig.deltaWebsiteUrl,
-            "isProduction" to deltaConfig.isProduction,
+            "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+            "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
         )
         if (message != null) mapOfValues += "message" to message
         respond(
@@ -187,7 +190,8 @@ class DeltaSetPasswordController(
                 "userEmail" to userEmail,
                 "userGUID" to tokenResult.userGUID,
                 "token" to tokenResult.token,
-                "isProduction" to deltaConfig.isProduction,
+                "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
             )
         )
     )

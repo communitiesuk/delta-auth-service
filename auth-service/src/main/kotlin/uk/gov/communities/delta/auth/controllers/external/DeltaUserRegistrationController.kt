@@ -40,7 +40,8 @@ class DeltaUserRegistrationController(
                     mapOf(
                         "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                         "emailAddress" to call.parameters["emailAddress"]!!,
-                        "isProduction" to deltaConfig.isProduction,
+                        "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                        "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                     )
                 )
             )
@@ -245,7 +246,8 @@ class DeltaUserRegistrationController(
                     "confirmEmailErrorMessages" to confirmEmailAddressErrors,
                     "confirmEmailAddress" to confirmEmailAddress,
                     "errorSummary" to errorSummary,
-                    "isProduction" to deltaConfig.isProduction
+                    "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                    "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                 )
             )
         )

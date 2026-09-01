@@ -118,7 +118,8 @@ class DeltaLoginController(
                 "errorMessage" to errorMessage,
                 "errorLink" to errorLink,
                 "username" to username,
-                "isProduction" to deltaConfig.isProduction
+                "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
             )
         )
     )
