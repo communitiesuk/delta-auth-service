@@ -40,6 +40,8 @@ services:
       - auth-service/.env
     environment:
       - AWS_REGION=eu-west-1
+      # Avoid X-Ray request timeouts where the network path drops Go's larger post-quantum TLS handshake.
+      - GODEBUG=tlsmlkem=0
     volumes:
       - ./terraform/modules/fargate/adot-config.yml:/etc/otel-agent-config.yaml
     ports:
