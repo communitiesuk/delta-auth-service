@@ -31,6 +31,8 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                                 "allErrors" to arrayListOf(Pair(tooManyRequestsErrorMessage, "#")),
                                 "errorSummary" to "Rate limit reached",
+                                "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                                "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                             )
                         )
                     )
@@ -46,6 +48,8 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                             mapOf(
                                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                                 "message" to tooManyRequestsErrorMessage,
+                                "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                                "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                             )
                         )
                     )
@@ -61,6 +65,8 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                             mapOf(
                                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                                 "message" to tooManyRequestsErrorMessage,
+                                "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                                "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                             )
                         )
                     )
@@ -76,6 +82,8 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                             mapOf(
                                 "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                                 "message" to tooManyRequestsErrorMessage,
+                                "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                                "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                             )
                         )
                     )
@@ -91,6 +99,8 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                             "deltaUrl" to deltaConfig.deltaWebsiteUrl,
                             "errorMessage" to tooManyRequestsErrorMessage,
                             "ssoClients" to ssoConfig.ssoClients.filter { it.buttonText != null },
+                            "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                            "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                         )
                     )
                 )
@@ -102,7 +112,7 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
         for (s in statusErrorPageDefinitions) {
             status(s.key) { call, _ ->
                 call.addSecurityHeaders()
-                call.respondStatusPage(s.value, deltaWebsiteUrl)
+                call.respondStatusPage(s.value, deltaWebsiteUrl, deltaConfig)
             }
         }
         exception(UserVisibleServerError::class) { call, ex ->
@@ -115,11 +125,11 @@ fun Application.configureStatusPages(deltaWebsiteUrl: String, ssoConfig: AzureAD
                 ex.userVisibleMessage,
                 showServiceDeskMessage = true,
             )
-            call.respondStatusPage(errorPage, deltaWebsiteUrl)
+            call.respondStatusPage(errorPage, deltaWebsiteUrl, deltaConfig)
         }
         exception(HttpNotFound404PageException::class) { call, ex ->
             logger.warn("StatusPages NotFoundException", ex)
-            call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl)
+            call.respondStatusPage(statusErrorPageDefinitions[HttpStatusCode.NotFound]!!, deltaWebsiteUrl, deltaConfig)
         }
         exception(ApiError::class) { call, ex ->
             logger.warn("StatusPages API Error {}", keyValue("errorCode", ex.errorCode), ex)
@@ -165,11 +175,15 @@ private val statusErrorPageDefinitions = mapOf(
     ),
 )
 
-private suspend fun ApplicationCall.respondStatusPage(statusError: StatusErrorPageDefinition, deltaWebsiteUrl: String) {
+private suspend fun ApplicationCall.respondStatusPage(
+    statusError: StatusErrorPageDefinition,
+    deltaWebsiteUrl: String,
+    deltaConfig: DeltaConfig,
+) {
     if (request.path().startsWith(apiRoutePrefix)) {
         apiErrorResponse(statusError)
     } else {
-        userFacingErrorResponse(statusError, deltaWebsiteUrl)
+        userFacingErrorResponse(statusError, deltaWebsiteUrl, deltaConfig)
     }
 }
 
@@ -192,6 +206,7 @@ private suspend fun ApplicationCall.apiErrorResponse(apiError: ApiError) {
 private suspend fun ApplicationCall.userFacingErrorResponse(
     statusError: StatusErrorPageDefinition,
     deltaWebsiteUrl: String,
+    deltaConfig: DeltaConfig,
 ) {
     try {
         respond(
@@ -203,6 +218,8 @@ private suspend fun ApplicationCall.userFacingErrorResponse(
                     "heading" to statusError.userErrorPageHeading,
                     "message" to statusError.userErrorPageMessage,
                     "requestId" to if (statusError.showServiceDeskMessage) callId ?: "" else "",
+                    "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                    "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                 )
             )
         )

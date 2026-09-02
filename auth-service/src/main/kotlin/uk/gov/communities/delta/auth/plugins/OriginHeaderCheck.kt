@@ -36,7 +36,8 @@ fun originHeaderCheck(serviceUrl: String, deltaConfig: DeltaConfig) = createRout
                             "heading" to "Error",
                             "message" to "Origin header check failed. If you are using Internet Explorer please try another browser",
                             "requestId" to call.callId!!,
-                            "isProduction" to deltaConfig.isProduction
+                            "preventSearchEngineIndexing" to deltaConfig.preventSearchEngineIndexing,
+                            "showEnvironmentWarning" to deltaConfig.showEnvironmentWarning,
                         )
                     )
                 )

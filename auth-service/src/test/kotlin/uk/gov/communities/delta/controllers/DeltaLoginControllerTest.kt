@@ -50,7 +50,8 @@ class DeltaLoginControllerTest {
     }
 
     @Test
-    fun testLoginPageDoesNotDisplayNonProdWarning() = testSuspend {
+    fun testLoginPageDisplaysEnvironmentWarningWhenEnabled() = testSuspend {
+        every { deltaConfig.showEnvironmentWarning } returns true
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(bodyAsText(), "This is a staging site, used for internal testing.")
@@ -58,8 +59,7 @@ class DeltaLoginControllerTest {
     }
 
     @Test
-    fun testLoginPageDisplaysNonProdWarning() = testSuspend {
-        every { deltaConfig.isProduction }  returns true
+    fun testLoginPageDoesNotDisplayEnvironmentWarningByDefault() = testSuspend {
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertFalse(bodyAsText().contains( "This is a staging site, used for internal testing."))
@@ -76,7 +76,7 @@ class DeltaLoginControllerTest {
 
     @Test
     fun testLoginPageDoesNotHaveNoIndexWarning() = testSuspend {
-        every { deltaConfig.isProduction }  returns true
+        every { deltaConfig.preventSearchEngineIndexing } returns false
         testClient.get("/login?response_type=code&client_id=delta-website&state=1234").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertFalse(bodyAsText().contains( "<meta name=\"robots\" content=\"noindex\">"))
@@ -255,7 +255,8 @@ class DeltaLoginControllerTest {
     fun resetMocks() {
         clearAllMocks()
         every { deltaConfig.deltaWebsiteUrl }  returns "http://localhost:8080"
-        every { deltaConfig.isProduction }  returns false
+        every { deltaConfig.preventSearchEngineIndexing } returns true
+        every { deltaConfig.showEnvironmentWarning } returns false
         every { deltaConfig.rateLimit }  returns 100
         every { failedLoginCounter.increment(1.0) } returns Unit
         every { successfulLoginCounter.increment(1.0) } returns Unit

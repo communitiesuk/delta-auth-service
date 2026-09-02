@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html class="govuk-template" lang="en" xmlns:th="http://www.thymeleaf.org">
-<!--/*@thymesVar id="isProduction" type="java.lang.Boolean" */-->
+<!--/*@thymesVar id="preventSearchEngineIndexing" type="java.lang.Boolean" */-->
+<!--/*@thymesVar id="showEnvironmentWarning" type="java.lang.Boolean" */-->
 <head th:fragment="head (title)">
     <meta charset="utf-8">
     <title th:text="${title}">Delta</title>
     <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport">
     <meta content="#0b0c0c" name="theme-color">
     <meta content="IE=edge" http-equiv="X-UA-Compatible">
-    <meta th:unless="${isProduction}" name="robots" content="noindex">
+    <meta th:if="${preventSearchEngineIndexing}" name="robots" content="noindex">
     <link href="/static/assets/images/mhclg-icon-32x32.png" rel="icon" sizes="32x32" type="image/png">
     <link href="/static/assets/images/mhclg-icon-192x192.png" rel="apple-touch-icon" sizes="192x192">
     <link href="/static/govuk-frontend-6.4.0.min.css" rel="stylesheet">
@@ -32,7 +33,7 @@
 </header>
 
 <div th:fragment="environment-warning-message">
-    <div th:unless="${isProduction}">
+    <div th:if="${showEnvironmentWarning}">
         <div class="govuk-width-container govuk-!-margin-top-2">
             <div class="govuk-notification-banner" role="region" aria-labelledby="govuk-notification-banner-title"
                  data-module="govuk-notification-banner">
