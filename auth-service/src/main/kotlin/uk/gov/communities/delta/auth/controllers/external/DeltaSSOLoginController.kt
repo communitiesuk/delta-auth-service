@@ -172,7 +172,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "user_no_mail_attribute",
                 "User ${user.getGUID()} has no email set in Active Directory, login blocked",
-                "Your Delta user account is not fully set up (missing mail attribute). Please contact the Delta Service Desk."
+                "Your Delta user account is not fully set up (missing mail attribute). Please contact the Delta Help Desk."
             )
         }
     }
@@ -215,7 +215,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_azure_group",
                 "User ${user.getGUID()} not in required Azure group ${ssoClient.requiredGroupId}",
-                "This account (${user.cn.replace('!', '@')}) is not configured for Single Sign On for Delta (not in required Azure AD users group ${ssoClient.requiredGroupId}). Please contact the Delta Service Desk"
+                "This account (${user.cn.replace('!', '@')}) is not configured for Single Sign On for Delta (not in required Azure AD users group ${ssoClient.requiredGroupId}). Please contact the Delta Help Desk"
             )
         }
 
@@ -224,7 +224,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_in_required_admin_group",
                 "User ${user.getGUID()} is admin in Delta (member of ${adminGroups.joinToString(", ")}), but not member of required admin group ${ssoClient.requiredAdminGroupId}",
-                "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()} (${ssoClient.requiredAdminGroupId}). Please contact the Delta Service Desk"
+                "You are an admin user in Delta, but have not been added to the Delta Admin SSO Users group in ${ssoClient.internalId.uppercase()} (${ssoClient.requiredAdminGroupId}). Please contact the Delta Help Desk"
             )
         }
     }
@@ -239,7 +239,7 @@ class DeltaSSOLoginController(
             throw OAuthLoginException(
                 "not_delta_user",
                 "User ${user.getGUID()} is not member of required Delta group ${DeltaConfig.DATAMART_DELTA_USER}",
-                "Your Delta user is misconfigured (not in ${DeltaConfig.DATAMART_DELTA_USER}). Please contact the Delta Service Desk",
+                "Your Delta user is misconfigured (not in ${DeltaConfig.DATAMART_DELTA_USER}). Please contact the Delta Help Desk",
             )
         }
     }

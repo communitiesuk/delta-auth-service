@@ -175,7 +175,7 @@ class DeltaLoginController(
                     failedLoginCounter.increment(1.0)
                     return call.respondLoginPage(
                         client,
-                        errorMessage = "Your account exists but is not set up to access Delta. Please contact the Delta Service Desk.",
+                        errorMessage = "Your account exists but is not set up to access Delta. Please contact the Delta Help Desk.",
                         errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
                         username = formUsername,
                     )
@@ -187,7 +187,7 @@ class DeltaLoginController(
                     failedLoginCounter.increment(1.0)
                     return call.respondLoginPage(
                         client,
-                        errorMessage = "Your account exists but is not fully set up (missing mail attribute). Please contact the Delta Service Desk.",
+                        errorMessage = "Your account exists but is not fully set up (missing mail attribute). Please contact the Delta Help Desk.",
                         errorLink = deltaConfig.deltaWebsiteUrl + "/contact-us",
                         username = formUsername,
                     )
@@ -213,7 +213,7 @@ class DeltaLoginController(
     private fun userVisibleError(ldapError: IADLdapLoginService.LdapLoginFailure): LoginError {
         return when (ldapError) {
             is IADLdapLoginService.DisabledAccount -> LoginError(
-                "Your account has been disabled. Please contact the Delta Service Desk",
+                "Your account has been disabled. Please contact the Delta Help Desk",
                 deltaConfig.deltaWebsiteUrl + "/contact-us"
             )
 
@@ -228,7 +228,7 @@ class DeltaLoginController(
             )
 
             is IADLdapLoginService.BadConnection -> LoginError(
-                "Error connecting to LDAP server. If this persists please contact the Delta Service Desk",
+                "Error connecting to LDAP server. If this persists please contact the Delta Help Desk",
                 deltaConfig.deltaWebsiteUrl + "/contact-us"
             )
 
