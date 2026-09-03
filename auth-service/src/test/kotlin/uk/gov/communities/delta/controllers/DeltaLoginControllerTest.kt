@@ -165,7 +165,7 @@ class DeltaLoginControllerTest {
             assertEquals(HttpStatusCode.OK, status)
             assertContains(
                 bodyAsText(),
-                "Your account exists but is not fully set up (missing mail attribute). Please contact the Service Desk."
+                "Your account exists but is not fully set up (missing mail attribute). Please contact the Delta Help Desk."
             )
             verify(exactly = 1) { failedLoginCounter.increment(1.0) }
             verify(exactly = 0) { successfulLoginCounter.increment(1.0) }
