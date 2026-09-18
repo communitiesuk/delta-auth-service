@@ -169,7 +169,7 @@ class SAMLTokenService(private val tracer: Tracer) {
 
     private fun makeIssuerElement(): Issuer {
         val issuer = IssuerBuilder().buildObject(SAMLConstants.SAML20_NS, Issuer.DEFAULT_ELEMENT_LOCAL_NAME, "saml")
-        issuer.value = "api-ml-saml"
+        issuer.value = "marklogicsp"
         return issuer
     }
 
