@@ -1,11 +1,12 @@
 val ktorVersion = "2.3.13"
 val kotlinVersion = "2.2.0"
 val flywayVersion = "11.11.0"
+val openSamlVersion = "5.2.3"
 
 plugins {
     kotlin("jvm") version "2.2.0"
     id("io.ktor.plugin") version "2.3.13"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.10"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -65,7 +66,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.15.2")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.17.1")
 
     // CORS
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
@@ -79,8 +80,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.11.0")
 
     // OpenSAML
-    implementation("org.opensaml:opensaml-core:4.3.2")
-    implementation("org.opensaml:opensaml-saml-impl:4.3.2")
+    implementation("org.opensaml:opensaml-core-api:$openSamlVersion")
+    implementation("org.opensaml:opensaml-core-impl:$openSamlVersion")
+    implementation("org.opensaml:opensaml-saml-impl:$openSamlVersion")
 
     // Database
     implementation("org.postgresql:postgresql:42.7.11")
