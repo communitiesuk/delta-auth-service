@@ -13,6 +13,6 @@ jobs:
       AWS_REGION: "eu-west-1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: tfsec
         run: docker run --rm -v "${GITHUB_WORKSPACE}:/src:ro" aquasec/tfsec:v1.28.14 --force-all-dirs /src/terraform
