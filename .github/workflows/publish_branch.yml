@@ -1,0 +1,50 @@
+name: Publish branch image
+run-name: "Auth-service branch image: ${{ inputs.ref }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch to build"
+        required: true
+
+jobs:
+  publish_image:
+    name: Push auth service image to ECR
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment: publish
+    env:
+      AWS_REGION: "eu-west-1"
+      REPOSITORY: "delta-auth-service"
+      ECR_PATH: "468442790030.dkr.ecr.eu-west-1.amazonaws.com"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::468442790030:role/github-actions-delta-auth-ci
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Docker login
+        run: aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_PATH
+
+      - name: Determine tag
+        id: determine_tag
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          SAFE_REF=$(echo "${{ inputs.ref }}" | tr '/' '-')
+          echo "tag=branch-$SAFE_REF-$SHA" >> $GITHUB_OUTPUT
+
+      - run: docker pull amazoncorretto:17
+      - name: Build image
+        run: docker build -t $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }} .
+        working-directory: auth-service/
+      - name: Pushing tag ${{ steps.determine_tag.outputs.tag }}
+        run: docker push $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }}
