@@ -42,7 +42,7 @@ resource "aws_db_instance" "auth_service" {
   db_name                     = "auth_service"
   instance_class              = var.db_instance_type
   engine                      = "postgres"
-  engine_version              = "16.1"
+  engine_version              = "16.15"
   allow_major_version_upgrade = false
   allocated_storage           = 10 # GB
   storage_encrypted           = true

@@ -1,12 +1,12 @@
 val ktorVersion = "2.3.13"
-val kotlinVersion = "2.2.0"
-val flywayVersion = "11.11.0"
+val kotlinVersion = "2.2.21"
+val flywayVersion = "11.11.2"
 val openSamlVersion = "5.2.3"
 
 plugins {
-    kotlin("jvm") version "2.2.0"
+    kotlin("jvm") version "2.2.21"
     id("io.ktor.plugin") version "2.3.13"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.10"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
 }
 
 group = "uk.gov.communities.delta.auth"
@@ -54,7 +54,6 @@ dependencies {
     implementation("io.ktor:ktor-server-sessions-jvm:$ktorVersion")
 
     // HTML templating
-    implementation("io.ktor:ktor-server-thymeleaf:$ktorVersion")
     implementation("io.ktor:ktor-server-thymeleaf-jvm:$ktorVersion")
 
     // Rate limiting
@@ -68,14 +67,11 @@ dependencies {
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
     implementation("io.micrometer:micrometer-registry-cloudwatch2:1.17.1")
 
-    // CORS
-    implementation("io.ktor:ktor-server-cors:$ktorVersion")
-
     // Emails
     implementation("com.sun.mail:jakarta.mail:2.0.2")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.19")
+    implementation("ch.qos.logback:logback-classic:1.5.38")
     implementation("net.logstash.logback:logstash-logback-encoder:9.0") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.11.0")
 
@@ -85,7 +81,7 @@ dependencies {
     implementation("org.opensaml:opensaml-saml-impl:$openSamlVersion")
 
     // Database
-    implementation("org.postgresql:postgresql:42.7.11")
+    implementation("org.postgresql:postgresql:42.7.14")
     implementation("com.zaxxer:HikariCP:7.0.2") // Connection pool
     implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
@@ -93,7 +89,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("io.mockk:mockk:1.14.9")
+    testImplementation("io.mockk:mockk:1.14.11")
 
     // Tracing - sending traces to AWS X-Ray via OpenTelemetry
     api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.8.0-alpha"))
