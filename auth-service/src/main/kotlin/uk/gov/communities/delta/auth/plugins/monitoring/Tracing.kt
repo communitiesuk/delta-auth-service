@@ -3,6 +3,7 @@ package uk.gov.communities.delta.auth.plugins.monitoring
 import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.api.common.Attributes
+import io.opentelemetry.api.common.AttributesBuilder
 import io.opentelemetry.api.trace.SpanBuilder
 import io.opentelemetry.api.trace.SpanKind
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
@@ -19,7 +20,18 @@ import io.opentelemetry.sdk.trace.data.LinkData
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor
 import io.opentelemetry.sdk.trace.samplers.Sampler
 import io.opentelemetry.sdk.trace.samplers.SamplingResult
+import org.slf4j.MDC
 import uk.gov.communities.delta.auth.config.TracingConfig
+
+private val peerServiceAttributeKey = AttributeKey.stringKey("peer.service")
+private val deltaRequestToAttributeKey = AttributeKey.stringKey("delta.request-to")
+private val mdcRequestIdAttributeKey = AttributeKey.stringKey("MDC-requestId")
+
+internal fun AttributesBuilder.putClientTracingAttributes(peerService: String, requestTo: String) {
+    put(peerServiceAttributeKey, peerService)
+    put(deltaRequestToAttributeKey, requestTo)
+    MDC.get("requestId")?.let { put(mdcRequestIdAttributeKey, it) }
+}
 
 fun initOpenTelemetry(tracingConfig: TracingConfig): OpenTelemetry {
     val resource = Resource.getDefault().toBuilder()

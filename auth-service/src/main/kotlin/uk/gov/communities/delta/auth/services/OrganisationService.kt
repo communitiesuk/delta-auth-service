@@ -9,14 +9,14 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.opentelemetry.api.OpenTelemetry
-import io.opentelemetry.instrumentation.ktor.v2_0.client.KtorClientTracing
+import io.opentelemetry.instrumentation.ktor.v2_0.KtorClientTelemetry
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import org.slf4j.MDC
 import uk.gov.communities.delta.auth.config.DeltaConfig
 import uk.gov.communities.delta.auth.config.TracingConfig
+import uk.gov.communities.delta.auth.plugins.monitoring.putClientTracingAttributes
 import uk.gov.communities.delta.auth.utils.emailToDomain
 import uk.gov.communities.delta.auth.utils.timedSuspend
 import java.time.LocalDate
@@ -79,13 +79,14 @@ class OrganisationService(private val httpClient: HttpClient, private val deltaC
                     requestTimeoutMillis = 20.seconds.inWholeMilliseconds
                 }
                 defaultRequest { headers.append("Accept", "application/json") }
-                install(KtorClientTracing) {
+                install(KtorClientTelemetry) {
                     setOpenTelemetry(openTelemetry)
-                    attributeExtractor {
+                    attributesExtractor {
                         onStart {
-                            attributes.put("peer.service", "${tracingConfig.prefix}-MarkLogic")
-                            attributes.put("delta.request-to", "marklogic-organisations")
-                            attributes.put("MDC-requestId", MDC.get("requestId"))
+                            attributes.putClientTracingAttributes(
+                                "${tracingConfig.prefix}-MarkLogic",
+                                "marklogic-organisations"
+                            )
                         }
                     }
                 }

@@ -16,20 +16,6 @@ internal object BeforeCall : Hook<suspend (ApplicationCall, suspend () -> Unit) 
     }
 }
 
-internal object NewPhaseBeforeMonitoring : Hook<suspend (ApplicationCall, suspend () -> Unit) -> Unit> {
-    override fun install(
-        pipeline: ApplicationCallPipeline,
-        handler: suspend (ApplicationCall, suspend () -> Unit) -> Unit,
-    ) {
-        val phase = PipelinePhase("BeforeOpenTelemetry")
-        pipeline.insertPhaseBefore(ApplicationCallPipeline.Monitoring, phase)
-
-        pipeline.intercept(phase) {
-            handler(call, ::proceed)
-        }
-    }
-}
-
 internal object MonitoringHook : Hook<suspend (ApplicationCall, suspend () -> Unit) -> Unit> {
     override fun install(
         pipeline: ApplicationCallPipeline,
