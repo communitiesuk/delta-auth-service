@@ -1,19 +1,19 @@
 val ktorVersion = "2.3.13"
-val kotlinVersion = "2.2.21"
+val kotlinVersion = "2.4.21"
 val flywayVersion = "11.11.2"
 val openSamlVersion = "5.2.3"
 
 plugins {
-    kotlin("jvm") version "2.2.21"
+    kotlin("jvm") version "2.4.21"
     id("io.ktor.plugin") version "2.3.13"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.21"
 }
 
 group = "uk.gov.communities.delta.auth"
 version = "0.0.1"
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 application {
@@ -92,7 +92,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.11")
 
     // Tracing - sending traces to AWS X-Ray via OpenTelemetry
-    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.8.0-alpha"))
+    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.32.0-alpha"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")
     implementation("io.opentelemetry:opentelemetry-extension-kotlin")
@@ -101,8 +101,8 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.39.0-alpha")
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.39.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.61.0-alpha")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.61.0")
 
 }
 

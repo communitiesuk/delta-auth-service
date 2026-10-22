@@ -2,7 +2,7 @@
 
 ## Setup
 
-* Requires Java 17
+* Requires Java 21
 * Forward localhost:2636 to port 636 of the test environment Active Directory,
   see the delta-common-infrastructure repository for details of the bastion host,
   and delta for port forwarding commands
@@ -17,7 +17,7 @@
     keytool -import -cacerts -alias dluhctest -file dluhctest.pem -noprompt -storepass changeit
     ```
     * If the `-cacerts` option doesn't work, specify the correct cacerts file for the Java version you are using,
-    by replacing it with e.g. `-keystore "C:\Program Files\Amazon Corretto\jdk17.0.16_8\lib\security\cacerts"` (Powershell).
+    by replacing it with e.g. `-keystore "$env:JAVA_HOME\lib\security\cacerts"` (PowerShell).
 * We need to force the "dluhctest.local" domain to resolve to localhost, so it goes through the SSH tunnel.
     * Add the following to your hosts file (Windows: `C:\Windows\System32\Drivers\etc\hosts`, MacOS: `/etc/hosts`):
       ```plaintext
