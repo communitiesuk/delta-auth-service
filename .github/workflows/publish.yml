@@ -17,7 +17,7 @@ jobs:
     environment: publish
     env:
       AWS_REGION: "eu-west-1"
-      VERSION: "28.6"
+      VERSION: "29.0"
       REPOSITORY: "delta-auth-service"
       ECR_PATH: "468442790030.dkr.ecr.eu-west-1.amazonaws.com"
     outputs:
@@ -44,7 +44,7 @@ jobs:
           aws ecr describe-images --repository-name $REPOSITORY --image-ids imageTag=release-$VERSION \
             && echo "tag=snapshot-$VERSION-${{ github.sha }}" >> $GITHUB_OUTPUT \
             || echo "tag=release-$VERSION" >> $GITHUB_OUTPUT
-      - run: docker pull amazoncorretto:17
+      - run: docker pull amazoncorretto:21
       - name: Build image
         run: docker build -t $ECR_PATH/$REPOSITORY:${{ steps.determine_tag.outputs.tag }} .
         working-directory: auth-service/

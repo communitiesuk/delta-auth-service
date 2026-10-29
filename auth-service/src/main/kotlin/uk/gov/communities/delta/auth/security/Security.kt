@@ -8,13 +8,13 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
-import io.opentelemetry.instrumentation.ktor.v2_0.client.KtorClientTracing
+import io.opentelemetry.instrumentation.ktor.v2_0.KtorClientTelemetry
 import org.slf4j.LoggerFactory
-import org.slf4j.MDC
 import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.config.AuthServiceConfig
 import uk.gov.communities.delta.auth.config.DeltaLoginEnabledClient
 import uk.gov.communities.delta.auth.oauthClientCallbackRoute
+import uk.gov.communities.delta.auth.plugins.monitoring.putClientTracingAttributes
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
 import kotlin.time.Duration.Companion.seconds
 
@@ -44,13 +44,11 @@ fun Application.configureSecurity(injection: Injection) {
         install(HttpTimeout) {
             requestTimeoutMillis = 10.seconds.inWholeMilliseconds
         }
-        install(KtorClientTracing) {
+        install(KtorClientTelemetry) {
             setOpenTelemetry(injection.openTelemetry)
-            attributeExtractor {
+            attributesExtractor {
                 onStart {
-                    attributes.put("peer.service", "Microsoft Login")
-                    attributes.put("delta.request-to", "azure-ad-token")
-                    attributes.put("MDC-requestId", MDC.get("requestId"))
+                    attributes.putClientTracingAttributes("Microsoft Login", "azure-ad-token")
                 }
             }
         }

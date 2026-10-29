@@ -9,11 +9,11 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.opentelemetry.api.OpenTelemetry
-import io.opentelemetry.instrumentation.ktor.v2_0.client.KtorClientTracing
+import io.opentelemetry.instrumentation.ktor.v2_0.KtorClientTelemetry
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import org.slf4j.MDC
+import uk.gov.communities.delta.auth.plugins.monitoring.putClientTracingAttributes
 import kotlin.time.Duration.Companion.seconds
 
 class MicrosoftGraphService(openTelemetry: OpenTelemetry) {
@@ -25,13 +25,11 @@ class MicrosoftGraphService(openTelemetry: OpenTelemetry) {
         install(HttpTimeout) {
             requestTimeoutMillis = 10.seconds.inWholeMilliseconds
         }
-        install(KtorClientTracing) {
+        install(KtorClientTelemetry) {
             setOpenTelemetry(openTelemetry)
-            attributeExtractor {
+            attributesExtractor {
                 onStart {
-                    attributes.put("peer.service", "Microsoft Graph")
-                    attributes.put("delta.request-to", "microsoft-graph")
-                    attributes.put("MDC-requestId", MDC.get("requestId"))
+                    attributes.putClientTracingAttributes("Microsoft Graph", "microsoft-graph")
                 }
             }
         }
