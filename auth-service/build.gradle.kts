@@ -65,7 +65,7 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.17.1")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.17.2")
 
     // Emails
     implementation("com.sun.mail:jakarta.mail:2.0.2")
