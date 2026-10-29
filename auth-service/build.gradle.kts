@@ -65,13 +65,13 @@ dependencies {
 
     // Metrics
     implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
-    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.17.1")
+    implementation("io.micrometer:micrometer-registry-cloudwatch2:1.17.2")
 
     // Emails
     implementation("com.sun.mail:jakarta.mail:2.0.2")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.6.5")
+    implementation("ch.qos.logback:logback-classic:1.6.6")
     implementation("net.logstash.logback:logstash-logback-encoder:9.0") // Structured log encoder
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.11.0")
 
@@ -82,7 +82,7 @@ dependencies {
 
     // Database
     implementation("org.postgresql:postgresql:42.7.14")
-    implementation("com.zaxxer:HikariCP:7.0.2") // Connection pool
+    implementation("com.zaxxer:HikariCP:7.1.0") // Connection pool
     implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
 
