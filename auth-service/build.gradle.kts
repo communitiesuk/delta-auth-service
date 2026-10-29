@@ -5,7 +5,7 @@ val openSamlVersion = "5.2.3"
 
 plugins {
     kotlin("jvm") version "2.4.21"
-    id("io.ktor.plugin") version "2.3.13"
+    id("io.ktor.plugin") version "3.6.0"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.21"
 }
 
