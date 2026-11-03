@@ -92,7 +92,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.11")
 
     // Tracing - sending traces to AWS X-Ray via OpenTelemetry
-    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.32.0-alpha"))
+    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.33.1-alpha"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")
     implementation("io.opentelemetry:opentelemetry-extension-kotlin")
