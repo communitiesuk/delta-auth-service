@@ -24,13 +24,13 @@ jobs:
       image_tag: ${{ steps.determine_tag.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           # Use deploy key so we have write access for pushing the git tag later
           ssh-key: ${{ secrets.REPO_WRITE_DEPLOY_KEY }}
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           role-to-assume: arn:aws:iam::468442790030:role/github-actions-delta-auth-ci
           aws-region: ${{ env.AWS_REGION }}
