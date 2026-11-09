@@ -102,7 +102,7 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
     implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.61.0-alpha")
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.61.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.62.0")
 
 }
 
