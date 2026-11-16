@@ -17,19 +17,20 @@ import uk.gov.communities.delta.auth.security.DELTA_AD_LDAP_SERVICE_USERS_AUTH_N
 import uk.gov.communities.delta.auth.security.DeltaLdapPrincipal
 import uk.gov.communities.delta.auth.services.OAuthSession
 
-val initMDC = createApplicationPlugin("InitMDCForCall") {
+// With tracing disabled the SDK returns noop tracers, so there is no span context to record
+fun initMDC(tracingEnabled: Boolean) = createApplicationPlugin("InitMDCForCall") {
     on(MonitoringHook) { call, proceed ->
         val remoteAddress = call.request.origin.remoteAddress
         val spanContext = Span.current().spanContext
-        if (!spanContext.isValid) throw Exception("Invalid span context")
+        if (tracingEnabled && !spanContext.isValid) throw Exception("Invalid span context")
         val endpoint = "${call.request.httpMethod.value} ${call.request.path()}"
 
-        val map = mapOf(
-            "endpoint" to endpoint,
-            "IPAddress" to remoteAddress,
-            "requestId" to call.callId!!,
-            "XRayTraceId" to spanContext.traceId,
-        )
+        val map = buildMap {
+            put("endpoint", endpoint)
+            put("IPAddress", remoteAddress)
+            put("requestId", call.callId!!)
+            if (spanContext.isValid) put("XRayTraceId", spanContext.traceId)
+        }
 
         withContext(MDCContext(map)) {
             proceed()

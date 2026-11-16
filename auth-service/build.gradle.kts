@@ -92,7 +92,9 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.11")
 
     // Tracing - sending traces to AWS X-Ray via OpenTelemetry
-    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.32.0-alpha"))
+    api(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:2.33.1-alpha"))
+    // Pins every core module together, so a contrib-only bump cannot split core across versions
+    api(platform("io.opentelemetry:opentelemetry-bom-alpha:1.67.0-alpha"))
     implementation("io.opentelemetry:opentelemetry-api")
     implementation("io.opentelemetry:opentelemetry-sdk")
     implementation("io.opentelemetry:opentelemetry-extension-kotlin")
@@ -101,8 +103,8 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.61.0-alpha")
-    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.61.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.62.1-alpha")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.62.1")
 
 }
 
