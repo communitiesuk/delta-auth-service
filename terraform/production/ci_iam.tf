@@ -46,6 +46,7 @@ data "aws_iam_policy_document" "ecr_push_access" {
       "ecr:DescribeImages",
       "ecr:InitiateLayerUpload",
       "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
       "ecr:PutImage"
     ]
 
