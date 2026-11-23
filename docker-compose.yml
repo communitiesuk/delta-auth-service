@@ -16,7 +16,7 @@ services:
     profiles:
       - app
   db:
-    image: postgres:16.15
+    image: postgres:18.7
     ports:
       - 5438:5432
     healthcheck:
