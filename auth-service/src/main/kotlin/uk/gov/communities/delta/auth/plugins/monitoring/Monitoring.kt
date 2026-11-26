@@ -7,9 +7,14 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.instrumentation.api.config.IncludeExclude
 import io.opentelemetry.instrumentation.ktor.v3_0.KtorServerTelemetry
+import uk.gov.communities.delta.auth.config.TracingConfig
 
-fun Application.configureMonitoring(meterRegistry: MeterRegistry, openTelemetry: OpenTelemetry) {
-    install(initMDC)
+fun Application.configureMonitoring(
+    meterRegistry: MeterRegistry,
+    openTelemetry: OpenTelemetry,
+    tracingConfig: TracingConfig,
+) {
+    install(initMDC(tracingConfig.enabled))
     install(CustomCallLogging)
     install(CallId) {
         header("X-Amz-Cf-Id")
