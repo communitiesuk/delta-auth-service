@@ -10,6 +10,7 @@ import io.ktor.test.dispatcher.*
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.AfterClass
@@ -146,7 +147,7 @@ class OAuthTokenControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

@@ -8,7 +8,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
-import io.opentelemetry.instrumentation.ktor.v2_0.KtorClientTelemetry
+import io.opentelemetry.instrumentation.ktor.v3_0.KtorClientTelemetry
 import org.slf4j.LoggerFactory
 import uk.gov.communities.delta.auth.Injection
 import uk.gov.communities.delta.auth.config.AuthServiceConfig

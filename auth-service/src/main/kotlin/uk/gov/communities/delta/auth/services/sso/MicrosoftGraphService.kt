@@ -9,7 +9,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.opentelemetry.api.OpenTelemetry
-import io.opentelemetry.instrumentation.ktor.v2_0.KtorClientTelemetry
+import io.opentelemetry.instrumentation.ktor.v3_0.KtorClientTelemetry
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
