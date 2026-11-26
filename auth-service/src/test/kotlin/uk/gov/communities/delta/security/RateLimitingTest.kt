@@ -15,6 +15,7 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.runBlocking
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
@@ -232,7 +233,7 @@ class RateLimitingTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

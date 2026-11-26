@@ -6,7 +6,7 @@ import io.ktor.server.plugins.callid.*
 import io.micrometer.core.instrument.MeterRegistry
 import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.instrumentation.api.config.IncludeExclude
-import io.opentelemetry.instrumentation.ktor.v2_0.KtorServerTelemetry
+import io.opentelemetry.instrumentation.ktor.v3_0.KtorServerTelemetry
 
 fun Application.configureMonitoring(meterRegistry: MeterRegistry, openTelemetry: OpenTelemetry) {
     install(initMDC)

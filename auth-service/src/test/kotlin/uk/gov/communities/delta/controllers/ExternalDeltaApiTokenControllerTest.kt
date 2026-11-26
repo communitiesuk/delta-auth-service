@@ -18,6 +18,7 @@ import uk.gov.communities.delta.auth.plugins.ApiError
 import uk.gov.communities.delta.auth.plugins.configureSerialization
 import uk.gov.communities.delta.auth.security.IADLdapLoginService
 import uk.gov.communities.delta.auth.services.DeltaApiTokenService
+import uk.gov.communities.delta.helper.controllerTestApplication
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertEquals
@@ -151,7 +152,7 @@ class ExternalDeltaApiTokenControllerTest {
         fun setup() {
             controller = ExternalDeltaApiTokenController(tokenService, ldapService)
 
-            testApp = TestApplication {
+            testApp = controllerTestApplication {
                 application {
                     configureSerialization()
                     routing {
@@ -172,7 +173,7 @@ class ExternalDeltaApiTokenControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

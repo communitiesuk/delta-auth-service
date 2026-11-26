@@ -14,6 +14,7 @@ import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.micrometer.core.instrument.Counter
 import io.mockk.*
+import kotlinx.coroutines.runBlocking
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
@@ -324,7 +325,7 @@ class DeltaLoginControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

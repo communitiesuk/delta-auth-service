@@ -11,6 +11,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.junit.AfterClass
 import org.junit.BeforeClass
@@ -26,6 +27,7 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.controllerTestApplication
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -245,7 +247,7 @@ class RefreshUserInfoControllerTest {
                 oauthSessionService,
                 userAuditService
             )
-            testApp = TestApplication {
+            testApp = controllerTestApplication {
                 install(CallId) { generate(4) }
                 application {
                     configureSerialization()
@@ -280,7 +282,7 @@ class RefreshUserInfoControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

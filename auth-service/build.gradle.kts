@@ -1,11 +1,11 @@
-val ktorVersion = "2.3.13"
+val ktorVersion = "3.6.2"
 val kotlinVersion = "2.4.21"
 val flywayVersion = "11.11.2"
 val openSamlVersion = "5.2.3"
 
 plugins {
     kotlin("jvm") version "2.4.21"
-    id("io.ktor.plugin") version "2.3.13"
+    id("io.ktor.plugin") version "3.6.2"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.21"
 }
 
@@ -86,7 +86,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core:$flywayVersion") // Migrations
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion") // Migrations
 
-    testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-test-host-jvm:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("io.mockk:mockk:1.14.11")
@@ -98,7 +98,7 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-extension-kotlin")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp")
     testImplementation("io.opentelemetry:opentelemetry-exporter-logging")
-    implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-2.0")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-3.0")
     implementation("io.opentelemetry.instrumentation:opentelemetry-jdbc")
 
     implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.61.0-alpha")

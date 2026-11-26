@@ -26,6 +26,7 @@ import uk.gov.communities.delta.auth.security.CLIENT_HEADER_AUTH_NAME
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.DeltaApiTokenService
 import uk.gov.communities.delta.auth.services.UserLookupService
+import uk.gov.communities.delta.helper.controllerTestApplication
 import uk.gov.communities.delta.helper.testLdapUser
 import java.util.*
 import kotlin.test.assertEquals
@@ -109,7 +110,7 @@ class InternalDeltaApiTokenControllerTest {
         fun setup() {
             controller = InternalDeltaApiTokenController(tokenService, samlTokenService, userLookupService)
 
-            testApp = TestApplication {
+            testApp = controllerTestApplication {
                 application {
                     configureSerialization()
                     authentication {
@@ -138,7 +139,7 @@ class InternalDeltaApiTokenControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

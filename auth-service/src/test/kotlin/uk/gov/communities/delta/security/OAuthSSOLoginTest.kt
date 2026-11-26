@@ -9,6 +9,7 @@ import io.ktor.http.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.ktor.util.*
@@ -31,6 +32,7 @@ import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.services.sso.MicrosoftGraphService
 import uk.gov.communities.delta.auth.services.sso.SSOLoginSessionStateService
 import uk.gov.communities.delta.auth.services.sso.SSOOAuthClientProviderLookupService
+import uk.gov.communities.delta.helper.controllerTestApplication
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -83,6 +85,16 @@ class OAuthSSOLoginTest {
             }
             assertEquals("", setCookie()[0].value) // Session should be cleared
         }
+    }
+
+    @Test
+    fun `Login endpoint accepts a Ktor 2 session cookie`() = testSuspend {
+        val legacySession = "clientId=%23sdelta-website&deltaState=%23sdelta-state&ssoAt=%23n&ssoClient=%23n&ssoState=%23n"
+        val key = hex(Env.getRequiredOrDevFallback("COOKIE_SIGNING_KEY_HEX", "1234"))
+        val signedSession = SessionTransportTransformerMessageAuthentication(key).transformWrite(legacySession)
+        val client = testClient(Cookie("LOGIN_SESSION", signedSession))
+
+        assertEquals(HttpStatusCode.Found, client.get("/delta/oauth/test/login").status)
     }
 
     @Test
@@ -456,7 +468,7 @@ class OAuthSSOLoginTest {
                     )
                 }
             }
-            testApp = TestApplication {
+            testApp = controllerTestApplication {
                 install(CallId) { generate(4) }
                 install(Authentication) {
                     azureAdSingleSignOn(
@@ -486,7 +498,7 @@ class OAuthSSOLoginTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

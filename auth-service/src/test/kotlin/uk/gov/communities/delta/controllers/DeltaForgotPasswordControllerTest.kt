@@ -10,6 +10,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import io.ktor.test.dispatcher.*
 import io.mockk.*
+import kotlinx.coroutines.runBlocking
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
@@ -198,7 +199,7 @@ class DeltaForgotPasswordControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

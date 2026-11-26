@@ -12,7 +12,7 @@ import uk.gov.communities.delta.auth.security.configureSecurity
 
 fun main() {
     val keyStore = SelfSignedSSLCertKeystore.getKeystore()
-    val environment = applicationEngineEnvironment {
+    embeddedServer(Netty, configure = {
         connector {
             port = 8088
         }
@@ -22,12 +22,10 @@ fun main() {
             privateKeyPassword = { SelfSignedSSLCertKeystore.KEY_STORE_PASSWORD.toCharArray() }) {
             port = 8443
         }
-        module {
-            Injection.startupInitFromEnvironment().registerShutdownHook()
-            appModule()
-        }
-    }
-    embeddedServer(Netty, environment).start(wait = true)
+    }) {
+        Injection.startupInitFromEnvironment().registerShutdownHook()
+        appModule()
+    }.start(wait = true)
 }
 
 fun Application.appModule() {
