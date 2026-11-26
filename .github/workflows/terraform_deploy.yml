@@ -81,15 +81,9 @@ jobs:
         run: terraform fmt -check -diff -recursive
 
       - name: Terraform init
-        env:
-          COMMON_INFRA_DEPLOY_KEY: ${{ secrets.COMMON_INFRA_DEPLOY_KEY }}
         working-directory: ${{ env.TF_WORKING_DIRECTORY }}
         id: init
-        run: |
-          mkdir -p ~/.ssh
-          echo "$COMMON_INFRA_DEPLOY_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          terraform init -no-color
+        run: terraform init -no-color
 
       - name: Terraform validate
         working-directory: ${{ env.TF_WORKING_DIRECTORY }}
@@ -184,15 +178,9 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform init
-        env:
-          COMMON_INFRA_DEPLOY_KEY: ${{ secrets.COMMON_INFRA_DEPLOY_KEY }}
         working-directory: ${{ env.TF_WORKING_DIRECTORY }}
         id: init
-        run: |
-          mkdir -p ~/.ssh
-          echo "$COMMON_INFRA_DEPLOY_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          terraform init -no-color
+        run: terraform init -no-color
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v8.0.2
