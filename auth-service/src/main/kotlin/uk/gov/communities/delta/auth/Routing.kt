@@ -166,6 +166,8 @@ fun Route.deltaLoginRoutes(
     install(Sessions) {
         val key = hex(Env.getRequiredOrDevFallback("COOKIE_SIGNING_KEY_HEX", "1234"))
         cookie<LoginSessionCookie>("LOGIN_SESSION") {
+            // Keep in-flight login cookies readable by both Ktor 2 and Ktor 3 during rollout.
+            serializer = reflectionSessionSerializer()
             cookie.extensions["SameSite"] =
                 "Lax" // We need the cookie to be present when being redirected back to the SSO callback endpoint
             cookie.secure = serviceConfig.serviceUrl.startsWith("https")

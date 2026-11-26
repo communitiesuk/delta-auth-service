@@ -31,6 +31,7 @@ import uk.gov.communities.delta.auth.security.OAUTH_ACCESS_BEARER_TOKEN_AUTH_NAM
 import uk.gov.communities.delta.auth.security.clientHeaderAuth
 import uk.gov.communities.delta.auth.services.*
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.controllerTestApplication
 import uk.gov.communities.delta.helper.mockUserLookupService
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
@@ -437,7 +438,7 @@ class AdminEditUserControllerTest {
                 accessGroupDCLGMembershipUpdateEmailService,
             )
 
-            testApp = TestApplication {
+            testApp = controllerTestApplication {
                 application {
                     configureSerialization()
                     authentication {
@@ -470,7 +471,7 @@ class AdminEditUserControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

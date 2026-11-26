@@ -17,6 +17,7 @@ import uk.gov.communities.delta.auth.controllers.external.DeltaResetPasswordCont
 import uk.gov.communities.delta.auth.plugins.UserVisibleServerError
 import uk.gov.communities.delta.auth.plugins.configureTemplating
 import uk.gov.communities.delta.auth.services.*
+import uk.gov.communities.delta.helper.controllerTestApplication
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import kotlin.test.assertContains
@@ -256,7 +257,7 @@ class DeltaResetPasswordControllerTest {
                 emailService,
                 userAuditService,
             )
-            testApp = TestApplication {
+            testApp = controllerTestApplication {
                 application {
                     configureTemplating(false)
                     routing {
@@ -282,7 +283,7 @@ class DeltaResetPasswordControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }

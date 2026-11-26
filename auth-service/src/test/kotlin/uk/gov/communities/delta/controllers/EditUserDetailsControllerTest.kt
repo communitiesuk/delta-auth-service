@@ -27,6 +27,7 @@ import uk.gov.communities.delta.auth.services.OAuthSessionService
 import uk.gov.communities.delta.auth.services.UserLookupService
 import uk.gov.communities.delta.auth.services.UserService
 import uk.gov.communities.delta.auth.withBearerTokenAuth
+import uk.gov.communities.delta.helper.controllerTestApplication
 import uk.gov.communities.delta.helper.testLdapUser
 import uk.gov.communities.delta.helper.testServiceClient
 import java.time.Instant
@@ -145,7 +146,7 @@ class EditUserDetailsControllerTest {
                 userService,
             )
 
-            testApp = TestApplication {
+            testApp = controllerTestApplication {
                 application {
                     configureSerialization()
                     authentication {
@@ -178,7 +179,7 @@ class EditUserDetailsControllerTest {
 
         @AfterClass
         @JvmStatic
-        fun tearDown() {
+        fun tearDown() = runBlocking {
             testApp.stop()
         }
     }
